@@ -103,6 +103,7 @@ func TestFreshServerScanRangePermissionsAndRestart(t *testing.T) {
 	}
 	source := filepath.Join(music, "中文 music.wav")
 	os.WriteFile(source, fixture, 0600)
+	pluginPath := build(t, "musicfs-plugin-local")
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -110,7 +111,7 @@ func TestFreshServerScanRangePermissionsAndRestart(t *testing.T) {
 	address := l.Addr().String()
 	l.Close()
 	base := "http://" + address
-	cfg := config.Config{Listen: address, DataRoot: filepath.Join(dir, "data"), MediaRoot: filepath.Join(dir, "media"), CacheRoot: filepath.Join(dir, "cache"), PluginPath: build(t, "musicfs-plugin-local"), AdminToken: domain.NewID(), AllowLoopbackHTTP: true, AllowedOrigins: []string{base}, MusicRoots: []config.MusicRoot{{ID: "local", Name: "Local test", Path: music}}, MaxSessions: 8, MaxProcessing: 2, MaxCacheBytes: 64 << 20, SessionTTLSeconds: 3600}
+	cfg := config.Config{Listen: address, DataRoot: filepath.Join(dir, "data"), MediaRoot: filepath.Join(dir, "media"), CacheRoot: filepath.Join(dir, "cache"), PluginPath: pluginPath, AdminToken: domain.NewID(), AllowLoopbackHTTP: true, AllowedOrigins: []string{base}, MusicRoots: []config.MusicRoot{{ID: "local", Name: "Local test", Path: music}}, MaxSessions: 8, MaxProcessing: 2, MaxCacheBytes: 64 << 20, SessionTTLSeconds: 3600}
 	start := func() func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		done := make(chan error, 1)
@@ -154,6 +155,13 @@ func TestFreshServerScanRangePermissionsAndRestart(t *testing.T) {
 			stop()
 		}
 	}()
+	if runtime.GOOS == "windows" {
+		command := exec.Command("pwsh", "-NoProfile", "-File", filepath.Join("..", "..", "scripts", "scan.ps1"), "-BaseURL", base, "-ProviderID", "local")
+		command.Env = append(os.Environ(), "MUSICFS_ADMIN_TOKEN="+cfg.AdminToken)
+		if output, err := command.CombinedOutput(); err != nil {
+			t.Fatalf("scan command failed: %v %s", err, output)
+		}
+	}
 	c := login(t, base, cfg.AdminToken)
 	code, raw, _ := c.request(t, "GET", "/api/v1/provider-instances", nil, "")
 	if code != 200 {
