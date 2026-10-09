@@ -47,3 +47,20 @@ func TestMigrationPersistenceBackupAndCancellation(t *testing.T) {
 		t.Fatal("cancelled write succeeded")
 	}
 }
+
+func TestNewerDatabaseIsRejected(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "newer.sqlite")
+	s, err := sqlite.Open(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.DB.ExecContext(ctx, "INSERT INTO schema_migrations VALUES(999)"); err != nil {
+		t.Fatal(err)
+	}
+	s.Close()
+	if s, err = sqlite.Open(ctx, path); err == nil {
+		s.Close()
+		t.Fatal("newer schema accepted")
+	}
+}

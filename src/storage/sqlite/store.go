@@ -50,6 +50,16 @@ func (s *Store) migrate(ctx context.Context, path string) error {
 		return err
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
+	latest := 0
+	for _, entry := range entries {
+		v, _ := strconv.Atoi(strings.Split(entry.Name(), "_")[0])
+		if v > latest {
+			latest = v
+		}
+	}
+	if current > latest {
+		return errors.New("database schema is newer than this server")
+	}
 	for _, entry := range entries {
 		v, _ := strconv.Atoi(strings.Split(entry.Name(), "_")[0])
 		if v <= current {
