@@ -84,6 +84,9 @@ func (s *Server) register(pattern string, authenticated, mutation, stream bool, 
 		if err == nil && mutation {
 			err = s.options.Auth.CheckMutation(session, r.Header.Get("Origin"), r.Header.Get("X-CSRF-Token"))
 		}
+		if err == nil && mutation && s.options.Ready != nil && !s.options.Ready() {
+			err = domain.Fail("TEMPORARY_FAILURE", "Server is draining")
+		}
 		if err == nil {
 			err = handler(w, r, session)
 		}

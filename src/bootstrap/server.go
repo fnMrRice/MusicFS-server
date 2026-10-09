@@ -2,7 +2,6 @@ package bootstrap
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"github.com/fnMrRice/MusicFS-server/src/config"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
@@ -11,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -23,6 +23,12 @@ func Serve(ctx context.Context, c config.Config, log *slog.Logger) error {
 		if err := os.MkdirAll(dir, 0700); err != nil {
 			return errors.New("cannot prepare writable directory")
 		}
+		probe, err := os.CreateTemp(dir, ".write-check-")
+		if err != nil {
+			return errors.New("configured storage directory is not writable")
+		}
+		probe.Close()
+		os.Remove(probe.Name())
 	}
 	lock, err := os.OpenFile(filepath.Join(c.DataRoot, "server.lock"), os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
@@ -38,19 +44,36 @@ func Serve(ctx context.Context, c config.Config, log *slog.Logger) error {
 	}
 	defer listener.Close()
 	var ready atomic.Bool
-	ready.Store(true)
 	instance := domain.NewID()
-	mux := http.NewServeMux()
-	for _, route := range []string{"GET /api/v1/health/live", "GET /api/v1/health/ready"} {
-		mux.HandleFunc(route, func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			if !ready.Load() {
-				w.WriteHeader(503)
-			}
-			json.NewEncoder(w).Encode(map[string]any{"product": "MusicFS", "instanceId": instance, "apiVersion": APIVersion, "ready": ready.Load()})
-		})
+	handler, cleanup, err := compose(ctx, c, log, instance, ready.Load)
+	if err != nil {
+		return err
 	}
-	server := &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 32 << 10}
+	defer cleanup()
+	var web http.Handler
+	if c.WebRoot != "" {
+		root, err := os.OpenRoot(c.WebRoot)
+		if err != nil {
+			return errors.New("cannot open Web artifact directory")
+		}
+		defer root.Close()
+		web = http.FileServerFS(root.FS())
+	}
+	router := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api") {
+			handler.ServeHTTP(w, r)
+			return
+		}
+		if web == nil || (r.Method != "GET" && r.Method != "HEAD") {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; media-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		web.ServeHTTP(w, r)
+	})
+	ready.Store(true)
+	server := &http.Server{Handler: router, ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 32 << 10}
 	done := make(chan error, 1)
 	go func() {
 		if c.TLSCert != "" {

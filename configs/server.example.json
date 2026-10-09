@@ -6,6 +6,7 @@
   "mediaRoot": "../media",
   "cacheRoot": "../cache",
   "pluginPath": "../build/windows/musicfs-plugin-local.exe",
+  "audioWorkerPath": "../build/windows/musicfs-plugin-audio-ffmpeg.exe",
   "ffmpegPath": "",
   "ffprobePath": "",
   "webRoot": "",

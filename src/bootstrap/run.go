@@ -4,15 +4,21 @@ import (
 	"context"
 	"flag"
 	"github.com/fnMrRice/MusicFS-server/src/config"
+	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"io"
 	"log/slog"
 	"os"
 	"os/signal"
+	"syscall"
 )
 
 const APIVersion = "1"
 
 func Run(args []string, output io.Writer) error {
+	if len(args) == 1 && args[0] == "token" {
+		_, err := io.WriteString(output, domain.NewID()+"\n")
+		return err
+	}
 	if len(args) > 0 && args[0] == "serve" {
 		args = args[1:]
 	}
@@ -38,7 +44,7 @@ func Run(args []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	return Serve(ctx, c, slog.New(slog.NewJSONHandler(output, nil)))
 }

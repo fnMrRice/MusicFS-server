@@ -24,6 +24,7 @@ type Config struct {
 	MediaRoot         string      `json:"mediaRoot"`
 	CacheRoot         string      `json:"cacheRoot"`
 	PluginPath        string      `json:"pluginPath"`
+	AudioWorkerPath   string      `json:"audioWorkerPath"`
 	FFmpegPath        string      `json:"ffmpegPath"`
 	FFprobePath       string      `json:"ffprobePath"`
 	WebRoot           string      `json:"webRoot"`
@@ -68,12 +69,15 @@ func Load(path string, overrides map[string]string) (Config, error) {
 			*target = value
 		}
 	}
-	for _, field := range []*string{&c.DataRoot, &c.MediaRoot, &c.CacheRoot, &c.WebRoot, &c.PluginPath, &c.FFmpegPath, &c.FFprobePath, &c.TLSCert, &c.TLSKey} {
+	for _, field := range []*string{&c.DataRoot, &c.MediaRoot, &c.CacheRoot, &c.WebRoot, &c.PluginPath, &c.AudioWorkerPath, &c.FFmpegPath, &c.FFprobePath, &c.TLSCert, &c.TLSKey} {
 		if *field != "" && !filepath.IsAbs(*field) {
 			*field = filepath.Join(base, *field)
 		}
 	}
 	for i := range c.MusicRoots {
+		if c.MusicRoots[i].Path == "" {
+			return c, errors.New("musicRoots path must not be empty")
+		}
 		if !filepath.IsAbs(c.MusicRoots[i].Path) {
 			c.MusicRoots[i].Path = filepath.Join(base, c.MusicRoots[i].Path)
 		}
@@ -125,7 +129,7 @@ func (c Config) Validate() error {
 	}
 	ids := map[string]bool{}
 	for _, root := range c.MusicRoots {
-		if root.ID == "" || root.Name == "" || root.Path == "" || ids[root.ID] {
+		if root.ID == "" || strings.ContainsAny(root.ID, "/\\.:") || root.Name == "" || root.Path == "" || ids[root.ID] {
 			return errors.New("musicRoots requires unique IDs and nonempty names/paths")
 		}
 		ids[root.ID] = true
@@ -139,8 +143,8 @@ func (c Config) Validate() error {
 }
 
 func overlaps(a, b string) bool {
-	a = filepath.Clean(a)
-	b = filepath.Clean(b)
+	a = canonicalPath(a)
+	b = canonicalPath(b)
 	for _, pair := range [][2]string{{a, b}, {b, a}} {
 		r, err := filepath.Rel(pair[0], pair[1])
 		if err == nil && r != ".." && !strings.HasPrefix(r, ".."+string(filepath.Separator)) {
@@ -148,4 +152,21 @@ func overlaps(a, b string) bool {
 		}
 	}
 	return false
+}
+
+func canonicalPath(path string) string {
+	path = filepath.Clean(path)
+	var suffix []string
+	for current := path; ; current = filepath.Dir(current) {
+		if resolved, err := filepath.EvalSymlinks(current); err == nil {
+			for i := len(suffix) - 1; i >= 0; i-- {
+				resolved = filepath.Join(resolved, suffix[i])
+			}
+			return resolved
+		}
+		if filepath.Dir(current) == current {
+			return path
+		}
+		suffix = append(suffix, filepath.Base(current))
+	}
 }
