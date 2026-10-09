@@ -28,6 +28,11 @@ func Serve(w http.ResponseWriter, r *http.Request, stream *playback.Stream) erro
 	w.Header().Set("Content-Type", stream.Description.OutputProfile.MIME)
 	w.Header().Set("Cache-Control", "private, no-store")
 	if stream.Description.DeliveryMode == "proxy" {
+		if r.Method == http.MethodGet {
+			if err := ValidateRangeHeader(r.Header.Get("Range")); err != nil {
+				return err
+			}
+		}
 		w.Header().Set("ETag", stream.ETag)
 		http.ServeContent(&idleWriter{ResponseWriter: w, controller: controller}, r, "audio", time.Time{}, stream.File)
 		return nil

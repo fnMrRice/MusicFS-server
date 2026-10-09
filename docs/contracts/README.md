@@ -14,7 +14,7 @@
 - 创建会话固定资产、表示和 attempt。seek/recover 对同一会话串行、先重放幂等结果再检查旧 attempt；晚到请求不能覆盖当前尝试。每次表示或起点改变都换 attempt 和 URL。
 - `byteRange` 仅用于有固定版本保证的可 Seek 表示；`timeRestart` 返回新片段与 `positionOriginMs`。未验证能力返回 `none`。canPlayType 只作为请求线索，不能代替真实播放验收。
 - 游标绑定用户、实例过滤、排序和已发布修订；游标失效时返回 `CURSOR_EXPIRED`，客户端重建列表，禁止拼接两个修订。
-- 稳定文件流由 HTTP 标准库处理单范围和多范围；只有合法且无法满足的范围返回 416。If-Range 失配可回退为完整固定表示。处理中的流不继承输入 Content-Length/ETag/Range。
+- 稳定文件流支持单范围和最多 16 段的多范围。非法语法、反向范围或超出段数上限返回 400 `INVALID_ARGUMENT`；合法范围交由 HTTP 标准库计算，无法满足时返回 416。If-Range 失配可回退为完整固定表示。处理中的流不继承输入 Content-Length/ETag/Range。
 
 ## 兼容与验证
 
