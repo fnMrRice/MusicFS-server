@@ -50,12 +50,13 @@ type Description struct {
 	EffectiveProcessing []Processing  `json:"effectiveProcessing"`
 	ResumeDecision      string        `json:"resumeDecision"`
 }
+type ObservedError struct {
+	Code          string         `json:"code"`
+	Message       string         `json:"message"`
+	OutputProfile *OutputProfile `json:"outputProfile,omitempty"`
+}
 type ControlRequest struct {
-	AttemptID     string `json:"attemptId"`
-	PositionMs    int64  `json:"positionMs"`
-	ObservedError *struct {
-		Code          string         `json:"code"`
-		Message       string         `json:"message"`
-		OutputProfile *OutputProfile `json:"outputProfile,omitempty"`
-	} `json:"observedError,omitempty"`
+	AttemptID     string         `json:"attemptId"`
+	PositionMs    int64          `json:"positionMs"`
+	ObservedError *ObservedError `json:"observedError,omitempty"`
 }

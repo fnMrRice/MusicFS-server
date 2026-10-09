@@ -96,6 +96,9 @@ func playbackService(t *testing.T) (*playback.Service, *gatedRepository, auth.Se
 	}
 	t.Cleanup(service.Close)
 	who := auth.Session{ID: "auth-session-1", User: auth.User{ID: "admin", Role: "admin"}, ExpiresAt: time.Now().UTC().Add(time.Hour)}
+	if err := store.SaveAuth(ctx, who); err != nil {
+		t.Fatal(err)
+	}
 	request := playback.CreateRequest{SourceTrackID: page.Items[0].ID, Capabilities: playback.Capabilities{HTMLAudio: true, Formats: []playback.Format{{MIME: "audio/wav", CanPlay: "probably"}, {MIME: "audio/mpeg", CanPlay: "probably"}}}}
 	return service, repo, who, request, path
 }
@@ -213,5 +216,36 @@ func TestPendingCreateDoesNotBlockStopAndIsRevocable(t *testing.T) {
 	case <-time.After(time.Second):
 		close(repo.proceed)
 		t.Fatal("revocation did not cancel pending create")
+	}
+}
+
+func TestQueuedCreateChecksRevocationAfterAcquiringCreationSlot(t *testing.T) {
+	service, repo, who, request, _ := playbackService(t)
+	repo.gate.Store(true)
+	first := make(chan error, 1)
+	second := make(chan error, 1)
+	go func() { _, err := service.Create(context.Background(), who, request, "first-create"); first <- err }()
+	<-repo.entered
+	queued := make(chan struct{})
+	go func() {
+		close(queued)
+		_, err := service.Create(context.Background(), who, request, "second-create")
+		second <- err
+	}()
+	<-queued
+	if err := repo.DeleteAuth(context.Background(), who.ID); err != nil {
+		t.Fatal(err)
+	}
+	service.Revoke(who.ID)
+	for _, result := range []chan error{first, second} {
+		select {
+		case err := <-result:
+			if err == nil {
+				t.Fatal("revoked authentication published a queued playback")
+			}
+		case <-time.After(time.Second):
+			close(repo.proceed)
+			t.Fatal("revoked creation queue did not drain")
+		}
 	}
 }

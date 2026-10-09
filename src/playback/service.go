@@ -15,6 +15,7 @@ import (
 )
 
 type Repository interface {
+	FindAuth(context.Context, string) (auth.Session, error)
 	PlaybackReset(context.Context) error
 	PlaybackSave(context.Context, string, string, string, []byte, string, time.Time) error
 	PlaybackOwner(context.Context, string) (string, error)

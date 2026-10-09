@@ -66,6 +66,12 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 		s.mu.Unlock()
 		return Description{}, domain.Fail("TEMPORARY_FAILURE", "Server is draining")
 	}
+	fresh, err := s.repo.FindAuth(ctx, who.ID)
+	if err != nil || fresh.User.ID != who.User.ID || !time.Now().Before(fresh.ExpiresAt) {
+		s.mu.Unlock()
+		return Description{}, domain.Fail("AUTH_REQUIRED", "Authentication session expired or was revoked")
+	}
+	who = fresh
 	digest := requestDigest(r)
 	prior, err := s.repo.Result(ctx, who.ID, "playback/create", key, digest)
 	if err != nil {
@@ -160,8 +166,9 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 	if err := ctx.Err(); err != nil {
 		return Description{}, err
 	}
-	if !time.Now().Before(who.ExpiresAt) {
-		return Description{}, domain.Fail("AUTH_REQUIRED", "Authentication session expired")
+	fresh, err = s.repo.FindAuth(ctx, who.ID)
+	if err != nil || fresh.User.ID != who.User.ID || !time.Now().Before(fresh.ExpiresAt) {
+		return Description{}, domain.Fail("AUTH_REQUIRED", "Authentication session expired or was revoked")
 	}
 	lifetime, cancel := context.WithCancel(s.ctx)
 	a := &session{owner: who.ID, user: who.User.ID, path: path, etag: fmt.Sprintf("\"%x\"", hash.Sum(nil)), size: n, track: t, gain: r.Preferences.GainDB, ctx: lifetime, cancel: cancel, lastAccess: time.Now()}
