@@ -1,8 +1,8 @@
 # Server 插件分阶段实现计划
 
-状态：实施计划，2026-10-09；所有步骤尚待实现与验收。Server 和首批官方插件使用 Go。本文件负责插件宿主、Local Files Provider、音频 Worker、独立 Scraper 与在线 Provider，服务端业务和数据库实施顺序见 [Server 实现总览](../implementation.md)，跨端联调门槛见[总体实现计划](../../../docs/implementation.md)。
+状态：2026-10-09，Go 插件协议、Local Files 与音频 Worker 已有可运行实现；具体提交和实测见[插件验证](../validation/plugins.md)。本文件仍保留独立 Scraper、在线 Provider 等未实现任务；服务端业务与数据库顺序见 [Server 实现总览](../implementation.md)，跨端门槛见[总体实现计划](../../../docs/implementation.md)。
 
-设计约束来自 [Server 架构](../architecture.md)和[音频处理设计](../audio-processing.md)。本文中的代码路径、接口名及配置字段是拟建方案，不表示相应代码已经存在。阶段编号与 Server / Web 共用；步骤 `PL-Px-yy` 可独立转成实施任务。源文件尽量不超过 400 行，按职责拆分；不为满足行数而拆散一个不可分的协议定义或生成文件。
+设计约束来自 [Server 架构](../architecture.md)和[音频处理设计](../audio-processing.md)。本文保留计划边界，已存在代码及已验证能力以验证记录为准。阶段编号与 Server / Web 共用；源文件尽量不超过 400 行，按职责拆分。
 
 ## 1. 首版边界与交付顺序
 

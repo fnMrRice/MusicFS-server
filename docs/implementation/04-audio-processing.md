@@ -1,6 +1,6 @@
 # P4：插件音频处理和 Web 时间定位
 
-状态：待实现；依赖 P3 和[插件音频任务](plugins.md)。返回[实施入口](../implementation.md)。P4 按“先可流式输出、再验证 DSP、再定位和治理”的顺序推进；中间阶段只报告实际通过的能力。
+状态：解码→Go PCM 增益→MP3 封装、timeRestart 和资源回收已落地；具体实测与待验门槛见[实施记录](../validation/progress.md)和[插件验证](../validation/plugins.md)。返回[实施入口](../implementation.md)。只声明已有证据的输出组合。
 
 ## 1. 目标链路与文件职责
 

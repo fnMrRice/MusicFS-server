@@ -1,6 +1,6 @@
 # P2：Local Files、扫描与音乐库
 
-状态：待实现；依赖 P0/P1 及[插件 P2 任务](plugins.md)。返回[实施入口](../implementation.md)。本阶段必须使用真实官方 Local Files worker 建立可供 Web 展示的音乐库。
+状态：真实 Local Files worker、完整复核、稳定身份和固定修订列表已落地；实际 NAS、通知增量等边界见[实施记录](../validation/progress.md)。返回[实施入口](../implementation.md)。[插件任务](plugins.md)保留后续扩展要求。
 
 ## 1. 拟建模块与关键数据
 

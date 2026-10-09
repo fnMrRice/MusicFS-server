@@ -1,0 +1,59 @@
+# 本地最简 Web 运行
+
+此版本实现本地文件扫描、固定修订列表、授权原流和独立 Go DSP 处理播放。桌面 Client、在线 Provider、刮削、指纹与歌单尚未实现。实际验证范围见 [实施记录](validation/progress.md)及 Web 的兼容性记录。
+
+## Windows
+
+前提：Go 1.26.9，Web 使用其 package.json 固定工具链；FFmpeg/ffprobe 6.1.1 是本轮实测构建，须包含 libmp3lame。FFmpeg 不随仓库分发。先在 Web 仓库运行 `npm ci`、`npm run build`。
+
+在 Server 仓库运行：
+
+```powershell
+./scripts/build.ps1
+Copy-Item configs/server.example.json configs/server.local.json
+```
+
+编辑 `configs/server.local.json`：
+
+- `musicRoots` 添加 `{ "id": "local", "name": "本地音乐", "path": "音乐目录的绝对路径" }`。
+- `ffmpegPath`、`ffprobePath` 指向本机工具的绝对路径。仅验证标准 PCM16 WAV 原流时可留空；AIFF 等处理路径需要两者。
+- `pluginPath` 与 `audioWorkerPath` 指向对应已构建程序；示例默认相对路径适合上述构建。
+- 可用 `pluginSha256` 与 `audioWorkerSha256` 固定管理员审核过的二进制摘要（`Get-FileHash -Algorithm SHA256`）。省略时信任显式配置的本机可执行路径，只核对本次启动的读取一致性，不承诺跨重启钉住版本；更新制品后需同步显式摘要。
+- 音乐目录与 `dataRoot/mediaRoot/cacheRoot` 保持分离。相对配置路径以 JSON 所在目录为基准。
+- `allowedOrigins` 必须与页面实际 URL 完全一致。默认只允许明确配置的 loopback HTTP，远程监听必须配置 TLS。
+
+```powershell
+$env:MUSICFS_ADMIN_TOKEN = (& ./build/windows/musicfs.exe token).Trim()
+./build/windows/musicfs.exe serve --config ./configs/server.local.json --web-root (Resolve-Path ../web/dist).Path
+```
+
+终端会阻塞运行服务。凭据保存在本次终端环境中，需要预先复制给登录输入框；`musicfs token` 是显式管理输出，普通服务日志不会打印凭据。不要将真实凭据提交到配置或复制到 URL。
+
+扫描由管理 API 执行，页面不承担目录管理。在另一个设置了同一 `MUSICFS_ADMIN_TOKEN` 的终端运行 `./scripts/scan.ps1 -ProviderID local`；脚本使用独立临时登录会话，等待扫描完成并退出该会话。Linux 可按 OpenAPI 使用同样的登录、创建扫描和查询任务接口。
+
+打开 `http://127.0.0.1:8080`，使用管理员凭据登录，选择来源并刷新列表。点击真实文件的播放按钮，使用原生控件暂停/继续；原流时间轴可定位。选中服务端处理选项后可使用简单曲目位置输入，处理后原生时间轴只代表当前片段。按 Ctrl+C 退出。
+
+测试素材在 `tests/testdata/audio`；包含项目自行生成的 CC0 文件、AIFF、VBR、中文名以及损坏样本。不要将损坏样本当作可播放成功标准。
+
+## Linux 与同源部署
+
+使用 `sh scripts/build.sh`；配置对应 Linux worker 路径和 FFmpeg 路径。服务仍可通过 `--web-root` 提供独立 Web 制品。Linux 运行验证与 Windows 交叉构建分别记入验证记录，不由构建推断所有发行版支持。
+
+开发期 Vite 仅代理 `/api` 到 Server；交付静态页面和 API 必须同源。远程访问使用 Server 的 `tlsCert/tlsKey` 与 HTTPS Origin；不会信任未配置的代理转发头。当前不提供桌面管理租约或容器运维方案。
+
+## 数据与恢复
+
+SQLite WAL 只放本地文件系统；音乐可以来自已挂载目录。初次成功注册记录根身份，身份变化或无法打开时保留旧库并将来源视为离线。恢复原挂载后重启服务；不要通过删除状态文件来规避身份检查。
+
+备份前正常停止服务，保留完整 `dataRoot`（含数据库、插件稳定身份与根身份）、`mediaRoot`、配置和所用制品版本。凭据单独安全保存。`cacheRoot` 可重建，无需备份。恢复到新的隔离目录后调整配置中的路径，重新登录并扫描验证。库内 API 使用 SQLite `VACUUM INTO` 生成一致性数据库备份，自动测试已覆盖从该备份重新打开。跨版本回滚应恢复相应备份，不能任意使用旧二进制打开新 schema。
+
+## 当前资源和能力边界
+
+- 默认最多 8 个播放会话、2 条同时处理管线，私有原文件快照总额 1 GiB；复制超出预算会明确拒绝。
+- 每个来源最多 50,000 个候选；增量请求当前执行完整受控复核，不依赖文件通知。
+- 原流以私有不可变磁盘副本提供真实 Range；输入复制为有界流，不在内存缓存整首歌。复制准备期间尚未开始播放。
+- 处理输出为 MP3 128 kb/s、48 kHz、双声道；Go PCM 增益在 -60 到 0 dB，未经处理的原始文件不被修改。
+- 处理输出不持久缓存，不声明原始长度/ETag/字节定位；固定输入、参数和起点的处理尝试通过时间定位重建。
+- 停止、退出撤销资源；无消费者会话有 90 秒空闲宽限期，最长 30 分钟且不超过登录会话有效期。超过期限后需要重新播放。
+- 浏览器中间断线可能需要明确重新播放。恢复次数有上限；没有实现跨来源自动续播。
+- Worker 是受信任官方程序，当前不是恶意插件的完整操作系统沙箱。

@@ -1,6 +1,6 @@
 # MusicFS Server 内部架构设计
 
-状态：设计草案；2026-10-09。本文描述 Server 内部职责与实现约束，不代表功能已实现。跨端行为、公共 API 与事件契约以[总体架构](../../docs/architecture.md)为准；Server 负责将其落实为本仓库后续的 `docs/contracts` OpenAPI 与 JSON Schema，不在内部设计中另立一套接口。
+状态：长期架构与实现约束；2026-10-09。最小本地播放已有实现，具体范围见[实施记录](validation/progress.md)，本文全部设计不因此视为已完成。跨端行为、公共 API 与事件契约以[总体架构](../../docs/architecture.md)为准；Server 在本仓库 `docs/contracts` 维护 OpenAPI 与 JSON Schema，不在内部设计中另立一套接口。
 
 ## 1. 范围与模块
 

@@ -1,8 +1,8 @@
 # MusicFS-server
 
-MusicFS 的后端服务仓库，负责音乐来源、统一音乐库、歌单、信息刮削和音频流交付。主语言已确定为 Go，当前交付架构与分阶段实现文档，尚无可运行实现；具体依赖版本、平台接入和媒体兼容性在实施时验证。
+MusicFS 的 Go 后端服务。当前已落地 Local Files 扫描、SQLite 音乐库、会话鉴权、原流 Range 和独立 Go DSP 处理链，配合独立 Web 仓库提供最简列表播放器。启动步骤见[本地运行说明](docs/running.md)，每步提交与验证边界见[实施记录](docs/validation/progress.md)。
 
-设计包括：
+长期设计包括（未列入实施记录的能力仍为计划）：
 
 - 插件管理：支持插件及实例的启用/禁用；默认平滑停用，停止接收新任务并等待现有播放结束，另提供强制停止。具体步骤见[插件管理计划](docs/implementation/plugin-management.md)，当前尚未实现完整管理链路。
 - 配置文件采用 YAML；严格校验、迁移及管理写入规则见 [YAML 配置计划](docs/implementation/configuration.md)。当前解析器仍为 JSON，迁移完成前运行命令以现有说明为准。
@@ -24,7 +24,7 @@ MusicFS 的后端服务仓库，负责音乐来源、统一音乐库、歌单、
 
 本仓库与 Client、Web 分别管理 Git 历史。跨仓库相对链接按 MusicFS 根目录下 `server`、`client`、`web` 并列检出的工作区布局解析。
 
-工程采用根 `go.mod` 的单 module：源码放 `src/`，Server 与插件程序入口放 `src/app/<程序>/`，其余实现按职责分布到 `src/<模块>/`；测试统一放根 `tests/`，通过包接口导入被测模块。完整目录和拟用构建/覆盖率命令见 [P0 工程布局](docs/implementation/00-project-layout.md)。当前命令属于计划，不表示已创建源码或通过编译。
+工程采用根 `go.mod` 的单 module：源码放 `src/`，Server 与插件程序入口放 `src/app/<程序>/`，测试统一放根 `tests/`。使用 `scripts/build.ps1` / `scripts/build.sh` 构建三个独立程序，`scripts/check.ps1` / `scripts/check.sh` 检查；真实音频工具测试需设置 `MUSICFS_FFMPEG` 和 `MUSICFS_FFPROBE`，否则明确跳过该部分。
 
 第一条交付链为 Local Files 扫描 → 音乐库列表 → 授权原流 → Web 有声播放；随后补齐解码 → PCM DSP → 编码/封装 → Web 播放和时间定位。P5—P7 的匹配、刮削及在线来源逐阶段扩展，不阻塞首个本地可播放版本。
 

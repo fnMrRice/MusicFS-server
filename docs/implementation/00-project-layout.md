@@ -1,6 +1,6 @@
 # P0：工程布局、工具链与契约
 
-状态：待实现。返回[Server 实施入口](../implementation.md)。本章落实用户指定的 `src/`、`src/app/`、根 `tests/` 结构；不采用另一套 cmd/internal/同目录测试模板。
+状态：工程与契约已落地；验证边界见[实施记录](../validation/progress.md)。返回[Server 实施入口](../implementation.md)。本章保留用户指定 `src/`、`src/app/`、根 `tests/` 结构的任务与门槛。
 
 ## 1. 目标目录
 
@@ -121,7 +121,7 @@ server/
 
 ### S-P0-04：拟采用的构建与检查入口
 
-以下命令在源码创建后执行，当前不算已经通过：
+以下为检查入口；Windows/Linux 的实际执行范围与限制见[实施记录](../validation/progress.md)，不能由一处通过推定所有目标环境通过：
 
 ```text
 go build -o build/musicfs ./src/app/musicfs
