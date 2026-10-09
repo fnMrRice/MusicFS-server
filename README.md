@@ -41,3 +41,14 @@ MusicFS 的 Go 后端服务。当前已落地 Local Files 扫描、SQLite 音乐
 上述仓库页面在核查时可访问且未显示归档标记；持续维护状态和具体接口的现网可用性需在接入时重新验证。每个平台实际采用参考内容时，补充准确 commit / tag、所参考文件、采用方式、验证结果及必要的署名 / 许可证记录。仅列出仓库名称不能代替依赖和代码来源记录。
 
 Apple Music 的资料接口与播放分别核对 [Apple Music API](https://developer.apple.com/documentation/applemusicapi) 和 [MusicKit 官方文档](https://developer.apple.com/musickit/)；完整音乐播放按官方播放器和用户授权能力单独适配，不将 catalog / preview 地址等同于可经 Server DSP 的整曲资源。插件分阶段步骤见[插件实现计划](docs/implementation/plugins.md)。
+
+### 本地 NCM 解密参考
+
+NCM 插件正按以下 MIT 项目的容器布局和解密流程，用 Go 标准库重写为独立 Worker。它负责本地加密容器，不属于网易云在线 API 插件；没有把参考项目作为运行依赖。接入和验收进度、配置及限制见 [NCM 插件说明](docs/ncm.md)。
+
+| 参考项目 | 许可证 | 参考内容与采用方式 |
+| --- | --- | --- |
+| [taurusxin/ncmdump-go](https://git.taurusxin.com/taurusxin/ncmdump-go) | [MIT](https://git.taurusxin.com/taurusxin/ncmdump-go/src/branch/main/LICENSE) | 参考 `ncmcrypt/ncmcrypt.go` 的文件头、密钥/元数据区和封面填充布局；重写解析和随机读取，加入严格边界检查，不采用联网补封面或改写音乐标签的逻辑 |
+| [iqiziqi/ncmdump.rs](https://github.com/iqiziqi/ncmdump.rs) | [MIT 声明](https://github.com/iqiziqi/ncmdump.rs/blob/master/Cargo.toml) | 对照 `crates/ncmdump/src/ncmdump.rs` 的音频载荷偏移与读取/定位语义；不引入 Rust 运行依赖 |
+
+测试使用本项目 CC0 合成 MP3/FLAC 生成 NCM 样本，并分别验证原始载荷、随机读取和浏览器播放。只有实际通过的项目才记入验收；尚未声称覆盖所有网易云客户端下载版本。
