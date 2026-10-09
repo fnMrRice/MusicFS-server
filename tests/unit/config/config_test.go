@@ -38,3 +38,21 @@ func TestConfigPrecedenceAndBoundaries(t *testing.T) {
 		t.Fatal("unknown field accepted")
 	}
 }
+
+func TestNCMWorkerConfiguration(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "config.json")
+	content := `{"allowLoopbackHttp":true,"allowedOrigins":["http://127.0.0.1:8080"],"ncmWorkerPath":"worker/ncm","ncmWorkerSha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}`
+	if err := os.WriteFile(file, []byte(content), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("MUSICFS_ADMIN_TOKEN", "a-long-test-only-credential")
+	c, err := config.Load(file, nil)
+	if err != nil || c.NCMWorkerPath != filepath.Join(dir, "worker", "ncm") {
+		t.Fatalf("NCM configuration failed: %v", err)
+	}
+	c.NCMWorkerSHA256 = "invalid"
+	if c.Validate() == nil {
+		t.Fatal("invalid NCM checksum accepted")
+	}
+}

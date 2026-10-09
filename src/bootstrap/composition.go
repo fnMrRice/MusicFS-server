@@ -12,6 +12,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/playback"
 	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
 	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
 	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 	"io"
@@ -66,19 +67,14 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 		}
 		runtimes = append(runtimes, r)
 	}
-	var probe library.Probe
-	if c.FFprobePath != "" {
-		probe = func(ctx context.Context, input io.ReadSeeker, size int64) (library.Observation, error) {
-			m, err := audioffmpeg.ProbeMetadata(ctx, c.FFprobePath, input, size)
-			o := library.Observation{Container: m.Container, Title: m.Title, Artists: m.Artists}
-			o.Codec = m.Codec
-			o.DurationMs = m.DurationMs
-			o.BitrateBps = m.BitrateBps
-			o.MIME = m.MIME
-			return o, err
+	var decoder *ncmdecoder.Processor
+	if c.NCMWorkerPath != "" {
+		decoder, err = ncmdecoder.NewProcessor(ncmdecoder.Config{WorkerPath: c.NCMWorkerPath, WorkerSHA256: expectedChecksum(c.NCMWorkerSHA256, c.NCMWorkerPath), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing})
+		if err != nil {
+			log.Warn("NCM decryption unavailable")
 		}
 	}
-	lib := library.New(store, queue, runtimes, probe)
+	lib := library.New(store, queue, runtimes, metadataProbe(c.FFprobePath, decoder))
 	sessions := auth.New(store, c.AdminToken, c.AllowedOrigins, time.Duration(c.SessionTTLSeconds)*time.Second)
 	handler := api.New(api.Options{Auth: sessions, InstanceID: instance, Ready: ready, SecureCookie: c.TLSCert != "", Logger: log})
 	handler.RegisterLibrary(lib)
@@ -89,7 +85,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 			log.Warn("audio processing unavailable")
 		}
 	}
-	player, err := playback.New(ctx, store, lib, processor, playback.Config{CacheRoot: c.CacheRoot, MaxSessions: c.MaxSessions, MaxCacheBytes: c.MaxCacheBytes})
+	player, err := playback.New(ctx, store, lib, processor, playback.Config{CacheRoot: c.CacheRoot, MaxSessions: c.MaxSessions, MaxCacheBytes: c.MaxCacheBytes, NCMDecoder: decoder})
 	if err != nil {
 		cleanup()
 		return nil, nil, err

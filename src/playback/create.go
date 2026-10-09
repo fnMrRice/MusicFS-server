@@ -110,15 +110,8 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 	if t.Availability != "available" {
 		return Description{}, domain.Fail("SOURCE_OFFLINE", "Track is unavailable")
 	}
-	processed := r.Preferences.ForceProcessing || r.Preferences.GainDB != 0 || !originalCandidate(t) || !supports(r.Capabilities, t.MIME)
-	if processed && (s.processor == nil || !supports(r.Capabilities, "audio/mpeg")) {
-		return Description{}, domain.Fail("UNSUPPORTED", "No compatible audio processing profile is available")
-	}
 	if t.Size <= 0 {
 		return Description{}, domain.Fail("UNSUPPORTED", "Source contains no audio data")
-	}
-	if t.Size > availableBytes {
-		return Description{}, domain.Fail("RATE_LIMITED", "Source exceeds the cache budget")
 	}
 	id := domain.NewID()
 	handle, err := s.library.Open(ctx, t, id)
@@ -127,6 +120,18 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 	}
 	defer handle.Close()
 	defer s.library.Revoke(t.ProviderID, id)
+	input, size, decrypted, closeInput, err := s.prepareInput(ctx, id, handle, &t)
+	if err != nil {
+		return Description{}, err
+	}
+	defer closeInput()
+	if size <= 0 || size > availableBytes {
+		return Description{}, domain.Fail("RATE_LIMITED", "Representation exceeds the cache budget")
+	}
+	processed := r.Preferences.ForceProcessing || r.Preferences.GainDB != 0 || !originalCandidate(t) || !supports(r.Capabilities, t.MIME)
+	if processed && (s.processor == nil || !supports(r.Capabilities, "audio/mpeg")) {
+		return Description{}, domain.Fail("UNSUPPORTED", "No compatible audio processing profile is available")
+	}
 	path := filepath.Join(s.config.CacheRoot, id+".bin")
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 	if err != nil {
@@ -140,8 +145,8 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 		}
 	}()
 	hash := sha256.New()
-	n, err := io.Copy(io.MultiWriter(f, hash), io.LimitReader(handle, t.Size+1))
-	if err != nil || n != t.Size {
+	n, err := io.Copy(io.MultiWriter(f, hash), io.LimitReader(input, size+1))
+	if err != nil || n != size {
 		return Description{}, domain.Fail("RESOURCE_CHANGED", "Source changed while preparing playback")
 	}
 	if err = handle.Validate(); err != nil {
@@ -177,6 +182,9 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 		expiry = who.ExpiresAt
 	}
 	d := Description{SessionID: id, AssetID: t.AssetID, DeliveryMode: "proxy", OutputProfile: OutputProfile{MIME: t.MIME, Codec: t.Codec, Container: t.Container, Transport: "htmlAudio"}, ExpiresAt: expiry, SeekMode: "byteRange", EffectiveProcessing: []Processing{}, ResumeDecision: "continue"}
+	if decrypted {
+		d.EffectiveProcessing = append(d.EffectiveProcessing, Processing{Type: "ncmDecrypt", Version: "1", Execution: "server"})
+	}
 	if t.DurationMs != nil {
 		d.SeekableRange = &Range{EndMs: *t.DurationMs}
 	}
@@ -188,7 +196,7 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 		if t.DurationMs != nil {
 			d.SeekMode = "timeRestart"
 		}
-		d.EffectiveProcessing = []Processing{{Type: "gain", GainDB: a.gain, Version: "1", Execution: "server"}}
+		d.EffectiveProcessing = append(d.EffectiveProcessing, Processing{Type: "gain", GainDB: a.gain, Version: "1", Execution: "server"})
 	}
 	a.description = d
 	s.nextAttempt(a, 0)

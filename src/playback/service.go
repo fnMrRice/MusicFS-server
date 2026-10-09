@@ -7,6 +7,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,6 +25,7 @@ type Repository interface {
 	CommitPlayback(context.Context, string, string, string, []byte, time.Time, string, string, string) error
 }
 type Config struct {
+	NCMDecoder    *ncmdecoder.Processor
 	CacheRoot     string
 	MaxSessions   int
 	MaxCacheBytes int64

@@ -28,6 +28,8 @@ func describe(f *os.File, rootID, path string) (pluginproto.Entry, error) {
 	var header [64]byte
 	n, _ := f.ReadAt(header[:], 0)
 	switch {
+	case n >= 8 && string(header[:8]) == "CTENFDAM":
+		entry.MIME = "audio/x-ncm"
 	case n >= 44 && string(header[:4]) == "RIFF" && string(header[8:12]) == "WAVE":
 		entry.MIME = "audio/wav"
 		if string(header[12:16]) == "fmt " && binary.LittleEndian.Uint32(header[16:20]) == 16 && string(header[36:40]) == "data" {
@@ -78,7 +80,7 @@ func (a *Access) Entries(ctx context.Context, rootID string) ([]pluginproto.Entr
 			return nil
 		}
 		ext := strings.ToLower(filepath.Ext(path))
-		if !strings.Contains("|.wav|.mp3|.flac|.ogg|.m4a|.aac|.aiff|.aif|.opus|", "|"+ext+"|") {
+		if !strings.Contains("|.wav|.mp3|.flac|.ogg|.m4a|.aac|.aiff|.aif|.opus|.ncm|", "|"+ext+"|") {
 			return nil
 		}
 		if len(entries) >= 50000 {

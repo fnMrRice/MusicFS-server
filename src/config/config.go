@@ -26,6 +26,8 @@ type Config struct {
 	CacheRoot         string      `json:"cacheRoot"`
 	PluginPath        string      `json:"pluginPath"`
 	AudioWorkerPath   string      `json:"audioWorkerPath"`
+	NCMWorkerPath     string      `json:"ncmWorkerPath"`
+	NCMWorkerSHA256   string      `json:"ncmWorkerSha256"`
 	PluginSHA256      string      `json:"pluginSha256"`
 	AudioWorkerSHA256 string      `json:"audioWorkerSha256"`
 	FFmpegPath        string      `json:"ffmpegPath"`
@@ -72,7 +74,7 @@ func Load(path string, overrides map[string]string) (Config, error) {
 			*target = value
 		}
 	}
-	for _, field := range []*string{&c.DataRoot, &c.MediaRoot, &c.CacheRoot, &c.WebRoot, &c.PluginPath, &c.AudioWorkerPath, &c.FFmpegPath, &c.FFprobePath, &c.TLSCert, &c.TLSKey} {
+	for _, field := range []*string{&c.DataRoot, &c.MediaRoot, &c.CacheRoot, &c.WebRoot, &c.PluginPath, &c.AudioWorkerPath, &c.NCMWorkerPath, &c.FFmpegPath, &c.FFprobePath, &c.TLSCert, &c.TLSKey} {
 		if *field != "" && !filepath.IsAbs(*field) {
 			*field = filepath.Join(base, *field)
 		}
@@ -107,7 +109,7 @@ func (c Config) Validate() error {
 	if c.MaxSessions < 1 || c.MaxSessions > 128 || c.MaxProcessing < 1 || c.MaxProcessing > 8 || c.MaxCacheBytes < 1<<20 || c.SessionTTLSeconds < 60 || c.SessionTTLSeconds > 86400 {
 		return errors.New("invalid resource limits")
 	}
-	for _, hash := range []string{c.PluginSHA256, c.AudioWorkerSHA256} {
+	for _, hash := range []string{c.PluginSHA256, c.AudioWorkerSHA256, c.NCMWorkerSHA256} {
 		if hash != "" {
 			raw, err := hex.DecodeString(hash)
 			if err != nil || len(raw) != 32 {
