@@ -1,6 +1,6 @@
 # Server 插件分阶段实现计划
 
-状态：2026-10-09，Go 插件协议、Local Files 与音频 Worker 已有可运行实现；具体提交和实测见[插件验证](../validation/plugins.md)。本文件仍保留独立 Scraper、在线 Provider 等未实现任务；服务端业务与数据库顺序见 [Server 实现总览](../implementation.md)，跨端门槛见[总体实现计划](../../../docs/implementation.md)。
+状态：2026-10-09，Go 插件协议、Local Files 与音频 Worker 已有可运行实现，独立 [NCM 解密 Worker](../ncm.md)也已完成并接入播放；基线提交和实测见[插件验证](../validation/plugins.md)，NCM 增量见[实施记录](../validation/progress.md)。本文件仍保留独立 Scraper、在线 Provider 等未实现任务；服务端业务与数据库顺序见 [Server 实现总览](../implementation.md)，跨端门槛见[总体实现计划](../../../docs/implementation.md)。
 
 设计约束来自 [Server 架构](../architecture.md)和[音频处理设计](../audio-processing.md)。本文保留计划边界，已存在代码及已验证能力以验证记录为准。阶段编号与 Server / Web 共用；源文件尽量不超过 400 行，按职责拆分。
 

@@ -1,6 +1,6 @@
 # MusicFS Server 音频处理设计
 
-状态：设计草案；2026-10-09。本文补充[Server 架构](architecture.md)，描述内部音频处理。跨端会话、播放描述、恢复与定位契约以[总体架构](../../docs/architecture.md)为准；具体库、插件装载方式和输出格式矩阵待验证。
+状态：长期设计与实现约束；2026-10-09。本文补充[Server 架构](architecture.md)，描述内部音频处理。独立音频 Worker、Go gain DSP、MP3 输出及 [NCM 解密](ncm.md)已有实现和实测，具体平台与格式边界见[实施记录](validation/progress.md)，其余设计能力仍待实现或验证。跨端会话、播放描述、恢复与定位契约以[总体架构](../../docs/architecture.md)为准。
 
 ## 1. 角色与路径
 

@@ -1,6 +1,6 @@
 # MusicFS Server 实施文档
 
-状态：2026-10-09 已落地 Go Server、Local Files 和音频 worker 的最小本地播放基线。本文保留完整计划；当前实现、逐步提交与实测限制以[实施记录](validation/progress.md)为准。P5—P7、桌面 Client 以及未记为通过的交付场景仍待实现/验证。
+状态：2026-10-09 已落地 Go Server、Local Files 和音频 Worker 的最小本地播放基线，随后完成独立 [NCM 解密插件](ncm.md)增量。本文保留完整计划；当前实现、逐步提交与实测限制以[实施记录](validation/progress.md)为准。P5—P7、桌面 Client 以及未记为通过的交付场景仍待实现/验证。
 
 ## 1. 范围与导航
 

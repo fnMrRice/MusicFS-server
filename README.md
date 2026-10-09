@@ -51,4 +51,4 @@ NCM 插件已按以下 MIT 项目的容器布局和解密流程，用 Go 标准�
 | [taurusxin/ncmdump-go](https://git.taurusxin.com/taurusxin/ncmdump-go) | [MIT](https://git.taurusxin.com/taurusxin/ncmdump-go/src/branch/main/LICENSE) | 参考 `ncmcrypt/ncmcrypt.go` 的文件头、密钥/元数据区和封面填充布局；重写解析和随机读取，加入严格边界检查，不采用联网补封面或改写音乐标签的逻辑 |
 | [iqiziqi/ncmdump.rs](https://github.com/iqiziqi/ncmdump.rs) | [MIT 声明](https://github.com/iqiziqi/ncmdump.rs/blob/master/Cargo.toml) | 对照 `crates/ncmdump/src/ncmdump.rs` 的音频载荷偏移与读取/定位语义；不引入 Rust 运行依赖 |
 
-核心、真实 Worker、Server 端到端和 Edge 三项 NCM 联调已通过；浏览器样本由独立 Node 生成器封装本项目 CC0 MP3/FLAC，另经 Go 核心逐字节校验。已执行 299,534 次模糊测试，Linux 真实 Worker 测试通过。真实下载 NCM 样本尚未验收，不能由合成文件推断所有网易云客户端下载版本兼容；本轮全量竞争检查与四程序双平台构建结果另记入实施记录。
+核心、真实 Worker、Server 端到端和 Edge 三项 NCM 联调已通过；浏览器样本由独立 Node 生成器封装本项目 CC0 MP3/FLAC，另经 Go 核心逐字节校验。已执行 299,534 次模糊测试，Linux 真实 Worker 测试通过。升级依赖后的全量检查、竞争检查和四程序 Windows/Linux 构建均通过，详细证据见[实施记录](docs/validation/progress.md)。真实下载 NCM 样本尚未验收，不能由合成文件推断所有网易云客户端下载版本兼容。

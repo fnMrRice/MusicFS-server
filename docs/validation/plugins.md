@@ -4,23 +4,23 @@
 
 ## 1. 实现与提交边界
 
-| 步骤 | 生产文件与行为 | 提交 / 建议提交标题 |
+| 步骤 | 生产文件与行为 | 提交标题（稳定检索项） |
 | --- | --- | --- |
-| PL-P0-01 | `src/pluginproto/manifest.go`、`provider.go`：版本、实例、角色、观测与资源 DTO | `2d60cfe feat(PL-P0-01): 定义版本化插件清单与来源协议` |
-| PL-P0-02 | `envelope.go`、`framing.go`：1 MiB UTF-8 Content-Length 帧、业务错误；后续 `peer.go` 实现双向调用、取消和重复终态拒绝 | `d624eb8 feat(PL-P0-02): 实现有界插件消息帧与契约测试` |
-| PL-P0-03 | `resources.go`：受控枚举与宿主命名空间状态 DTO | `bcb54cd feat(PL-P0-03): 定义受限资源与宿主状态协议` |
-| PL-P1-01 | `src/pluginhost/registry.go`：绝对可执行路径、SHA-256、停用检查；启动不经过 Shell；主配置支持管理员固定 Worker 摘要 | `b4844a9 feat(PL-P1-01): 固定受信任插件路径与校验和`；`3da8bee feat(PL-P1-01): 支持管理员固定 worker 摘要` |
-| PL-P1-02 / PL-P2-01 | `pluginhost/process.go`、`resources.go`、`state.go`；Local Files 正式入口与测试进程 | `524e05b feat(PL-P2-01): 建立真实 Local Files worker 与持久来源身份`；`b9e2d4b fix(S-P2-01): 加固真实插件握手取消与故障回收` |
-| S-P2-02 / PL-P2-02 | `src/sourceaccess`：`os.Root`、句柄身份、版本、scope、过期、受限资源 | `06125aa feat(S-P2-02): 统一受限根与版本绑定的来源读取` |
+| PL-P0-01 | `src/pluginproto/manifest.go`、`provider.go`：版本、实例、角色、观测与资源 DTO | `feat(PL-P0-01): 定义版本化插件清单与来源协议` |
+| PL-P0-02 | `envelope.go`、`framing.go`：1 MiB UTF-8 Content-Length 帧、业务错误；后续 `peer.go` 实现双向调用、取消和重复终态拒绝 | `feat(PL-P0-02): 实现有界插件消息帧与契约测试` |
+| PL-P0-03 | `resources.go`：受控枚举与宿主命名空间状态 DTO | `feat(PL-P0-03): 定义受限资源与宿主状态协议` |
+| PL-P1-01 | `src/pluginhost/registry.go`：绝对可执行路径、SHA-256、停用检查；启动不经过 Shell；主配置支持管理员固定 Worker 摘要 | `feat(PL-P1-01): 固定受信任插件路径与校验和`；`feat(PL-P1-01): 支持管理员固定 worker 摘要` |
+| PL-P1-02 / PL-P2-01 | `pluginhost/process.go`、`resources.go`、`state.go`；Local Files 正式入口与测试进程 | `feat(PL-P2-01): 建立真实 Local Files worker 与持久来源身份`；`fix(S-P2-01): 加固真实插件握手取消与故障回收` |
+| S-P2-02 / PL-P2-02 | `src/sourceaccess`：`os.Root`、句柄身份、版本、scope、过期、受限资源 | `feat(S-P2-02): 统一受限根与版本绑定的来源读取` |
 | PL-P2-03 / PL-P2-04 | `src/plugins/localfiles`：宿主持久分配随机 ID、分页、确定改名保留 ID、基础 WAV/MIME 观测 | 同 Local Files 提交；完整元数据由下一项补充 |
-| S-P2-04 | `src/plugins/audioffmpeg/metadata.go`：受控本机输入通道与 ffprobe 元数据 | `6d08249 feat(S-P2-04): 通过受限 broker 探测音频元数据与工具能力` |
-| PL-P4-01 / S-P4-01 | `audioffmpeg/capabilities.go`：实际工具版本、构建、编码器/解码器/封装器、固定输出组合 | 同 `6d08249` |
-| PL-P4-02 / S-P4-03 / S-P4-04 | `src/audio`、`audio/dsp/gain.go`、`audioffmpeg/pipeline.go`：真实独立 Go PCM 节点 | `ea7d715 feat(S-P4-03): 定义 PCM 数据边界与独立 Go 增益节点`；`d857f2f feat(S-P4-04): 将 Go DSP 接入解码编码流式管线` |
-| PL-P4-03 / S-P4-02 / S-P4-07 | `audioffmpeg/processor.go`、`worker.go`、`process_*.go`、独立音频入口：任务通道、背压与进程树回收 | `c70eec9 feat(S-P4-02): 通过任务限定二进制通道运行音频 worker` |
-| PL-P4-04 / S-P4-05 | `tests/integration/plugins/audio_test.go`：真实转码、增益、非零时间定位与中途断连 | `997d0a3 test(S-P4-06): 验证增益定位精度与处理流首块时序` |
-| S-P4 输入边界补充 | `metadata.go`、`pipeline.go` 限定实际音频 demuxer；伪 HLS 不得访问远端 | `a0e95e4 fix(S-P4-01): 限定音频解封装器并拒绝外部播放列表` |
+| S-P2-04 | `src/plugins/audioffmpeg/metadata.go`：受控本机输入通道与 ffprobe 元数据 | `feat(S-P2-04): 通过受限 broker 探测音频元数据与工具能力` |
+| PL-P4-01 / S-P4-01 | `audioffmpeg/capabilities.go`：实际工具版本、构建、编码器/解码器/封装器、固定输出组合 | 同 S-P2-04 的元数据与工具能力提交 |
+| PL-P4-02 / S-P4-03 / S-P4-04 | `src/audio`、`audio/dsp/gain.go`、`audioffmpeg/pipeline.go`：真实独立 Go PCM 节点 | `feat(S-P4-03): 定义 PCM 数据边界与独立 Go 增益节点`；`feat(S-P4-04): 将 Go DSP 接入解码编码流式管线` |
+| PL-P4-03 / S-P4-02 / S-P4-07 | `audioffmpeg/processor.go`、`worker.go`、`process_*.go`、独立音频入口：任务通道、背压与进程树回收 | `feat(S-P4-02): 通过任务限定二进制通道运行音频 worker` |
+| PL-P4-04 / S-P4-05 | `tests/integration/plugins/audio_test.go`：真实转码、增益、非零时间定位与中途断连 | `test(S-P4-06): 验证增益定位精度与处理流首块时序` |
+| S-P4 输入边界补充 | `metadata.go`、`pipeline.go` 限定实际音频 demuxer；伪 HLS 不得访问远端 | `fix(S-P4-01): 限定音频解封装器并拒绝外部播放列表` |
 
-表中列出首次实现及主要验证提交；S-P4-08 的资产/权限/输出缓存归属 Server 播放模块。
+表中保留首次实现及主要验证的提交标题，可按阶段号或标题检索；不固定补签时会变化的提交摘要。S-P4-08 的资产/权限/输出缓存归属 Server 播放模块。本文第 1—5 节保留最初插件基线的实测结果；后续独立 NCM Worker、依赖升级及最终全量回归见[实施记录第 4 节](progress.md#4-后续授权增量独立-ncm-插件)。
 
 ## 2. 实际工具和输出组合
 
@@ -90,7 +90,7 @@ Go 使用[官方 1.26.9 下载归档及校验清单](https://go.dev/dl/?mode=jso
 
 已实际运行并通过 `go test -count=1 -v ./tests/unit/plugins ./tests/contract/plugins ./tests/integration/plugins` 中的协议、DSP、来源与 Local Files 测试；真实 Worker 重启/移动身份和故障回收都通过。随后 `go test ./...` 全部通过，覆盖 SQLite、HTTP 契约、播放与端到端测试；`go test -race ./tests/unit/plugins ./tests/contract/plugins ./tests/integration/plugins` 也通过。Linux 未配置 FFmpeg，因此四个真实音频/播放列表隔离用例明确跳过；这部分通过证据仍来自 Windows 实际运行。
 
-恢复初始固定依赖 `golang.org/x/sys v0.34.0` 与 `golang.org/x/text v0.14.0` 后，再以 `-mod=readonly` 定向运行 `tests/unit/bootstrap`、`tests/contract/api`、`tests/integration/storage`、`tests/integration/playback`、`tests/e2e`，全部通过，未允许测试命令修改依赖清单。
+在最初基线阶段，恢复当时固定依赖 `golang.org/x/sys v0.34.0` 与 `golang.org/x/text v0.14.0` 后，再以 `-mod=readonly` 定向运行 `tests/unit/bootstrap`、`tests/contract/api`、`tests/integration/storage`、`tests/integration/playback`、`tests/e2e`，全部通过，未允许测试命令修改依赖清单。
 
 WSL DNS 无法解析下载域名，改从 Windows 下载 Linux FFmpeg 后进度仍过慢，已停止下载任务，未使用不完整归档执行测试。Linux 的真实 FFmpeg 流式处理、进程树回收、音频定位和输入播放列表隔离仍待验证。
 
