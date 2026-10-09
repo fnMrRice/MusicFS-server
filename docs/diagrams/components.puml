@@ -1,0 +1,48 @@
+@startuml
+title MusicFS - Components
+top to bottom direction
+skinparam componentStyle rectangle
+package "MusicFS-web" {
+ component "Reusable UI / Theme" as UI
+ component "Browser Playback" as BP
+}
+package "MusicFS-client (Tauri)" {
+ component "Bundled UI" as DUI
+ component "Desktop Playback Adapter" as DP
+ component "Lyrics Window / Server Launcher" as Native
+}
+package "MusicFS-server" {
+ component "API / Auth / Events" as API
+ component Library
+ component "Playlist / Snapshots" as Playlist
+ component "Source Resolver" as Resolver
+ component "Scheduler / Provider Host" as Host
+ component "Stream Gateway" as Stream
+ database "SQLite / Cache" as DB
+}
+component "Provider Workers" as Providers
+cloud "Online Platforms" as Cloud
+folder "Local / NAS" as NAS
+UI --> API : HTTP / WebSocket
+BP --> Stream : Audio
+DUI --> API : HTTP / WebSocket
+DP --> Stream : Audio
+Native --> API : Health / Auth
+API --> Library
+API --> Playlist
+API --> Resolver
+Playlist --> Library
+Playlist --> Host
+Resolver --> Host
+Stream --> Host : Resolve / Refresh
+Library --> DB
+Playlist --> DB
+Host --> DB
+Host --> Providers : Versioned JSON-RPC
+Providers --> Cloud
+Providers --> NAS
+note bottom of UI
+Published UI package is bundled by desktop.
+Direct playback is optional when accessible.
+end note
+@enduml
