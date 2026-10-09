@@ -62,7 +62,7 @@ func (f *Framer) Read() (Envelope, error) {
 	if err := json.Unmarshal(body, &e); err != nil {
 		return e, fmt.Errorf("PROTOCOL_MISMATCH: invalid JSON")
 	}
-	if e.JSONRPC != "2.0" || (e.Method == "" && (e.ID == "" || (e.Error == nil) == (e.Result == nil))) {
+	if e.JSONRPC != "2.0" || len(e.ID) > 80 || (e.Method != "" && (e.Result != nil || e.Error != nil)) || (e.Method == "" && (e.ID == "" || (e.Error == nil) == (e.Result == nil))) {
 		return e, fmt.Errorf("PROTOCOL_MISMATCH: invalid envelope")
 	}
 	return e, nil

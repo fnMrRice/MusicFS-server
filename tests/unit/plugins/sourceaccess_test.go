@@ -75,3 +75,24 @@ func TestSourceRootRejectsSymlinkEscape(t *testing.T) {
 		t.Fatal("symlink escaped authorized root")
 	}
 }
+
+func TestReplacedRootNeverLooksLikeAnEmptyLibrary(t *testing.T) {
+	parent := t.TempDir()
+	root := filepath.Join(parent, "music")
+	if err := os.Mkdir(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	a, err := sourceaccess.New([]sourceaccess.RootConfig{{ID: "root", Path: root}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = os.Rename(root, filepath.Join(parent, "unmounted")); err != nil {
+		t.Fatal(err)
+	}
+	if err = os.Mkdir(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err = a.Entries(context.Background(), "root"); err == nil {
+		t.Fatal("replaced root reported a successful empty scan")
+	}
+}
