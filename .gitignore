@@ -6,3 +6,4 @@
 /.env
 *.test
 coverage.out
+/musicfs.exe
