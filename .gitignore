@@ -1,0 +1,8 @@
+/build/
+/data/
+/media/
+/cache/
+/configs/*.local.json
+/.env
+*.test
+coverage.out
