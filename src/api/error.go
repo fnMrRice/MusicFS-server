@@ -21,7 +21,7 @@ func classifyError(err error) (string, int) {
 			return failure.Code, http.StatusForbidden
 		case "NOT_FOUND":
 			return failure.Code, http.StatusNotFound
-		case "CONFLICT", "STALE_ATTEMPT", "RESOURCE_CHANGED", "SESSION_STOPPED":
+		case "CONFLICT", "STALE_ATTEMPT", "RESOURCE_CHANGED", "SESSION_STOPPED", "RESTART_REQUIRED", "RECOVERY_EXHAUSTED":
 			return failure.Code, http.StatusConflict
 		case "CURSOR_EXPIRED", "SESSION_EXPIRED", "IDEMPOTENCY_EXPIRED":
 			return failure.Code, http.StatusGone
