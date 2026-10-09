@@ -18,6 +18,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -32,6 +33,13 @@ func checksum(path string) string {
 		return ""
 	}
 	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+func expectedChecksum(configured, path string) string {
+	if configured != "" {
+		return strings.ToLower(configured)
+	}
+	return checksum(path)
 }
 
 func compose(ctx context.Context, c config.Config, log *slog.Logger, instance string, ready func() bool) (*api.Server, func(), error) {
@@ -52,7 +60,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	}
 	for _, root := range c.MusicRoots {
 		r := library.Runtime{ID: root.ID, Name: root.Name, Owner: "admin"}
-		r.Worker, err = pluginhost.Start(ctx, pluginhost.Config{Executable: c.PluginPath, SHA256: checksum(c.PluginPath), InstanceID: root.ID, UserID: "admin", Roots: []sourceaccess.RootConfig{{ID: root.ID, Path: root.Path}}, StateDir: filepath.Join(c.DataRoot, "providers", root.ID)})
+		r.Worker, err = pluginhost.Start(ctx, pluginhost.Config{Executable: c.PluginPath, SHA256: expectedChecksum(c.PluginSHA256, c.PluginPath), InstanceID: root.ID, UserID: "admin", Roots: []sourceaccess.RootConfig{{ID: root.ID, Path: root.Path}}, StateDir: filepath.Join(c.DataRoot, "providers", root.ID)})
 		if err != nil {
 			log.Warn("provider unavailable", "providerId", root.ID)
 		}
@@ -76,7 +84,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	handler.RegisterLibrary(lib)
 	var processor *audioffmpeg.Processor
 	if c.AudioWorkerPath != "" && c.FFmpegPath != "" && c.FFprobePath != "" {
-		processor, err = audioffmpeg.NewProcessor(ctx, audioffmpeg.Config{FFmpegPath: c.FFmpegPath, FFprobePath: c.FFprobePath, WorkerPath: c.AudioWorkerPath, WorkerSHA256: checksum(c.AudioWorkerPath), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing})
+		processor, err = audioffmpeg.NewProcessor(ctx, audioffmpeg.Config{FFmpegPath: c.FFmpegPath, FFprobePath: c.FFprobePath, WorkerPath: c.AudioWorkerPath, WorkerSHA256: expectedChecksum(c.AudioWorkerSHA256, c.AudioWorkerPath), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing})
 		if err != nil {
 			log.Warn("audio processing unavailable")
 		}

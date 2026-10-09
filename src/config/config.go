@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,6 +26,8 @@ type Config struct {
 	CacheRoot         string      `json:"cacheRoot"`
 	PluginPath        string      `json:"pluginPath"`
 	AudioWorkerPath   string      `json:"audioWorkerPath"`
+	PluginSHA256      string      `json:"pluginSha256"`
+	AudioWorkerSHA256 string      `json:"audioWorkerSha256"`
 	FFmpegPath        string      `json:"ffmpegPath"`
 	FFprobePath       string      `json:"ffprobePath"`
 	WebRoot           string      `json:"webRoot"`
@@ -101,8 +104,16 @@ func (c Config) Validate() error {
 	if c.TLSCert == "" && (!loopback || !c.AllowLoopbackHTTP) {
 		return errors.New("HTTP requires explicit loopback-only configuration; otherwise configure TLS")
 	}
-	if c.MaxSessions < 1 || c.MaxSessions > 128 || c.MaxProcessing < 1 || c.MaxProcessing > 16 || c.MaxCacheBytes < 1<<20 || c.SessionTTLSeconds < 60 || c.SessionTTLSeconds > 86400 {
+	if c.MaxSessions < 1 || c.MaxSessions > 128 || c.MaxProcessing < 1 || c.MaxProcessing > 8 || c.MaxCacheBytes < 1<<20 || c.SessionTTLSeconds < 60 || c.SessionTTLSeconds > 86400 {
 		return errors.New("invalid resource limits")
+	}
+	for _, hash := range []string{c.PluginSHA256, c.AudioWorkerSHA256} {
+		if hash != "" {
+			raw, err := hex.DecodeString(hash)
+			if err != nil || len(raw) != 32 {
+				return errors.New("plugin checksums must be SHA-256 hex strings")
+			}
+		}
 	}
 	if len(c.AllowedOrigins) == 0 {
 		return errors.New("allowedOrigins must be explicit")
