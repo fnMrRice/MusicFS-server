@@ -20,7 +20,7 @@
     "Error": {"type": "object", "required": ["error"], "properties": {"error": {"$ref": "#/$defs/ErrorDetail"}}},
     "Health": {
       "type": "object", "required": ["product", "instanceId", "apiVersion", "ready"],
-      "properties": {"product": {"const": "MusicFS"}, "instanceId": {"$ref": "#/$defs/ID"}, "apiVersion": {"const": "v1"}, "ready": {"type": "boolean"}}
+      "properties": {"product": {"const": "MusicFS"}, "instanceId": {"$ref": "#/$defs/ID"}, "apiVersion": {"const": "1"}, "ready": {"type": "boolean"}}
     },
     "Session": {
       "type": "object", "required": ["user", "csrfToken", "expiresAt"],
