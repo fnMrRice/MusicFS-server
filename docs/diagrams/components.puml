@@ -1,0 +1,77 @@
+@startuml
+title MusicFS Server - Internal Design (Not Implemented)
+left to right direction
+skinparam componentStyle rectangle
+skinparam shadowing false
+
+actor "Web / Desktop Client" as Consumer
+package "Server Core" {
+  component "API Gateway\nAuth / Validation / Revisions" as API
+  component "Library\nAssets / Matching / Timeline Evidence" as Library
+  component "Playlist\nSnapshots / Provenance / Hide Rules" as Playlist
+  component "Metadata Enrichment\nCandidates / Selection / Write-back Jobs" as Enrichment
+  component "Resolver\nAuthorization / Source / Profile" as Resolver
+  component "Scheduler\nScan / Hash / Fingerprint / Sync / Recovery" as Scheduler
+  component "Plugin Host\nRoles / Capabilities / Limits / Cancellation" as Host
+  component "Audio Pipeline\nDemux -> Decode -> PCM DSP -> Encode -> Mux" as Pipeline
+  component "Stream Gateway\nAttempt URL / Byte Range / Time Seek" as Stream
+}
+package "Server Plugins" {
+  component "Local Files Provider\nMounted NAS / Stable File IDs" as Local
+  component "Online Music Providers\nCatalog / Playlists / Recommendations" as Online
+  component "Scrapers\nLocal / Online / Platform Adapters" as Scrapers
+  component "Audio Processors\nDemux / Decode / DSP / Encode / Mux" as Audio
+}
+database "SQLite WAL\nIndexes / Relations / Jobs\nNo File Bodies" as DB
+folder "Media Store\nLyrics / Artwork / Metadata / Fingerprints" as Media
+folder "Rebuildable Cache\nVersioned Audio Outputs" as Cache
+folder "Authorized Music Roots\nLocal / Mounted NAS" as Files
+component "Protected Credentials\nOS Store / External Master Key" as Secrets
+
+Consumer --> API : "Shared contracts"
+Consumer --> Stream : "Authorized attempt URL"
+API --> Library
+API --> Playlist
+API --> Enrichment
+API --> Resolver
+API --> Scheduler
+Playlist --> Library
+Enrichment --> Scheduler
+Enrichment --> Media : "Publish immutable files"
+Enrichment --> Library : "Revision-checked binding"
+Scheduler --> Host
+Resolver --> Library
+Resolver --> Host
+Resolver --> Pipeline : "Build authorized plan"
+Pipeline --> Host : "Control / capabilities"
+Pipeline --> Audio : "Bounded binary audio data"
+Pipeline --> Cache
+Pipeline --> Stream : "Versioned output / time map"
+Host --> Local
+Host --> Online
+Host --> Scrapers
+Host --> Audio : "Lifecycle / limits"
+Host --> Secrets : "Scoped credentials"
+Local --> Files : "Read / explicit safe tag write"
+Host --> Files : "Task-scoped read access"
+Host --> DB : "Controlled persistence API"
+Library --> DB
+Playlist --> DB
+Enrichment --> DB
+Scheduler --> DB
+Stream --> Files : "Version-checked byte reads"
+Stream --> Cache
+Stream --> Host : "Authorized remote source"
+note bottom of DB
+  Single write queue plus revision / generation checks.
+  Plugins do not directly modify core tables.
+end note
+note bottom of Media
+  Database and filesystem publication are separate.
+  Recover using persisted stages and referenced-file manifests.
+end note
+note bottom of Pipeline
+  Direct or remux paths may bypass decoding when compatible.
+  Processed output never inherits input byte offsets.
+end note
+@enduml
