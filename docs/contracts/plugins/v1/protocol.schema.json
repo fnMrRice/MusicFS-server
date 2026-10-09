@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://musicfs.invalid/contracts/plugins/v1/protocol.schema.json",
+  "title": "MusicFS JSON-RPC 2.0 控制面 1.0",
+  "oneOf": [{"$ref": "#/$defs/Request"}, {"$ref": "#/$defs/Success"}, {"$ref": "#/$defs/Failure"}, {"$ref": "#/$defs/Cancel"}],
+  "$defs": {
+    "ID": {"type": "string", "minLength": 1, "maxLength": 256},
+    "RequestID": {"type": "string", "pattern": "^[hw]-[A-Za-z0-9_-]+$", "maxLength": 128},
+    "Version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$"},
+    "Manifest": {
+      "type": "object",
+      "required": ["pluginId", "pluginVersion", "protocolVersion", "roles", "capabilities", "systems", "architectures", "maxMessageBytes", "maxPageItems"],
+      "properties": {
+        "pluginId": {"$ref": "#/$defs/ID"}, "pluginVersion": {"$ref": "#/$defs/Version"}, "protocolVersion": {"const": "1.0"},
+        "roles": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["provider", "audio", "scraper"]}},
+        "capabilities": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z0-9]*(?:\\.[a-z][a-zA-Z0-9]*)+$"}},
+        "systems": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["windows", "linux"]}},
+        "architectures": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["amd64", "arm64"]}},
+        "maxMessageBytes": {"type": "integer", "minimum": 1, "maximum": 1048576},
+        "maxPageItems": {"type": "integer", "minimum": 1, "maximum": 200},
+        "maxInflightRequests": {"type": "integer", "minimum": 1, "maximum": 256},
+        "configSchema": {"type": "object"}
+      }
+    },
+    "Context": {
+      "type": "object", "additionalProperties": false, "required": ["instanceId", "userId", "taskId", "timeoutMs"],
+      "properties": {"instanceId": {"$ref": "#/$defs/ID"}, "userId": {"$ref": "#/$defs/ID"}, "taskId": {"$ref": "#/$defs/ID"}, "accountRef": {"$ref": "#/$defs/ID"}, "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 3600000}}
+    },
+    "Hello": {
+      "type": "object", "additionalProperties": false, "required": ["protocolVersion", "instanceId", "nonce", "configRevision"],
+      "properties": {"protocolVersion": {"const": "1.0"}, "instanceId": {"$ref": "#/$defs/ID"}, "nonce": {"$ref": "#/$defs/ID"}, "configRevision": {"$ref": "#/$defs/ID"}}
+    },
+    "Ready": {
+      "type": "object", "required": ["manifest", "instanceId", "nonce"],
+      "properties": {"manifest": {"$ref": "#/$defs/Manifest"}, "instanceId": {"$ref": "#/$defs/ID"}, "nonce": {"$ref": "#/$defs/ID"}}
+    },
+    "ScanRequest": {
+      "type": "object", "additionalProperties": false, "required": ["rootId", "scanId", "generation", "limit"],
+      "properties": {"rootId": {"$ref": "#/$defs/ID"}, "scanId": {"$ref": "#/$defs/ID"}, "generation": {"type": "integer", "minimum": 1}, "cursor": {"type": "string"}, "limit": {"type": "integer", "minimum": 1, "maximum": 200}}
+    },
+    "Observation": {
+      "type": "object", "required": ["externalId", "rootId", "relativePath", "sourceRef", "observedVersion", "displayName", "sizeBytes", "mime", "codec", "durationMs", "bitrateBps"],
+      "properties": {
+        "externalId": {"$ref": "#/$defs/ID"}, "rootId": {"$ref": "#/$defs/ID"}, "relativePath": {"$ref": "#/$defs/RelativePath"},
+        "sourceRef": {"$ref": "#/$defs/ID"}, "observedVersion": {"$ref": "#/$defs/ID"}, "displayName": {"type": "string", "minLength": 1},
+        "sizeBytes": {"type": "integer", "minimum": 0}, "mime": {"type": "string"}, "codec": {"type": ["string", "null"]},
+        "durationMs": {"type": ["integer", "null"], "minimum": 0}, "bitrateBps": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "ScanPage": {
+      "type": "object", "required": ["scanId", "generation", "page", "items", "complete", "rootIdentity", "issues"],
+      "properties": {
+        "scanId": {"$ref": "#/$defs/ID"}, "generation": {"type": "integer", "minimum": 1}, "page": {"type": "integer", "minimum": 0},
+        "items": {"type": "array", "items": {"$ref": "#/$defs/Observation"}, "maxItems": 200}, "nextCursor": {"type": "string"},
+        "complete": {"type": "boolean"}, "rootIdentity": {"$ref": "#/$defs/ID"}, "issues": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "ResolveRequest": {
+      "type": "object", "additionalProperties": false, "required": ["externalId", "expectedVersion"],
+      "properties": {"externalId": {"$ref": "#/$defs/ID"}, "expectedVersion": {"$ref": "#/$defs/ID"}}
+    },
+    "RelativePath": {"type": "string", "minLength": 1, "not": {"anyOf": [{"pattern": "^[A-Za-z]:"}, {"pattern": "^[/\\\\]"}, {"pattern": "(^|[/\\\\])\\.\\.([/\\\\]|$)"}]}},
+    "Resource": {
+      "type": "object", "required": ["resourceRef", "rootId", "relativePath", "observedVersion", "sizeBytes", "mime", "range"],
+      "properties": {
+        "resourceRef": {"$ref": "#/$defs/ID"}, "rootId": {"$ref": "#/$defs/ID"}, "relativePath": {"$ref": "#/$defs/RelativePath"},
+        "observedVersion": {"$ref": "#/$defs/ID"}, "sizeBytes": {"type": "integer", "minimum": 0}, "mime": {"type": "string", "minLength": 1}, "range": {"type": "boolean"}
+      }
+    },
+    "EntriesRequest": {
+      "type": "object", "additionalProperties": false, "required": ["rootId", "limit"],
+      "properties": {"rootId": {"$ref": "#/$defs/ID"}, "cursor": {"type": "string"}, "limit": {"type": "integer", "minimum": 1, "maximum": 200}}
+    },
+    "StateGet": {"type": "object", "additionalProperties": false, "required": ["key"], "properties": {"key": {"$ref": "#/$defs/ID"}}},
+    "StateCAS": {"type": "object", "additionalProperties": false, "required": ["key", "expectedRevision", "value"], "properties": {"key": {"$ref": "#/$defs/ID"}, "expectedRevision": {"type": "integer", "minimum": 0}, "value": {"type": ["object", "array", "string", "number", "boolean", "null"]}}},
+    "StateResult": {"type": "object", "required": ["revision", "value"], "properties": {"revision": {"type": "integer", "minimum": 0}, "value": {"type": ["object", "array", "string", "number", "boolean", "null"]}}},
+    "Request": {
+      "type": "object", "additionalProperties": false, "required": ["jsonrpc", "id", "method", "params"],
+      "properties": {"jsonrpc": {"const": "2.0"}, "id": {"$ref": "#/$defs/RequestID"}, "method": {"type": "string"}, "params": {"type": "object"}},
+      "oneOf": [
+        {"properties": {"method": {"const": "host.hello"}, "params": {"$ref": "#/$defs/Hello"}}},
+        {"properties": {"method": {"const": "provider.scan"}, "params": {"$ref": "#/$defs/ScanRequest"}}},
+        {"properties": {"method": {"enum": ["provider.resolve", "provider.metadata"]}, "params": {"$ref": "#/$defs/ResolveRequest"}}},
+        {"properties": {"method": {"const": "host.entries"}, "params": {"$ref": "#/$defs/EntriesRequest"}}},
+        {"properties": {"method": {"const": "host.state.get"}, "params": {"$ref": "#/$defs/StateGet"}}},
+        {"properties": {"method": {"const": "host.state.compareAndSet"}, "params": {"$ref": "#/$defs/StateCAS"}}}
+      ]
+    },
+    "Success": {
+      "type": "object", "additionalProperties": false, "required": ["jsonrpc", "id", "result"],
+      "properties": {"jsonrpc": {"const": "2.0"}, "id": {"$ref": "#/$defs/RequestID"}, "result": {"anyOf": [{"$ref": "#/$defs/Ready"}, {"$ref": "#/$defs/ScanPage"}, {"$ref": "#/$defs/Resource"}, {"$ref": "#/$defs/Observation"}, {"$ref": "#/$defs/StateResult"}]}}
+    },
+    "ErrorData": {
+      "type": "object", "required": ["code", "retryable"],
+      "properties": {
+        "code": {"enum": ["INVALID_ARGUMENT", "AUTH_REQUIRED", "ACCESS_DENIED", "NOT_FOUND", "UNSUPPORTED", "SOURCE_OFFLINE", "RESOURCE_CHANGED", "RATE_LIMITED", "TEMPORARY_FAILURE", "CANCELED", "PROTOCOL_MISMATCH", "CONFLICT"]},
+        "retryable": {"type": "boolean"}, "retryAfterMs": {"type": "integer", "minimum": 0}
+      }
+    },
+    "Failure": {
+      "type": "object", "additionalProperties": false, "required": ["jsonrpc", "id", "error"],
+      "properties": {
+        "jsonrpc": {"const": "2.0"}, "id": {"anyOf": [{"$ref": "#/$defs/RequestID"}, {"type": "null"}]},
+        "error": {"type": "object", "additionalProperties": false, "required": ["code", "message", "data"], "properties": {"code": {"enum": [-32700, -32600, -32601, -32602, -32603, -32000]}, "message": {"type": "string", "minLength": 1}, "data": {"$ref": "#/$defs/ErrorData"}}}
+      }
+    },
+    "Cancel": {
+      "type": "object", "additionalProperties": false, "required": ["jsonrpc", "method", "params"],
+      "properties": {"jsonrpc": {"const": "2.0"}, "method": {"const": "$/cancelRequest"}, "params": {"type": "object", "additionalProperties": false, "required": ["id"], "properties": {"id": {"$ref": "#/$defs/RequestID"}}}}
+    }
+  }
+}

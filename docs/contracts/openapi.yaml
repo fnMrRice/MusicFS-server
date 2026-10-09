@@ -1,0 +1,74 @@
+{
+  "openapi": "3.1.0",
+  "info": {"title": "MusicFS 最小服务 API", "version": "1.0.0", "description": "P0–P4 共同契约。接口是否可用以阶段验收记录为准。JSON 语法是 YAML 1.2 子集；模型单一来源为 http.schema.json。"},
+  "servers": [{"url": "/api/v1"}],
+  "security": [{"sessionCookie": []}],
+  "paths": {
+    "/health/live": {"get": {"operationId": "healthLive", "security": [], "responses": {"200": {"$ref": "#/components/responses/Health"}}}},
+    "/health/ready": {"get": {"operationId": "healthReady", "security": [], "responses": {"200": {"$ref": "#/components/responses/Health"}, "503": {"$ref": "#/components/responses/Health"}}}},
+    "/auth/session": {
+      "post": {"operationId": "login", "security": [{"bootstrapBearer": []}], "description": "必须有允许的 Origin；首次凭据交换不要求 CSRF。成功设置 HttpOnly、SameSite=Strict Cookie；HTTPS 加 Secure。", "responses": {"200": {"$ref": "#/components/responses/Session"}, "default": {"$ref": "#/components/responses/Error"}}},
+      "get": {"operationId": "currentSession", "responses": {"200": {"$ref": "#/components/responses/Session"}, "default": {"$ref": "#/components/responses/Error"}}},
+      "delete": {"operationId": "logout", "parameters": [{"$ref": "#/components/parameters/CSRF"}], "responses": {"204": {"description": "当前会话已撤销"}, "default": {"$ref": "#/components/responses/Error"}}}
+    },
+    "/provider-instances": {"get": {"operationId": "listProviders", "responses": {"200": {"$ref": "#/components/responses/Providers"}, "default": {"$ref": "#/components/responses/Error"}}}},
+    "/provider-instances/{id}/scan-jobs": {
+      "parameters": [{"$ref": "#/components/parameters/ID"}],
+      "post": {"operationId": "createScan", "parameters": [{"$ref": "#/components/parameters/CSRF"}, {"$ref": "#/components/parameters/Idempotency"}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/ScanRequest"}}}}, "responses": {"202": {"$ref": "#/components/responses/ScanAccepted"}, "default": {"$ref": "#/components/responses/Error"}}}
+    },
+    "/scan-jobs/{id}": {
+      "parameters": [{"$ref": "#/components/parameters/ID"}],
+      "get": {"operationId": "getScan", "responses": {"200": {"$ref": "#/components/responses/ScanJob"}, "default": {"$ref": "#/components/responses/Error"}}}
+    },
+    "/source-tracks": {
+      "get": {"operationId": "listSourceTracks", "parameters": [
+        {"name": "providerInstanceId", "in": "query", "schema": {"type": "string"}},
+        {"name": "limit", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50}},
+        {"name": "cursor", "in": "query", "schema": {"type": "string"}, "description": "绑定用户、实例过滤、稳定排序及 libraryRevision 的不透明游标；快照失效为 CURSOR_EXPIRED。"}
+      ], "responses": {"200": {"$ref": "#/components/responses/SourceTracks"}, "default": {"$ref": "#/components/responses/Error"}}}
+    },
+    "/playback/sessions": {
+      "post": {"operationId": "createPlayback", "parameters": [{"$ref": "#/components/parameters/CSRF"}, {"$ref": "#/components/parameters/Idempotency"}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/CreatePlayback"}}}}, "responses": {"201": {"$ref": "#/components/responses/Playback"}, "default": {"$ref": "#/components/responses/Error"}}}
+    },
+    "/playback/sessions/{id}": {
+      "parameters": [{"$ref": "#/components/parameters/ID"}],
+      "delete": {"operationId": "stopPlayback", "parameters": [{"$ref": "#/components/parameters/CSRF"}], "responses": {"204": {"description": "本人会话已停止；重复停止成功"}, "default": {"$ref": "#/components/responses/Error"}}}
+    },
+    "/playback/sessions/{id}/seek": {
+      "parameters": [{"$ref": "#/components/parameters/ID"}],
+      "post": {"operationId": "seekPlayback", "parameters": [{"$ref": "#/components/parameters/CSRF"}, {"$ref": "#/components/parameters/Idempotency"}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/Seek"}}}}, "responses": {"200": {"$ref": "#/components/responses/Playback"}, "default": {"$ref": "#/components/responses/Error"}}}
+    },
+    "/playback/sessions/{id}/recover": {
+      "parameters": [{"$ref": "#/components/parameters/ID"}],
+      "post": {"operationId": "recoverPlayback", "parameters": [{"$ref": "#/components/parameters/CSRF"}, {"$ref": "#/components/parameters/Idempotency"}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/Recover"}}}}, "responses": {"200": {"$ref": "#/components/responses/Playback"}, "default": {"$ref": "#/components/responses/Error"}}}
+    },
+    "/playback/sessions/{id}/attempts/{attemptId}/stream": {
+      "parameters": [{"$ref": "#/components/parameters/ID"}, {"name": "attemptId", "in": "path", "required": true, "schema": {"type": "string", "minLength": 1}}],
+      "get": {"operationId": "getStream", "description": "只能使用服务器返回的 opaque streamUrl。每个请求校验 Cookie、会话归属、尝试状态、期限和固定版本。流开始后错误只能中止，不能追加 JSON。", "parameters": [
+        {"name": "Range", "in": "header", "schema": {"type": "string"}},
+        {"name": "If-Range", "in": "header", "schema": {"type": "string"}}
+      ], "responses": {"200": {"$ref": "#/components/responses/Stream"}, "206": {"$ref": "#/components/responses/PartialStream"}, "416": {"description": "合法但不可满足的范围；Content-Range: bytes */size", "headers": {"Content-Range": {"schema": {"type": "string"}}}}, "default": {"$ref": "#/components/responses/Error"}}},
+      "head": {"operationId": "headStream", "description": "使用与 GET 相同的授权与版本校验，只有元信息，没有音频正文。", "responses": {"200": {"description": "表示元信息", "headers": {"Content-Type": {"schema": {"type": "string"}}, "Content-Length": {"schema": {"type": "integer", "minimum": 0}}, "Accept-Ranges": {"schema": {"enum": ["bytes", "none"]}}}}, "default": {"$ref": "#/components/responses/Error"}}}
+    }
+  },
+  "components": {
+    "securitySchemes": {"sessionCookie": {"type": "apiKey", "in": "cookie", "name": "musicfs_session"}, "bootstrapBearer": {"type": "http", "scheme": "bearer"}},
+    "parameters": {
+      "ID": {"name": "id", "in": "path", "required": true, "schema": {"type": "string", "minLength": 1}},
+      "CSRF": {"name": "X-CSRF-Token", "in": "header", "required": true, "schema": {"type": "string", "minLength": 16}, "description": "登录后状态修改同时校验允许的 Origin。"},
+      "Idempotency": {"name": "Idempotency-Key", "in": "header", "required": true, "schema": {"type": "string", "minLength": 8, "maxLength": 128}, "description": "用户/路由/键绑定请求摘要。同键同参数重放已提交结果；不同参数返回 409。重试窗口与播放期限一致，过期明确要求重建。"}
+    },
+    "responses": {
+      "Health": {"description": "服务状态", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/Health"}}}},
+      "Session": {"description": "登录会话", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/Session"}}}},
+      "Providers": {"description": "授权 Provider 实例，不包含根路径或凭据", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/Providers"}}}},
+      "ScanAccepted": {"description": "扫描任务已排队或合并同目标的在途扫描", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/ScanAccepted"}}}},
+      "ScanJob": {"description": "任务状态；未知总数不得当百分比", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/ScanJob"}}}},
+      "SourceTracks": {"description": "固定修订的持久音乐库分页", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/SourceTracks"}}}},
+      "Playback": {"description": "固定输入/输出尝试与能力描述", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/Playback"}}}},
+      "Error": {"description": "结构化业务错误。400 INVALID_ARGUMENT，401 AUTH_REQUIRED，403 ACCESS_DENIED，404 NOT_FOUND，409 CONFLICT/STALE_ATTEMPT/RESOURCE_CHANGED，410 CURSOR_EXPIRED/SESSION_EXPIRED，415 UNSUPPORTED，429 RATE_LIMITED，503 TEMPORARY_FAILURE/SOURCE_OFFLINE。", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/Error"}}}},
+      "Stream": {"description": "音频正文；只有固定可随机访问表示声明 Content-Length、ETag 与 bytes", "headers": {"Accept-Ranges": {"schema": {"enum": ["bytes", "none"]}}, "Content-Length": {"schema": {"type": "integer", "minimum": 0}}, "ETag": {"schema": {"type": "string"}}}, "content": {"audio/*": {"schema": {"type": "string", "format": "binary"}}}},
+      "PartialStream": {"description": "固定表示的 Range 片段", "headers": {"Content-Range": {"required": true, "schema": {"type": "string"}}, "Content-Length": {"schema": {"type": "integer", "minimum": 0}}}, "content": {"audio/*": {"schema": {"type": "string", "format": "binary"}}}}
+    }
+  }
+}

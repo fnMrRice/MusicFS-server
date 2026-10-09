@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://musicfs.invalid/contracts/http.schema.json",
+  "title": "MusicFS HTTP v1 模型",
+  "$defs": {
+    "ID": {"type": "string", "minLength": 1, "maxLength": 256},
+    "NullableString": {"type": ["string", "null"]},
+    "NullableCount": {"type": ["integer", "null"], "minimum": 0},
+    "Timestamp": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "NullableTimestamp": {"anyOf": [{"$ref": "#/$defs/Timestamp"}, {"type": "null"}]},
+    "ErrorDetail": {
+      "type": "object", "required": ["code", "message", "requestId", "retryAfter"],
+      "properties": {
+        "code": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]+$"},
+        "message": {"type": "string", "minLength": 1},
+        "requestId": {"$ref": "#/$defs/ID"},
+        "retryAfter": {"type": ["number", "null"], "minimum": 0, "description": "建议等待秒数；null 表示没有重试建议。"}
+      }
+    },
+    "Error": {"type": "object", "required": ["error"], "properties": {"error": {"$ref": "#/$defs/ErrorDetail"}}},
+    "Health": {
+      "type": "object", "required": ["product", "instanceId", "apiVersion", "ready"],
+      "properties": {"product": {"const": "MusicFS"}, "instanceId": {"$ref": "#/$defs/ID"}, "apiVersion": {"const": "v1"}, "ready": {"type": "boolean"}}
+    },
+    "Session": {
+      "type": "object", "required": ["user", "csrfToken", "expiresAt"],
+      "properties": {
+        "user": {"type": "object", "required": ["id", "role"], "properties": {"id": {"$ref": "#/$defs/ID"}, "role": {"enum": ["admin"]}}},
+        "csrfToken": {"type": "string", "minLength": 16}, "expiresAt": {"$ref": "#/$defs/Timestamp"}
+      }
+    },
+    "Provider": {
+      "type": "object", "required": ["id", "name", "capabilities", "availability"],
+      "properties": {
+        "id": {"$ref": "#/$defs/ID"}, "name": {"type": "string", "minLength": 1},
+        "capabilities": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "availability": {"enum": ["available", "offline", "unavailable"]},
+        "accountState": {"enum": ["notRequired", "authorized", "authRequired"]},
+        "scanState": {"enum": ["idle", "queued", "running", "succeeded", "failed", "cancelled"]}
+      }
+    },
+    "Providers": {"type": "object", "required": ["items"], "properties": {"items": {"type": "array", "items": {"$ref": "#/$defs/Provider"}}}},
+    "ScanRequest": {"type": "object", "additionalProperties": false, "required": ["mode"], "properties": {"mode": {"enum": ["full", "incremental"]}}},
+    "ScanAccepted": {"type": "object", "required": ["jobId", "merged"], "properties": {"jobId": {"$ref": "#/$defs/ID"}, "merged": {"type": "boolean"}}},
+    "ScanJob": {
+      "type": "object", "required": ["jobId", "providerInstanceId", "status", "progress", "complete", "error", "lastSuccessAt"],
+      "properties": {
+        "jobId": {"$ref": "#/$defs/ID"}, "providerInstanceId": {"$ref": "#/$defs/ID"},
+        "status": {"enum": ["queued", "running", "succeeded", "failed", "cancelled"]},
+        "progress": {"type": "object", "required": ["observed"], "properties": {"observed": {"type": "integer", "minimum": 0}, "total": {"$ref": "#/$defs/NullableCount"}}},
+        "complete": {"type": "boolean"}, "error": {"anyOf": [{"$ref": "#/$defs/ErrorDetail"}, {"type": "null"}]},
+        "lastSuccessAt": {"$ref": "#/$defs/NullableTimestamp"}
+      }
+    },
+    "SourceTrack": {
+      "type": "object",
+      "required": ["sourceTrackId", "providerInstanceId", "displayName", "title", "artists", "durationMs", "codec", "container", "bitrateBps", "availability", "assetId"],
+      "properties": {
+        "sourceTrackId": {"$ref": "#/$defs/ID"}, "providerInstanceId": {"$ref": "#/$defs/ID"},
+        "displayName": {"type": "string", "minLength": 1}, "title": {"$ref": "#/$defs/NullableString"},
+        "artists": {"type": "array", "items": {"type": "string"}},
+        "durationMs": {"$ref": "#/$defs/NullableCount"}, "codec": {"$ref": "#/$defs/NullableString"},
+        "container": {"$ref": "#/$defs/NullableString"}, "bitrateBps": {"$ref": "#/$defs/NullableCount"},
+        "availability": {"enum": ["available", "missing", "offline", "unknown"]},
+        "assetId": {"anyOf": [{"$ref": "#/$defs/ID"}, {"type": "null"}]}
+      }
+    },
+    "SourceTracks": {
+      "type": "object", "required": ["items", "nextCursor", "libraryRevision"],
+      "properties": {
+        "items": {"type": "array", "items": {"$ref": "#/$defs/SourceTrack"}, "maxItems": 200},
+        "nextCursor": {"$ref": "#/$defs/NullableString"}, "libraryRevision": {"$ref": "#/$defs/ID"}
+      }
+    },
+    "Capabilities": {
+      "type": "object", "additionalProperties": false, "required": ["htmlAudio", "formats"],
+      "properties": {
+        "htmlAudio": {"const": true},
+        "formats": {"type": "array", "maxItems": 32, "items": {"type": "object", "additionalProperties": false, "required": ["mime", "canPlay"], "properties": {"mime": {"type": "string", "minLength": 1}, "canPlay": {"enum": ["probably", "maybe", ""]}}}}
+      }
+    },
+    "Preferences": {
+      "type": "object", "additionalProperties": false,
+      "properties": {"forceProcessing": {"type": "boolean", "default": false}, "gainDb": {"type": "number", "minimum": -60, "maximum": 0, "default": 0}}
+    },
+    "CreatePlayback": {
+      "type": "object", "additionalProperties": false, "required": ["sourceTrackId", "capabilities", "preferences"],
+      "properties": {"sourceTrackId": {"$ref": "#/$defs/ID"}, "capabilities": {"$ref": "#/$defs/Capabilities"}, "preferences": {"$ref": "#/$defs/Preferences"}}
+    },
+    "OutputProfile": {
+      "type": "object", "required": ["mime", "codec", "container", "transport"],
+      "properties": {"mime": {"type": "string", "minLength": 1}, "codec": {"$ref": "#/$defs/NullableString"}, "container": {"$ref": "#/$defs/NullableString"}, "transport": {"const": "htmlAudio"}}
+    },
+    "Playback": {
+      "type": "object",
+      "required": ["sessionId", "attemptId", "assetId", "representationId", "deliveryMode", "outputProfile", "streamUrl", "expiresAt", "seekMode", "seekableRange", "positionOriginMs", "effectiveProcessing", "resumeDecision"],
+      "properties": {
+        "sessionId": {"$ref": "#/$defs/ID"}, "attemptId": {"$ref": "#/$defs/ID"},
+        "assetId": {"$ref": "#/$defs/ID"}, "representationId": {"$ref": "#/$defs/ID"},
+        "deliveryMode": {"enum": ["proxy", "processed"]}, "outputProfile": {"$ref": "#/$defs/OutputProfile"},
+        "streamUrl": {"type": "string", "pattern": "^/api/v1/playback/sessions/[^/?#]+/attempts/[^/?#]+/stream$"},
+        "expiresAt": {"$ref": "#/$defs/Timestamp"}, "seekMode": {"enum": ["byteRange", "timeRestart", "none"]},
+        "seekableRange": {"anyOf": [{"type": "null"}, {"type": "object", "required": ["startMs", "endMs"], "properties": {"startMs": {"type": "integer", "minimum": 0}, "endMs": {"type": "integer", "minimum": 0}}}]},
+        "positionOriginMs": {"type": "integer", "minimum": 0},
+        "effectiveProcessing": {"type": "array", "items": {"type": "object", "required": ["type"], "properties": {"type": {"type": "string", "minLength": 1}, "gainDb": {"type": "number"}, "version": {"type": "string"}, "execution": {"enum": ["server"]}}}},
+        "resumeDecision": {"enum": ["continue", "restartRequired", "unavailable"]}
+      }
+    },
+    "Seek": {
+      "type": "object", "additionalProperties": false, "required": ["attemptId", "positionMs"],
+      "properties": {"attemptId": {"$ref": "#/$defs/ID"}, "positionMs": {"type": "integer", "minimum": 0}}
+    },
+    "Recover": {
+      "type": "object", "additionalProperties": false, "required": ["attemptId", "positionMs", "observedError"],
+      "properties": {
+        "attemptId": {"$ref": "#/$defs/ID"}, "positionMs": {"type": "integer", "minimum": 0},
+        "observedError": {"type": "object", "additionalProperties": false, "required": ["code", "message"], "properties": {"code": {"type": "string", "maxLength": 128}, "message": {"type": "string", "maxLength": 1024}, "outputProfile": {"$ref": "#/$defs/OutputProfile"}}}
+      }
+    }
+  }
+}

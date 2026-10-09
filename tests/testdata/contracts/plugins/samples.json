@@ -1,0 +1,20 @@
+[
+  {"name":"hello","schema":"","valid":true,"value":{"jsonrpc":"2.0","id":"h-1","method":"host.hello","params":{"protocolVersion":"1.0","instanceId":"local-1","nonce":"test-nonce","configRevision":"revision-1"}}},
+  {"name":"incompatible-version","schema":"","valid":false,"value":{"jsonrpc":"2.0","id":"h-1","method":"host.hello","params":{"protocolVersion":"2.0","instanceId":"local-1","nonce":"test-nonce","configRevision":"revision-1"}}},
+  {"name":"manifest","schema":"Manifest","valid":true,"value":{"pluginId":"musicfs.local","pluginVersion":"0.1.0","protocolVersion":"1.0","roles":["provider"],"capabilities":["library.scan","metadata.read","stream.resolve"],"systems":["windows","linux"],"architectures":["amd64"],"maxMessageBytes":1048576,"maxPageItems":200}},
+  {"name":"manifest-compatible-extension","schema":"Manifest","valid":true,"value":{"pluginId":"musicfs.local","pluginVersion":"0.1.0","protocolVersion":"1.0","roles":["provider"],"capabilities":["library.scan"],"systems":["windows"],"architectures":["amd64"],"maxMessageBytes":1048576,"maxPageItems":200,"futureOptionalField":true}},
+  {"name":"manifest-unknown-role","schema":"Manifest","valid":false,"value":{"pluginId":"musicfs.local","pluginVersion":"0.1.0","protocolVersion":"1.0","roles":["root-admin"],"capabilities":[],"systems":["windows"],"architectures":["amd64"],"maxMessageBytes":1048576,"maxPageItems":200}},
+  {"name":"scan-request","schema":"","valid":true,"value":{"jsonrpc":"2.0","id":"h-2","method":"provider.scan","params":{"rootId":"root-1","scanId":"scan-1","generation":1,"limit":200}}},
+  {"name":"scan-too-large","schema":"","valid":false,"value":{"jsonrpc":"2.0","id":"h-2","method":"provider.scan","params":{"rootId":"root-1","scanId":"scan-1","generation":1,"limit":201}}},
+  {"name":"scan-page","schema":"","valid":true,"value":{"jsonrpc":"2.0","id":"h-2","result":{"scanId":"scan-1","generation":1,"page":0,"items":[],"complete":true,"rootIdentity":"root-version","issues":[]}}},
+  {"name":"scan-page-negative-generation","schema":"ScanPage","valid":false,"value":{"scanId":"scan-1","generation":-1,"page":0,"items":[],"complete":true,"rootIdentity":"root-version","issues":[]}},
+  {"name":"cancel","schema":"","valid":true,"value":{"jsonrpc":"2.0","method":"$/cancelRequest","params":{"id":"h-2"}}},
+  {"name":"cancel-wrong-id","schema":"","valid":false,"value":{"jsonrpc":"2.0","method":"$/cancelRequest","params":{"id":2}}},
+  {"name":"business-failure","schema":"","valid":true,"value":{"jsonrpc":"2.0","id":"h-3","error":{"code":-32000,"message":"Source is offline","data":{"code":"SOURCE_OFFLINE","retryable":true,"retryAfterMs":1000}}}},
+  {"name":"reject-double-terminal","schema":"","valid":false,"value":{"jsonrpc":"2.0","id":"h-3","result":{},"error":{"code":-32000,"message":"Unsupported","data":{"code":"UNSUPPORTED","retryable":false}}}},
+  {"name":"reject-unknown-method","schema":"","valid":false,"value":{"jsonrpc":"2.0","id":"h-3","method":"do.everything","params":{}}},
+  {"name":"reject-binary-in-control","schema":"","valid":false,"value":{"jsonrpc":"2.0","id":"h-3","method":"provider.resolve","params":{"externalId":"track-1","expectedVersion":"asset-1","pcm":"AAAA"}}},
+  {"name":"resource","schema":"Resource","valid":true,"value":{"resourceRef":"resource-1","rootId":"root-1","relativePath":"中文/测试 音乐.wav","observedVersion":"asset-1","sizeBytes":44,"mime":"audio/wav","range":true}},
+  {"name":"reject-parent-path","schema":"Resource","valid":false,"value":{"resourceRef":"resource-1","rootId":"root-1","relativePath":"../secret.wav","observedVersion":"asset-1","sizeBytes":44,"mime":"audio/wav","range":true}},
+  {"name":"reject-absolute-path","schema":"Resource","valid":false,"value":{"resourceRef":"resource-1","rootId":"root-1","relativePath":"C:\\private\\secret.wav","observedVersion":"asset-1","sizeBytes":44,"mime":"audio/wav","range":true}}
+]
