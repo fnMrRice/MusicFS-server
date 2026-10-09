@@ -2,10 +2,11 @@
 
 MusicFS 的 Go 后端服务。当前已落地 Local Files 扫描、SQLite 音乐库、会话鉴权、原流 Range、独立 Go DSP 处理链和本地 NCM 解密插件，配合独立 Web 仓库提供最简列表播放器。启动步骤见[本地运行说明](docs/running.md)，每步提交与验证边界见[实施记录](docs/validation/progress.md)。
 
+配置已统一为 `configVersion: 1` 的 YAML，插件与实例显式登记和启用；严格解析、修订写入与崩溃恢复见[配置说明](docs/configuration.md)和[配置验收](docs/validation/configuration.md)。旧 JSON 配置不兼容。读写服务只保存期望状态，当前仍需重启应用，尚未提供动态启停管理 API/命令。
+
 长期设计包括（未列入实施记录的能力仍为计划）：
 
 - 插件管理：支持插件及实例的启用/禁用；默认平滑停用，停止接收新任务并等待现有播放结束，另提供强制停止。具体步骤见[插件管理计划](docs/implementation/plugin-management.md)，当前尚未实现完整管理链路。
-- 配置文件采用 YAML；严格校验、迁移及管理写入规则见 [YAML 配置计划](docs/implementation/configuration.md)。当前解析器仍为 JSON，迁移完成前运行命令以现有说明为准。
 - 插件化 Music Provider：本地文件、已挂载 NAS 和在线音乐来源；推荐歌单是 Provider 可选能力。
 - 独立 Scraper 插件：支持自动刮削及手动搜索、预览和选用。歌词、封面等内容保存在独立文件目录，数据库保存索引与引用；默认不写入原始音频文件，可对授权本地来源配置写回。
 - 插件化音频处理：解复用、解码、DSP、编码及封装，向 Web 等客户端交付兼容输出；适用时保留直接播放或代理路径。
@@ -14,6 +15,7 @@ MusicFS 的 Go 后端服务。当前已落地 Local Files 扫描、SQLite 音乐
 文档入口：
 
 - [Server 分阶段实施](docs/implementation.md)：P0—P8 的文件职责、逐步任务、测试与完成门槛。
+- [YAML 配置](docs/configuration.md)：字段、插件与实例、覆盖顺序、配置读写及应用边界。
 - [插件实施计划](docs/implementation/plugins.md)：协议宿主、Local Files、音频链、独立 Scraper 和平台适配。
 - [联合实施总览](../docs/implementation.md)与[最小 Web 实施](../web/docs/implementation.md)：共同接口和真实浏览器播放验收。
 - [Server 内部架构](docs/architecture.md)：模块、数据模型、Provider/Scraper、存储与任务管理。

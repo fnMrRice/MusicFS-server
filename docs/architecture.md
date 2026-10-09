@@ -84,9 +84,9 @@ TimelineEvidence 单独记录跨资产映射、有效区间及验证版本，纳
 
 三类 Server 插件独立注册、安装、启停、配置和授权；同包多角色不能隐式共用凭据或实例状态。Server 与 Client 分别拥有宿主 SDK，可共享模型，不承诺二进制跨运行端通用。
 
-Server 提供统一插件管理器，区分插件级总开关与角色实例开关，同时启用且运行就绪才能接收新工作。默认平滑停用：立即关闭新任务/新播放准入，已有播放和执行中任务凭原租约完成后停止；另提供显式强制停止。禁用保留库、账号引用、人工结果与媒体文件，重新启用不恢复已被单独禁用的实例。期望开关与 starting/ready/draining/disabled/failed 运行状态分别报告，详见[插件管理计划](implementation/plugin-management.md)。
+后续统一插件管理器将区分插件级总开关与角色实例开关，同时启用且运行就绪才能接收新工作。目标为默认平滑停用：立即关闭新任务/新播放准入，已有播放和执行中任务凭原租约完成后停止；另提供显式强制停止。禁用保留库、账号引用、人工结果与媒体文件，重新启用不恢复已被单独禁用的实例。期望开关与 starting/ready/draining/disabled/failed 运行状态分别报告；动态管理尚未实现，详见[插件管理计划](implementation/plugin-management.md)。
 
-Server 及插件实例配置统一采用 YAML；管理器按修订校验并原子更新同一份 YAML 开关，数据库只记录运行观察、操作与业务状态，不另存一份权威开关。普通启动参数的覆盖规则、严格解析和从现有 JSON 的迁移见 [YAML 配置计划](implementation/configuration.md)。这些新增配置/管理要求仍待实现，不因已有 worker 可运行就视为完成。
+Server及插件实例配置已统一为YAML，启动时读取显式插件/实例双层开关。配置读写服务按修订校验并原子更新同一份YAML，SQLite仅记录操作与恢复事实，不另存权威开关；保存只返回saved与待应用状态，不直接改变运行插件。覆盖、严格解析、恢复与限制见[配置说明](configuration.md)；旧JSON配置不兼容，HTTP管理与运行时启停仍待实现。
 
 manifest 描述 id、version、protocolVersion、roles、能力、配置 schema 和权限。请求带 requestId、instanceRef、可选 accountRef、deadline、cursor 与取消令牌；账号只能属于本次用户及角色实例。分页返回 nextCursor 和可用快照版本；错误含 AUTH_REQUIRED、ACCESS_DENIED、NOT_FOUND、RATE_LIMITED、TEMPORARY_FAILURE、UNSUPPORTED、UNAVAILABLE、retryAfter 及可重试性，不包含密钥。
 

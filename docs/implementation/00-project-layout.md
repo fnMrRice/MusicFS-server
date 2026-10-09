@@ -75,7 +75,7 @@ server/
     implementation/
     validation/           # Recorded validation, created when executed
   configs/
-    server.example.yaml   # Target after the YAML migration
+    server.example.yaml   # Current versioned YAML configuration
   scripts/
   build/                  # Ignored build output
 ```
@@ -86,7 +86,7 @@ server/
 
 不要用 `src/internal` 隐藏要由根 tests 导入的模块：Go 的 internal 导入限制会阻止 src 外的测试引用。当前 src 业务包是项目实现接口，不因可被 Go 导入就承诺长期公开 SDK 兼容；外部插件只依赖版本化 wire 契约。真正发布 SDK 时另立版本和兼容测试，不随意开放整个服务层。
 
-当前 JSON 示例和解析器需按 [YAML 配置补充](configuration.md)完成迁移后，才按上述目标交付；迁移既有示例使用 `git mv`，不能只更改运行说明中的扩展名。
+当前示例、加载器及配置读写服务统一采用[YAML配置](../configuration.md)，旧JSON配置不兼容；[配置验收](../validation/configuration.md)记录本轮结果。HTTP、JSON-RPC与Schema继续使用各自协议格式。
 
 ## 2. P0 逐步任务
 

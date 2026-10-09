@@ -10,21 +10,21 @@
 
 ```powershell
 ./scripts/build.ps1
-Copy-Item configs/server.example.json configs/server.local.json
+Copy-Item configs/server.example.yaml configs/server.local.yaml
 ```
 
-构建生成 `musicfs.exe`、`musicfs-plugin-local.exe`、`musicfs-plugin-audio-ffmpeg.exe`、`musicfs-plugin-ncm.exe` 四个程序。编辑 `configs/server.local.json`：
+构建生成 `musicfs.exe`、`musicfs-plugin-local.exe`、`musicfs-plugin-audio-ffmpeg.exe`、`musicfs-plugin-ncm.exe` 四个程序。编辑 `configs/server.local.yaml`（旧JSON配置不兼容，字段及读写边界见[YAML配置](configuration.md)）：
 
-- `musicRoots` 添加 `{ "id": "local", "name": "本地音乐", "path": "音乐目录的绝对路径" }`。
-- `ffmpegPath`、`ffprobePath` 指向本机工具的绝对路径。仅验证标准 PCM16 WAV 原流时可留空；AIFF 等处理路径需要两者。
-- `pluginPath`、`audioWorkerPath`、`ncmWorkerPath` 指向对应已构建程序；示例默认相对路径适合上述构建。清空 `ncmWorkerPath` 可停用本地 NCM 解密。
-- 可用 `pluginSha256`、`audioWorkerSha256`、`ncmWorkerSha256` 固定管理员审核过的二进制摘要（`Get-FileHash -Algorithm SHA256`）。省略时信任显式配置的本机可执行路径，只核对本次启动的读取一致性，不承诺跨重启钉住版本；更新制品后需同步显式摘要。
-- 音乐目录与 `dataRoot/mediaRoot/cacheRoot` 保持分离。相对配置路径以 JSON 所在目录为基准。
+- `plugins` 的 `musicfs.localfiles` 实例在 `config.musicRoots` 下配置音乐根的 `id/name/path`；示例使用项目合成样本，可替换为自己的音乐目录。保持已使用的实例ID和根ID稳定。
+- `musicfs.audio.ffmpeg` 实例的 `config.ffmpegPath`、`config.ffprobePath` 指向本机工具；需要转码/DSP时将该插件和实例的 `enabled` 都改为true。示例默认关闭音频处理，仅验证标准PCM16 WAV原流时不需要启用；AIFF与当前NCM FLAC转码路径需要两种工具。
+- 各插件的 `executable` 指向对应程序；示例默认Windows构建路径，Local Files与NCM的插件/实例显式启用。把 `musicfs.ncm.enabled` 设为false并重启可停用本地NCM解密，其他格式仍可使用。
+- 各插件可配置 `sha256` 固定管理员审核过的二进制摘要（`Get-FileHash -Algorithm SHA256`）。省略时信任显式配置的本机可执行路径，只核对本次启动的读取一致性，不承诺跨重启钉住版本；更新制品后需同步显式摘要。
+- 音乐目录与 `dataRoot/mediaRoot/cacheRoot` 保持分离。相对配置路径以 YAML 所在目录为基准，修改后重启应用；当前没有自动热重载或动态启停管理入口。
 - `allowedOrigins` 必须与页面实际 URL 完全一致。默认只允许明确配置的 loopback HTTP，远程监听必须配置 TLS。
 
 ```powershell
 $env:MUSICFS_ADMIN_TOKEN = (& ./build/windows/musicfs.exe token).Trim()
-./build/windows/musicfs.exe serve --config ./configs/server.local.json --web-root (Resolve-Path ../web/dist).Path
+./build/windows/musicfs.exe serve --config ./configs/server.local.yaml --web-root (Resolve-Path ../web/dist).Path
 ```
 
 终端会阻塞运行服务。凭据保存在本次终端环境中，需要预先复制给登录输入框；`musicfs token` 是显式管理输出，普通服务日志不会打印凭据。不要将真实凭据提交到配置或复制到 URL。
@@ -39,7 +39,7 @@ NCM 无需新增页面操作：配置 Worker、重新扫描后直接选曲。内
 
 ## Linux 与同源部署
 
-使用 `sh scripts/build.sh` 构建相同四个程序（无 `.exe`），配置对应 Linux Worker 路径和 FFmpeg 路径。服务仍可通过 `--web-root` 提供独立 Web 制品。NCM 真实 Worker 已在 Arch WSL2 通过；Linux 运行验证与 Windows 交叉构建分别记入验证记录，不由构建推断所有发行版支持。
+使用 `sh scripts/build.sh` 构建相同四个程序（无 `.exe`），复制相同YAML示例，并将各 `plugins[].executable` 改为 `../build/linux/` 下对应程序，配置音频实例的FFmpeg/ffprobe路径后显式启用。服务仍可通过 `--web-root` 提供独立 Web 制品。NCM 真实 Worker 已在 Arch WSL2 通过；Linux 配置与运行验收见[配置记录](validation/configuration.md)，与交叉构建结果分开，不由构建推断所有发行版支持。
 
 开发期 Vite 仅代理 `/api` 到 Server；交付静态页面和 API 必须同源。远程访问使用 Server 的 `tlsCert/tlsKey` 与 HTTPS Origin；不会信任未配置的代理转发头。当前不提供桌面管理租约或容器运维方案。
 

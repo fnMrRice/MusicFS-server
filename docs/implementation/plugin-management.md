@@ -1,6 +1,6 @@
 # Server 插件管理
 
-状态：新增完整管理要求，待实现；2026-10-09。当前 `pluginhost.Config.Disabled` 仅在启动校验时拒绝实例，Server 组装层尚未提供统一的插件清单、动态启停与持久化管理。不能将该字段当成本文已经完成。返回[实施入口](../implementation.md)；配置来源见 [YAML 配置](configuration.md)，Worker 细节见[插件实施](plugins.md)。
+状态：动态管理仍待实现；2026-10-09。YAML插件/实例模型、启动双层开关和带SQLite日志的配置读写服务已落地；保存期望配置不等于运行时已应用。统一Registry/Manager、任务租约、平滑/强制停用及管理API/命令仍未完成。返回[实施入口](../implementation.md)；已有基础见[YAML配置](../configuration.md)及[验收](../validation/configuration.md)，Worker细节见[插件实施](plugins.md)。
 
 ## 1. 范围与已确认行为
 
@@ -70,17 +70,17 @@ Server 负责列出已配置插件、查看运行状态、启用和禁用，覆�
 
 | 编号 | 内容 | 主要位置与验收 |
 | --- | --- | --- |
-| PM-P1-01 | 在 YAML 迁移基础上定义插件/实例身份、开关与配置 Schema | src/config、src/pluginhost；现有 ID/状态目录不迁移丢失 |
+| PM-P1-01 | 插件/实例身份、双层开关与配置Schema基础已完成；后续扩展运行状态和管理模型 | src/config、src/pluginhost；保持现有ID与状态目录 |
 | PM-P2-01 | 统一 Registry/Manager 与代次，区分期望状态、实际状态和依赖失败 | src/pluginhost；启动失败可查询，禁用对象不启动 |
-| PM-P2-02 | 实现配置写入、幂等操作日志及崩溃恢复 | src/config、src/storage/sqlite；修订冲突/失败不能谎报保存成功 |
+| PM-P2-02 | 配置写入、幂等日志及保存崩溃恢复基础已完成；后续接入运行应用与排空状态 | src/config、src/storage/sqlite；saved与applied分离，不把保存成功当成插件退出 |
 | PM-P2-03 | 接入 Library/Scheduler 的准入与任务租约 | src/library、src/jobs；禁用不启动新扫描、未完成扫描不删除库 |
 | PM-P3-01 | 将会话固定到插件依赖租约，原流重请求遵守该租约 | src/playback、src/sourceaccess、src/stream；当前歌可继续，新播放受拒绝 |
-| PM-P4-01 | 音频 Worker/DSP 能力统一纳入管理，不再由路径非空隐式启用 | src/plugins/audioffmpeg、src/audio；处理链平滑收尾与 force 有区别 |
+| PM-P4-01 | 音频Worker/DSP动态管理；启动已使用显式开关，后续补运行准入与租约 | src/plugins/audioffmpeg、src/audio；处理链平滑收尾与force有区别 |
 | PM-P2-04 | 管理 API/命令、权限和操作查询 | src/api、src/app/musicfs；共用服务逻辑，异步状态可查询 |
 | PM-P6-01 | Scraper 与写回接入同一管理规则 | src/enrichment、src/writeback；安全发布、人工内容和独立实例保留 |
 | PM-P8-01 | 重启/升级/只读部署、原流与处理播放回归 | tests/integration、tests/e2e；记录实际平台证据 |
 
-各项均为新增待实现任务；编号表示关联原阶段，不要求为了已有原型重新开始全部阶段。YAML 基础与统一管理先补齐，再接原流/处理链；未接齐所有已交付插件前，不把“只有 Local Files 可开关”称为完整插件管理。
+表中仅配置基础已完成，其余运行管理任务仍待实现；编号表示关联原阶段，不要求重新开始全部阶段。后续在现有读写服务之上实现统一管理，再接原流/处理链；未接齐所有已交付插件前，不把静态开关或保存文件称为完整动态插件管理。
 
 源码继续放 `src/<模块>/`，入口仅在 `src/app/`，测试放根 `tests/`。按状态转换、租约、配置存储、HTTP 和命令解析拆分文件，遵守源文件约 400 行的约定，不增加万能管理器。
 

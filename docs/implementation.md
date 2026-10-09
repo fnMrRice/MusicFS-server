@@ -1,6 +1,6 @@
 # MusicFS Server 实施文档
 
-状态：2026-10-09 已落地 Go Server、Local Files 和音频 Worker 的最小本地播放基线，随后完成独立 [NCM 解密插件](ncm.md)增量。本文保留完整计划；当前实现、逐步提交与实测限制以[实施记录](validation/progress.md)为准。P5—P7、桌面 Client 以及未记为通过的交付场景仍待实现/验证。
+状态：2026-10-09 已落地 Go Server、Local Files 和音频 Worker 的最小本地播放基线，随后完成独立 [NCM 解密插件](ncm.md)以及[YAML配置层与读写服务](configuration.md)。本文保留完整计划；当前实现、逐步提交与实测限制以[实施记录](validation/progress.md)为准。动态插件管理、P5—P7、桌面 Client 以及未记为通过的交付场景仍待实现/验证。
 
 ## 1. 范围与导航
 
@@ -18,7 +18,7 @@
 | P7 | [在线来源与歌单](implementation/07-online-library.md) | 平台适配、推荐、快照同步、隐藏、有限恢复 |
 | P8 | [交付与验收](implementation/08-release.md) | 构建制品、部署、恢复、兼容矩阵与验收记录 |
 | 插件专题 | [插件实现步骤](implementation/plugins.md) | 各阶段插件协议、进程、适配器、测试及参考来源 |
-| 配置补充 | [YAML 配置](implementation/configuration.md) | 配置迁移、严格校验、修订与原子写入；待实现 |
+| 配置增量 | [YAML 配置](configuration.md) | 严格校验、显式插件/实例、修订与原子写入已实现；保存后仍需应用/重启，见[配置验收](validation/configuration.md) |
 | 管理补充 | [插件管理](implementation/plugin-management.md) | 启用/禁用、平滑停用、强制停止与重启恢复；待实现 |
 
 ## 2. 实施规则与完成记录

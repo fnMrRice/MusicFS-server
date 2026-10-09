@@ -13,17 +13,23 @@
 
 运行 `scripts/build.ps1`（Linux 为 `sh scripts/build.sh`）构建 Server、Local Files、音频处理和 NCM 共四个程序。配置增加：
 
-```json
-{
-  "ncmWorkerPath": "../build/windows/musicfs-plugin-ncm.exe"
-}
+```yaml
+# Under the top-level plugins sequence:
+- pluginId: 'musicfs.ncm'
+  executable: '../build/windows/musicfs-plugin-ncm.exe'
+  enabled: true
+  instances:
+    - instanceId: 'ncm-default'
+      role: 'audio'
+      enabled: true
+      config: {}
 ```
 
-相对路径以配置文件目录为基准，Linux 使用对应无 `.exe` 程序。可选 `ncmWorkerSha256` 固定管理员审核的 Worker 摘要；省略时采用与其他官方 Worker 相同的显式路径信任与本次启动摘要检查。留空 `ncmWorkerPath` 即不启用 NCM 解密，其余格式仍可使用。
+使用 `configVersion: 1` 的YAML，[正式示例](../configs/server.example.yaml)已包含该插件，不要重复添加相同ID；旧JSON配置不兼容。相对路径以配置文件目录为基准，Linux 使用对应无 `.exe` 程序。可选插件字段 `sha256` 固定管理员审核的Worker摘要；省略时采用与其他官方Worker相同的显式路径信任与本次启动摘要检查。插件与实例两层都启用才生效；设任一层 `enabled: false` 并重启即可停用NCM，其余格式仍可使用。配置读写与应用边界见[配置说明](configuration.md)。
 
 配置后重启 Server，对音乐目录重新扫描。列表容器显示 `ncm`，codec 显示内部音频格式。点击播放无需额外选项：内部 MP3 可交付固定解密表示并提供 Range；内部 FLAC 按当前播放策略转为 MP3。勾选服务端处理时解密后照常应用 Go DSP。
 
-需要 FLAC 转码和准确的媒体参数时配置 `ffmpegPath`、`ffprobePath` 及音频 Worker。仅有 NCM Worker 时可读取 MP3，未探测到的时长/码率保持未知。损坏或不支持的 NCM 返回明确错误，不作为一轮扫描成功空库。
+需要 FLAC 转码和准确的媒体参数时，启用 `musicfs.audio.ffmpeg` 插件及其音频实例，在实例 `config` 中配置 `ffmpegPath`、`ffprobePath`。仅有 NCM Worker 时可读取 MP3，未探测到的时长/码率保持未知。损坏或不支持的 NCM 返回明确错误，不作为一轮扫描成功空库。
 
 ## 3. 数据与接口
 
@@ -72,4 +78,4 @@ go test -mod=readonly ./tests/e2e -run '^TestNCMServerRoundTripAndDisabledPlugin
 2. 登录 Web、刷新来源列表，确认 NCM 条目的容器为 `ncm`、codec 来自内部 MP3/FLAC；未配置 ffprobe 时，时长和码率可以未知。
 3. 播放内部 MP3：页面应显示“服务端解密输出”，可以暂停、继续和停止；有时长时检查定位。开发者工具中输出为音频 MIME，Range 长度与解密表示一致。
 4. 配齐 FFmpeg/ffprobe 后播放内部 FLAC：页面应显示“服务端解密并转码输出”。输入目标位置并定位，确认新片段开始；勾选既有 -6 dB 选项并重新选曲后再检查增益处理。
-5. 验证损坏样本或暂时清空 `ncmWorkerPath` 并重启：播放 NCM 应明确失败，普通 WAV 仍能播放。恢复配置后重新扫描、播放，核对源文件摘要未被修改。
+5. 验证损坏样本或暂时将 `musicfs.ncm` 插件的 `enabled` 改为false并重启：播放 NCM 应明确失败，普通 WAV 仍能播放。恢复配置后重新扫描、播放，核对源文件摘要未被修改。

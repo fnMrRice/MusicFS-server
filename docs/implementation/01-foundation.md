@@ -19,7 +19,7 @@
 
 ### S-P1-01：明确配置来源与运行目录
 
-1. 目标配置改为 configs/server.example.yaml，含监听地址、dataRoot、mediaRoot、cacheRoot、插件注册/实例及启用状态、允许的音乐根与资源上限；示例不带个人路径/凭据。解析器、测试、示例与运行说明按 [YAML 配置补充](configuration.md)一起迁移；当前 JSON 实现不等于这项新增要求已经完成。
+1. 当前配置为 configs/server.example.yaml，含监听地址、dataRoot、mediaRoot、cacheRoot、插件注册/实例及启用状态、允许的音乐根与资源上限；示例不带个人路径/凭据。解析、修订写入和运行入口已按[YAML配置](../configuration.md)落地，旧JSON配置不兼容；[配置验收](../validation/configuration.md)与后续动态管理分开记录。
 2. 普通启动参数依次合并内置默认、YAML、显式环境变量和命令行；插件/实例启用开关以 YAML 为唯一持久来源，不允许环境变量或命令行静默覆盖管理结果。区分缺省与 false/空值，拒绝未知字段、重复键、多文档及无效类型；具体支持范围见 YAML 配置补充。
 3. 本地默认 loopback；非 loopback 启动必须满足远程鉴权和安全传输配置，不因开发方便默认为公网匿名服务。
 4. 将音乐根与可写数据/内容/缓存目录分离。元数据写回默认 false；只读扫描不要求音乐目录可写。
