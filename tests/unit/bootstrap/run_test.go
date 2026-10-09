@@ -8,7 +8,7 @@ import (
 
 func TestCompositionBoundary(t *testing.T) {
 	var output bytes.Buffer
-	if err := bootstrap.Run(nil, &output); err != nil {
+	if err := bootstrap.Run([]string{"--version"}, &output); err != nil {
 		t.Fatal(err)
 	}
 	if output.Len() == 0 {
