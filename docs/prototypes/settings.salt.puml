@@ -1,0 +1,36 @@
+@startsalt
+{
+ MusicFS - Settings and Desktop Lyrics
+ {+
+  Server connection
+  { Mode | ^Managed local^ }
+  { Server URL | "http://127.0.0.1:PORT" }
+  { Status | Ready / MusicFS / API v1 }
+  { [Test connection] | [Open logs] | [Retry] }
+  Managed local: start packaged server when needed
+  Remote: connect only
+ }
+ {+
+  Providers
+  {#
+   Provider | Account | Sync | Action
+   Local NAS | Not required | Ready | [Configure]
+   Cloud A | Signed out | Paused | [Sign in]
+   Cloud B | Signed in | Cached | [Refresh]
+  }
+ }
+ {+
+  Appearance
+  { Theme | ^System / Light / Dark^ }
+  { Skin | ^Default^ }
+ }
+ {+
+  Desktop lyrics
+  { [X] Enabled | [X] Always on top | [ ] Click through | [ ] Locked }
+  { Font size | "28" | Offset ms | "0" }
+  { [Preview] | [Reset position] }
+  Example lyric line
+  Next lyric line
+ }
+}
+@endsalt
