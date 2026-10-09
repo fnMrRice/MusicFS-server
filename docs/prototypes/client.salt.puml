@@ -1,0 +1,39 @@
+@startsalt
+{
+ MusicFS - Aggregate Playlist
+ {+
+  { Home | Search | Library | Settings }
+  {#
+   Playlist | Tracks | Status
+   Favorites | 128 | Ready
+   Daily Mix | 42 | Cached
+   NAS Collection | 360 | Ready
+  }
+ }
+ {+
+  Favorites / Merged playlist
+  { [Refresh] | [Add source playlist] | [Merge rules] }
+  {#
+   Title | Artist | Sources | Selected | Status
+   Example Track A | Artist A | NAS / Cloud A | NAS FLAC | Ready
+   Example Track B | Artist B | Cloud A / Cloud B | Auto | Sign in required
+   Example Track C - Live | Artist C | NAS | NAS | Ready
+  }
+  Cached source: Cloud B / Last successful sync: 10 min ago
+ }
+ {+
+  Now playing: Example Track A
+  { [Previous] | [Pause] | [Next] | 01:24 / 04:12 | [Queue] | [Lyrics] | [Source] }
+ }
+ {+
+  Source selection - Example Track A
+  {#
+   Provider | Quality | Availability
+   NAS | FLAC | Ready
+   Cloud A | AAC | Account permission required
+   Cloud B | MP3 | Temporarily unavailable
+  }
+  { [Auto] | [Use selected] | [Set preference] | [Report wrong match] }
+ }
+}
+@endsalt
