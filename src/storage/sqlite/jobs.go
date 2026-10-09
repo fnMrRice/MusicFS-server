@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const jobColumns = "id,owner,target,kind,generation,state,observed,complete,error,last_success_at"
+const jobColumns = "id,owner,target,kind,generation,state,observed,complete,error,COALESCE(last_success_at,(SELECT history.last_success_at FROM jobs history WHERE history.owner=jobs.owner AND history.target=jobs.target AND history.state='succeeded' AND history.last_success_at IS NOT NULL ORDER BY julianday(history.last_success_at) DESC LIMIT 1))"
 
 type rowScanner interface{ Scan(...any) error }
 
@@ -19,7 +19,11 @@ func readJob(row rowScanner) (jobs.Job, error) {
 	var failure, last sql.NullString
 	err := row.Scan(&j.ID, &j.Owner, &j.ProviderInstanceID, &j.Kind, &j.Generation, &j.Status, &j.Progress.Observed, &j.Complete, &failure, &last)
 	if failure.Valid {
-		j.Error = &domain.Error{Code: "TEMPORARY_FAILURE", Message: failure.String}
+		var detail domain.Error
+		if json.Unmarshal([]byte(failure.String), &detail) != nil || detail.Code == "" || detail.Message == "" {
+			detail = domain.Error{Code: "TEMPORARY_FAILURE", Message: "Scan failed; previous library retained"}
+		}
+		j.Error = &detail
 	}
 	if last.Valid {
 		v, _ := time.Parse(time.RFC3339Nano, last.String)
@@ -98,10 +102,20 @@ func (s *Store) Finish(ctx context.Context, j jobs.Job, n int, failure error) er
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	if failure != nil {
 		state = "failed"
-		message = "Scan failed; previous library retained"
+		detail := domain.Error{Code: "TEMPORARY_FAILURE", Message: "Scan failed; previous library retained"}
+		var known *domain.Error
+		if errors.As(failure, &known) {
+			detail = *known
+		}
 		if errors.Is(failure, context.Canceled) {
 			state = "cancelled"
+			detail.Code, detail.Message = "CANCELED", "Scan cancelled; previous library retained"
 		}
+		encoded, err := json.Marshal(detail)
+		if err != nil {
+			return err
+		}
+		message = string(encoded)
 	} else {
 		last = now
 	}

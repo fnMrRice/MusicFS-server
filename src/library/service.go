@@ -121,7 +121,10 @@ func (s *Service) scan(ctx context.Context, j jobs.Job) (int, error) {
 	for {
 		page, err := r.Worker.Scan(ctx, pluginproto.ScanRequest{RootID: r.ID, ScanID: j.ID, Generation: j.Generation, Cursor: cursor, Limit: 200})
 		if err != nil {
-			return len(all), err
+			if ctx.Err() != nil {
+				return len(all), ctx.Err()
+			}
+			return len(all), domain.Fail(pluginproto.ErrorCode(err), "Provider scan failed; previous library retained")
 		}
 		if page.ScanID != j.ID || page.Generation != j.Generation || page.Page != expectedPage || len(page.Items) > pluginproto.MaxPageItems || len(page.Issues) > 0 || page.RootIdentity == "" {
 			return len(all), domain.Fail("TEMPORARY_FAILURE", "Scan is incomplete")
