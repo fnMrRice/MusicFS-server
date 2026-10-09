@@ -8,6 +8,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
 	"io"
+	"sort"
 	"time"
 )
 
@@ -50,6 +51,7 @@ func (s *Service) Providers(ctx context.Context, user string) []Provider {
 		}
 		items = append(items, Provider{ID: r.ID, Name: r.Name, Capabilities: capabilities, Availability: availability, AccountState: "notRequired", ScanState: s.repo.ProviderScanState(ctx, user, r.ID)})
 	}
+	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
 	return items
 }
 func (s *Service) Scan(ctx context.Context, user, provider, mode, key string) (jobs.Job, bool, error) {
@@ -59,6 +61,11 @@ func (s *Service) Scan(ctx context.Context, user, provider, mode, key string) (j
 	}
 	if r.Worker == nil {
 		return jobs.Job{}, false, domain.Fail("SOURCE_OFFLINE", "Provider is offline")
+	}
+	select {
+	case <-r.Worker.Done():
+		return jobs.Job{}, false, domain.Fail("SOURCE_OFFLINE", "Provider is offline")
+	default:
 	}
 	if mode != "full" && mode != "incremental" {
 		return jobs.Job{}, false, domain.Fail("INVALID_ARGUMENT", "Invalid scan mode")
@@ -107,38 +114,54 @@ func (s *Service) scan(ctx context.Context, j jobs.Job) (int, error) {
 	defer r.Worker.Access.Revoke(j.ID)
 	all := []Observation{}
 	cursor := ""
+	rootIdentity := ""
+	expectedPage := 0
+	seenCursors := map[string]bool{}
+	seenTracks := map[string]bool{}
 	for {
 		page, err := r.Worker.Scan(ctx, pluginproto.ScanRequest{RootID: r.ID, ScanID: j.ID, Generation: j.Generation, Cursor: cursor, Limit: 200})
 		if err != nil {
 			return len(all), err
 		}
-		if page.ScanID != j.ID || page.Generation != j.Generation || len(page.Issues) > 0 {
+		if page.ScanID != j.ID || page.Generation != j.Generation || page.Page != expectedPage || len(page.Items) > pluginproto.MaxPageItems || len(page.Issues) > 0 || page.RootIdentity == "" {
 			return len(all), domain.Fail("TEMPORARY_FAILURE", "Scan is incomplete")
 		}
+		if expectedPage == 0 {
+			rootIdentity = page.RootIdentity
+		} else if page.RootIdentity != rootIdentity {
+			return len(all), domain.Fail("RESOURCE_CHANGED", "Scan root identity changed")
+		}
+		expectedPage++
 		for _, o := range page.Items {
+			if o.ExternalID == "" || o.ObservedVersion == "" || o.RootID != r.ID || seenTracks[o.ExternalID] {
+				return len(all), domain.Fail("CONFLICT", "Scan contains an invalid or repeated track identity")
+			}
+			seenTracks[o.ExternalID] = true
 			item := Observation{Observation: o, Artists: []string{}}
 			if s.probe != nil {
 				scope := sourceaccess.Scope{UserID: j.Owner, InstanceID: r.ID, TaskID: j.ID, AssetID: o.ObservedVersion}
 				ref, e := r.Worker.Access.Register(scope, o.RootID, o.RelativePath, o.ObservedVersion, time.Minute)
+				if e != nil {
+					return len(all), domain.Fail("RESOURCE_CHANGED", "Scanned source could not be reopened; retry scan")
+				}
+				h, e := r.Worker.Access.Open(ctx, scope, ref.ResourceRef)
+				if e != nil {
+					return len(all), domain.Fail("RESOURCE_CHANGED", "Scanned source could not be reopened; retry scan")
+				}
+				meta, e := s.probe(ctx, h, o.SizeBytes)
+				valid := h.Validate()
+				h.Close()
+				if valid != nil {
+					return len(all), domain.Fail("RESOURCE_CHANGED", "Scanned source changed while reading")
+				}
 				if e == nil {
-					h, e := r.Worker.Access.Open(ctx, scope, ref.ResourceRef)
-					if e == nil {
-						meta, e := s.probe(ctx, h, o.SizeBytes)
-						valid := h.Validate()
-						h.Close()
-						if valid != nil {
-							return len(all), valid
-						}
-						if e == nil {
-							item.Codec = meta.Codec
-							item.Container = meta.Container
-							item.DurationMs = meta.DurationMs
-							item.BitrateBps = meta.BitrateBps
-							item.Title = meta.Title
-							item.Artists = meta.Artists
-							item.MIME = meta.MIME
-						}
-					}
+					item.Codec = meta.Codec
+					item.Container = meta.Container
+					item.DurationMs = meta.DurationMs
+					item.BitrateBps = meta.BitrateBps
+					item.Title = meta.Title
+					item.Artists = meta.Artists
+					item.MIME = meta.MIME
 				}
 			}
 			all = append(all, item)
@@ -152,9 +175,10 @@ func (s *Service) scan(ctx context.Context, j jobs.Job) (int, error) {
 			}
 			break
 		}
-		if page.NextCursor == cursor {
+		if page.Complete || page.NextCursor == cursor || seenCursors[page.NextCursor] {
 			return len(all), domain.Fail("CONFLICT", "Scan cursor did not advance")
 		}
+		seenCursors[page.NextCursor] = true
 		cursor = page.NextCursor
 	}
 	return len(all), s.repo.Publish(ctx, j, all)

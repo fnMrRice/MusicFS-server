@@ -20,7 +20,7 @@ func (s *Store) Publish(ctx context.Context, j jobs.Job, observations []library.
 	}
 	defer tx.Rollback()
 	var active int
-	err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM jobs WHERE id=? AND generation=? AND state='running'", j.ID, j.Generation).Scan(&active)
+	err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM jobs WHERE id=? AND owner=? AND target=? AND generation=? AND state='running' AND generation=(SELECT MAX(generation) FROM jobs WHERE owner=? AND target=?)", j.ID, j.Owner, j.ProviderInstanceID, j.Generation, j.Owner, j.ProviderInstanceID).Scan(&active)
 	if err != nil {
 		return err
 	}
@@ -34,14 +34,29 @@ func (s *Store) Publish(ctx context.Context, j jobs.Job, observations []library.
 	old := map[string]library.Track{}
 	for rows.Next() {
 		var raw []byte
-		rows.Scan(&raw)
+		if err := rows.Scan(&raw); err != nil {
+			rows.Close()
+			return err
+		}
 		var t library.Track
-		json.Unmarshal(raw, &t)
+		if err := json.Unmarshal(raw, &t); err != nil {
+			rows.Close()
+			return err
+		}
 		old[t.ID] = t
 	}
+	err = rows.Err()
 	rows.Close()
+	if err != nil {
+		return err
+	}
 	seen := map[string]bool{}
+	seenExternal := map[string]bool{}
 	for _, o := range observations {
+		if o.ExternalID == "" || o.ObservedVersion == "" || seenExternal[o.ExternalID] {
+			return domain.Fail("CONFLICT", "Scan contains an invalid or repeated track identity")
+		}
+		seenExternal[o.ExternalID] = true
 		var id, asset, version string
 		err := tx.QueryRowContext(ctx, "SELECT id,asset_id,version FROM tracks WHERE owner=? AND provider=? AND external_id=?", j.Owner, j.ProviderInstanceID, o.ExternalID).Scan(&id, &asset, &version)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -59,7 +74,7 @@ func (s *Store) Publish(ctx context.Context, j jobs.Job, observations []library.
 		}
 		t := library.Track{ID: id, ProviderID: j.ProviderInstanceID, DisplayName: o.DisplayName, Title: o.Title, Artists: artists, DurationMs: o.DurationMs, Codec: o.Codec, Container: o.Container, BitrateBps: o.BitrateBps, Availability: "available", AssetID: asset}
 		raw, _ := json.Marshal(t)
-		_, err = tx.ExecContext(ctx, "INSERT INTO tracks(id,owner,provider,external_id,root_id,path,version,asset_id,mime,size,document) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET path=excluded.path,version=excluded.version,asset_id=excluded.asset_id,mime=excluded.mime,size=excluded.size,document=excluded.document", id, j.Owner, j.ProviderInstanceID, o.ExternalID, o.RootID, o.RelativePath, o.ObservedVersion, asset, o.MIME, o.SizeBytes, raw)
+		_, err = tx.ExecContext(ctx, "INSERT INTO tracks(id,owner,provider,external_id,root_id,path,version,asset_id,mime,size,document) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET root_id=excluded.root_id,path=excluded.path,version=excluded.version,asset_id=excluded.asset_id,mime=excluded.mime,size=excluded.size,document=excluded.document", id, j.Owner, j.ProviderInstanceID, o.ExternalID, o.RootID, o.RelativePath, o.ObservedVersion, asset, o.MIME, o.SizeBytes, raw)
 		if err != nil {
 			return err
 		}
@@ -122,7 +137,7 @@ func (s *Store) ListTracks(ctx context.Context, user, provider, cursor string, l
 	}
 	defer tx.Rollback()
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	if _, err = tx.ExecContext(ctx, "DELETE FROM library_snapshots WHERE expires_at<?", now); err != nil {
+	if _, err = tx.ExecContext(ctx, "DELETE FROM library_snapshots WHERE julianday(expires_at)<julianday(?)", now); err != nil {
 		return page, err
 	}
 	var snapshot string
@@ -137,13 +152,17 @@ func (s *Store) ListTracks(ctx context.Context, user, provider, cursor string, l
 		}
 	} else {
 		var count int
-		tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM library_snapshots WHERE owner=?", user).Scan(&count)
+		if err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM library_snapshots WHERE owner=?", user).Scan(&count); err != nil {
+			return page, err
+		}
 		if count >= 64 {
 			return page, domain.Fail("RATE_LIMITED", "Too many active list snapshots")
 		}
 		snapshot = domain.NewID()
 		var revision int64
-		tx.QueryRowContext(ctx, "SELECT revision FROM library_revision").Scan(&revision)
+		if err = tx.QueryRowContext(ctx, "SELECT revision FROM library_revision").Scan(&revision); err != nil {
+			return page, err
+		}
 		page.LibraryRevision = fmt.Sprint(revision)
 		_, err = tx.ExecContext(ctx, "INSERT INTO library_snapshots VALUES(?,?,?,?,?)", snapshot, user, provider, page.LibraryRevision, time.Now().UTC().Add(10*time.Minute).Format(time.RFC3339Nano))
 		if err != nil {
@@ -191,9 +210,15 @@ func (s *Store) ListTracks(ctx context.Context, user, provider, cursor string, l
 	}
 	for rows.Next() {
 		var raw []byte
-		rows.Scan(&raw)
+		if err = rows.Scan(&raw); err != nil {
+			rows.Close()
+			return page, err
+		}
 		var t library.Track
-		json.Unmarshal(raw, &t)
+		if err = json.Unmarshal(raw, &t); err != nil {
+			rows.Close()
+			return page, err
+		}
 		page.Items = append(page.Items, t)
 	}
 	err = rows.Err()
@@ -203,9 +228,19 @@ func (s *Store) ListTracks(ctx context.Context, user, provider, cursor string, l
 	}
 	if len(page.Items) > limit {
 		page.Items = page.Items[:limit]
-		next := domain.NewID()
+		var next string
+		err = tx.QueryRowContext(ctx, "SELECT id FROM library_cursors WHERE snapshot_id=? AND position=? LIMIT 1", snapshot, position+limit).Scan(&next)
+		if errors.Is(err, sql.ErrNoRows) {
+			next = domain.NewID()
+			_, err = tx.ExecContext(ctx, "INSERT INTO library_cursors VALUES(?,?,?)", next, snapshot, position+limit)
+		}
+		if err != nil {
+			return page, err
+		}
 		page.NextCursor = &next
-		if _, err = tx.ExecContext(ctx, "INSERT INTO library_cursors VALUES(?,?,?)", next, snapshot, position+limit); err != nil {
+	} else if cursor == "" {
+		// Single-page refreshes do not need a retained snapshot or retry cursor.
+		if _, err = tx.ExecContext(ctx, "DELETE FROM library_snapshots WHERE id=?", snapshot); err != nil {
 			return page, err
 		}
 	}
