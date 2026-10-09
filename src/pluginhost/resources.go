@@ -77,18 +77,20 @@ func (w *Worker) entries(ctx context.Context, r pluginproto.EntriesRequest) (plu
 		rand.Read(random[:])
 		token = hex.EncodeToString(random[:])
 		snapshot = entrySnapshot{rootID: r.RootID, identity: identity, entries: entries, issues: issues, expires: time.Now().Add(5 * time.Minute)}
-		w.mu.Lock()
-		for id, s := range w.snapshots {
-			if time.Now().After(s.expires) {
-				delete(w.snapshots, id)
+		if len(entries) > r.Limit {
+			w.mu.Lock()
+			for id, s := range w.snapshots {
+				if time.Now().After(s.expires) {
+					delete(w.snapshots, id)
+				}
 			}
-		}
-		if len(w.snapshots) >= 16 {
+			if len(w.snapshots) >= 16 {
+				w.mu.Unlock()
+				return pluginproto.EntriesPage{}, fmt.Errorf("RATE_LIMITED: too many scans")
+			}
+			w.snapshots[token] = snapshot
 			w.mu.Unlock()
-			return pluginproto.EntriesPage{}, fmt.Errorf("RATE_LIMITED: too many scans")
 		}
-		w.snapshots[token] = snapshot
-		w.mu.Unlock()
 	} else {
 		var off string
 		var ok bool

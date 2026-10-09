@@ -13,6 +13,7 @@ import (
 
 type Config struct {
 	Executable string
+	Args       []string
 	SHA256     string
 	InstanceID string
 	UserID     string

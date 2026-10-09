@@ -26,7 +26,7 @@ type Worker struct {
 	cancel     context.CancelFunc
 	done       chan struct{}
 	privateDir string
-	state      stateStore
+	state      *stateStore
 	mu         sync.Mutex
 	snapshots  map[string]entrySnapshot
 }
@@ -38,7 +38,7 @@ func Start(ctx context.Context, cfg Config) (*Worker, error) {
 	if err := os.MkdirAll(cfg.StateDir, 0700); err != nil {
 		return nil, err
 	}
-	state := stateStore{dir: filepath.Join(cfg.StateDir, "plugin-state")}
+	state := &stateStore{dir: filepath.Join(cfg.StateDir, "plugin-state")}
 	previous, err := state.load("root-identities")
 	if err != nil {
 		return nil, err
@@ -71,7 +71,7 @@ func Start(ctx context.Context, cfg Config) (*Worker, error) {
 		return nil, err
 	}
 	workerCtx, cancel := context.WithCancel(ctx)
-	cmd := exec.CommandContext(workerCtx, cfg.Executable)
+	cmd := exec.CommandContext(workerCtx, cfg.Executable, cfg.Args...)
 	cmd.Dir = privateDir
 	cmd.Env = []string{}
 	for _, key := range []string{"SystemRoot", "WINDIR", "TEMP", "TMP"} {
