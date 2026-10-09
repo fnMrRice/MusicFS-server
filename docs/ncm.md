@@ -1,6 +1,6 @@
 # NCM 解密插件
 
-本插件用于读取本地网易云 `.ncm` 文件，提取内部原有 MP3/FLAC 字节，再接现有播放与处理流程。没有实现网易云账号登录、在线歌曲下载或在线 Provider。测试使用项目自行生成的 CC0 合成音频封装，不代表所有真实客户端下载版本均已验证。
+本插件已实现本地 `.ncm` 读取、内部 MP3/FLAC 原字节提取、扫描元数据及播放接入。核心、独立 Worker、Server 和最简 Web 链路已通过下述验证。没有实现网易云账号登录、在线歌曲下载或在线 Provider；真实下载 NCM 样本尚未验收。
 
 ## 1. 边界与参考
 
@@ -11,7 +11,7 @@
 
 ## 2. 运行
 
-运行 `scripts/build.ps1` 会额外构建 NCM Worker。现有配置增加：
+运行 `scripts/build.ps1`（Linux 为 `sh scripts/build.sh`）构建 Server、Local Files、音频处理和 NCM 共四个程序。配置增加：
 
 ```json
 {
@@ -33,8 +33,43 @@ Local Files 扫描纳入 `.ncm`，根据 `CTENFDAM` 文件头识别容器。解�
 
 播放创建时将解密内容写入已有私有磁盘快照，受缓存预算限制；快照发布前重新校验原始文件版本。SourceAsset 仍指原始 NCM，解密表示使用自己的长度、ETag、representationId 和 attempt URL。其 Range 不引用加密原文件的字节偏移。
 
-HTTP 播放描述的 `effectiveProcessing` 增加 `type: "ncmDecrypt"`、`execution: "server"`、`version: "1"`，处理链需要增益时再追加 `gain`。既有 Web 的扩展字段兼容此描述；纯解密交付模式为 `proxy`，解密后转码为 `processed`。插件 wire 字段见[协议说明](contracts/plugins/v1/README.md)。
+HTTP 播放描述的 `effectiveProcessing` 增加 `{ "type": "ncmDecrypt", "gainDb": 0, "execution": "server", "version": "1" }`。其中 `gainDb: 0` 是既有模型的字段值，纯解密不执行增益 DSP；进入后续音频管线时另追加 `gain`，即使增益为 0。既有 Web 可忽略不认识的处理类型，无需新增端点或更改必填字段。纯解密交付为 `proxy/byteRange`；解密后转码为 `processed`，已知时长时支持 `timeRestart`，未知时长时为 `none`。插件 wire 字段见[协议说明](contracts/plugins/v1/README.md)。
+
+每个解密任务独立进程，默认并发上限 2，启动及打开共限 5 秒，任务最长 2 分钟。Range 通道每段最多 64 KiB，验证精确长度、范围和 loopback 地址；禁止代理、重定向和压缩响应。播放快照拷贝完成后即关闭 Worker，后续播放使用该私有表示，不依赖 Worker 持续存活。
 
 ## 4. 验证状态
 
-本次正在验证核心、真实 Worker、Server 端到端与浏览器链路。完成后在此记录命令、结果和限制；不以自生成文件单独证明所有真实 NCM 文件兼容。
+核查日期：2026-10-09。下表只记录已完成的验证；历史基线与本轮最终全量检查分开见[实施记录](validation/progress.md)。
+
+| 验证层 | 实际结果 |
+| --- | --- |
+| Go 核心 | MP3/FLAC 原字节、随机及并发 ReadAt、SectionReader、EOF、元数据防御性复制、缺失标签、封面填充、截断/畸形块和不支持格式通过；核心定向 race 通过（2.199 秒） |
+| 模糊测试 | `FuzzMalformedNCM` 单轮 `-fuzztime 10s -parallel 2` 执行 299,534 次，未发现崩溃；仅代表本轮输入与执行量 |
+| 真实 Worker | MP3/FLAC 随机并发 Range、分块、跳过 3 MiB 封面、限额、损坏输入、取消/Close 回收、再次打开和二进制哈希拒绝通过 |
+| 通道安全 | 非 loopback/错误 nonce/query/task、重复 open、重定向、200 代替 206、错误/重复 Content-Range、错误长度、短正文和压缩响应均被拒绝 |
+| Server 端到端 | 启用/未启用插件、损坏文件、中文名、正确 Range、跨会话拒绝、幂等重放、原文件修改后的固定快照、撤销及普通 WAV 回归通过；大封面不占解密缓存预算，音频输出超预算返回 429 |
+| 独立样本 | Web 的 Node 生成器独立封装 CC0 音频，不调用 Go 测试生成器；Go 核心逐字节还原 MP3 33,432 字节、FLAC 87,122 字节 |
+| Edge 154.0.4258.62 | 三项真实浏览器联调通过（19.3 秒）：MP3 解密与精确 Range/非零 PCM；FLAC 解密转 MP3、4 秒定位后 660 Hz 标记；损坏 NCM 明确失败后普通 WAV 仍可播放 |
+| Linux 原生 Worker | Arch WSL2 / Go 1.26.9 真实 NCM Worker 测试通过，8.622 秒；不依赖 FFmpeg |
+| 本轮全量回归 | 配置真实 FFmpeg/ffprobe 后，`scripts/check.ps1 -Race` 的格式、vet、全部测试及 race 通过；四程序 Windows amd64 / Linux amd64 构建通过 |
+
+浏览器样本、摘要、测量值与截图见 [Web NCM 验证记录](../../web/docs/ncm-validation.md)及其[机器可读证据](../../web/docs/validation/ncm-edge-2026-10-09.json)。尚未人工扬声器试听；其他浏览器、真实下载 NCM 变体和不同网易云客户端版本不在当前验收结论内。
+
+可重复执行：
+
+```text
+go test -mod=readonly ./tests/unit/ncmdecoder ./tests/contract/plugins
+go test -mod=readonly ./tests/unit/ncmdecoder -run '^$' -fuzz FuzzMalformedNCM -fuzztime 10s -parallel 2
+go test -mod=readonly ./tests/integration/plugins -run '^TestActualNCM' -count=1
+go test -mod=readonly ./tests/e2e -run '^TestNCMServerRoundTripAndDisabledPlugin$' -count=1
+```
+
+浏览器测试在独立 Web 仓库执行 `npm run test:e2e -- ncm.spec.ts --max-failures=1`，按该仓库说明设置实际 FFmpeg/ffprobe 路径。进程集成与浏览器测试需要允许本机 loopback 通信；受限执行环境阻止连接时不能将启动超时当作格式兼容结论。
+
+## 5. 手工验证
+
+1. 按[运行说明](running.md)构建四个程序，配置 NCM Worker 与音乐目录，重启 Server 后重新扫描。用测试目录或自己的本地 NCM 样本验证，保留原文件副本及摘要。
+2. 登录 Web、刷新来源列表，确认 NCM 条目的容器为 `ncm`、codec 来自内部 MP3/FLAC；未配置 ffprobe 时，时长和码率可以未知。
+3. 播放内部 MP3：页面应显示“服务端解密输出”，可以暂停、继续和停止；有时长时检查定位。开发者工具中输出为音频 MIME，Range 长度与解密表示一致。
+4. 配齐 FFmpeg/ffprobe 后播放内部 FLAC：页面应显示“服务端解密并转码输出”。输入目标位置并定位，确认新片段开始；勾选既有 -6 dB 选项并重新选曲后再检查增益处理。
+5. 验证损坏样本或暂时清空 `ncmWorkerPath` 并重启：播放 NCM 应明确失败，普通 WAV 仍能播放。恢复配置后重新扫描、播放，核对源文件摘要未被修改。

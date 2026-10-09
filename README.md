@@ -1,6 +1,6 @@
 # MusicFS-server
 
-MusicFS 的 Go 后端服务。当前已落地 Local Files 扫描、SQLite 音乐库、会话鉴权、原流 Range 和独立 Go DSP 处理链，配合独立 Web 仓库提供最简列表播放器。启动步骤见[本地运行说明](docs/running.md)，每步提交与验证边界见[实施记录](docs/validation/progress.md)。
+MusicFS 的 Go 后端服务。当前已落地 Local Files 扫描、SQLite 音乐库、会话鉴权、原流 Range、独立 Go DSP 处理链和本地 NCM 解密插件，配合独立 Web 仓库提供最简列表播放器。启动步骤见[本地运行说明](docs/running.md)，每步提交与验证边界见[实施记录](docs/validation/progress.md)。
 
 长期设计包括（未列入实施记录的能力仍为计划）：
 
@@ -24,7 +24,7 @@ MusicFS 的 Go 后端服务。当前已落地 Local Files 扫描、SQLite 音乐
 
 本仓库与 Client、Web 分别管理 Git 历史。跨仓库相对链接按 MusicFS 根目录下 `server`、`client`、`web` 并列检出的工作区布局解析。
 
-工程采用根 `go.mod` 的单 module：源码放 `src/`，Server 与插件程序入口放 `src/app/<程序>/`，测试统一放根 `tests/`。使用 `scripts/build.ps1` / `scripts/build.sh` 构建三个独立程序，`scripts/check.ps1` / `scripts/check.sh` 检查；真实音频工具测试需设置 `MUSICFS_FFMPEG` 和 `MUSICFS_FFPROBE`，否则明确跳过该部分。
+工程采用根 `go.mod` 的单 module：源码放 `src/`，Server 与插件程序入口放 `src/app/<程序>/`，测试统一放根 `tests/`。使用 `scripts/build.ps1` / `scripts/build.sh` 构建四个独立程序：`musicfs`、`musicfs-plugin-local`、`musicfs-plugin-audio-ffmpeg`、`musicfs-plugin-ncm`；使用 `scripts/check.ps1` / `scripts/check.sh` 检查。真实音频工具测试需设置 `MUSICFS_FFMPEG` 和 `MUSICFS_FFPROBE`，否则明确跳过该部分。
 
 第一条交付链为 Local Files 扫描 → 音乐库列表 → 授权原流 → Web 有声播放；随后补齐解码 → PCM DSP → 编码/封装 → Web 播放和时间定位。P5—P7 的匹配、刮削及在线来源逐阶段扩展，不阻塞首个本地可播放版本。
 
@@ -44,11 +44,11 @@ Apple Music 的资料接口与播放分别核对 [Apple Music API](https://devel
 
 ### 本地 NCM 解密参考
 
-NCM 插件正按以下 MIT 项目的容器布局和解密流程，用 Go 标准库重写为独立 Worker。它负责本地加密容器，不属于网易云在线 API 插件；没有把参考项目作为运行依赖。接入和验收进度、配置及限制见 [NCM 插件说明](docs/ncm.md)。
+NCM 插件已按以下 MIT 项目的容器布局和解密流程，用 Go 标准库重写为独立 Worker，并接入扫描、播放与 Web。它负责本地加密容器，不属于网易云在线 API 插件；没有把参考项目作为运行依赖。配置、手工验证及限制见 [NCM 插件说明](docs/ncm.md)。
 
 | 参考项目 | 许可证 | 参考内容与采用方式 |
 | --- | --- | --- |
 | [taurusxin/ncmdump-go](https://git.taurusxin.com/taurusxin/ncmdump-go) | [MIT](https://git.taurusxin.com/taurusxin/ncmdump-go/src/branch/main/LICENSE) | 参考 `ncmcrypt/ncmcrypt.go` 的文件头、密钥/元数据区和封面填充布局；重写解析和随机读取，加入严格边界检查，不采用联网补封面或改写音乐标签的逻辑 |
 | [iqiziqi/ncmdump.rs](https://github.com/iqiziqi/ncmdump.rs) | [MIT 声明](https://github.com/iqiziqi/ncmdump.rs/blob/master/Cargo.toml) | 对照 `crates/ncmdump/src/ncmdump.rs` 的音频载荷偏移与读取/定位语义；不引入 Rust 运行依赖 |
 
-测试使用本项目 CC0 合成 MP3/FLAC 生成 NCM 样本，并分别验证原始载荷、随机读取和浏览器播放。只有实际通过的项目才记入验收；尚未声称覆盖所有网易云客户端下载版本。
+核心、真实 Worker、Server 端到端和 Edge 三项 NCM 联调已通过；浏览器样本由独立 Node 生成器封装本项目 CC0 MP3/FLAC，另经 Go 核心逐字节校验。已执行 299,534 次模糊测试，Linux 真实 Worker 测试通过。真实下载 NCM 样本尚未验收，不能由合成文件推断所有网易云客户端下载版本兼容；本轮全量竞争检查与四程序双平台构建结果另记入实施记录。

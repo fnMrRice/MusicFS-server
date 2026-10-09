@@ -2,6 +2,8 @@
 
 日期：2026-10-09。按用户要求逐步实现并分别提交，在最简 Web 完成后停止。本次交付范围为 P0—P4 的本地播放基线及对应 P8 自动验收；P5—P7、桌面 Client 和新增 YAML/完整插件管理计划不在本次交付内。分章保留完整目标，下面的证据不代表各章所有扩展要求均已完成。
 
+第 1—3 节保留最简 Web 基线阶段的历史范围和验收事实；此后用户授权的独立 NCM 插件增量记录在第 4 节，不回写旧测试数量、制品数量或当时依赖版本。
+
 启动步骤见[运行说明](../running.md)，依赖见[版本记录](../dependencies.md)，插件实测见[插件验证](plugins.md)，真实浏览器证据见 [Web 兼容记录](../../../web/docs/compatibility.md)。各仓库独立提交，未签名、未推送。
 
 ## 1. 逐步实现与提交
@@ -75,3 +77,27 @@
 - 在线 Provider、识别、刮削/写回、歌单、事件推送、第三方插件与 Client 均不随最简 Web 宣称交付。
 
 本轮到此停止功能扩展。后续按分章中的剩余门槛继续，不将本记录或截图当成全部长期架构的完成证明。
+
+## 4. 后续授权增量：独立 NCM 插件
+
+日期：2026-10-09。已实现 Go 标准库解密核心、`musicfs-plugin-ncm` 独立 Worker、任务限定 Range 通道和 Server/Web 接入。构建入口现包含 Server、Local Files、音频处理、NCM 四个程序。配置与手工步骤见 [NCM 说明](../ncm.md)和[运行说明](../running.md)。使用已记录的 MIT 项目作为格式参考，没有新增第三方解密运行依赖。
+
+| 检查 | 已完成的结果与边界 |
+| --- | --- |
+| 核心单元测试 | MP3/FLAC 载荷逐字节、随机/并发读取、元数据复制、可选标签、封面填充、EOF、畸形及截断输入通过；`go test -mod=readonly -race ./tests/unit/ncmdecoder` 通过（2.199 秒） |
+| 模糊测试 | `FuzzMalformedNCM` 单轮 `-fuzztime 10s -parallel 2` 执行 299,534 次，未发现崩溃；不表示穷尽格式变体 |
+| Windows 真实 Worker | `go test ./tests/integration/plugins -run '^TestActualNCM' -count=1` 通过（9.1 秒）；随机 Range、限额、取消回收、损坏输入和哈希拒绝通过 |
+| 最终通道检查 | 追加重复 Content-Range 拒绝后，`TestActualNCMChannelValidation` 重跑通过（7.9 秒）；错误 URL/nonce/task、重定向、错误状态/长度/范围、短正文、压缩和重复 open 均拒绝 |
+| 契约与静态检查 | NCM wire 有效/无效样本、既有 HTTP/API 契约及 NCM 包/入口 vet 通过；公共 HTTP effectiveProcessing 沿用可扩展类型 |
+| Server 端到端 | `TestNCMServerRoundTripAndDisabledPlugin` 启用/未启用两个场景通过；覆盖 Range、权限、幂等、不可变表示、源版本变化、撤销和错误后普通 WAV 可播放。另验证 2 MiB 封面使容器超预算但解密载荷可缓存，音频输出超预算返回 429；最终定向测试 3.656 秒通过 |
+| 独立 Node 样本 | Web 自行封装项目 CC0 MP3/FLAC，不调用 Go fixture builder；Go 核心逐字节还原 MP3 33,432 字节、FLAC 87,122 字节 |
+| Edge NCM 三项联调 | Edge 154.0.4258.62，最终三项通过（19.3 秒）：MP3 解密/Range/非零 PCM、FLAC 转 MP3/4 秒位置标记、损坏 NCM 错误与普通 WAV 恢复 |
+| Linux 真实 Worker | Arch WSL2 / Go 1.26.9 原生测试通过（8.622 秒）；这项验证无需 FFmpeg，不替代 Linux 真实 FFmpeg 验收 |
+| 本轮全量回归与 race | `scripts/check.ps1 -Race` 全部通过：gofmt、vet、覆盖率测试和 race；配置真实 FFmpeg/ffprobe 6.1.1，未跳过该音频集成。使用升级后的 go.mod/go.sum；第 2 节仍为增量前的历史证据 |
+| 四程序双平台构建 | `scripts/build.ps1 -TargetOS windows` 与 `-TargetOS linux` 均通过，分别生成 Server 与三个插件的 amd64 制品；Linux 交叉构建与上面的原生 Worker 运行结果分别记录 |
+
+浏览器详情、截图和结构化证据见 [Web NCM 验证](../../../web/docs/ncm-validation.md)。本轮还通过 Web 生产构建、类型检查和既有 23 项单测；三项 NCM E2E 与此前完整 E2E 分开记录。
+
+SourceAsset 仍代表原始加密文件；纯解密表示保持内部音频字节且独立确定长度/ETag/Range，转码输出继续遵守处理流语义。`effectiveProcessing` 增加 `ncmDecrypt`，没有新增 HTTP 端点或必填字段；原文件不改写，私有解密快照受既有缓存配额约束。
+
+真实下载 NCM 样本、所有网易云客户端版本及其他浏览器尚未验收；非零 PCM/频率测量不能代替人工扬声器听音。当前结论限定于合成样本、独立 Node 封装、所列系统与实际测试路径。

@@ -1,8 +1,8 @@
-# P0 共同契约
+# 共同契约
 
 `openapi.yaml` 使用 YAML 1.2 兼容的 JSON 语法。HTTP 模型只定义在 `http.schema.json`，不从手写 DTO 自动反向生成规范。控制请求拒绝未知字段；响应允许添加可忽略字段。OpenAPI 3.1 与插件 Schema 均使用 JSON Schema 2020-12。
 
-本目录冻结 P0–P4 边界；文件存在不代表每个接口已经实现。尚未实现的处理、定位或插件能力应返回 `UNSUPPORTED`，实际阶段状态见实施验收记录。
+本目录以 P0–P4 共同边界为基础，记录后续兼容增量。文件存在不代表每个长期能力已经实现；当前本地播放、处理、定位及 NCM 解密的实际验收范围见[实施记录](../validation/progress.md)，未提供的能力仍返回 `UNSUPPORTED`。
 
 ## HTTP 语义
 
@@ -18,8 +18,18 @@
 
 ## 兼容与验证
 
+### NCM 解密增量
+
+本次沿用既有 `/api/v1` 端点、请求和鉴权规则。播放描述的 `effectiveProcessing` 新增 `{ "type": "ncmDecrypt", "gainDb": 0, "version": "1", "execution": "server" }`。Schema 的 type 原已允许扩展字符串，无需收紧枚举或增加必填字段；客户端可以忽略未知处理项。该项表示外层容器解密，`gainDb: 0` 不代表执行了增益 DSP。后续进入转码管线时再报告独立 `gain` 项；用户未请求衰减时其值也可为 0。
+
+SourceAsset 和 `assetId` 始终指向原始 NCM；列表保留 `container=ncm`、`mime=audio/x-ncm`，内部 codec 来自解密内容，时长/码率仅采用实际音频探测结果。播放 `outputProfile` 描述本次可交付表示：纯解密 MP3 为 `proxy/byteRange`，解密后转码为 `processed`；时长已知时可 `timeRestart`，否则为 `none`。输出表示拥有独立长度、ETag、representationId 和 attempt URL，Range 偏移相对于解密后的表示，不能复用加密文件的长度、摘要或字节偏移。
+
+解密内容在发布前写入有配额的私有快照并复核源版本；原始文件只读。新定位仍生成新 attempt/URL，旧尝试和跨登录会话访问按既有规则拒绝。损坏文件或未启用解密插件返回 415 `UNSUPPORTED`，不能把密文字节冒充可播放音频。具体 Worker 协议见[插件契约](plugins/v1/README.md)，实测范围见 [NCM 说明](../ncm.md)。
+
+### 兼容规则
+
 同一 API/插件主版本只添加可选字段或可协商能力。增加 required 字段、更改单位/语义、删除字段或收紧已发布枚举需新主版本。废弃字段先在文档标记，保留一个兼容窗口并为旧消费者保存样本；不把未识别 capability 当成功。未知插件主版本在握手阶段拒绝。
 
 执行 `go test ./tests/contract/api`。测试编译全部 HTTP/插件模型、验证有效/无效/新增响应字段兼容样本，并校验 OpenAPI 路径、引用和幂等/CSRF 声明。该测试的 OpenAPI 检查是项目结构校验，JSON Schema 模型验证由独立库执行；不将项目结构检查描述为完整 OpenAPI 官方元规范验证。后续 API handler 集成测试须调用 `tests/testkit.ValidateHTTP` 校验真实序列化响应，防止样本与 DTO 各自通过但相互漂移。
 
-验证库：[`github.com/santhosh-tekuri/jsonschema/v6 v6.0.2`](https://github.com/santhosh-tekuri/jsonschema/releases/tag/v6.0.2)，MIT；只用于测试。Schema 不通过网络装载依赖。
+验证库为 `github.com/santhosh-tekuri/jsonschema/v6`，只用于测试；当前固定版本与许可证见[依赖记录](../dependencies.md)。Schema 不通过网络装载依赖。NCM 增量另由 `go test ./tests/contract/plugins` 验证有效/无效 wire 样本，真实 Worker 与 Server 测试校验实际序列化结果。

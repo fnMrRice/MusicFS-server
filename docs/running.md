@@ -1,6 +1,6 @@
 # 本地最简 Web 运行
 
-此版本实现本地文件扫描、固定修订列表、授权原流和独立 Go DSP 处理播放。桌面 Client、在线 Provider、刮削、指纹与歌单尚未实现。实际验证范围见 [实施记录](validation/progress.md)及 Web 的兼容性记录。
+此版本实现本地文件扫描、固定修订列表、授权原流、独立 Go DSP 处理播放和本地 NCM 解密。桌面 Client、在线 Provider、刮削、指纹与歌单尚未实现。实际验证范围见 [实施记录](validation/progress.md)及 Web 的兼容性记录。
 
 ## Windows
 
@@ -13,12 +13,12 @@
 Copy-Item configs/server.example.json configs/server.local.json
 ```
 
-编辑 `configs/server.local.json`：
+构建生成 `musicfs.exe`、`musicfs-plugin-local.exe`、`musicfs-plugin-audio-ffmpeg.exe`、`musicfs-plugin-ncm.exe` 四个程序。编辑 `configs/server.local.json`：
 
 - `musicRoots` 添加 `{ "id": "local", "name": "本地音乐", "path": "音乐目录的绝对路径" }`。
 - `ffmpegPath`、`ffprobePath` 指向本机工具的绝对路径。仅验证标准 PCM16 WAV 原流时可留空；AIFF 等处理路径需要两者。
-- `pluginPath` 与 `audioWorkerPath` 指向对应已构建程序；示例默认相对路径适合上述构建。
-- 可用 `pluginSha256` 与 `audioWorkerSha256` 固定管理员审核过的二进制摘要（`Get-FileHash -Algorithm SHA256`）。省略时信任显式配置的本机可执行路径，只核对本次启动的读取一致性，不承诺跨重启钉住版本；更新制品后需同步显式摘要。
+- `pluginPath`、`audioWorkerPath`、`ncmWorkerPath` 指向对应已构建程序；示例默认相对路径适合上述构建。清空 `ncmWorkerPath` 可停用本地 NCM 解密。
+- 可用 `pluginSha256`、`audioWorkerSha256`、`ncmWorkerSha256` 固定管理员审核过的二进制摘要（`Get-FileHash -Algorithm SHA256`）。省略时信任显式配置的本机可执行路径，只核对本次启动的读取一致性，不承诺跨重启钉住版本；更新制品后需同步显式摘要。
 - 音乐目录与 `dataRoot/mediaRoot/cacheRoot` 保持分离。相对配置路径以 JSON 所在目录为基准。
 - `allowedOrigins` 必须与页面实际 URL 完全一致。默认只允许明确配置的 loopback HTTP，远程监听必须配置 TLS。
 
@@ -35,9 +35,11 @@ $env:MUSICFS_ADMIN_TOKEN = (& ./build/windows/musicfs.exe token).Trim()
 
 测试素材在 `tests/testdata/audio`；包含项目自行生成的 CC0 文件、AIFF、VBR、中文名以及损坏样本。不要将损坏样本当作可播放成功标准。
 
+NCM 无需新增页面操作：配置 Worker、重新扫描后直接选曲。内部 MP3 以固定解密表示交付，内部 FLAC 按当前策略进入 MP3 处理链；后者需要 FFmpeg/ffprobe。仅配置 NCM Worker 时可播放兼容的内部 MP3，未探测的时长/码率保持未知。手工检查及真实浏览器三项证据见 [NCM 插件说明](ncm.md)；真实下载 NCM 样本尚未验收。
+
 ## Linux 与同源部署
 
-使用 `sh scripts/build.sh`；配置对应 Linux worker 路径和 FFmpeg 路径。服务仍可通过 `--web-root` 提供独立 Web 制品。Linux 运行验证与 Windows 交叉构建分别记入验证记录，不由构建推断所有发行版支持。
+使用 `sh scripts/build.sh` 构建相同四个程序（无 `.exe`），配置对应 Linux Worker 路径和 FFmpeg 路径。服务仍可通过 `--web-root` 提供独立 Web 制品。NCM 真实 Worker 已在 Arch WSL2 通过；Linux 运行验证与 Windows 交叉构建分别记入验证记录，不由构建推断所有发行版支持。
 
 开发期 Vite 仅代理 `/api` 到 Server；交付静态页面和 API 必须同源。远程访问使用 Server 的 `tlsCert/tlsKey` 与 HTTPS Origin；不会信任未配置的代理转发头。当前不提供桌面管理租约或容器运维方案。
 
@@ -52,6 +54,7 @@ SQLite WAL 只放本地文件系统；音乐可以来自已挂载目录。初次
 - 默认最多 8 个播放会话、2 条同时处理管线，私有原文件快照总额 1 GiB；复制超出预算会明确拒绝。
 - 每个来源最多 50,000 个候选；增量请求当前执行完整受控复核，不依赖文件通知。
 - 原流以私有不可变磁盘副本提供真实 Range；输入复制为有界流，不在内存缓存整首歌。复制准备期间尚未开始播放。
+- NCM 原文件保持只读，解密表示也受同一磁盘预算约束。解密 Worker 默认并发 2、打开限 5 秒、任务最长 2 分钟；复制结束即回收，随后从固定快照播放。
 - 处理输出为 MP3 128 kb/s、48 kHz、双声道；Go PCM 增益在 -60 到 0 dB，未经处理的原始文件不被修改。
 - 处理输出不持久缓存，不声明原始长度/ETag/字节定位；固定输入、参数和起点的处理尝试通过时间定位重建。
 - 停止、退出撤销资源；无消费者会话有 90 秒空闲宽限期，最长 30 分钟且不超过登录会话有效期。超过期限后需要重新播放。
