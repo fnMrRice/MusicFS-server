@@ -28,7 +28,7 @@
     },
     "Hello": {
       "type": "object", "additionalProperties": false, "required": ["protocolVersion", "instanceId", "nonce", "configRevision"],
-      "properties": {"protocolVersion": {"const": "1.0"}, "instanceId": {"$ref": "#/$defs/ID"}, "nonce": {"$ref": "#/$defs/ID"}, "configRevision": {"$ref": "#/$defs/ID"}}
+      "properties": {"protocolVersion": {"const": "1.0"}, "instanceId": {"$ref": "#/$defs/ID"}, "nonce": {"$ref": "#/$defs/ID"}, "configRevision": {"$ref": "#/$defs/ID"}, "capabilities": {"$ref": "#/$defs/AudioCapabilities"}}
     },
     "Ready": {
       "type": "object", "required": ["manifest", "instanceId", "nonce"],
@@ -71,9 +71,47 @@
       "type": "object", "additionalProperties": false, "required": ["rootId", "limit"],
       "properties": {"rootId": {"$ref": "#/$defs/ID"}, "cursor": {"type": "string"}, "limit": {"type": "integer", "minimum": 1, "maximum": 200}}
     },
-    "StateGet": {"type": "object", "additionalProperties": false, "required": ["key"], "properties": {"key": {"$ref": "#/$defs/ID"}}},
-    "StateCAS": {"type": "object", "additionalProperties": false, "required": ["key", "expectedRevision", "value"], "properties": {"key": {"$ref": "#/$defs/ID"}, "expectedRevision": {"type": "integer", "minimum": 0}, "value": {"type": ["object", "array", "string", "number", "boolean", "null"]}}},
-    "StateResult": {"type": "object", "required": ["revision", "value"], "properties": {"revision": {"type": "integer", "minimum": 0}, "value": {"type": ["object", "array", "string", "number", "boolean", "null"]}}},
+    "Entry": {
+      "type": "object", "required": ["rootId", "relativePath", "fileIdentity", "observedVersion", "sizeBytes", "mime", "durationMs"],
+      "properties": {"rootId": {"$ref": "#/$defs/ID"}, "relativePath": {"$ref": "#/$defs/RelativePath"}, "fileIdentity": {"$ref": "#/$defs/ID"}, "observedVersion": {"$ref": "#/$defs/ID"}, "sizeBytes": {"type": "integer", "minimum": 0}, "mime": {"type": "string"}, "durationMs": {"type": ["integer", "null"], "minimum": 0}}
+    },
+    "EntriesPage": {
+      "type": "object", "required": ["items", "rootIdentity", "issues"],
+      "properties": {"items": {"type": "array", "maxItems": 200, "items": {"$ref": "#/$defs/Entry"}}, "nextCursor": {"type": "string"}, "rootIdentity": {"$ref": "#/$defs/ID"}, "issues": {"type": "array", "items": {"type": "string"}}}
+    },
+    "StateKey": {"type": "string", "pattern": "^[a-z0-9_-]{1,80}$"},
+    "StateBytes": {"type": "string", "maxLength": 699052, "contentEncoding": "base64", "pattern": "^[A-Za-z0-9+/]*={0,2}$", "description": "不超过 512 KiB 的实例状态字节，按 Go []byte JSON 编码；不允许音频或文件正文。"},
+    "StateGet": {"type": "object", "additionalProperties": false, "required": ["key", "revision"], "properties": {"key": {"$ref": "#/$defs/StateKey"}, "revision": {"const": 0}}},
+    "StateCAS": {"type": "object", "additionalProperties": false, "required": ["key", "revision"], "properties": {"key": {"$ref": "#/$defs/StateKey"}, "revision": {"type": "integer", "minimum": 0}, "value": {"$ref": "#/$defs/StateBytes"}}},
+    "StateResult": {"type": "object", "required": ["revision"], "properties": {"revision": {"type": "integer", "minimum": 0}, "value": {"$ref": "#/$defs/StateBytes"}}},
+    "ResourceRequest": {
+      "type": "object", "additionalProperties": false, "required": ["rootId", "relativePath", "observedVersion"],
+      "properties": {"resourceRef": {"const": ""}, "rootId": {"$ref": "#/$defs/ID"}, "relativePath": {"$ref": "#/$defs/RelativePath"}, "observedVersion": {"$ref": "#/$defs/ID"}, "sizeBytes": {"const": 0}, "mime": {"const": ""}, "range": {"const": false}}
+    },
+    "PCMFormat": {
+      "type": "object", "required": ["sampleFormat", "sampleRate", "channels", "layout"],
+      "properties": {"sampleFormat": {"const": "f32le"}, "sampleRate": {"const": 48000}, "channels": {"const": 2}, "layout": {"const": "stereo"}}
+    },
+    "AudioProfile": {
+      "type": "object", "required": ["id", "mime", "codec", "container", "sampleRate", "channels", "bitrateBps", "seekMode"],
+      "properties": {"id": {"const": "mp3-128"}, "mime": {"const": "audio/mpeg"}, "codec": {"const": "mp3"}, "container": {"const": "mp3"}, "sampleRate": {"const": 48000}, "channels": {"const": 2}, "bitrateBps": {"const": 128000}, "seekMode": {"const": "timeRestart"}}
+    },
+    "SHA256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "AudioCapabilities": {
+      "type": "object", "required": ["version", "build", "ffmpegSHA256", "ffprobeSHA256", "profiles", "pcm"],
+      "properties": {"version": {"type": "string", "minLength": 1}, "build": {"type": "string", "minLength": 1}, "ffmpegSHA256": {"$ref": "#/$defs/SHA256"}, "ffprobeSHA256": {"$ref": "#/$defs/SHA256"}, "profiles": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/AudioProfile"}}, "pcm": {"$ref": "#/$defs/PCMFormat"}}
+    },
+    "AudioPlan": {
+      "type": "object", "additionalProperties": false, "required": ["taskId", "assetId", "profile", "gainDB", "positionMs"],
+      "properties": {"taskId": {"$ref": "#/$defs/ID"}, "assetId": {"$ref": "#/$defs/ID"}, "profile": {"const": "mp3-128"}, "gainDB": {"type": "number", "minimum": -60, "maximum": 0}, "positionMs": {"type": "integer", "minimum": 0, "maximum": 86400000}}
+    },
+    "TaskChannel": {"type": "string", "pattern": "^http://127\\.0\\.0\\.1:[0-9]+/[a-f0-9]{48}/(input|output)$", "description": "仅宿主创建的短期任务通道；不得记日志或交给浏览器。"},
+    "AudioStart": {
+      "type": "object", "additionalProperties": false, "required": ["plan", "ffmpegPath", "ffmpegSHA256", "inputUrl", "outputUrl"],
+      "properties": {"plan": {"$ref": "#/$defs/AudioPlan"}, "ffmpegPath": {"type": "string", "minLength": 1}, "ffmpegSHA256": {"$ref": "#/$defs/SHA256"}, "inputUrl": {"$ref": "#/$defs/TaskChannel"}, "outputUrl": {"$ref": "#/$defs/TaskChannel"}}
+    },
+    "AudioPrepared": {"type": "object", "required": ["profile", "positionOriginMs", "seekMode"], "properties": {"profile": {"const": "mp3-128"}, "positionOriginMs": {"type": "integer", "minimum": 0}, "seekMode": {"const": "timeRestart"}}},
+    "AudioComplete": {"type": "object", "required": ["state"], "properties": {"state": {"const": "complete"}}},
     "Request": {
       "type": "object", "additionalProperties": false, "required": ["jsonrpc", "id", "method", "params"],
       "properties": {"jsonrpc": {"const": "2.0"}, "id": {"$ref": "#/$defs/RequestID"}, "method": {"type": "string"}, "params": {"type": "object"}},
@@ -83,12 +121,15 @@
         {"properties": {"method": {"enum": ["provider.resolve", "provider.metadata"]}, "params": {"$ref": "#/$defs/ResolveRequest"}}},
         {"properties": {"method": {"const": "host.entries"}, "params": {"$ref": "#/$defs/EntriesRequest"}}},
         {"properties": {"method": {"const": "host.state.get"}, "params": {"$ref": "#/$defs/StateGet"}}},
-        {"properties": {"method": {"const": "host.state.compareAndSet"}, "params": {"$ref": "#/$defs/StateCAS"}}}
+        {"properties": {"method": {"const": "host.state.compareAndSet"}, "params": {"$ref": "#/$defs/StateCAS"}}},
+        {"properties": {"method": {"const": "host.resource"}, "params": {"$ref": "#/$defs/ResourceRequest"}}},
+        {"properties": {"method": {"const": "audio.describe"}, "params": {"type": "object", "maxProperties": 0}}},
+        {"properties": {"method": {"enum": ["audio.prepare", "audio.start"]}, "params": {"$ref": "#/$defs/AudioStart"}}}
       ]
     },
     "Success": {
       "type": "object", "additionalProperties": false, "required": ["jsonrpc", "id", "result"],
-      "properties": {"jsonrpc": {"const": "2.0"}, "id": {"$ref": "#/$defs/RequestID"}, "result": {"anyOf": [{"$ref": "#/$defs/Ready"}, {"$ref": "#/$defs/ScanPage"}, {"$ref": "#/$defs/Resource"}, {"$ref": "#/$defs/Observation"}, {"$ref": "#/$defs/StateResult"}]}}
+      "properties": {"jsonrpc": {"const": "2.0"}, "id": {"$ref": "#/$defs/RequestID"}, "result": {"anyOf": [{"$ref": "#/$defs/Ready"}, {"$ref": "#/$defs/ScanPage"}, {"$ref": "#/$defs/Resource"}, {"$ref": "#/$defs/Observation"}, {"$ref": "#/$defs/StateResult"}, {"$ref": "#/$defs/EntriesPage"}, {"$ref": "#/$defs/AudioCapabilities"}, {"$ref": "#/$defs/AudioPrepared"}, {"$ref": "#/$defs/AudioComplete"}]}}
     },
     "ErrorData": {
       "type": "object", "required": ["code", "retryable"],

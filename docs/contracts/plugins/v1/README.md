@@ -12,4 +12,8 @@ Host 发出的 ID 为 `h-` 前缀，Worker 调用 Host 时用 `w-`。一帧只�
 
 JSON-RPC 数值码：-32700 解析错误、-32600 非法请求、-32601 未知方法、-32602 非法参数、-32603 内部协议错误；业务失败统一 -32000，并在 data 给出稳定 code/retryable/retryAfterMs。明确不支持的已识别能力返回 `UNSUPPORTED`。不能以空成功响应代替未实现功能。
 
-本版本定义首个 Provider 的具体业务模型、Host 状态调用及资源边界。音频/刮削的具体图和二进制通道将在实现对应阶段时增加可协商方法，不提前用不受约束的万能 params 冒充已验证 SDK。manifest 的系统/架构列表是声明，不是实机验收证据。受信任进程拥有自身 OS 权限，当前协议不声称隔离恶意插件。
+Host 的 `host.entries` 返回固定根身份的 Entry 页；`host.state.get/compareAndSet` 使用实例隔离的 key/revision/value。value 是限额 512 KiB 的状态字节（Go `[]byte` 的 Base64 JSON 编码），仅保存身份等小型状态，不能承载音频正文。`host.resource` 由 Host 检查受限相对路径后分配不透明引用；Worker 不自行签发引用。
+
+音频 Worker 的 hello 额外接收已由 Host 探测的 capabilities。`audio.describe` 返回实际工具摘要、profile 和 PCM；`audio.prepare/start` 接收固定计划与 loopback input/output 任务通道。音频二进制由任务限定的 loopback HTTP 传输，不写入控制面。宿主注入的 FFmpeg 绝对路径和可执行文件摘要仅在受信任配置边界使用，不发送给 Web。取消仍使用统一取消通知；具体字段是插件内的 `gainDB`，HTTP 用户偏好是 `gainDb`，两者在边界显式转换。
+
+本版本已经定义首个 Provider、Host 状态/资源以及音频处理的具体 wire 模型；刮削协议在后续阶段增加。Schema 可验证模型，但 manifest 的系统/架构/profile 声明不是浏览器或实机验收证据。受信任进程拥有自身 OS 权限，当前协议不声称隔离恶意插件。
