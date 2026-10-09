@@ -30,6 +30,8 @@ type StartRequest struct {
 	OutputURL    string `json:"outputUrl"`
 }
 
+const inputFormats = "wav,mp3,flac,aiff,ogg,mov,matroska,webm,aac"
+
 func validateLoopback(raw string) error {
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme != "http" || u.Hostname() != "127.0.0.1" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
@@ -63,7 +65,7 @@ func Pipeline(ctx context.Context, r StartRequest, output io.Writer) error {
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	decodeArgs := []string{"-hide_banner", "-nostdin", "-v", "error", "-protocol_whitelist", "http,tcp", "-i", r.InputURL, "-ss", strconv.FormatFloat(float64(r.Plan.PositionMs)/1000, 'f', 3, 64), "-map", "0:a:0", "-vn", "-ac", "2", "-ar", "48000", "-f", "f32le", "-acodec", "pcm_f32le", "pipe:1"}
+	decodeArgs := []string{"-hide_banner", "-nostdin", "-v", "error", "-protocol_whitelist", "http,tcp", "-format_whitelist", inputFormats, "-i", r.InputURL, "-ss", strconv.FormatFloat(float64(r.Plan.PositionMs)/1000, 'f', 3, 64), "-map", "0:a:0", "-vn", "-ac", "2", "-ar", "48000", "-f", "f32le", "-acodec", "pcm_f32le", "pipe:1"}
 	decoder := exec.CommandContext(ctx, r.FFmpegPath, decodeArgs...)
 	encoder := exec.CommandContext(ctx, r.FFmpegPath, "-hide_banner", "-nostdin", "-v", "error", "-f", "f32le", "-ar", "48000", "-ac", "2", "-i", "pipe:0", "-vn", "-codec:a", "libmp3lame", "-b:a", "128k", "-f", "mp3", "-write_xing", "0", "-id3v2_version", "0", "pipe:1")
 	decoder.Stderr = io.Discard

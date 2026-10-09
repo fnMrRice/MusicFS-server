@@ -57,7 +57,7 @@ func ProbeMetadata(ctx context.Context, ffprobePath string, input io.ReadSeeker,
 	server := &http.Server{Handler: mux, ReadHeaderTimeout: 2 * time.Second, IdleTimeout: 2 * time.Second, MaxHeaderBytes: 8192, BaseContext: func(net.Listener) context.Context { return ctx }}
 	go server.Serve(listener)
 	defer server.Close()
-	out, err := toolOutput(ctx, ffprobePath, "-v", "error", "-protocol_whitelist", "http,tcp", "-select_streams", "a:0", "-show_entries", "stream=codec_name,bit_rate,duration:format=format_name,duration,bit_rate:format_tags=title,artist", "-of", "json", "http://"+listener.Addr().String()+path)
+	out, err := toolOutput(ctx, ffprobePath, "-v", "error", "-protocol_whitelist", "http,tcp", "-format_whitelist", inputFormats, "-select_streams", "a:0", "-show_entries", "stream=codec_name,bit_rate,duration:format=format_name,duration,bit_rate:format_tags=title,artist", "-of", "json", "http://"+listener.Addr().String()+path)
 	if err != nil {
 		return result, fmt.Errorf("UNSUPPORTED: audio metadata unavailable: %w", err)
 	}
