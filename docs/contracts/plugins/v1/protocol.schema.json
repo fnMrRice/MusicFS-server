@@ -112,6 +112,38 @@
     },
     "AudioPrepared": {"type": "object", "required": ["profile", "positionOriginMs", "seekMode"], "properties": {"profile": {"const": "mp3-128"}, "positionOriginMs": {"type": "integer", "minimum": 0}, "seekMode": {"const": "timeRestart"}}},
     "AudioComplete": {"type": "object", "required": ["state"], "properties": {"state": {"const": "complete"}}},
+    "NCMID": {"type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[!-~]+$", "not": {"pattern": "[/\\\\?#]"}},
+    "NCMNonce": {"type": "string", "pattern": "^[a-f0-9]{48}$"},
+    "NCMInputChannel": {"type": "string", "pattern": "^http://127\\.0\\.0\\.1:[1-9][0-9]{0,4}/[a-f0-9]{48}/input$", "description": "运行时还须校验端口不超过 65535，并与 nonce 完全绑定。"},
+    "NCMOutputChannel": {"type": "string", "pattern": "^http://127\\.0\\.0\\.1:[1-9][0-9]{0,4}/[a-f0-9]{48}/output$", "description": "运行时还须校验端口不超过 65535，并与 nonce 完全绑定。"},
+    "NCMOpen": {
+      "type": "object", "additionalProperties": false, "required": ["taskId", "assetId", "nonce", "inputUrl", "size"],
+      "properties": {
+        "taskId": {"allOf": [{"$ref": "#/$defs/NCMID"}, {"maxLength": 196}]}, "assetId": {"$ref": "#/$defs/NCMID"},
+        "nonce": {"$ref": "#/$defs/NCMNonce"}, "inputUrl": {"$ref": "#/$defs/NCMInputChannel"}, "size": {"type": "integer", "minimum": 1}
+      }
+    },
+    "NCMMetadata": {
+      "type": "object", "additionalProperties": false, "required": ["format", "mime"],
+      "properties": {
+        "format": {"enum": ["mp3", "flac"]}, "mime": {"enum": ["audio/mpeg", "audio/flac"]},
+        "title": {"type": "string", "maxLength": 4096}, "album": {"type": "string", "maxLength": 4096},
+        "artists": {"type": "array", "maxItems": 256, "items": {"type": "string", "minLength": 1, "maxLength": 4096}},
+        "durationMs": {"type": "integer", "minimum": 1}, "bitrateBps": {"type": "integer", "minimum": 1}
+      },
+      "oneOf": [
+        {"properties": {"format": {"const": "mp3"}, "mime": {"const": "audio/mpeg"}}},
+        {"properties": {"format": {"const": "flac"}, "mime": {"const": "audio/flac"}}}
+      ]
+    },
+    "NCMOpened": {
+      "type": "object", "additionalProperties": false, "required": ["taskId", "assetId", "nonce", "outputUrl", "size", "metadata"],
+      "properties": {
+        "taskId": {"allOf": [{"$ref": "#/$defs/NCMID"}, {"maxLength": 196}]}, "assetId": {"$ref": "#/$defs/NCMID"},
+        "nonce": {"$ref": "#/$defs/NCMNonce"}, "outputUrl": {"$ref": "#/$defs/NCMOutputChannel"},
+        "size": {"type": "integer", "minimum": 1}, "metadata": {"$ref": "#/$defs/NCMMetadata"}
+      }
+    },
     "Request": {
       "type": "object", "additionalProperties": false, "required": ["jsonrpc", "id", "method", "params"],
       "properties": {"jsonrpc": {"const": "2.0"}, "id": {"$ref": "#/$defs/RequestID"}, "method": {"type": "string"}, "params": {"type": "object"}},
@@ -124,12 +156,13 @@
         {"properties": {"method": {"const": "host.state.compareAndSet"}, "params": {"$ref": "#/$defs/StateCAS"}}},
         {"properties": {"method": {"const": "host.resource"}, "params": {"$ref": "#/$defs/ResourceRequest"}}},
         {"properties": {"method": {"const": "audio.describe"}, "params": {"type": "object", "maxProperties": 0}}},
-        {"properties": {"method": {"enum": ["audio.prepare", "audio.start"]}, "params": {"$ref": "#/$defs/AudioStart"}}}
+        {"properties": {"method": {"enum": ["audio.prepare", "audio.start"]}, "params": {"$ref": "#/$defs/AudioStart"}}},
+        {"properties": {"method": {"const": "ncm.open"}, "params": {"$ref": "#/$defs/NCMOpen"}}}
       ]
     },
     "Success": {
       "type": "object", "additionalProperties": false, "required": ["jsonrpc", "id", "result"],
-      "properties": {"jsonrpc": {"const": "2.0"}, "id": {"$ref": "#/$defs/RequestID"}, "result": {"anyOf": [{"$ref": "#/$defs/Ready"}, {"$ref": "#/$defs/ScanPage"}, {"$ref": "#/$defs/Resource"}, {"$ref": "#/$defs/Observation"}, {"$ref": "#/$defs/StateResult"}, {"$ref": "#/$defs/EntriesPage"}, {"$ref": "#/$defs/AudioCapabilities"}, {"$ref": "#/$defs/AudioPrepared"}, {"$ref": "#/$defs/AudioComplete"}]}}
+      "properties": {"jsonrpc": {"const": "2.0"}, "id": {"$ref": "#/$defs/RequestID"}, "result": {"anyOf": [{"$ref": "#/$defs/Ready"}, {"$ref": "#/$defs/ScanPage"}, {"$ref": "#/$defs/Resource"}, {"$ref": "#/$defs/Observation"}, {"$ref": "#/$defs/StateResult"}, {"$ref": "#/$defs/EntriesPage"}, {"$ref": "#/$defs/AudioCapabilities"}, {"$ref": "#/$defs/AudioPrepared"}, {"$ref": "#/$defs/AudioComplete"}, {"$ref": "#/$defs/NCMOpened"}]}}
     },
     "ErrorData": {
       "type": "object", "required": ["code", "retryable"],
