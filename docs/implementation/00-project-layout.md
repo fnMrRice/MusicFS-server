@@ -75,7 +75,7 @@ server/
     implementation/
     validation/           # Recorded validation, created when executed
   configs/
-    server.example.json
+    server.example.yaml   # Target after the YAML migration
   scripts/
   build/                  # Ignored build output
 ```
@@ -85,6 +85,8 @@ server/
 `src/app/<程序>` 只能包含 package main 的参数入口和组装调用。可测试的启动、配置和生命周期逻辑放 `src/bootstrap` 等普通包；其他包和 tests 不导入 package main。Server 和官方 worker 分别构建为可执行文件，所有入口仍在同一个 Go module。
 
 不要用 `src/internal` 隐藏要由根 tests 导入的模块：Go 的 internal 导入限制会阻止 src 外的测试引用。当前 src 业务包是项目实现接口，不因可被 Go 导入就承诺长期公开 SDK 兼容；外部插件只依赖版本化 wire 契约。真正发布 SDK 时另立版本和兼容测试，不随意开放整个服务层。
+
+当前 JSON 示例和解析器需按 [YAML 配置补充](configuration.md)完成迁移后，才按上述目标交付；迁移既有示例使用 `git mv`，不能只更改运行说明中的扩展名。
 
 ## 2. P0 逐步任务
 

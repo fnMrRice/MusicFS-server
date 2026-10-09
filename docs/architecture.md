@@ -84,6 +84,10 @@ TimelineEvidence 单独记录跨资产映射、有效区间及验证版本，纳
 
 三类 Server 插件独立注册、安装、启停、配置和授权；同包多角色不能隐式共用凭据或实例状态。Server 与 Client 分别拥有宿主 SDK，可共享模型，不承诺二进制跨运行端通用。
 
+Server 提供统一插件管理器，区分插件级总开关与角色实例开关，同时启用且运行就绪才能接收新工作。默认平滑停用：立即关闭新任务/新播放准入，已有播放和执行中任务凭原租约完成后停止；另提供显式强制停止。禁用保留库、账号引用、人工结果与媒体文件，重新启用不恢复已被单独禁用的实例。期望开关与 starting/ready/draining/disabled/failed 运行状态分别报告，详见[插件管理计划](implementation/plugin-management.md)。
+
+Server 及插件实例配置统一采用 YAML；管理器按修订校验并原子更新同一份 YAML 开关，数据库只记录运行观察、操作与业务状态，不另存一份权威开关。普通启动参数的覆盖规则、严格解析和从现有 JSON 的迁移见 [YAML 配置计划](implementation/configuration.md)。这些新增配置/管理要求仍待实现，不因已有 worker 可运行就视为完成。
+
 manifest 描述 id、version、protocolVersion、roles、能力、配置 schema 和权限。请求带 requestId、instanceRef、可选 accountRef、deadline、cursor 与取消令牌；账号只能属于本次用户及角色实例。分页返回 nextCursor 和可用快照版本；错误含 AUTH_REQUIRED、ACCESS_DENIED、NOT_FOUND、RATE_LIMITED、TEMPORARY_FAILURE、UNSUPPORTED、UNAVAILABLE、retryAfter 及可重试性，不包含密钥。
 
 控制面可评估版本化 JSON-RPC，经 stdio 或本地 socket 通信；模型和协议使用可生成绑定的 Schema/IDL，不绑定实现语言，也不要求首版同时交付多个语言宿主。音频数据采用独立有界二进制帧/受控共享缓冲，不用 JSON/Base64 传 PCM。进程内性能接口如采用，限版本化 C 兼容数据和不透明句柄；语言对象、异常和分配器所有权不跨界，不采用跨编译器 C++ ABI。
@@ -124,7 +128,7 @@ Scraper 补充信息，不创建音乐来源或提供音频流。按需声明 ly
 
 请求带目标、歌名/歌手/专辑/时长等证据、字段、语言及用户修正，必要时授任务只读资源。返回 candidateId、插件/来源、依据、语言、格式、版本适用范围和内容能力。置信度只是证据，插件不能合并 Recording、覆盖人工结果或写原文件。
 
-官方本地提取、独立在线和平台适配 Scraper 共用流程；已知本地来源可只给一个候选。Server 校验下载地址、重定向、大小和格式后存 Media Store，远程 URL/凭据不作永久内容 ID。停用/卸载取消未完成任务，保留已发布内容和来源，不影响音乐播放。
+官方本地提取、独立在线和平台适配 Scraper 共用流程；已知本地来源可只给一个候选。Server 校验下载地址、重定向、大小和格式后存 Media Store，远程 URL/凭据不作永久内容 ID。平滑停用拒绝新任务，执行中项按原租约收尾；强制停止才取消执行中项，卸载需先完成停用。保留已发布内容和来源，不影响与该 Scraper 无依赖的音乐播放，具体行为遵循插件管理规则。
 
 ### 3.5 Audio Processor
 

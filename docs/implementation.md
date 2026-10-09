@@ -18,6 +18,8 @@
 | P7 | [在线来源与歌单](implementation/07-online-library.md) | 平台适配、推荐、快照同步、隐藏、有限恢复 |
 | P8 | [交付与验收](implementation/08-release.md) | 构建制品、部署、恢复、兼容矩阵与验收记录 |
 | 插件专题 | [插件实现步骤](implementation/plugins.md) | 各阶段插件协议、进程、适配器、测试及参考来源 |
+| 配置补充 | [YAML 配置](implementation/configuration.md) | 配置迁移、严格校验、修订与原子写入；待实现 |
+| 管理补充 | [插件管理](implementation/plugin-management.md) | 启用/禁用、平滑停用、强制停止与重启恢复；待实现 |
 
 ## 2. 实施规则与完成记录
 
