@@ -93,10 +93,11 @@ func (c Config) validatePlugins(writable []string) error {
 		}
 		active := 0
 		for _, instance := range plugin.Instances {
-			if !validConfigID(instance.InstanceID) || instances[instance.InstanceID] {
-				return errors.New("instanceId must be valid and globally unique")
+			identityKey := strings.ToLower(instance.InstanceID)
+			if !validConfigID(instance.InstanceID) || instances[identityKey] {
+				return errors.New("instanceId must be valid and globally unique ignoring case")
 			}
-			instances[instance.InstanceID] = true
+			instances[identityKey] = true
 			if instance.Role != role {
 				return errors.New("instance role does not match pluginId")
 			}

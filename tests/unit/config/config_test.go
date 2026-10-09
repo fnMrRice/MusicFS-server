@@ -225,3 +225,43 @@ func TestChecksumNormalizationPreservesDocument(t *testing.T) {
 		t.Fatal("checksum was not normalized without changing source")
 	}
 }
+
+func TestLoaderRejectsCaseCollidingInstanceIDs(t *testing.T) {
+	t.Setenv("MUSICFS_ADMIN_TOKEN", "case-collision-test-credential-only")
+	path := filepath.Join(t.TempDir(), "server.yaml")
+	raw := minimalYAML + `plugins:
+  - pluginId: musicfs.localfiles
+    instances:
+      - instanceId: Local
+        role: provider
+        config: {}
+`
+	if err := os.WriteFile(path, []byte(raw), 0600); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := config.Load(path, nil)
+	if err != nil || loaded.Plugins[0].Instances[0].InstanceID != "Local" {
+		t.Fatalf("single uppercase instance identity was changed or rejected: %v", err)
+	}
+	for name, suffix := range map[string]string{
+		"same plugin": `      - instanceId: local
+        role: provider
+        config: {}
+`,
+		"different plugin": `  - pluginId: musicfs.ncm
+    instances:
+      - instanceId: local
+        role: audio
+        config: {}
+`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := os.WriteFile(path, []byte(raw+suffix), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := config.Load(path, nil); err == nil {
+				t.Fatal("case-colliding instance IDs were accepted before startup")
+			}
+		})
+	}
+}
