@@ -1,0 +1,17 @@
+{
+  "listen": "127.0.0.1:8080",
+  "allowLoopbackHttp": true,
+  "allowedOrigins": ["http://127.0.0.1:8080", "http://127.0.0.1:5173"],
+  "dataRoot": "../data",
+  "mediaRoot": "../media",
+  "cacheRoot": "../cache",
+  "pluginPath": "../build/windows/musicfs-plugin-local.exe",
+  "ffmpegPath": "",
+  "ffprobePath": "",
+  "webRoot": "",
+  "musicRoots": [],
+  "maxSessions": 8,
+  "maxProcessing": 2,
+  "maxCacheBytes": 1073741824,
+  "sessionTtlSeconds": 3600
+}
