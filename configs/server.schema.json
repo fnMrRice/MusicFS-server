@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://musicfs.invalid/configs/server.schema.json",
+  "title": "MusicFS Server YAML 配置版本 1",
+  "description": "用于 YAML 的编辑器和结构验证。加载器额外限制单文档、1 MiB、32 层、严格标量、无 null/重复键/自定义标签/anchor/alias/merge，并校验唯一身份、Origin、路径隔离与环境凭据。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["configVersion", "allowedOrigins"],
+  "properties": {
+    "configVersion": {"const": 1},
+    "listen": {"type": "string", "minLength": 1, "default": "127.0.0.1:8080"},
+    "allowLoopbackHttp": {"type": "boolean", "default": false},
+    "allowedOrigins": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "dataRoot": {"$ref": "#/$defs/NonemptyPath", "default": "data"},
+    "mediaRoot": {"$ref": "#/$defs/NonemptyPath", "default": "media"},
+    "cacheRoot": {"$ref": "#/$defs/NonemptyPath", "default": "cache"},
+    "webRoot": {"$ref": "#/$defs/Path"},
+    "tlsCert": {"$ref": "#/$defs/Path"},
+    "tlsKey": {"$ref": "#/$defs/Path"},
+    "maxSessions": {"type": "integer", "minimum": 1, "maximum": 128, "default": 8},
+    "maxProcessing": {"type": "integer", "minimum": 1, "maximum": 8, "default": 2},
+    "maxCacheBytes": {"type": "integer", "minimum": 1048576, "maximum": 9223372036854775807, "default": 1073741824},
+    "sessionTtlSeconds": {"type": "integer", "minimum": 60, "maximum": 86400, "default": 3600},
+    "plugins": {"type": "array", "items": {"oneOf": [{"$ref": "#/$defs/LocalPlugin"}, {"$ref": "#/$defs/FFmpegPlugin"}, {"$ref": "#/$defs/NCMPlugin"}]}}
+  },
+  "$defs": {
+    "ID": {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,128}$"},
+    "Path": {"type": "string", "not": {"pattern": "\u0000"}},
+    "NonemptyPath": {"$ref": "#/$defs/Path", "minLength": 1},
+    "Enabled": {"type": "object", "required": ["enabled"], "properties": {"enabled": {"const": true}}},
+    "Plugin": {
+      "type": "object", "additionalProperties": false, "required": ["pluginId", "instances"],
+      "properties": {
+        "pluginId": {"enum": ["musicfs.localfiles", "musicfs.audio.ffmpeg", "musicfs.ncm"]},
+        "executable": {"$ref": "#/$defs/Path"},
+        "sha256": {"type": "string", "pattern": "^(?:[a-fA-F0-9]{64})?$"},
+        "enabled": {"type": "boolean", "default": false},
+        "instances": {"type": "array"}
+      },
+      "if": {"allOf": [{"$ref": "#/$defs/Enabled"}, {"properties": {"instances": {"contains": {"$ref": "#/$defs/Enabled"}}}}]},
+      "then": {"required": ["executable"], "properties": {"executable": {"$ref": "#/$defs/NonemptyPath"}}}
+    },
+    "Instance": {
+      "type": "object", "additionalProperties": false, "required": ["instanceId", "role", "config"],
+      "properties": {
+        "instanceId": {"$ref": "#/$defs/ID"}, "name": {"type": "string"},
+        "role": {"enum": ["provider", "audio"]}, "enabled": {"type": "boolean", "default": false},
+        "config": {"type": "object"}
+      }
+    },
+    "MusicRoot": {
+      "type": "object", "additionalProperties": false, "required": ["id", "name", "path"],
+      "properties": {"id": {"$ref": "#/$defs/ID"}, "name": {"type": "string", "minLength": 1}, "path": {"$ref": "#/$defs/NonemptyPath"}}
+    },
+    "LocalSettings": {
+      "type": "object", "additionalProperties": false,
+      "properties": {"musicRoots": {"type": "array", "items": {"$ref": "#/$defs/MusicRoot"}}}
+    },
+    "FFmpegSettings": {
+      "type": "object", "additionalProperties": false,
+      "properties": {"ffmpegPath": {"$ref": "#/$defs/Path"}, "ffprobePath": {"$ref": "#/$defs/Path"}}
+    },
+    "LocalPlugin": {
+      "allOf": [{"$ref": "#/$defs/Plugin"}],
+      "properties": {
+        "pluginId": {"const": "musicfs.localfiles"},
+        "instances": {"items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"role": {"const": "provider"}, "config": {"$ref": "#/$defs/LocalSettings"}}}}
+      },
+      "if": {"$ref": "#/$defs/Enabled"},
+      "then": {"properties": {"instances": {"items": {"if": {"$ref": "#/$defs/Enabled"}, "then": {"properties": {"config": {"required": ["musicRoots"], "properties": {"musicRoots": {"minItems": 1}}}}}}}}}
+    },
+    "FFmpegPlugin": {
+      "allOf": [{"$ref": "#/$defs/Plugin"}],
+      "properties": {
+        "pluginId": {"const": "musicfs.audio.ffmpeg"},
+        "instances": {"items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"role": {"const": "audio"}, "config": {"$ref": "#/$defs/FFmpegSettings"}}}}
+      },
+      "if": {"$ref": "#/$defs/Enabled"},
+      "then": {"properties": {"instances": {
+        "contains": {"$ref": "#/$defs/Enabled"}, "minContains": 0, "maxContains": 1,
+        "items": {"if": {"$ref": "#/$defs/Enabled"}, "then": {"properties": {"config": {"required": ["ffmpegPath", "ffprobePath"], "properties": {"ffmpegPath": {"$ref": "#/$defs/NonemptyPath"}, "ffprobePath": {"$ref": "#/$defs/NonemptyPath"}}}}}}
+      }}}
+    },
+    "NCMPlugin": {
+      "allOf": [{"$ref": "#/$defs/Plugin"}],
+      "properties": {
+        "pluginId": {"const": "musicfs.ncm"},
+        "instances": {"items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"role": {"const": "audio"}, "config": {"type": "object", "maxProperties": 0}}}}
+      },
+      "if": {"$ref": "#/$defs/Enabled"},
+      "then": {"properties": {"instances": {"contains": {"$ref": "#/$defs/Enabled"}, "minContains": 0, "maxContains": 1}}}
+    }
+  }
+}

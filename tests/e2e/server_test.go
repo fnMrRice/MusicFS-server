@@ -111,11 +111,17 @@ func TestFreshServerScanRangePermissionsAndRestart(t *testing.T) {
 	address := l.Addr().String()
 	l.Close()
 	base := "http://" + address
-	cfg := config.Config{Listen: address, DataRoot: filepath.Join(dir, "data"), MediaRoot: filepath.Join(dir, "media"), CacheRoot: filepath.Join(dir, "cache"), PluginPath: pluginPath, AdminToken: domain.NewID(), AllowLoopbackHTTP: true, AllowedOrigins: []string{base}, MusicRoots: []config.MusicRoot{{ID: "local", Name: "Local test", Path: music}}, MaxSessions: 8, MaxProcessing: 2, MaxCacheBytes: 64 << 20, SessionTTLSeconds: 3600}
+	cfg := config.Config{ConfigVersion: 1, Listen: address, DataRoot: filepath.Join(dir, "data"), MediaRoot: filepath.Join(dir, "media"), CacheRoot: filepath.Join(dir, "cache"), AdminToken: domain.NewID(), AllowLoopbackHTTP: true, AllowedOrigins: []string{base}, MaxSessions: 8, MaxProcessing: 2, MaxCacheBytes: 64 << 20, SessionTTLSeconds: 3600,
+		Plugins: []config.Plugin{{PluginID: "musicfs.localfiles", Executable: pluginPath, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Name: "Local test", Role: "provider", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Local test", Path: music}}}}}}}}
+	configPath := writeYAMLConfiguration(t, cfg)
 	start := func() func() {
+		loaded, err := config.Load(configPath, map[string]string{"ADMIN_TOKEN": cfg.AdminToken})
+		if err != nil {
+			t.Fatal(err)
+		}
 		ctx, cancel := context.WithCancel(context.Background())
 		done := make(chan error, 1)
-		go func() { done <- bootstrap.Serve(ctx, cfg, slog.New(slog.NewTextHandler(io.Discard, nil))) }()
+		go func() { done <- bootstrap.Serve(ctx, loaded, slog.New(slog.NewTextHandler(io.Discard, nil))) }()
 		deadline := time.Now().Add(15 * time.Second)
 		for {
 			r, e := http.Get(base + "/api/v1/health/ready")
@@ -248,5 +254,27 @@ func TestFreshServerScanRangePermissionsAndRestart(t *testing.T) {
 	code, _, _ = c.request(t, "GET", d.StreamURL, nil, "")
 	if code != 404 {
 		t.Fatal("old attempt survived restart")
+	}
+	stop()
+	stopped = true
+	cfg.Plugins[0].Enabled = false
+	cfg.Plugins[0].Executable = filepath.Join(dir, "missing-disabled-worker")
+	configPath = writeYAMLConfiguration(t, cfg)
+	stop = start()
+	stopped = false
+	c = login(t, base, cfg.AdminToken)
+	_, raw, _ = c.request(t, "GET", "/api/v1/source-tracks", nil, "")
+	if json.Unmarshal(raw, &after) != nil || len(after.Items) != 1 || after.Items[0].ID != page.Items[0].ID {
+		t.Fatal("disabled provider lost its persisted library")
+	}
+	_, raw, _ = c.request(t, "GET", "/api/v1/provider-instances", nil, "")
+	var providers struct {
+		Items []library.Provider `json:"items"`
+	}
+	if json.Unmarshal(raw, &providers) != nil || len(providers.Items) != 1 || providers.Items[0].ID != "local" || providers.Items[0].Availability != "offline" {
+		t.Fatalf("disabled provider identity missing: %s", raw)
+	}
+	if code, _, _ = c.request(t, "POST", "/api/v1/provider-instances/local/scan-jobs", map[string]string{"mode": "full"}, "disabled-scan-0001"); code != 503 {
+		t.Fatalf("globally disabled provider accepted scan: %d", code)
 	}
 }

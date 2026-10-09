@@ -2,7 +2,10 @@
 /data/
 /media/
 /cache/
-/configs/*.local.json
+/configs/*.local.yaml
+/configs/*.local.yml
+/configs/*.yaml.lock
+/configs/*.yml.lock
 /.env
 *.test
 coverage.out

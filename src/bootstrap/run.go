@@ -24,7 +24,7 @@ func Run(args []string, output io.Writer) error {
 	}
 	f := flag.NewFlagSet("musicfs", flag.ContinueOnError)
 	f.SetOutput(output)
-	path := f.String("config", "", "Configuration JSON path")
+	path := f.String("config", "", "Configuration YAML path (.yaml or .yml)")
 	web := f.String("web-root", "", "Built Web artifact directory")
 	version := f.Bool("version", false, "Print version")
 	if err := f.Parse(args); err != nil {

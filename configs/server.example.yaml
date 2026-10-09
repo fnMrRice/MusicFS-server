@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=./server.schema.json
+configVersion: 1
+listen: '127.0.0.1:8080'
+allowLoopbackHttp: true
+allowedOrigins:
+  - 'http://127.0.0.1:8080'
+  - 'http://127.0.0.1:5173'
+dataRoot: '../data'
+mediaRoot: '../media'
+cacheRoot: '../cache'
+webRoot: ''
+plugins:
+  - pluginId: 'musicfs.localfiles'
+    executable: '../build/windows/musicfs-plugin-local.exe'
+    enabled: true
+    instances:
+      - instanceId: 'local'
+        name: '本地音乐'
+        role: 'provider'
+        enabled: true
+        config:
+          musicRoots:
+            # Replace with your music directory; this sample uses project fixtures.
+            - id: 'local'
+              name: '合成测试音乐'
+              path: '../tests/testdata/audio'
+  - pluginId: 'musicfs.audio.ffmpeg'
+    executable: '../build/windows/musicfs-plugin-audio-ffmpeg.exe'
+    # Set both enabled values to true after configuring the two tool paths.
+    enabled: false
+    instances:
+      - instanceId: 'audio-default'
+        role: 'audio'
+        enabled: false
+        config:
+          ffmpegPath: ''
+          ffprobePath: ''
+  - pluginId: 'musicfs.ncm'
+    executable: '../build/windows/musicfs-plugin-ncm.exe'
+    enabled: true
+    instances:
+      - instanceId: 'ncm-default'
+        role: 'audio'
+        enabled: true
+        config: {}
+maxSessions: 8
+maxProcessing: 2
+maxCacheBytes: 1073741824
+sessionTtlSeconds: 3600

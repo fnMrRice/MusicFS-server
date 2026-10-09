@@ -68,10 +68,11 @@ func TestNCMServerRoundTripAndDisabledPlugin(t *testing.T) {
 			address := listener.Addr().String()
 			listener.Close()
 			base := "http://" + address
-			cfg := config.Config{Listen: address, AllowLoopbackHTTP: true, AllowedOrigins: []string{base}, AdminToken: domain.NewID(), PluginPath: provider, DataRoot: filepath.Join(dir, "data"), MediaRoot: filepath.Join(dir, "media"), CacheRoot: filepath.Join(dir, "cache"), MaxSessions: 8, MaxProcessing: 2, MaxCacheBytes: cacheBudget, SessionTTLSeconds: 3600, MusicRoots: []config.MusicRoot{{ID: "local", Name: "NCM test", Path: music}}}
-			if enabled {
-				cfg.NCMWorkerPath = decoder
-			}
+			cfg := config.Config{ConfigVersion: 1, Listen: address, AllowLoopbackHTTP: true, AllowedOrigins: []string{base}, AdminToken: domain.NewID(), DataRoot: filepath.Join(dir, "data"), MediaRoot: filepath.Join(dir, "media"), CacheRoot: filepath.Join(dir, "cache"), MaxSessions: 8, MaxProcessing: 2, MaxCacheBytes: cacheBudget, SessionTTLSeconds: 3600,
+				Plugins: []config.Plugin{
+					{PluginID: "musicfs.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Name: "NCM test", Role: "provider", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "NCM test", Path: music}}}}}},
+					{PluginID: "musicfs.ncm", Executable: decoder, Enabled: enabled, Instances: []config.Instance{{InstanceID: "ncm-default", Role: "audio", Enabled: true}}},
+				}}
 			startNCMServer(t, cfg, base)
 			c := login(t, base, cfg.AdminToken)
 			tracks := scanNCM(t, c)
@@ -145,9 +146,13 @@ func TestNCMServerRoundTripAndDisabledPlugin(t *testing.T) {
 
 func startNCMServer(t *testing.T, cfg config.Config, base string) {
 	t.Helper()
+	loaded, err := config.Load(writeYAMLConfiguration(t, cfg), map[string]string{"ADMIN_TOKEN": cfg.AdminToken})
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
-	go func() { done <- bootstrap.Serve(ctx, cfg, slog.New(slog.NewTextHandler(io.Discard, nil))) }()
+	go func() { done <- bootstrap.Serve(ctx, loaded, slog.New(slog.NewTextHandler(io.Discard, nil))) }()
 	t.Cleanup(func() {
 		cancel()
 		select {
@@ -160,6 +165,11 @@ func startNCMServer(t *testing.T, cfg config.Config, base string) {
 		}
 	})
 	for deadline := time.Now().Add(15 * time.Second); time.Now().Before(deadline); {
+		select {
+		case err := <-done:
+			t.Fatalf("NCM server startup failed: %v", err)
+		default:
+		}
 		response, err := http.Get(base + "/api/v1/health/ready")
 		if err == nil {
 			response.Body.Close()
@@ -174,7 +184,12 @@ func startNCMServer(t *testing.T, cfg config.Config, base string) {
 
 func scanNCM(t *testing.T, c *client) map[string]library.Track {
 	t.Helper()
-	code, raw, _ := c.request(t, "POST", "/api/v1/provider-instances/local/scan-jobs", map[string]string{"mode": "full"}, "ncm-scan-0001")
+	return scanProvider(t, c, "local", "ncm-scan-0001")
+}
+
+func scanProvider(t *testing.T, c *client, provider, key string) map[string]library.Track {
+	t.Helper()
+	code, raw, _ := c.request(t, "POST", "/api/v1/provider-instances/"+provider+"/scan-jobs", map[string]string{"mode": "full"}, key)
 	var accepted struct {
 		JobID string `json:"jobId"`
 	}
