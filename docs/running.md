@@ -13,7 +13,7 @@
 Copy-Item configs/server.example.yaml configs/server.local.yaml
 ```
 
-构建生成 `musicfs.exe`、`musicfs-plugin-local.exe`、`musicfs-plugin-audio-ffmpeg.exe`、`musicfs-plugin-ncm.exe` 四个程序。编辑 `configs/server.local.yaml`（旧JSON配置不兼容，字段及读写边界见[YAML配置](configuration.md)）：
+构建生成 `musicfs.exe`、`musicfs-plugin-local.exe`、`musicfs-plugin-audio-ffmpeg.exe`、`musicfs-plugin-ncm.exe`、`musicfs-plugin-scraper-local.exe` 五个程序。编辑 `configs/server.local.yaml`（旧JSON配置不兼容，字段及读写边界见[YAML配置](configuration.md)）：
 
 - `plugins` 的 `musicfs.localfiles` 实例在 `config.musicRoots` 下配置音乐根的 `id/name/path`；示例使用项目合成样本，可替换为自己的音乐目录。保持已使用的实例ID和根ID稳定。
 - `musicfs.audio.ffmpeg` 实例的 `config.ffmpegPath`、`config.ffprobePath` 指向本机工具；需要转码/DSP时将该插件和实例的 `enabled` 都改为true。示例默认关闭音频处理，仅验证标准PCM16 WAV原流时不需要启用；AIFF与当前NCM FLAC转码路径需要两种工具。
@@ -41,7 +41,7 @@ NCM 无需新增页面操作：配置 Worker、重新扫描后直接选曲。内
 
 ## Linux 与同源部署
 
-使用 `sh scripts/build.sh` 构建相同四个程序（无 `.exe`），复制相同YAML示例，并将各 `plugins[].executable` 改为 `../build/linux/` 下对应程序，配置音频实例的FFmpeg/ffprobe路径后显式启用。服务仍可通过 `--web-root` 提供独立 Web 制品。NCM 真实 Worker 已在 Arch WSL2 通过；Linux 配置与运行验收见[配置记录](validation/configuration.md)，与交叉构建结果分开，不由构建推断所有发行版支持。
+使用 `sh scripts/build.sh` 构建相同五个程序（无 `.exe`），复制相同YAML示例，并将各 `plugins[].executable` 改为 `../build/linux/` 下对应程序，配置音频实例的FFmpeg/ffprobe路径后显式启用。服务仍可通过 `--web-root` 提供独立 Web 制品。NCM 真实 Worker 已在 Arch WSL2 通过；Linux 配置与运行验收见[配置记录](validation/configuration.md)，与交叉构建结果分开，不由构建推断所有发行版支持。
 
 2026-10-10已在Arch WSL使用原生FFmpeg/ffprobe 6.1.6通过YAML处理后播放、实际PCM定位、音频启用边界和同配置重启验证；工具为官方签名源码的LGPLv2.1+本地构建，不随仓库分发。工具能力、定向结果与范围见[Linux音频记录](validation/configuration-linux-audio.md)。这项Server验证不代替Linux浏览器、人工听音或其他架构/系统验收，也不包含动态启停。
 
@@ -64,3 +64,5 @@ SQLite WAL 只放本地文件系统；音乐可以来自已挂载目录。初次
 - 停止、退出撤销资源；无消费者会话有 90 秒空闲宽限期，最长 30 分钟且不超过登录会话有效期。超过期限后需要重新播放。
 - 浏览器中间断线可能需要明确重新播放。恢复次数有上限；没有实现跨来源自动续播。
 - Worker 是受信任官方程序，当前不是恶意插件的完整操作系统沙箱。
+
+本地歌词/封面补全使用独立 `musicfs.scraper.local` 实例。示例已双层启用该插件，构建包含对应程序；配置、逐目标预览与人工选用见[补全任务](metadata.md)，无需启用FFmpeg或指纹。修改YAML后重启生效，不提供动态启停；`importLyrics`仍未开启自动补缺。

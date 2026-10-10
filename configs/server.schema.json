@@ -86,7 +86,7 @@
         "bytesPerSecond": {"type": "integer", "minimum": 65536, "maximum": 1073741824, "default": 4194304}
       }
     },
-    "plugins": {"type": "array", "items": {"oneOf": [{"$ref": "#/$defs/LocalPlugin"}, {"$ref": "#/$defs/FFmpegPlugin"}, {"$ref": "#/$defs/NCMPlugin"}]}}
+    "plugins": {"type": "array", "items": {"oneOf": [{"$ref": "#/$defs/LocalPlugin"}, {"$ref": "#/$defs/FFmpegPlugin"}, {"$ref": "#/$defs/NCMPlugin"}, {"$ref": "#/$defs/LocalScraperPlugin"}]}}
   },
   "allOf": [
     {
@@ -206,7 +206,7 @@
     "Plugin": {
       "type": "object", "additionalProperties": false, "required": ["pluginId", "instances"],
       "properties": {
-        "pluginId": {"enum": ["musicfs.localfiles", "musicfs.audio.ffmpeg", "musicfs.ncm"]},
+        "pluginId": {"enum": ["musicfs.localfiles", "musicfs.audio.ffmpeg", "musicfs.ncm", "musicfs.scraper.local"]},
         "executable": {"$ref": "#/$defs/Path"},
         "sha256": {"type": "string", "pattern": "^(?:[a-fA-F0-9]{64})?$"},
         "enabled": {"type": "boolean", "default": false},
@@ -233,7 +233,8 @@
         "role": {
           "enum": [
             "provider",
-            "audio"
+            "audio",
+            "scraper"
           ]
         },
         "enabled": {
@@ -336,6 +337,7 @@
         }
       }
     },
+    "LocalScraperPlugin": {"allOf": [{"$ref": "#/$defs/Plugin"}], "properties": {"pluginId": {"const": "musicfs.scraper.local"}, "instances": {"items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"role": {"const": "scraper"}, "config": {"type": "object", "additionalProperties": false}, "importDefaults": false}}, "maxItems": 16}}},
     "NCMPlugin": {
       "allOf": [
         {

@@ -47,6 +47,16 @@ plugins:
         role: 'audio'
         enabled: true
         config: {}
+  - pluginId: 'musicfs.scraper.local'
+    executable: '../build/windows/musicfs-plugin-scraper-local.exe'
+    # Manual local metadata jobs only; this does not enable automatic import.
+    enabled: true
+    instances:
+      - instanceId: 'scraper-local'
+        name: '本地歌词与封面'
+        role: 'scraper'
+        enabled: true
+        config: {}
 maxSessions: 8
 maxProcessing: 2
 maxCacheBytes: 1073741824

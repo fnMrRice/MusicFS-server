@@ -74,6 +74,14 @@ Provider 响应增加 `configuration` 与 `roots`。Local Files 的配置包含�
 
 选择提交前验证正文，损坏新预览不能覆盖旧内容；缺失/损坏对象标记 unavailable，保留选择和人工锁。旧资产绑定 `current=false`，仍可读的旧对象为 stale；未变化的当前资产对象缺失时可为 `current=true,state=unavailable`。媒体服务不依赖指纹功能开关。本步没有 Web 编辑界面或自动抓取/写回，操作与限制见[内容说明](../media.md)、[HTTP 验收](../validation/media-http.md)。
 
+### S-P6-03 本地补全任务
+
+`GET /scraper-instances` 只返回本人实例的安全声明。`POST /metadata-jobs` 接受必需 `sourceTrackIds/fields`、可选 `instanceIds/excludeInstanceIds/languages/query`；单曲也用1项数组，最多64来源、4选中实例、16排除实例和16语言。请求要求幂等键，返回202 `{jobId,merged}`。本地插件不支持非空查询修正，明确返回415；语言只按已声明标签过滤，未知为und，不推断正文语言。实例配置与操作见[补全说明](../metadata.md)。
+
+`GET /metadata-jobs/{id}` 返回 `queued/running/completed/failed/cancelled` 状态及逐目标结果，批量部分失败必须查看各目标。候选仅含安全描述、来源依据、30分钟有效期和可空 `previewObjectId`，没有正文或内部资源票据；通过已有媒体端点授权预览。搜索不会改变当前选择。`POST /metadata-candidates/{id}/apply` 要求 `expectedRevision` 和幂等键，在当前资产、候选有效期、代次、任务取消状态及预览文件复核后人工选用并加锁。候选修订是搜索快照，后续逐字段选用可使用最新修订。
+
+`POST /metadata-jobs/{id}/cancel` 接受 `{}`，自然幂等，不要求键；包括已完成任务的候选应用资格，可取消但不删除已发布内容/锁。原成功应用键仍重放，新应用拒绝。配置停用后历史任务和内容仍可读取；尚未提供自动导入补缺、专辑展开或Web补全页。真实插件、NCM、重启和权限范围见[接口验收](../validation/metadata-http.md)。
+
 ### NCM 解密增量
 
 本次沿用既有 `/api/v1` 端点、请求和鉴权规则。播放描述的 `effectiveProcessing` 新增 `{ "type": "ncmDecrypt", "gainDb": 0, "version": "1", "execution": "server" }`。Schema 的 type 原已允许扩展字符串，无需收紧枚举或增加必填字段；客户端可以忽略未知处理项。该项表示外层容器解密，`gainDb: 0` 不代表执行了增益 DSP。后续进入转码管线时再报告独立 `gain` 项；用户未请求衰减时其值也可为 0。

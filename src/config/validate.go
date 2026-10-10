@@ -80,12 +80,17 @@ func (c Config) validatePlugins(writable []string) error {
 		switch plugin.PluginID {
 		case "musicfs.localfiles":
 			role = "provider"
+		case "musicfs.scraper.local":
+			role = "scraper"
 		case "musicfs.audio.ffmpeg", "musicfs.ncm":
 		default:
 			return errors.New("unsupported pluginId")
 		}
 		if plugins[plugin.PluginID] {
 			return errors.New("pluginId must be unique")
+		}
+		if role == "scraper" && len(plugin.Instances) > 16 {
+			return errors.New("local scraper supports at most 16 configured instances")
 		}
 		plugins[plugin.PluginID] = true
 		if plugin.SHA256 != "" {

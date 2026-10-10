@@ -1,0 +1,109 @@
+[
+  {
+    "name": "scraper-search-synthetic",
+    "schema": "ScrapeSearch",
+    "valid": true,
+    "value": {
+      "context": {
+        "instanceId": "scraper-local",
+        "userId": "test-user",
+        "taskId": "task",
+        "timeoutMs": 30000
+      },
+      "target": {
+        "sourceTrackId": "synthetic-source",
+        "assetId": "asset",
+        "assetVersion": "v1",
+        "revision": 0
+      },
+      "fields": [
+        "lyrics"
+      ],
+      "languages": [],
+      "resources": [
+        {
+          "resourceRef": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": "v1",
+          "kind": "lyrics",
+          "sizeBytes": 24,
+          "match": "exactStem"
+        }
+      ]
+    }
+  },
+  {
+    "name": "scraper-fetch-synthetic",
+    "schema": "ScrapeFetch",
+    "valid": true,
+    "value": {
+      "context": {
+        "instanceId": "scraper-local",
+        "userId": "test-user",
+        "taskId": "task",
+        "timeoutMs": 30000
+      },
+      "target": {
+        "sourceTrackId": "synthetic-source",
+        "assetId": "asset",
+        "assetVersion": "v1",
+        "revision": 0
+      },
+      "candidateId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "outputRef": "cccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+  },
+  {
+    "name": "scraper-no-content-in-control",
+    "schema": "ScrapeSearch",
+    "valid": false,
+    "value": {
+      "context": {
+        "instanceId": "scraper-local",
+        "userId": "test-user",
+        "taskId": "task",
+        "timeoutMs": 30000
+      },
+      "target": {
+        "sourceTrackId": "synthetic-source",
+        "assetId": "asset",
+        "assetVersion": "v1",
+        "revision": 0
+      },
+      "fields": [
+        "lyrics"
+      ],
+      "languages": [],
+      "resources": [
+        {
+          "resourceRef": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": "v1",
+          "kind": "lyrics",
+          "sizeBytes": 24,
+          "match": "exactStem"
+        }
+      ],
+      "lyrics": "forbidden body"
+    }
+  },
+  {
+    "name": "scraper-reject-output-path",
+    "schema": "ScrapeFetch",
+    "valid": false,
+    "value": {
+      "context": {
+        "instanceId": "scraper-local",
+        "userId": "test-user",
+        "taskId": "task",
+        "timeoutMs": 30000
+      },
+      "target": {
+        "sourceTrackId": "synthetic-source",
+        "assetId": "asset",
+        "assetVersion": "v1",
+        "revision": 0
+      },
+      "candidateId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "outputRef": "../media/file"
+    }
+  }
+]

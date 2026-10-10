@@ -43,6 +43,7 @@ func TestPeerRejectsDuplicateTerminalResponse(t *testing.T) {
 	client := pluginproto.NewPeer(ctx, left, left, "h-", nil)
 	defer client.Close()
 	defer right.Close()
+	accepted := make(chan struct{})
 	go func() {
 		framer := pluginproto.NewFramer(right, right)
 		request, err := framer.Read()
@@ -51,11 +52,19 @@ func TestPeerRejectsDuplicateTerminalResponse(t *testing.T) {
 		}
 		response := pluginproto.Envelope{ID: request.ID, Result: json.RawMessage(`"ok"`)}
 		framer.Write(response)
+		// Only send the duplicate after Call has observed the valid result. If
+		// both arrive together, rejecting the whole peer may correctly win first.
+		select {
+		case <-accepted:
+		case <-ctx.Done():
+			return
+		}
 		framer.Write(response)
 	}()
 	if err := client.Call(ctx, "test", nil, nil); err != nil {
 		t.Fatal(err)
 	}
+	close(accepted)
 	select {
 	case <-client.Done():
 		if client.Err() == nil || client.Err() == io.EOF {

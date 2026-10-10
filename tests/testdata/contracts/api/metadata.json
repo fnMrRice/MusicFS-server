@@ -1,0 +1,127 @@
+[
+  {
+    "name": "metadata-single",
+    "schema": "CreateMetadataRequest",
+    "valid": true,
+    "value": {
+      "sourceTrackIds": [
+        "source"
+      ],
+      "fields": [
+        "lyrics"
+      ]
+    }
+  },
+  {
+    "name": "metadata-batch",
+    "schema": "CreateMetadataRequest",
+    "valid": true,
+    "value": {
+      "sourceTrackIds": [
+        "first",
+        "second"
+      ],
+      "fields": [
+        "lyrics"
+      ],
+      "instanceIds": [
+        "local"
+      ],
+      "excludeInstanceIds": [
+        "secondary"
+      ]
+    }
+  },
+  {
+    "name": "metadata-empty",
+    "schema": "CreateMetadataRequest",
+    "valid": false,
+    "value": {
+      "sourceTrackIds": [],
+      "fields": [
+        "lyrics"
+      ]
+    }
+  },
+  {
+    "name": "metadata-duplicate",
+    "schema": "CreateMetadataRequest",
+    "valid": false,
+    "value": {
+      "sourceTrackIds": [
+        "source",
+        "source"
+      ],
+      "fields": [
+        "lyrics"
+      ]
+    }
+  },
+  {
+    "name": "metadata-null-languages",
+    "schema": "CreateMetadataRequest",
+    "valid": false,
+    "value": {
+      "sourceTrackIds": [
+        "source"
+      ],
+      "fields": [
+        "lyrics"
+      ],
+      "languages": null
+    }
+  },
+  {
+    "name": "metadata-no-private-resources",
+    "schema": "CreateMetadataRequest",
+    "valid": false,
+    "value": {
+      "sourceTrackIds": [
+        "source"
+      ],
+      "fields": [
+        "lyrics"
+      ],
+      "resources": []
+    }
+  },
+  {
+    "name": "metadata-null-query",
+    "schema": "CreateMetadataRequest",
+    "valid": true,
+    "value": {
+      "sourceTrackIds": [
+        "source"
+      ],
+      "fields": [
+        "lyrics"
+      ],
+      "query": null
+    }
+  },
+  {
+    "name": "metadata-apply-7",
+    "schema": "ApplyMetadataRequest",
+    "valid": true,
+    "value": {
+      "expectedRevision": 0
+    }
+  },
+  {
+    "name": "metadata-apply-8",
+    "schema": "ApplyMetadataRequest",
+    "valid": false,
+    "value": {
+      "expectedRevision": null
+    }
+  },
+  {
+    "name": "metadata-apply-9",
+    "schema": "ApplyMetadataRequest",
+    "valid": false,
+    "value": {
+      "expectedRevision": 0,
+      "automatic": true
+    }
+  }
+]

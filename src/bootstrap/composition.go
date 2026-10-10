@@ -76,12 +76,21 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	fingerprints, closeFingerprints := configureFingerprinting(ctx, c, log, store, lib, processor, media)
 	closeBeforeFingerprints := cleanup
 	cleanup = func() { closeFingerprints(); closeBeforeFingerprints() }
+	content := mediastore.NewContent(store, store, mediaFiles)
+	metadata, err := configureEnrichment(ctx, c, log, store, lib, content)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	closeBeforeMetadata := cleanup
+	cleanup = func() { metadata.Close(); closeBeforeMetadata() }
 	sessions := auth.New(store, c.AdminToken, c.AllowedOrigins, time.Duration(c.SessionTTLSeconds)*time.Second)
 	handler := api.New(api.Options{Auth: sessions, InstanceID: instance, Ready: ready, SecureCookie: c.TLSCert != "", Logger: log})
 	handler.RegisterLibrary(lib)
 	handler.RegisterHashing(hashes)
 	handler.RegisterFingerprinting(fingerprints)
-	handler.RegisterMedia(mediastore.NewContent(store, store, mediaFiles))
+	handler.RegisterMedia(content)
+	handler.RegisterEnrichment(metadata)
 	var fingerprintDetails matching.FingerprintDetails
 	if fingerprints != nil {
 		fingerprintDetails = fingerprints

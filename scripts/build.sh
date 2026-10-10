@@ -6,7 +6,6 @@ target="${GOOS:-linux}"
 export GOOS="$target"
 suffix=""
 if [ "$target" = windows ]; then suffix=.exe; fi
-for entry in src/app/*; do
-    name=$(basename "$entry")
-    go build -mod=readonly -trimpath -o "build/$target/$name$suffix" "./$entry"
+for name in musicfs musicfs-plugin-local musicfs-plugin-audio-ffmpeg musicfs-plugin-ncm musicfs-plugin-scraper-local; do
+    go build -mod=readonly -trimpath -o "build/$target/$name$suffix" "./src/app/$name"
 done

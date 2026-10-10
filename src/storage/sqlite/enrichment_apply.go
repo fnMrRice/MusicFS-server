@@ -1,0 +1,85 @@
+package sqlite
+
+import (
+	"context"
+	"time"
+
+	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/mediastore"
+)
+
+func (s *Store) ApplyEnrichment(ctx context.Context, owner, candidateID, expectedObjectID string, expected int64, key string, guard mediastore.Guard) (mediastore.Selection, error) {
+	var empty mediastore.Selection
+	if guard == nil {
+		return empty, domain.Fail("INVALID_ARGUMENT", "Metadata selection requires a file guard")
+	}
+	// The immutable descriptor identifies the source before opening the mutation;
+	// validity is checked only after durable successful-operation replay.
+	c, err := s.EnrichmentCandidate(ctx, owner, candidateID)
+	if err != nil {
+		return empty, err
+	}
+	request := struct {
+		CandidateID, ObjectID string
+		ExpectedRevision      int64
+	}{candidateID, expectedObjectID, expected}
+	m, replay, err := s.beginContentMutation(ctx, owner, c.Target.SourceTrackID, "metadata-apply", key, expected, request)
+	if err != nil {
+		return empty, err
+	}
+	defer m.tx.Rollback()
+	if replay {
+		return m.result, nil
+	}
+	c, err = readEnrichmentCandidate(ctx, m.tx, owner, candidateID)
+	if err != nil {
+		return empty, err
+	}
+	if c.Status != "available" || c.PreviewObjectID == nil || *c.PreviewObjectID != expectedObjectID {
+		return empty, domain.Fail("CONFLICT", "Metadata candidate does not match this selection revision")
+	}
+	var jobState, targetState, expires string
+	var candidateGeneration, targetGeneration int64
+	err = m.tx.QueryRowContext(ctx, `SELECT j.state,t.state,c.generation,t.generation,c.expires_at FROM enrichment_candidates c JOIN enrichment_jobs j ON j.id=c.job_id AND j.owner=c.owner JOIN enrichment_targets t ON t.job_id=c.job_id AND t.source_id=c.source_id AND t.owner=c.owner WHERE c.owner=? AND c.id=?`, owner, candidateID).Scan(&jobState, &targetState, &candidateGeneration, &targetGeneration, &expires)
+	if err != nil {
+		return empty, err
+	}
+	until, err := time.Parse(time.RFC3339Nano, expires)
+	if err != nil || !time.Now().Before(until) || jobState == "cancelled" || jobState == "failed" || targetState != "completed" || candidateGeneration != targetGeneration {
+		return empty, domain.Fail("CONFLICT", "Metadata candidate is expired or no longer active")
+	}
+	target := enrichment.ContentTarget(c.Target)
+	if err = contentCurrentTarget(ctx, m.tx, owner, target); err != nil {
+		return empty, err
+	}
+	object, err := readContentObject(ctx, m.tx, owner, expectedObjectID)
+	if err != nil {
+		return empty, err
+	}
+	if object.State != "available" || object.Metadata.Target != target || object.Metadata.Field != c.Field || object.Metadata.Language != c.Language || object.SHA256 != c.SHA256 || object.Size != c.SizeBytes {
+		return empty, domain.Fail("RESOURCE_CHANGED", "Metadata preview object changed")
+	}
+	previous := ""
+	if old, _ := contentSelectedSlot(m.result, c.Field, c.Language); old != nil {
+		previous = old.ID
+	}
+	var result mediastore.Selection
+	var publicationErr error
+	called := false
+	err = guard(func() error {
+		if called {
+			return domain.Fail("CONFLICT", "Metadata candidate was already applied")
+		}
+		called = true
+		result, publicationErr = m.selectObject(ctx, mediastore.SelectRequest{Target: target, ExpectedRevision: expected, ObjectID: expectedObjectID, Automatic: false}, object, previous)
+		return publicationErr
+	})
+	if err != nil {
+		return empty, err
+	}
+	if !called {
+		return empty, domain.Fail("CONFLICT", "Metadata selection guard did not publish")
+	}
+	return result, publicationErr
+}
