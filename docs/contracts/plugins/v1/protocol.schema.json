@@ -39,12 +39,14 @@
       "properties": {"rootId": {"$ref": "#/$defs/ID"}, "scanId": {"$ref": "#/$defs/ID"}, "generation": {"type": "integer", "minimum": 1}, "cursor": {"type": "string"}, "limit": {"type": "integer", "minimum": 1, "maximum": 200}}
     },
     "Observation": {
-      "type": "object", "required": ["externalId", "rootId", "relativePath", "sourceRef", "observedVersion", "displayName", "sizeBytes", "mime", "codec", "durationMs", "bitrateBps"],
+      "type": "object", "required": ["externalId", "rootId", "relativePath", "sourceRef", "observedVersion", "displayName", "sizeBytes", "mime", "codec", "durationMs", "bitrateBps", "bitrateMode", "providerSha512"],
       "properties": {
         "externalId": {"$ref": "#/$defs/ID"}, "rootId": {"$ref": "#/$defs/ID"}, "relativePath": {"$ref": "#/$defs/RelativePath"},
         "sourceRef": {"$ref": "#/$defs/ID"}, "observedVersion": {"$ref": "#/$defs/ID"}, "displayName": {"type": "string", "minLength": 1},
         "sizeBytes": {"type": "integer", "minimum": 0}, "mime": {"type": "string"}, "codec": {"type": ["string", "null"]},
-        "durationMs": {"type": ["integer", "null"], "minimum": 0}, "bitrateBps": {"type": ["integer", "null"], "minimum": 0}
+        "durationMs": {"type": ["integer", "null"], "minimum": 0}, "bitrateBps": {"type": ["integer", "null"], "minimum": 1},
+        "bitrateMode": {"enum": [null, "cbr", "vbr", "unknown"]},
+        "providerSha512": {"type": ["string", "null"], "pattern": "^[a-f0-9]{128}$", "description": "Provider 对完整原文件的申报摘要；Host 不将其视为已验证摘要。"}
       }
     },
     "ScanPage": {

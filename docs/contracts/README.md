@@ -8,7 +8,7 @@
 
 - ID 均为不透明字符串；客户端不得从 ID 解析路径，也不得自行拼接 streamUrl。输出不返回磁盘路径、引导凭据或插件能力 token。
 - UTC 时间必须以 `Z` 结尾；曲目位置/时长为整数毫秒、大小为字节、码率为 bit/s。HTTP 错误 `retryAfter` 是秒；插件 `retryAfterMs` 是毫秒。
-- `null` 表示未知、不适用或尚未探测；0 是已知零值。`artists: []` 表示尚无可展示歌手。`nextCursor: null` 为列表结束。
+- `null` 表示未知、不适用或尚未探测；时长、大小的 0 是已知零值，码率只能为正整数或 `null`，不能用 0 代替未知。`artists: []` 表示尚无可展示歌手。`nextCursor: null` 为列表结束。
 - 登录后修改状态校验允许的 Origin、HttpOnly Cookie 与 `X-CSRF-Token`。浏览器原生 audio 通过同源 Cookie 请求音频，无需自定义 Authorization。
 - `Idempotency-Key` 按用户、路由和请求摘要隔离。同键相同请求重放；不同请求返回 `CONFLICT`。结果保留期限覆盖服务声明的重试窗口。未知结果先同键有界重试，不能假设客户端断连撤销了操作。
 - 创建会话固定资产、表示和 attempt。seek/recover 对同一会话串行、先重放幂等结果再检查旧 attempt；晚到请求不能覆盖当前尝试。每次表示或起点改变都换 attempt 和 URL。
@@ -17,6 +17,18 @@
 - 稳定文件流支持单范围和最多 16 段的多范围。非法语法、反向范围或超出段数上限返回 400 `INVALID_ARGUMENT`；合法范围交由 HTTP 标准库计算，无法满足时返回 416。If-Range 失配可回退为完整固定表示。处理中的流不继承输入 Content-Length/ETag/Range。
 
 ## 兼容与验证
+
+### S-P5-01 当前资产证据
+
+`SourceTrack.asset` 是必需的当前原始资产对象；即使媒体信息未知也存在非空 `assetId`。顶层 `assetId`、`codec/container/durationMs/bitrateBps` 保留为当前资产投影，稳定 `sourceTrackId` 不随编码、音质或标签修改而改变。原文件版本变化会创建新资产并使旧证据失效；旧证据不出现在当前资产的 `evidence` 中。历史查询仅为宿主内部、按所有者限制的审计接口，本步没有公开历史 HTTP 端点。
+
+`bitrateOrigin` 区分 `provider` 申报、`probe` 实测、`estimate` 估算和 `manual` 人工信息；`bitrateMode` 为 `cbr/vbr/unknown`，质量档位名称不能填入模式或当作实测码率。当前本机探测不能证明 CBR/VBR 时返回 `unknown`。`providerSha512` 仅为 Provider 对原文件的申报；`fileSha512` 只有宿主完整文件验证证据为 `verified` 时才有值，两者不能互相替代，也不是解密后音频或 PCM 摘要。摘要固定为 128 个小写十六进制字符。
+
+相同资产重扫时，Provider 撤销的申报不再作为当前证据；成功探测缺值或切换来源后撤销对应旧探测/估算值。失败或未尝试的探测保留同一资产最近成功的证据，人工值和完整文件摘要不受该协调过程覆盖。ffprobe 证据记录本次工具输出的版本；原始版本不符合证据标识符字符/长度限制时，以 `sha256-<原始版本摘要>` 稳定表示，避免发行版本后缀使扫描失败。
+
+`hashStatus=unknown` 表示尚无摘要任务；`pending` 表示已登记持久任务；`unavailable/failed` 区分不可获得与执行失败。除 `verified` 外，`fileSha512/hashComputedAt` 均为 `null`，具体失败由证据的 `failureCode` 表达，不能用零码率或空摘要掩盖。证据携带资产 ID/版本、代次、算法/算法版本、配置修订、范围与 `evidenceVersion=1`。范围为半开区间；摘要证据必须覆盖完整原文件。跨字段绑定、范围上限、预期版本/代次和过期任务拒绝由宿主及存储事务校验，JSON Schema 不代替这些运行时保证。S-P5-02 的后台完整文件读取与计算服务仍是后续步骤，本步定义并持久化证据生命周期。
+
+本项目尚未上线，本次直接更新 v1 开发基线：`SourceTrack.asset` 及插件观测的证据字段是必需项，不承诺旧契约兼容。现有最简 Web 的列表检查允许额外响应字段，继续使用原有投影字段播放；此步不增加证据界面。开发基线确定后再按下面的发布兼容规则演进。
 
 ### NCM 解密增量
 

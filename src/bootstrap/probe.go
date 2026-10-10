@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/identification"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
@@ -51,6 +53,14 @@ func metadataProbe(ffprobe string, decoder *ncmdecoder.Processor) library.Probe 
 			result.Container, result.Title, result.Artists = m.Container, m.Title, m.Artists
 			result.Codec, result.DurationMs, result.BitrateBps = m.Codec, m.DurationMs, m.BitrateBps
 			result.MIME = m.MIME
+			if m.BitrateBps != nil {
+				now := time.Now().UTC()
+				configRevision := "first-audio-stream-v1"
+				if encrypted {
+					configRevision = "ncm-payload-first-audio-stream-v1"
+				}
+				result.Evidence = []identification.Evidence{{Spec: identification.Spec{Kind: "bitrate", Origin: m.BitrateOrigin, Algorithm: "ffprobe", AlgorithmVersion: identification.AlgorithmVersionID(m.ProbeVersion), ConfigRevision: configRevision, Range: identification.Range{Unit: "milliseconds", End: m.DurationMs}}, Result: identification.Result{Status: "reported", BitrateBps: m.BitrateBps, BitrateMode: "unknown", ComputedAt: &now}}}
+			}
 		} else if !encrypted {
 			return result, fmt.Errorf("UNSUPPORTED: metadata probe unavailable")
 		}

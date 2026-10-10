@@ -1,6 +1,6 @@
 # MusicFS Server 实施文档
 
-状态：2026-10-09 已落地 Go Server、Local Files 和音频 Worker 的最小本地播放基线，随后完成独立 [NCM 解密插件](ncm.md)以及[YAML配置层与读写服务](configuration.md)。本文保留完整计划；当前实现、逐步提交与实测限制以[实施记录](validation/progress.md)为准。动态插件管理、P5—P7、桌面 Client 以及未记为通过的交付场景仍待实现/验证。
+状态：2026-10-10。已落地 Go Server、Local Files 和音频 Worker 的最小本地播放基线，随后完成独立 [NCM 解密插件](ncm.md)、[YAML配置层与读写服务](configuration.md)及 S-P5-01 [资产证据模型](identification.md)。按用户后续要求继续完成 Server 剩余步骤，插件动态启停后置；P5 剩余步骤、P6—P8 尚未记录完成的部分继续按阶段推进。本文保留完整计划；当前实现、逐步提交与实测限制以[实施记录](validation/progress.md)为准，桌面 Client 不在本轮范围。
 
 ## 1. 范围与导航
 

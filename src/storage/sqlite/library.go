@@ -57,22 +57,24 @@ func (s *Store) Publish(ctx context.Context, j jobs.Job, observations []library.
 			return domain.Fail("CONFLICT", "Scan contains an invalid or repeated track identity")
 		}
 		seenExternal[o.ExternalID] = true
-		var id, asset, version string
-		err := tx.QueryRowContext(ctx, "SELECT id,asset_id,version FROM tracks WHERE owner=? AND provider=? AND external_id=?", j.Owner, j.ProviderInstanceID, o.ExternalID).Scan(&id, &asset, &version)
+		var id, asset string
+		err := tx.QueryRowContext(ctx, "SELECT id,asset_id FROM tracks WHERE owner=? AND provider=? AND external_id=?", j.Owner, j.ProviderInstanceID, o.ExternalID).Scan(&id, &asset)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
 		if id == "" {
 			id = domain.NewID()
 		}
-		if asset == "" || version != o.ObservedVersion {
-			asset = domain.NewID()
+		current, err := scanAsset(ctx, tx, j.Owner, id, asset, o)
+		if err != nil {
+			return err
 		}
+		asset = current.ID
 		artists := o.Artists
 		if artists == nil {
 			artists = []string{}
 		}
-		t := library.Track{ID: id, ProviderID: j.ProviderInstanceID, DisplayName: o.DisplayName, Title: o.Title, Artists: artists, DurationMs: o.DurationMs, Codec: o.Codec, Container: o.Container, BitrateBps: o.BitrateBps, Availability: "available", AssetID: asset}
+		t := library.Track{ID: id, ProviderID: j.ProviderInstanceID, DisplayName: o.DisplayName, Title: o.Title, Artists: artists, DurationMs: o.DurationMs, Codec: o.Codec, Container: o.Container, BitrateBps: current.BitrateBps, Availability: "available", AssetID: asset, Asset: &current}
 		raw, _ := json.Marshal(t)
 		_, err = tx.ExecContext(ctx, "INSERT INTO tracks(id,owner,provider,external_id,root_id,path,version,asset_id,mime,size,document) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET root_id=excluded.root_id,path=excluded.path,version=excluded.version,asset_id=excluded.asset_id,mime=excluded.mime,size=excluded.size,document=excluded.document", id, j.Owner, j.ProviderInstanceID, o.ExternalID, o.RootID, o.RelativePath, o.ObservedVersion, asset, o.MIME, o.SizeBytes, raw)
 		if err != nil {
@@ -83,6 +85,14 @@ func (s *Store) Publish(ctx context.Context, j jobs.Job, observations []library.
 	for id, t := range old {
 		if !seen[id] {
 			t.Availability = "missing"
+			if err := invalidateAsset(ctx, tx, j.Owner, t.AssetID); err != nil {
+				return err
+			}
+			a, err := readAsset(ctx, tx, j.Owner, t.AssetID)
+			if err != nil {
+				return err
+			}
+			t.Asset, t.BitrateBps = &a, a.BitrateBps
 			raw, _ := json.Marshal(t)
 			if _, err = tx.ExecContext(ctx, "UPDATE tracks SET document=? WHERE id=?", raw, id); err != nil {
 				return err

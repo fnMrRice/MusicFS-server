@@ -20,6 +20,8 @@ type Observation struct {
 	Codec           *string `json:"codec"`
 	DurationMs      *int64  `json:"durationMs"`
 	BitrateBps      *int64  `json:"bitrateBps"`
+	BitrateMode     *string `json:"bitrateMode"`
+	ProviderSHA512  *string `json:"providerSha512"`
 }
 
 type ScanPage struct {

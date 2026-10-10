@@ -62,8 +62,12 @@ func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID st
 				return all, domain.Fail("CONFLICT", "Scan contains an invalid or repeated track identity")
 			}
 			seenTracks[o.ExternalID] = true
-			item := Observation{Observation: o, Artists: []string{}}
+			if _, err := providerEvidence(o); err != nil {
+				return all, err
+			}
+			item := Observation{Observation: o, Artists: []string{}, ProviderObservation: &o}
 			if s.probe != nil {
+				item.ProbeStatus = "failed"
 				scope := sourceaccess.Scope{UserID: j.Owner, InstanceID: r.ID, TaskID: j.ID, AssetID: o.ObservedVersion}
 				ref, e := r.Worker.Access.Register(scope, o.RootID, o.RelativePath, o.ObservedVersion, time.Minute)
 				if e != nil {
@@ -80,6 +84,7 @@ func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID st
 					return all, domain.Fail("RESOURCE_CHANGED", "Scanned source changed while reading")
 				}
 				if e == nil {
+					item.ProbeStatus = "succeeded"
 					item.Codec = meta.Codec
 					item.Container = meta.Container
 					item.DurationMs = meta.DurationMs
@@ -87,6 +92,7 @@ func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID st
 					item.Title = meta.Title
 					item.Artists = meta.Artists
 					item.MIME = meta.MIME
+					item.Evidence = meta.Evidence
 				}
 			}
 			all = append(all, item)

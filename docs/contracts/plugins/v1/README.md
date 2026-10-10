@@ -8,6 +8,8 @@ Host 发出的 ID 为 `h-` 前缀，Worker 调用 Host 时用 `w-`。一帧只�
 
 `provider.scan` 返回带 scanId/generation/page 的观测页，末页 complete 还须结合 issues 和根身份决定是否可以发布完整扫描。持久身份由 Host 命名空间状态维护。`provider.resolve` 返回受限资源引用，rootId/relativePath 只在受信任控制面使用，浏览器看不到它们；Host 实际打开时仍需验证根、版本和授权。
 
+S-P5-01 观测增加必需但可为 `null` 的 `bitrateMode` 与 `providerSha512`：模式仅接受 `cbr/vbr/unknown`，摘要必须是 128 个小写十六进制字符。`bitrateBps` 仅接受正整数或 `null`，质量档位不能作为数值。Provider 的摘要与码率属于申报证据，不能自行声明 `verified` 或选择 `bitrateOrigin`；Host 单独记录其实际探测来源，并将证据绑定到当前资产、版本、扫描代次和算法配置。尚未上线的 v1 开发基线直接要求新字段，未知值须显式发送 `null`。
+
 `$/cancelRequest` 是无 ID 通知，其 params.id 指向在途调用。已返回后取消幂等；已取消的晚结果只可回收，不可发布。重复终态、重复活跃 ID、未知响应 ID 都视为协议错误。取消不是强制 OS 沙箱；拒绝退出的受管 Worker 由 Host 在宽限期后回收。
 
 JSON-RPC 数值码：-32700 解析错误、-32600 非法请求、-32601 未知方法、-32602 非法参数、-32603 内部协议错误；业务失败统一 -32000，并在 data 给出稳定 code/retryable/retryAfterMs。明确不支持的已识别能力返回 `UNSUPPORTED`。不能以空成功响应代替未实现功能。

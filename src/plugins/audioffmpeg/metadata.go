@@ -10,19 +10,23 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
 
 type Metadata struct {
-	Codec      *string
-	Container  *string
-	DurationMs *int64
-	BitrateBps *int64
-	MIME       string
-	Title      *string
-	Artists    []string
+	Codec         *string
+	Container     *string
+	DurationMs    *int64
+	BitrateBps    *int64
+	MIME          string
+	Title         *string
+	Artists       []string
+	BitrateOrigin string
+	ProbeVersion  string
 }
 
 func ProbeMetadata(ctx context.Context, ffprobePath string, input io.ReadSeeker, size int64) (Metadata, error) {
@@ -34,8 +38,9 @@ func ProbeMetadata(ctx context.Context, ffprobePath string, input io.ReadSeeker,
 	if !ok {
 		return result, fmt.Errorf("UNSUPPORTED: independent random input readers required")
 	}
-	if _, err := executableHash(ffprobePath); err != nil {
-		return result, err
+	toolInfo, err := os.Stat(ffprobePath)
+	if !filepath.IsAbs(ffprobePath) || err != nil || !toolInfo.Mode().IsRegular() {
+		return result, fmt.Errorf("UNSUPPORTED: invalid metadata probe executable")
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -57,11 +62,14 @@ func ProbeMetadata(ctx context.Context, ffprobePath string, input io.ReadSeeker,
 	server := &http.Server{Handler: mux, ReadHeaderTimeout: 2 * time.Second, IdleTimeout: 2 * time.Second, MaxHeaderBytes: 8192, BaseContext: func(net.Listener) context.Context { return ctx }}
 	go server.Serve(listener)
 	defer server.Close()
-	out, err := toolOutput(ctx, ffprobePath, "-v", "error", "-protocol_whitelist", "http,tcp", "-format_whitelist", inputFormats, "-select_streams", "a:0", "-show_entries", "stream=codec_name,bit_rate,duration:format=format_name,duration,bit_rate:format_tags=title,artist", "-of", "json", "http://"+listener.Addr().String()+path)
+	out, err := toolOutput(ctx, ffprobePath, "-v", "error", "-protocol_whitelist", "http,tcp", "-format_whitelist", inputFormats, "-select_streams", "a:0", "-show_entries", "program_version=version:stream=codec_name,bit_rate,duration:format=format_name,duration,bit_rate:format_tags=title,artist", "-show_program_version", "-of", "json", "http://"+listener.Addr().String()+path)
 	if err != nil {
 		return result, fmt.Errorf("UNSUPPORTED: audio metadata unavailable: %w", err)
 	}
 	var wire struct {
+		ProgramVersion struct {
+			Version string `json:"version"`
+		} `json:"program_version"`
 		Streams []struct {
 			Codec    string `json:"codec_name"`
 			Duration string `json:"duration"`
@@ -74,10 +82,11 @@ func ProbeMetadata(ctx context.Context, ffprobePath string, input io.ReadSeeker,
 			Tags     map[string]string `json:"tags"`
 		} `json:"format"`
 	}
-	if json.Unmarshal([]byte(out), &wire) != nil || len(wire.Streams) == 0 || wire.Streams[0].Codec == "" {
+	if json.Unmarshal([]byte(out), &wire) != nil || len(wire.Streams) == 0 || wire.Streams[0].Codec == "" || wire.ProgramVersion.Version == "" {
 		return result, fmt.Errorf("UNSUPPORTED: no audio stream found")
 	}
 	stream := wire.Streams[0]
+	result.ProbeVersion = wire.ProgramVersion.Version
 	result.Codec = &stream.Codec
 	result.Container = &wire.Format.Name
 	duration := stream.Duration
@@ -89,8 +98,10 @@ func ProbeMetadata(ctx context.Context, ffprobePath string, input io.ReadSeeker,
 		result.DurationMs = &ms
 	}
 	bitrate := stream.Bitrate
+	result.BitrateOrigin = "probe"
 	if bitrate == "" {
 		bitrate = wire.Format.Bitrate
+		result.BitrateOrigin = "estimate"
 	}
 	if value, err := strconv.ParseInt(bitrate, 10, 64); err == nil && value > 0 {
 		result.BitrateBps = &value

@@ -8,6 +8,63 @@
     "NullableCount": {"type": ["integer", "null"], "minimum": 0},
     "Timestamp": {"type": "string", "format": "date-time", "pattern": "Z$"},
     "NullableTimestamp": {"anyOf": [{"$ref": "#/$defs/Timestamp"}, {"type": "null"}]},
+    "EvidenceIdentifier": {"type": "string", "pattern": "^[A-Za-z0-9._:-]{1,128}$"},
+    "NullableBitrate": {"type": ["integer", "null"], "minimum": 1, "description": "bit/s；未知或不可获得为 null，0 不是有效码率。"},
+    "BitrateMode": {"enum": ["cbr", "vbr", "unknown"]},
+    "EvidenceOrigin": {"enum": ["provider", "probe", "estimate", "manual"]},
+    "SHA512": {"type": "string", "pattern": "^[a-f0-9]{128}$"},
+    "NullableSHA512": {"anyOf": [{"$ref": "#/$defs/SHA512"}, {"type": "null"}]},
+    "EvidenceRange": {
+      "type": "object", "required": ["unit", "start", "end"],
+      "description": "半开区间 [start,end)；end 为 null 表示未知。宿主验证 end 不小于 start，字节范围不超出固定资产大小；摘要证据必须覆盖原始完整文件。",
+      "properties": {"unit": {"enum": ["bytes", "milliseconds"]}, "start": {"type": "integer", "minimum": 0}, "end": {"$ref": "#/$defs/NullableCount"}}
+    },
+    "AssetEvidence": {
+      "type": "object",
+      "required": ["evidenceId", "assetId", "assetVersion", "evidenceVersion", "generation", "kind", "origin", "algorithm", "algorithmVersion", "configRevision", "range", "status", "bitrateBps", "bitrateMode", "sha512", "computedAt", "failureCode", "invalidatedAt"],
+      "properties": {
+        "evidenceId": {"$ref": "#/$defs/ID"}, "assetId": {"$ref": "#/$defs/ID"}, "assetVersion": {"$ref": "#/$defs/ID"},
+        "evidenceVersion": {"const": 1}, "generation": {"type": "integer", "minimum": 1},
+        "kind": {"enum": ["bitrate", "providerSha512", "fileSha512"]}, "origin": {"$ref": "#/$defs/EvidenceOrigin"},
+        "algorithm": {"$ref": "#/$defs/EvidenceIdentifier"}, "algorithmVersion": {"$ref": "#/$defs/EvidenceIdentifier"}, "configRevision": {"$ref": "#/$defs/EvidenceIdentifier"},
+        "range": {"$ref": "#/$defs/EvidenceRange"},
+        "status": {"enum": ["pending", "reported", "verified", "unavailable", "failed", "invalidated"]},
+        "bitrateBps": {"$ref": "#/$defs/NullableBitrate"}, "bitrateMode": {"$ref": "#/$defs/BitrateMode"}, "sha512": {"$ref": "#/$defs/NullableSHA512"},
+        "computedAt": {"$ref": "#/$defs/NullableTimestamp"}, "failureCode": {"anyOf": [{"$ref": "#/$defs/EvidenceIdentifier"}, {"type": "null"}]},
+        "invalidatedAt": {"$ref": "#/$defs/NullableTimestamp"}
+      },
+      "allOf": [
+        {"if": {"properties": {"kind": {"const": "providerSha512"}}}, "then": {"properties": {"origin": {"const": "provider"}, "algorithm": {"const": "sha512"}}}},
+        {"if": {"properties": {"kind": {"const": "fileSha512"}}}, "then": {"properties": {"origin": {"const": "probe"}, "algorithm": {"const": "sha512"}}}},
+        {"if": {"properties": {"kind": {"enum": ["providerSha512", "fileSha512"]}}}, "then": {"properties": {"range": {"properties": {"unit": {"const": "bytes"}, "start": {"const": 0}, "end": {"type": "integer"}}}, "bitrateBps": {"type": "null"}, "bitrateMode": {"const": "unknown"}}}},
+        {"if": {"properties": {"kind": {"const": "bitrate"}}}, "then": {"properties": {"sha512": {"type": "null"}}}},
+        {"if": {"properties": {"status": {"const": "pending"}}}, "then": {"properties": {"bitrateBps": {"type": "null"}, "bitrateMode": {"const": "unknown"}, "sha512": {"type": "null"}, "computedAt": {"type": "null"}, "failureCode": {"type": "null"}}}},
+        {"if": {"properties": {"status": {"enum": ["failed", "unavailable"]}}}, "then": {"properties": {"bitrateBps": {"type": "null"}, "bitrateMode": {"const": "unknown"}, "sha512": {"type": "null"}, "computedAt": {"type": "null"}, "failureCode": {"$ref": "#/$defs/EvidenceIdentifier"}}}},
+        {"if": {"properties": {"status": {"const": "reported"}}}, "then": {"properties": {"kind": {"enum": ["bitrate", "providerSha512"]}, "computedAt": {"$ref": "#/$defs/Timestamp"}, "failureCode": {"type": "null"}}, "allOf": [
+          {"if": {"properties": {"kind": {"const": "bitrate"}}}, "then": {"properties": {"bitrateBps": {"type": "integer", "minimum": 1}}}},
+          {"if": {"properties": {"kind": {"const": "providerSha512"}}}, "then": {"properties": {"sha512": {"$ref": "#/$defs/SHA512"}}}}
+        ]}},
+        {"if": {"properties": {"status": {"const": "verified"}}}, "then": {"properties": {"kind": {"const": "fileSha512"}, "sha512": {"$ref": "#/$defs/SHA512"}, "computedAt": {"$ref": "#/$defs/Timestamp"}, "failureCode": {"type": "null"}}}},
+        {"if": {"properties": {"status": {"const": "invalidated"}}}, "then": {"properties": {"invalidatedAt": {"$ref": "#/$defs/Timestamp"}}}, "else": {"properties": {"invalidatedAt": {"type": "null"}}}}
+      ]
+    },
+    "SourceAsset": {
+      "type": "object",
+      "required": ["assetId", "sourceTrackId", "version", "evidenceVersion", "current", "codec", "container", "durationMs", "fileSizeBytes", "bitrateBps", "bitrateMode", "bitrateOrigin", "providerSha512", "fileSha512", "hashStatus", "hashComputedAt", "evidence"],
+      "properties": {
+        "assetId": {"$ref": "#/$defs/ID"}, "sourceTrackId": {"$ref": "#/$defs/ID"}, "version": {"$ref": "#/$defs/ID"}, "evidenceVersion": {"const": 1}, "current": {"type": "boolean"},
+        "codec": {"$ref": "#/$defs/NullableString"}, "container": {"$ref": "#/$defs/NullableString"}, "durationMs": {"$ref": "#/$defs/NullableCount"}, "fileSizeBytes": {"$ref": "#/$defs/NullableCount"},
+        "bitrateBps": {"$ref": "#/$defs/NullableBitrate"}, "bitrateMode": {"$ref": "#/$defs/BitrateMode"}, "bitrateOrigin": {"anyOf": [{"$ref": "#/$defs/EvidenceOrigin"}, {"type": "null"}]},
+        "providerSha512": {"$ref": "#/$defs/NullableSHA512"}, "fileSha512": {"$ref": "#/$defs/NullableSHA512"},
+        "hashStatus": {"enum": ["unknown", "pending", "verified", "unavailable", "failed", "invalidated"]}, "hashComputedAt": {"$ref": "#/$defs/NullableTimestamp"},
+        "evidence": {"type": "array", "items": {"allOf": [{"$ref": "#/$defs/AssetEvidence"}, {"properties": {"status": {"not": {"const": "invalidated"}}}}]}}
+      },
+      "allOf": [
+        {"if": {"properties": {"hashStatus": {"const": "verified"}}}, "then": {"properties": {"fileSha512": {"$ref": "#/$defs/SHA512"}, "hashComputedAt": {"$ref": "#/$defs/Timestamp"}}}, "else": {"properties": {"fileSha512": {"type": "null"}, "hashComputedAt": {"type": "null"}}}},
+        {"if": {"properties": {"bitrateBps": {"type": "null"}}}, "then": {"properties": {"bitrateMode": {"const": "unknown"}, "bitrateOrigin": {"type": "null"}}}, "else": {"properties": {"bitrateOrigin": {"$ref": "#/$defs/EvidenceOrigin"}}}},
+        {"if": {"properties": {"current": {"const": false}}}, "then": {"properties": {"hashStatus": {"const": "invalidated"}, "evidence": {"maxItems": 0}}}}
+      ]
+    },
     "ErrorDetail": {
       "type": "object", "required": ["code", "message", "requestId", "retryAfter"],
       "properties": {
@@ -54,15 +111,15 @@
     },
     "SourceTrack": {
       "type": "object",
-      "required": ["sourceTrackId", "providerInstanceId", "displayName", "title", "artists", "durationMs", "codec", "container", "bitrateBps", "availability", "assetId"],
+      "required": ["sourceTrackId", "providerInstanceId", "displayName", "title", "artists", "durationMs", "codec", "container", "bitrateBps", "availability", "assetId", "asset"],
       "properties": {
         "sourceTrackId": {"$ref": "#/$defs/ID"}, "providerInstanceId": {"$ref": "#/$defs/ID"},
         "displayName": {"type": "string", "minLength": 1}, "title": {"$ref": "#/$defs/NullableString"},
         "artists": {"type": "array", "items": {"type": "string"}},
         "durationMs": {"$ref": "#/$defs/NullableCount"}, "codec": {"$ref": "#/$defs/NullableString"},
-        "container": {"$ref": "#/$defs/NullableString"}, "bitrateBps": {"$ref": "#/$defs/NullableCount"},
+        "container": {"$ref": "#/$defs/NullableString"}, "bitrateBps": {"$ref": "#/$defs/NullableBitrate"},
         "availability": {"enum": ["available", "missing", "offline", "unknown"]},
-        "assetId": {"anyOf": [{"$ref": "#/$defs/ID"}, {"type": "null"}]}
+        "assetId": {"$ref": "#/$defs/ID"}, "asset": {"$ref": "#/$defs/SourceAsset"}
       }
     },
     "SourceTracks": {
