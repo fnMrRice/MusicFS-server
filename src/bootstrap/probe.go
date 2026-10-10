@@ -51,6 +51,7 @@ func metadataProbe(ffprobe string, decoder *ncmdecoder.Processor) library.Probe 
 				return result, err
 			}
 			result.Container, result.Title, result.Artists = m.Container, m.Title, m.Artists
+			result.Album, result.Genre, result.Year, result.SampleRateHz = m.Album, m.Genre, m.Year, m.SampleRateHz
 			result.Codec, result.DurationMs, result.BitrateBps = m.Codec, m.DurationMs, m.BitrateBps
 			result.MIME = m.MIME
 			if m.BitrateBps != nil {
@@ -78,6 +79,10 @@ func metadataProbe(ffprobe string, decoder *ncmdecoder.Processor) library.Probe 
 			}
 			if len(result.Artists) == 0 {
 				result.Artists = metadata.Artists
+			}
+			if result.Album == nil && metadata.Album != "" {
+				album := metadata.Album
+				result.Album = &album
 			}
 			// Duration and bitrate must come from the real payload probe, not the envelope claims.
 		}

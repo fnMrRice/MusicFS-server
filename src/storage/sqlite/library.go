@@ -82,6 +82,7 @@ func (s *Store) Publish(ctx context.Context, supplied jobs.Job, publication libr
 			artists = []string{}
 		}
 		t := library.Track{ID: id, ProviderID: j.ProviderInstanceID, DisplayName: o.DisplayName, Title: o.Title, Artists: artists, DurationMs: o.DurationMs, Codec: o.Codec, Container: o.Container, BitrateBps: current.BitrateBps, Availability: "available", AssetID: asset, Asset: &current}
+		t.Album, t.Genre, t.Year, t.SampleRateHz = o.Album, o.Genre, o.Year, o.SampleRateHz
 		raw, _ := json.Marshal(t)
 		_, err = tx.ExecContext(ctx, "INSERT INTO tracks(id,owner,provider,external_id,root_id,path,version,asset_id,mime,size,document) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET root_id=excluded.root_id,path=excluded.path,version=excluded.version,asset_id=excluded.asset_id,mime=excluded.mime,size=excluded.size,document=excluded.document", id, j.Owner, j.ProviderInstanceID, o.ExternalID, o.RootID, o.RelativePath, o.ObservedVersion, asset, o.MIME, o.SizeBytes, raw)
 		if err != nil {

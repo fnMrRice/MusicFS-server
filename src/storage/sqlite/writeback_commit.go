@@ -105,6 +105,9 @@ func (s *Store) CommitWriteback(ctx context.Context, owner, id string, result wr
 			track.DisplayName = o.DisplayName
 		}
 		track.Codec, track.Container, track.DurationMs = o.Codec, o.Container, o.DurationMs
+		if o.ProbeStatus == "succeeded" {
+			track.Album, track.Genre, track.Year, track.SampleRateHz = o.Album, o.Genre, o.Year, o.SampleRateHz
+		}
 	}
 	now := time.Now().UTC()
 	spec := identification.Spec{Kind: "fileSha512", Origin: "probe", Algorithm: "sha512", AlgorithmVersion: "sha512-v1", ConfigRevision: "writeback-full-file-v1", Range: identification.Range{Unit: "bytes", End: &result.New.Size}}

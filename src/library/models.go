@@ -14,6 +14,10 @@ type Track struct {
 	DisplayName  string                `json:"displayName"`
 	Title        *string               `json:"title"`
 	Artists      []string              `json:"artists"`
+	Album        *string               `json:"album"`
+	Genre        *string               `json:"genre"`
+	Year         *int64                `json:"year"`
+	SampleRateHz *int64                `json:"sampleRateHz"`
 	DurationMs   *int64                `json:"durationMs"`
 	Codec        *string               `json:"codec"`
 	Container    *string               `json:"container"`
@@ -61,6 +65,10 @@ type Observation struct {
 	Container           *string
 	Title               *string
 	Artists             []string
+	Album               *string
+	Genre               *string
+	Year                *int64
+	SampleRateHz        *int64
 	Evidence            []identification.Evidence
 	ProviderObservation *pluginproto.Observation
 	ProbeStatus         string

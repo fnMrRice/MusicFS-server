@@ -96,6 +96,8 @@ func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID st
 					item.BitrateBps = meta.BitrateBps
 					item.Title = meta.Title
 					item.Artists = meta.Artists
+					item.Album, item.Genre = meta.Album, meta.Genre
+					item.Year, item.SampleRateHz = meta.Year, meta.SampleRateHz
 					item.MIME = meta.MIME
 					item.Evidence = meta.Evidence
 				}
