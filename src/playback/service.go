@@ -14,6 +14,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
+	"github.com/fnMrRice/MusicFS-server/src/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/timeline"
 )
 
@@ -48,6 +49,7 @@ type session struct {
 	capabilities            Capabilities
 	recovery                timeline.Budget
 	sourceLease             *library.ReadLease
+	cachePin                *processedcache.Pin
 }
 type Service struct {
 	mu        sync.Mutex
@@ -57,7 +59,9 @@ type Service struct {
 	config    Config
 	sessions  map[string]*session
 	garbage   map[string]int64
-	used      int64
+	readers   map[string]int
+	budget    *processedcache.Budget
+	cache     *processedcache.Manager
 	ctx       context.Context
 	cancel    context.CancelFunc
 	done      chan struct{}
@@ -87,6 +91,19 @@ func New(ctx context.Context, repo Repository, lib *library.Service, processor *
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	s := &Service{repo: repo, library: lib, processor: processor, config: c, sessions: map[string]*session{}, garbage: map[string]int64{}, ctx: ctx, cancel: cancel, done: make(chan struct{}), creation: make(chan struct{}, 1), preparing: map[string]context.CancelFunc{}}
+	s.readers = map[string]int{}
+	s.budget, err = processedcache.NewBudget(c.MaxCacheBytes)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+	if cacheRepo, ok := repo.(processedcache.Repository); ok {
+		s.cache, err = processedcache.New(ctx, cacheRepo, s.budget, processedcache.Config{Root: filepath.Join(dir, "processed")})
+		if err != nil {
+			cancel()
+			return nil, err
+		}
+	}
 	go s.reap()
 	return s, nil
 }
@@ -112,9 +129,12 @@ func (s *Service) reap() {
 }
 func (s *Service) collect() {
 	for p, n := range s.garbage {
+		if s.readers[p] != 0 {
+			continue
+		}
 		if err := os.Remove(p); err == nil || os.IsNotExist(err) {
 			delete(s.garbage, p)
-			s.used -= n
+			s.budget.Release(n)
 		}
 	}
 }
@@ -122,11 +142,14 @@ func (s *Service) Close() {
 	s.cancel()
 	<-s.done
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	for id, a := range s.sessions {
 		s.stopLocked(context.Background(), id, a)
 	}
 	s.collect()
+	s.mu.Unlock()
+	if s.cache != nil {
+		s.cache.Close()
+	}
 }
 func (s *Service) Revoke(owner string) {
 	s.mu.Lock()
@@ -159,6 +182,8 @@ func (s *Service) Stop(ctx context.Context, who auth.Session, id string) error {
 }
 func (s *Service) stopLocked(ctx context.Context, id string, a *session) {
 	a.cancel()
+	a.cachePin.Close()
+	a.cachePin = nil
 	if a.sourceLease != nil {
 		a.sourceLease.Close()
 	}

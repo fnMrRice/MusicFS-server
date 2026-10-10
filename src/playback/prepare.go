@@ -22,6 +22,7 @@ type preparedInput struct {
 	track                library.Track
 	path, etag           string
 	size                 int64
+	reserved             int64
 	lease                *library.ReadLease
 	processed, decrypted bool
 }
@@ -31,6 +32,7 @@ func (p *preparedInput) discard() {
 		p.lease.Close()
 		p.lease = nil
 	}
+	retained := int64(0)
 	if p.path != "" {
 		if err := os.Remove(p.path); err != nil && !os.IsNotExist(err) {
 			// A failed unlink is still occupied cache space, even though this
@@ -38,14 +40,16 @@ func (p *preparedInput) discard() {
 			p.service.mu.Lock()
 			if _, exists := p.service.garbage[p.path]; !exists {
 				p.service.garbage[p.path] = p.size
-				p.service.used += p.size
 			}
+			retained = p.size
 			p.service.mu.Unlock()
 		}
 		p.path = ""
 	}
+	p.service.budget.Release(p.reserved - retained)
+	p.reserved = 0
 }
-func (s *Service) prepare(ctx context.Context, owner, task string, r CreateRequest, available int64) (*preparedInput, error) {
+func (s *Service) prepare(ctx context.Context, owner, task string, r CreateRequest) (*preparedInput, error) {
 	t, err := s.library.Track(ctx, owner, r.SourceTrackID)
 	if err != nil {
 		return nil, err
@@ -78,9 +82,13 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 		return nil, err
 	}
 	defer closeInput()
-	if size <= 0 || size > available {
+	if s.cache != nil {
+		s.cache.MakeRoom(ctx, size)
+	}
+	if size <= 0 || !s.budget.TryAcquire(size) {
 		return nil, domain.Fail("RATE_LIMITED", "Representation exceeds the cache budget")
 	}
+	p.reserved = size
 	processed := r.Preferences.ForceProcessing || r.Preferences.GainDB != 0 || !originalCandidate(t) || !supports(r.Capabilities, t.MIME)
 	if processed && (s.processor == nil || !supports(r.Capabilities, "audio/mpeg")) {
 		return nil, domain.Fail("UNSUPPORTED", "No compatible audio processing profile is available")
@@ -93,7 +101,7 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 	p.path = path
 	defer f.Close()
 	hash := sha256.New()
-	n, err := io.Copy(io.MultiWriter(f, hash), io.LimitReader(preparationReader{ctx: ctx, input: input}, size+1))
+	n, err := io.Copy(io.MultiWriter(f, hash), io.LimitReader(preparationReader{ctx: ctx, input: input}, size))
 	p.size = n
 	if err != nil || n != size {
 		if ctx.Err() != nil {

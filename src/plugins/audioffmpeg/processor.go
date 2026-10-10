@@ -25,6 +25,7 @@ type Processor struct {
 	Capabilities  Capabilities
 	slots         chan struct{}
 	normalizeSlot chan struct{}
+	identity      ProcessingIdentity
 }
 
 func NewProcessor(ctx context.Context, cfg Config) (*Processor, error) {
@@ -45,7 +46,7 @@ func NewProcessor(ctx context.Context, cfg Config) (*Processor, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Processor{config: cfg, Capabilities: capabilities, slots: make(chan struct{}, cfg.MaxConcurrent), normalizeSlot: make(chan struct{}, 1)}, nil
+	return &Processor{config: cfg, Capabilities: capabilities, slots: make(chan struct{}, cfg.MaxConcurrent), normalizeSlot: make(chan struct{}, 1), identity: ProcessingIdentity{WorkerSHA256: hash, FFmpegSHA256: capabilities.FFmpegSHA256, PluginVersion: audioPluginVersion, PipelineRevision: "gain-v1"}}, nil
 }
 
 type bootstrap struct {
@@ -185,6 +186,9 @@ func (p *Processor) run(ctx context.Context, taskID string, readerAt io.ReaderAt
 	}
 	if ready.Nonce != token || ready.InstanceID != "audio-"+taskID {
 		return fmt.Errorf("PROTOCOL_MISMATCH: audio worker identity mismatch")
+	}
+	if ready.Manifest.PluginID != "musicfs.audioffmpeg" || ready.Manifest.PluginVersion != audioPluginVersion {
+		return fmt.Errorf("PROTOCOL_MISMATCH: audio worker implementation differs")
 	}
 	if err = operation(peer, base+"/input", base+"/output"); err != nil {
 		return err

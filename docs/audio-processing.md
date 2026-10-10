@@ -41,7 +41,7 @@ PlaybackAttempt 固定 inputAssetId、来源、插件/参数版本、profile、�
 
 ## 4. Range 与时间 seek
 
-原字节代理流式转发，支持背压、取消、单 Range、准确 Content-Type 和真实 206/416，不在内存缓冲全文件；上游无 Range 不伪造 206。当前本地基线先建立有磁盘配额的私有固定副本，以保持后续请求的字节一致性；处理输出边生成边发送，不持久缓存。转码输出不能继承原文件长度、ETag 或偏移。
+原字节代理流式转发，支持背压、取消、单 Range、准确 Content-Type 和真实 206/416，不在内存缓冲全文件；上游无 Range 不伪造 206。当前本地基线先建立有磁盘配额的私有固定副本，以保持后续请求的字节一致性；处理输出边生成边发送，完整成功后可发布[有界处理缓存](processed-cache.md)。命中仍复核授权及当前资产，保持 `processed/timeRestart`，不提供原流 Range，也不继承原文件长度、ETag 或偏移。
 
 播放描述遵守公共 seekMode、有效范围和 positionOriginMs 契约。只有稳定、可验证且可随机访问的输出字节表示提供 byteRange。实时处理通常 timeRestart：按曲目时间定位输入、预滚解码、重建/reset DSP 与编码器，封装新表示；终端加载新的 attempt URL 并映射回曲目时间。DSP 状态不能重建时不声明对应区间可定位。
 

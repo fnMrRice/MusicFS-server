@@ -61,7 +61,6 @@ func (s *Service) RecoverSource(ctx context.Context, who auth.Session, id string
 	ctx, cancel := context.WithDeadline(ctx, a.recovery.Deadline())
 	unlink := context.AfterFunc(a.ctx, cancel)
 	s.preparing[who.ID] = cancel
-	available := s.config.MaxCacheBytes - s.used
 	from, capabilities, gain := target(a.track), a.capabilities, a.gain
 	s.mu.Unlock()
 	defer func() { unlink(); cancel(); s.mu.Lock(); delete(s.preparing, who.ID); s.mu.Unlock() }()
@@ -112,7 +111,7 @@ func (s *Service) RecoverSource(ctx context.Context, who auth.Session, id string
 		if err != nil {
 			return empty, err
 		}
-		prepared, err = s.prepare(ctx, who.User.ID, domain.NewID(), CreateRequest{SourceTrackID: r.TargetSourceTrackID, Capabilities: capabilities, Preferences: Preferences{ForceProcessing: true, GainDB: gain}}, available)
+		prepared, err = s.prepare(ctx, who.User.ID, domain.NewID(), CreateRequest{SourceTrackID: r.TargetSourceTrackID, Capabilities: capabilities, Preferences: Preferences{ForceProcessing: true, GainDB: gain}})
 		if err != nil {
 			return empty, err
 		}
@@ -202,6 +201,8 @@ func (s *Service) beginRecovery(ctx context.Context, who auth.Session, id string
 }
 func (s *Service) installRecovery(a *session, p *preparedInput, d Description) {
 	a.cancelAttempt()
+	a.cachePin.Close()
+	a.cachePin = nil
 	a.attemptCtx, a.cancelAttempt = context.WithCancel(a.ctx)
 	if a.sourceLease != nil {
 		a.sourceLease.Close()
@@ -210,7 +211,6 @@ func (s *Service) installRecovery(a *session, p *preparedInput, d Description) {
 	a.path, a.etag, a.size, a.track, a.sourceLease = p.path, p.etag, p.size, p.track, p.lease
 	a.description = d
 	a.lastAccess = time.Now()
-	s.used += p.size
 	s.collect()
 }
 func setAttempt(d *Description, position int64) {

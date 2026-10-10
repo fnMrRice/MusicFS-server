@@ -44,7 +44,7 @@ func (w *audioWorker) handle(ctx context.Context, method string, raw json.RawMes
 		if b.Capabilities.Normalization {
 			capabilities = append(capabilities, "audio.normalize")
 		}
-		return pluginproto.Ready{InstanceID: b.InstanceID, Nonce: b.Nonce, Manifest: pluginproto.Manifest{PluginID: "musicfs.audioffmpeg", PluginVersion: "0.1.0", ProtocolVersion: pluginproto.ProtocolVersion, Roles: []string{"audio"}, Capabilities: capabilities, Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}}, nil
+		return pluginproto.Ready{InstanceID: b.InstanceID, Nonce: b.Nonce, Manifest: pluginproto.Manifest{PluginID: "musicfs.audioffmpeg", PluginVersion: audioPluginVersion, ProtocolVersion: pluginproto.ProtocolVersion, Roles: []string{"audio"}, Capabilities: capabilities, Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}}, nil
 	}
 	w.mu.Lock()
 	ready := w.ready

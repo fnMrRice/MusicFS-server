@@ -92,6 +92,8 @@ func (s *Service) Control(ctx context.Context, who auth.Session, id, operation s
 		return Description{}, err
 	}
 	a.cancelAttempt()
+	a.cachePin.Close()
+	a.cachePin = nil
 	a.attemptCtx, a.cancelAttempt = context.WithCancel(a.ctx)
 	a.description = d
 	a.lastAccess = time.Now()

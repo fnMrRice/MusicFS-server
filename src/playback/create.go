@@ -98,7 +98,6 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 		s.mu.Unlock()
 		return Description{}, domain.Fail("RATE_LIMITED", "Active playback limit reached")
 	}
-	availableBytes := s.config.MaxCacheBytes - s.used
 	s.preparing[who.ID] = cancelPreparation
 	s.mu.Unlock()
 	defer func() {
@@ -107,7 +106,7 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 		s.mu.Unlock()
 	}()
 	id := domain.NewID()
-	prepared, err := s.prepare(ctx, who.User.ID, id, r, availableBytes)
+	prepared, err := s.prepare(ctx, who.User.ID, id, r)
 	if err != nil {
 		return Description{}, err
 	}
@@ -147,10 +146,11 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 	}
 	s.sessions[id] = a
 	transferred = true
-	s.used += prepared.size
 	return a.description, nil
 }
 func (s *Service) nextAttempt(a *session, position int64) {
+	a.cachePin.Close()
+	a.cachePin = nil
 	if a.cancelAttempt != nil {
 		a.cancelAttempt()
 	}
