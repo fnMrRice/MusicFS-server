@@ -17,6 +17,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/identification/hashworker"
 	"github.com/fnMrRice/MusicFS-server/src/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/matching"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
 	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 )
@@ -73,6 +74,11 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	handler.RegisterLibrary(lib)
 	handler.RegisterHashing(hashes)
 	handler.RegisterFingerprinting(fingerprints)
+	var fingerprintDetails matching.FingerprintDetails
+	if fingerprints != nil {
+		fingerprintDetails = fingerprints
+	}
+	handler.RegisterMatching(matching.New(store, fingerprintDetails))
 	player, err := playback.New(ctx, store, lib, processor, playback.Config{CacheRoot: c.CacheRoot, MaxSessions: c.MaxSessions, MaxCacheBytes: c.MaxCacheBytes, NCMDecoder: decoder})
 	if err != nil {
 		cleanup()

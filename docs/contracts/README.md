@@ -58,6 +58,14 @@ Provider 响应增加 `configuration` 与 `roots`。Local Files 的配置包含�
 
 质量 `short` 表示实际覆盖不足十秒，`lowInformation` 表示信息量不足，`available` 仅表示通过信息量门槛；它们都不是歌曲匹配结论。实际 EOF 不补零，不把请求时长冒充读到的样本数。原文件 SHA-512、NCM 外层资产与解密后局部音频指纹保持不同含义；本步没有外部上传、平台识别或 Web 指纹管理界面。HTTP、YAML、真实工具及播放回归范围见[指纹接口验收](../validation/fingerprinting-http.md)。
 
+### S-P5-04 候选与人工关联
+
+`POST /source-tracks/{id}/match-candidates/refresh` 接受可选 `sourceTrackIds` 比较池；省略或空数组时选最多256条本人来源，显式池不包含锚点或重复项。刷新自然幂等，不要求幂等键，不推进人工修订；存储在发布前复核资产、证据与人工修订。`GET /source-tracks/{id}/match-candidates` 只返回当前 `pending` 结果，默认20条、最大100条。所有候选 `requiresConfirmation=true`；排序分数与指纹 BER 均不是概率，不产生 TimelineEvidence。
+
+`GET /matching/revision` 提供本人全局修订。四项人工 POST `/matching/links`、`/matching/unlinks`、`/matching/splits`、`/matching/exclusions` 要求必需的 `expectedRevision`、幂等键和既有会话/Origin/CSRF；返回新修订、操作 ID、可空录音 ID 和变更审计。幂等窗口24小时，同键同规范化请求重放原操作，过期或冲突明确报错。关联只移动选中来源，拆分要求非空真子集；排除不能暗中解除已有同录音关系，关联不能越过有效排除。
+
+`GET /recordings/{id}` 与 `GET /source-tracks/{id}/recording-link` 查询本人关系；其他所有者与不存在都返回 `NOT_FOUND`。`GET /matching/changes` 按本人 `sequence` 提供默认50、最大200条审计，保留原目标/新目标或排除两端，供后续可逆迁移使用。本步不删除来源、不扩张权限、不迁移歌单隐藏意图，不增加 Web 匹配管理页面。完整操作说明见[人工关联](../matching.md)，测试边界见[接口验收](../validation/matching-http.md)。
+
 ### NCM 解密增量
 
 本次沿用既有 `/api/v1` 端点、请求和鉴权规则。播放描述的 `effectiveProcessing` 新增 `{ "type": "ncmDecrypt", "gainDb": 0, "version": "1", "execution": "server" }`。Schema 的 type 原已允许扩展字符串，无需收紧枚举或增加必填字段；客户端可以忽略未知处理项。该项表示外层容器解密，`gainDb: 0` 不代表执行了增益 DSP。后续进入转码管线时再报告独立 `gain` 项；用户未请求衰减时其值也可为 0。

@@ -133,13 +133,13 @@ func TestOpenAPIReferencesAndOperations(t *testing.T) {
 				if !strings.Contains(string(encoded), "/CSRF") {
 					t.Errorf("missing CSRF contract: %s %s", method, path)
 				}
-				if method == "post" && path != "/hash-jobs/{id}/cancel" && path != "/fingerprint-jobs/{id}/cancel" && !strings.Contains(string(encoded), "/Idempotency") {
+				if method == "post" && path != "/hash-jobs/{id}/cancel" && path != "/fingerprint-jobs/{id}/cancel" && path != "/source-tracks/{id}/match-candidates/refresh" && !strings.Contains(string(encoded), "/Idempotency") {
 					t.Errorf("missing idempotency contract: %s %s", method, path)
 				}
 			}
 		}
 	}
-	for _, id := range []string{"healthReady", "login", "currentSession", "logout", "listProviders", "createScan", "getScan", "listSourceTracks", "createPlayback", "stopPlayback", "seekPlayback", "recoverPlayback", "getStream", "headStream", "createHash", "getHash", "cancelHash", "createFingerprint", "getFingerprint", "cancelFingerprint", "listFingerprints", "getFingerprintDetail"} {
+	for _, id := range []string{"healthReady", "login", "currentSession", "logout", "listProviders", "createScan", "getScan", "listSourceTracks", "createPlayback", "stopPlayback", "seekPlayback", "recoverPlayback", "getStream", "headStream", "createHash", "getHash", "cancelHash", "createFingerprint", "getFingerprint", "cancelFingerprint", "listFingerprints", "getFingerprintDetail", "getMatchingRevision", "refreshMatchCandidates", "listMatchCandidates", "getRecordingLink", "getRecording", "manualLink", "manualUnlink", "manualSplit", "setMatchExclusion", "listMatchingChanges"} {
 		if !ids[id] {
 			t.Errorf("missing operation %s", id)
 		}

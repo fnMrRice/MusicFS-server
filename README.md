@@ -21,6 +21,7 @@ MusicFS 的 Go 后端服务。当前已落地 Local Files 扫描、SQLite 音乐
 - [Server 内部架构](docs/architecture.md)：模块、数据模型、Provider/Scraper、存储与任务管理。
 - [Server 音频处理](docs/audio-processing.md)：处理链、播放交付、定位、缓存与资源约束。
 - [本地音频指纹](docs/fingerprinting.md)：固定工具、后台任务、独立明细文件、恢复和管理接口；默认禁用，不上传外部服务。
+- [候选与人工关联](docs/matching.md)：有界比较、排除优先、修订冲突、解除/拆分和可逆审计；保留全部来源。
 - [内部组件图](docs/diagrams/components.puml)：可编辑的 PlantUML 源码。
 - [跨端架构](../docs/architecture.md)：Server 与客户端共同遵守的协议和行为。
 - [工作约定](AGENTS.md)：文档维护与仓库协作规则。

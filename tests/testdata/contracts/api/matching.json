@@ -1,0 +1,95 @@
+[
+  {
+    "name": "matching-link-new",
+    "schema": "ManualLinkRequest",
+    "valid": true,
+    "value": {
+      "expectedRevision": 0,
+      "sourceTrackIds": [
+        "source-a",
+        "source-b"
+      ],
+      "targetRecordingId": null
+    }
+  },
+  {
+    "name": "matching-link-missing-revision",
+    "schema": "ManualLinkRequest",
+    "valid": false,
+    "value": {
+      "sourceTrackIds": [
+        "source-a"
+      ]
+    }
+  },
+  {
+    "name": "matching-link-repeated-source",
+    "schema": "ManualLinkRequest",
+    "valid": false,
+    "value": {
+      "expectedRevision": 0,
+      "sourceTrackIds": [
+        "source-a",
+        "source-a"
+      ]
+    }
+  },
+  {
+    "name": "matching-link-automatic-forbidden",
+    "schema": "ManualLinkRequest",
+    "valid": false,
+    "value": {
+      "expectedRevision": 0,
+      "sourceTrackIds": [
+        "source-a"
+      ],
+      "automatic": true
+    }
+  },
+  {
+    "name": "matching-exclusion-false",
+    "schema": "MatchExclusionRequest",
+    "valid": true,
+    "value": {
+      "expectedRevision": 1,
+      "leftSourceTrackId": "a",
+      "rightSourceTrackId": "b",
+      "excluded": false
+    }
+  },
+  {
+    "name": "matching-exclusion-missing-decision",
+    "schema": "MatchExclusionRequest",
+    "valid": false,
+    "value": {
+      "expectedRevision": 1,
+      "leftSourceTrackId": "a",
+      "rightSourceTrackId": "b"
+    }
+  },
+  {
+    "name": "matching-refresh-auto-pool",
+    "schema": "RefreshMatchCandidates",
+    "valid": true,
+    "value": {}
+  },
+  {
+    "name": "matching-refresh-empty-pool",
+    "schema": "RefreshMatchCandidates",
+    "valid": true,
+    "value": {
+      "sourceTrackIds": []
+    }
+  },
+  {
+    "name": "matching-refresh-private-snapshot-forbidden",
+    "schema": "RefreshMatchCandidates",
+    "valid": false,
+    "value": {
+      "sourceTrackIds": [
+        "a"
+      ],
+      "snapshot": {}
+    }
+  }
+]
