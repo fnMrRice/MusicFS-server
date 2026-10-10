@@ -87,6 +87,6 @@
 - [ ] 实体NAS失挂/慢存储、ARM64/macOS/其他发行版、Linux浏览器与人工扬声器听音。
 - [x] Windows真实服务四轮慢消费者与后台摘要/指纹资源测量、句柄/进程收尾和缓存复用；见[资源基线](../validation/resource-baseline.md)。不作为长期泄漏或其他机器容量承诺。
 - [x] 当前MP3处理profile持久输出缓存的Windows/Linux完整发布、跨会话/重启复用及配额回收，见[缓存验收](../processed-cache.md)。
-- [ ] 最终冻结联合回归和对应干净版本制品；由[最终联合验收](../validation/final-validation.md)记录实际结果后关闭。
+- [x] 最终冻结联合回归及对应干净版本制品；双平台检查、必要补跑、实际安装及跳过项见[最终联合验收](../validation/final-validation.md)，不把初次失败的命令本身记为通过。
 
 部署与支持边界见[安装说明](../deployment.md)、[制品实测](../validation/release.md)、[备份恢复](../backup.md)及[生命周期](../lifecycle.md)。制品验证在开发期可明确标记dirty；正式干净版本打包、签名与推送分别遵守仓库约定，不由本清单暗示已公开发布。

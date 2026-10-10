@@ -46,6 +46,6 @@ Go 1.26.9；当前工作区固定依赖`x/sys 0.49.0`、`yaml/v3 3.0.5`等，没
 
 上述重复用例与完整包补验不代替其他包的检查；最终联合全量结论另由[实施记录](progress.md)记录，不把前次失败的Windows全量检查标为通过。
 
-本轮不宣称NAS、macOS、ARM或其他文件系统通知可靠。超过限制、通知失败/溢出和注册竞争仍由周期完整复核兜底；权限/认证/离线进入paused后则暂停到服务重启，不会继续周期自动新建任务。Linux的完整宿主组合与最终全量检查由[实施记录](progress.md)补充，以上原生Linux证据不冒充真实Linux服务端到端。
+最终Linux宿主组合已在完整覆盖率及race中通过，包含正式YAML自动扫描、范围保护和重启补扫；整个监听包race4.797秒，完整E2E包565.463秒，见[联合记录](final-validation.md)。本轮不宣称NAS、macOS、ARM或其他文件系统通知可靠。超过限制、通知失败/溢出和注册竞争仍由周期完整复核兜底；权限/认证/离线进入paused后则暂停到服务重启，不会继续周期自动新建任务。
 
 实现依据：[NtCreateFile](https://learn.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-ntcreatefile)、[IOCP](https://learn.microsoft.com/en-us/windows/win32/fileio/i-o-completion-ports)、[CancelIoEx](https://learn.microsoft.com/en-us/windows/win32/api/ioapiset/nf-ioapiset-cancelioex)、[目录通知](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-readdirectorychangesw)、[inotify](https://man7.org/linux/man-pages/man7/inotify.7.html)。
