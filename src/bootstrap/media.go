@@ -8,10 +8,10 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 )
 
-func configureMedia(ctx context.Context, c config.Config, store *sqlite.Store) (*mediastore.Files, *mediastore.Service, error) {
+func configureMedia(ctx context.Context, c config.Config, store *sqlite.Store) (*mediastore.Files, *mediastore.Service, func(), error) {
 	files, err := mediastore.OpenFiles(c.MediaRoot)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	media, err := mediastore.New(store, files)
 	if err == nil {
@@ -19,7 +19,13 @@ func configureMedia(ctx context.Context, c config.Config, store *sqlite.Store) (
 	}
 	if err != nil {
 		files.Close()
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return files, media, nil
+	collector, err := mediastore.NewCollector(store, files, 0)
+	if err != nil {
+		files.Close()
+		return nil, nil, nil, err
+	}
+	collector.Start(ctx)
+	return files, media, func() { collector.Close(); files.Close() }, nil
 }

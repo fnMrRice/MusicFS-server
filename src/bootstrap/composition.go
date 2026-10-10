@@ -48,7 +48,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	if err != nil {
 		return nil, nil, err
 	}
-	mediaFiles, media, err := configureMedia(ctx, c, store)
+	mediaFiles, media, closeMedia, err := configureMedia(ctx, c, store)
 	if err != nil {
 		store.Close()
 		return nil, nil, err
@@ -62,7 +62,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 				r.Worker.Close()
 			}
 		}
-		mediaFiles.Close()
+		closeMedia()
 		store.Close()
 	}
 	lib := library.New(store, queue, runtimes, metadataProbe(ffprobe, decoder))
