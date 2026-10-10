@@ -1,0 +1,81 @@
+[
+  {
+    "name": "fingerprint-valid-range",
+    "schema": "FingerprintRequest",
+    "valid": true,
+    "value": {
+      "startMs": 7,
+      "durationMs": 10000
+    }
+  },
+  {
+    "name": "fingerprint-missing-start",
+    "schema": "FingerprintRequest",
+    "valid": false,
+    "value": {
+      "durationMs": 10000
+    }
+  },
+  {
+    "name": "fingerprint-short-request",
+    "schema": "FingerprintRequest",
+    "valid": false,
+    "value": {
+      "startMs": 0,
+      "durationMs": 9999
+    }
+  },
+  {
+    "name": "fingerprint-long-request",
+    "schema": "FingerprintRequest",
+    "valid": false,
+    "value": {
+      "startMs": 0,
+      "durationMs": 120001
+    }
+  },
+  {
+    "name": "fingerprint-negative-start",
+    "schema": "FingerprintRequest",
+    "valid": false,
+    "value": {
+      "startMs": -1,
+      "durationMs": 10000
+    }
+  },
+  {
+    "name": "fingerprint-late-start",
+    "schema": "FingerprintRequest",
+    "valid": false,
+    "value": {
+      "startMs": 86400001,
+      "durationMs": 10000
+    }
+  },
+  {
+    "name": "fingerprint-select-tool",
+    "schema": "FingerprintRequest",
+    "valid": false,
+    "value": {
+      "startMs": 0,
+      "durationMs": 10000,
+      "algorithm": "other"
+    }
+  },
+  {
+    "name": "fingerprint-upload",
+    "schema": "FingerprintRequest",
+    "valid": false,
+    "value": {
+      "startMs": 0,
+      "durationMs": 10000,
+      "upload": true
+    }
+  },
+  {
+    "name": "fingerprint-null",
+    "schema": "FingerprintRequest",
+    "valid": false,
+    "value": null
+  }
+]

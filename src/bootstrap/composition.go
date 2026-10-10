@@ -65,10 +65,14 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	}
 	closeBeforeHashes := cleanup
 	cleanup = func() { hashes.Close(); closeBeforeHashes() }
+	fingerprints, closeFingerprints := configureFingerprinting(ctx, c, log, store, lib, processor)
+	closeBeforeFingerprints := cleanup
+	cleanup = func() { closeFingerprints(); closeBeforeFingerprints() }
 	sessions := auth.New(store, c.AdminToken, c.AllowedOrigins, time.Duration(c.SessionTTLSeconds)*time.Second)
 	handler := api.New(api.Options{Auth: sessions, InstanceID: instance, Ready: ready, SecureCookie: c.TLSCert != "", Logger: log})
 	handler.RegisterLibrary(lib)
 	handler.RegisterHashing(hashes)
+	handler.RegisterFingerprinting(fingerprints)
 	player, err := playback.New(ctx, store, lib, processor, playback.Config{CacheRoot: c.CacheRoot, MaxSessions: c.MaxSessions, MaxCacheBytes: c.MaxCacheBytes, NCMDecoder: decoder})
 	if err != nil {
 		cleanup()

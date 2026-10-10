@@ -67,7 +67,10 @@ func (c Config) Validate() error {
 			}
 		}
 	}
-	return c.validatePlugins(writable)
+	if err := c.validatePlugins(writable); err != nil {
+		return err
+	}
+	return c.validateFingerprinting()
 }
 
 func (c Config) validatePlugins(writable []string) error {

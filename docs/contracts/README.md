@@ -48,6 +48,16 @@ Provider 响应增加 `configuration` 与 `roots`。Local Files 的配置包含�
 
 新增任务与冲突字段按本开发基线同步更新；Web 可忽略这些响应字段，当前没有哈希管理页面。真实文件稳定读取的系统限制和验收范围以[识别证据说明](../identification.md)及[验收记录](../validation/identification.md)为准。
 
+### S-P5-03 本地片段指纹
+
+启用条件与工具固定摘要见[配置说明](../configuration.md)。`POST /source-tracks/{id}/fingerprint-jobs` 接受 `{ "startMs": 0, "durationMs": 120000 }` 和 `Idempotency-Key`，返回 202 `{jobId,merged}`。起点为 0—86400000 毫秒，请求时长为 10000—120000 毫秒；二者必填。算法固定为 Chromaprint 1.6.1 / algorithm 2，先按 DSP 前音频规范化为 11025 Hz、mono、s16le。请求不能指定工具身份、算法、路径、上传或外部检索。功能默认关闭；未配置或启动时工具校验失败，对有效请求明确返回 415 `UNSUPPORTED`，普通播放继续可用。
+
+`GET /fingerprint-jobs/{id}` 返回固定的来源、资产版本、请求范围、提取器身份和任务状态；成功的 `result` 是索引，包含实际覆盖样本、质量和媒体对象摘要，不展开原始指纹值。状态为 `queued/running/succeeded/unavailable/failed/cancelled/superseded`。`POST /fingerprint-jobs/{id}/cancel` 接受 `{}`，遵循 Cookie、Origin 和 CSRF，取消自然幂等且不要求幂等键；完成先发生时返回已完成结果。重复取消终态不更新完成时间。
+
+`GET /source-tracks/{id}/fingerprints?limit=50&after=…` 只返回当前资产有效索引，`limit` 为 1—100，`nextAfter=null` 表示本轮分页结束；源文件离线仍可查询已持久索引。分页采用稳定 ID 顺序，不保证并发变更期间的快照。`GET /fingerprints/{id}` 经所有者授权后显式读取有界 JSON 明细，包括至多 1000 项 uint32 指纹值；文件存于 MediaStore，SQLite 只保存索引、摘要、引用和发布状态。保留的历史明细可按 ID 审计，历史索引标记 `current=false`；路径、读取票据、凭据和内部任务代次不公开，其他所有者与不存在都返回 `NOT_FOUND`。
+
+质量 `short` 表示实际覆盖不足十秒，`lowInformation` 表示信息量不足，`available` 仅表示通过信息量门槛；它们都不是歌曲匹配结论。实际 EOF 不补零，不把请求时长冒充读到的样本数。原文件 SHA-512、NCM 外层资产与解密后局部音频指纹保持不同含义；本步没有外部上传、平台识别或 Web 指纹管理界面。HTTP、YAML、真实工具及播放回归范围见[指纹接口验收](../validation/fingerprinting-http.md)。
+
 ### NCM 解密增量
 
 本次沿用既有 `/api/v1` 端点、请求和鉴权规则。播放描述的 `effectiveProcessing` 新增 `{ "type": "ncmDecrypt", "gainDb": 0, "version": "1", "execution": "server" }`。Schema 的 type 原已允许扩展字符串，无需收紧枚举或增加必填字段；客户端可以忽略未知处理项。该项表示外层容器解密，`gainDb: 0` 不代表执行了增益 DSP。后续进入转码管线时再报告独立 `gain` 项；用户未请求衰减时其值也可为 0。

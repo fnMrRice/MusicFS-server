@@ -15,10 +15,11 @@ import (
 )
 
 type audioWorker struct {
-	mu           sync.Mutex
-	ready        bool
-	capabilities Capabilities
-	active       bool
+	mu                sync.Mutex
+	ready             bool
+	capabilities      Capabilities
+	active            bool
+	instanceID, nonce string
 }
 
 func RunWorker(ctx context.Context, input io.ReadCloser, output io.WriteCloser) error {
@@ -38,7 +39,12 @@ func (w *audioWorker) handle(ctx context.Context, method string, raw json.RawMes
 		}
 		w.ready = true
 		w.capabilities = b.Capabilities
-		return pluginproto.Ready{InstanceID: b.InstanceID, Nonce: b.Nonce, Manifest: pluginproto.Manifest{PluginID: "musicfs.audioffmpeg", PluginVersion: "0.1.0", ProtocolVersion: pluginproto.ProtocolVersion, Roles: []string{"audio"}, Capabilities: []string{"audio.decode", "audio.dsp", "audio.encode", "audio.mux"}, Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}}, nil
+		w.instanceID, w.nonce = b.InstanceID, b.Nonce
+		capabilities := []string{"audio.decode", "audio.dsp", "audio.encode", "audio.mux"}
+		if b.Capabilities.Normalization {
+			capabilities = append(capabilities, "audio.normalize")
+		}
+		return pluginproto.Ready{InstanceID: b.InstanceID, Nonce: b.Nonce, Manifest: pluginproto.Manifest{PluginID: "musicfs.audioffmpeg", PluginVersion: "0.1.0", ProtocolVersion: pluginproto.ProtocolVersion, Roles: []string{"audio"}, Capabilities: capabilities, Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}}, nil
 	}
 	w.mu.Lock()
 	ready := w.ready
@@ -49,6 +55,9 @@ func (w *audioWorker) handle(ctx context.Context, method string, raw json.RawMes
 	}
 	if method == "audio.describe" {
 		return capabilities, nil
+	}
+	if method == "audio.normalize" {
+		return w.normalize(ctx, raw)
 	}
 	if method != "audio.prepare" && method != "audio.start" {
 		return nil, pluginproto.Failure("UNSUPPORTED", "unknown audio method")

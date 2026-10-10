@@ -1,0 +1,12 @@
+[
+  {"name":"normalize-range","schema":"AudioNormalizePlan","valid":true,"value":{"taskId":"task-1","assetId":"asset-1","startMs":0,"durationMs":30000}},
+  {"name":"normalize-reject-startMs--1","schema":"AudioNormalizePlan","valid":false,"value":{"taskId":"task-1","assetId":"asset-1","startMs":-1,"durationMs":30000}},
+  {"name":"normalize-reject-startMs-86400001","schema":"AudioNormalizePlan","valid":false,"value":{"taskId":"task-1","assetId":"asset-1","startMs":86400001,"durationMs":30000}},
+  {"name":"normalize-reject-durationMs-9999","schema":"AudioNormalizePlan","valid":false,"value":{"taskId":"task-1","assetId":"asset-1","startMs":0,"durationMs":9999}},
+  {"name":"normalize-reject-durationMs-120001","schema":"AudioNormalizePlan","valid":false,"value":{"taskId":"task-1","assetId":"asset-1","startMs":0,"durationMs":120001}},
+  {"name":"normalize-reject-gainDB--6","schema":"AudioNormalizePlan","valid":false,"value":{"taskId":"task-1","assetId":"asset-1","startMs":0,"durationMs":30000,"gainDB":-6}},
+  {"name":"normalize-window-upper-bound","schema":"AudioNormalizePlan","valid":true,"value":{"taskId":"task-1","assetId":"asset-1","startMs":86400000,"durationMs":120000}},
+  {"name":"normalize-short-tail-actual-samples","schema":"NormalizedPCMInfo","valid":true,"value":{"format":{"sampleFormat":"s16le","sampleRate":11025,"channels":1,"layout":"mono"},"normalizationRevision":"s16le-mono-11025-floor-range-v1","startSample":0,"sampleCount":11025,"decoderVersion":"test decoder version","decoderSHA256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}},
+  {"name":"normalize-reject-empty","schema":"NormalizedPCMInfo","valid":false,"value":{"format":{"sampleFormat":"s16le","sampleRate":11025,"channels":1,"layout":"mono"},"normalizationRevision":"s16le-mono-11025-floor-range-v1","startSample":0,"sampleCount":0,"decoderVersion":"test decoder version","decoderSHA256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}},
+  {"name":"normalize-reject-dsp-format","schema":"NormalizedPCMInfo","valid":false,"value":{"format":{"sampleFormat":"f32le","sampleRate":48000,"channels":2,"layout":"stereo"},"normalizationRevision":"s16le-mono-11025-floor-range-v1","startSample":0,"sampleCount":11025,"decoderVersion":"test decoder version","decoderSHA256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}
+]

@@ -130,6 +130,10 @@ func validateDocumentShape(root *yaml.Node) error {
 		"hashing": mappingShape(map[string]fieldShape{
 			"auto": boolShape, "maxConcurrent": intShape, "bytesPerSecond": intShape,
 		}),
+		"fingerprinting": mappingShape(map[string]fieldShape{
+			"enabled": boolShape, "fpcalcPath": stringShape, "fpcalcSha256": stringShape,
+			"maxConcurrent": intShape, "timeoutSeconds": intShape,
+		}),
 	}, "configVersion")
 	if err := validateShape(root, shape, "config"); err != nil {
 		return err

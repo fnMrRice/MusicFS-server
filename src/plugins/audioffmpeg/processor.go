@@ -21,9 +21,10 @@ type Config struct {
 	MaxConcurrent                                              int
 }
 type Processor struct {
-	config       Config
-	Capabilities Capabilities
-	slots        chan struct{}
+	config        Config
+	Capabilities  Capabilities
+	slots         chan struct{}
+	normalizeSlot chan struct{}
 }
 
 func NewProcessor(ctx context.Context, cfg Config) (*Processor, error) {
@@ -44,7 +45,7 @@ func NewProcessor(ctx context.Context, cfg Config) (*Processor, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Processor{config: cfg, Capabilities: capabilities, slots: make(chan struct{}, cfg.MaxConcurrent)}, nil
+	return &Processor{config: cfg, Capabilities: capabilities, slots: make(chan struct{}, cfg.MaxConcurrent), normalizeSlot: make(chan struct{}, 1)}, nil
 }
 
 type bootstrap struct {
@@ -60,11 +61,30 @@ func (p *Processor) Process(ctx context.Context, plan Plan, input io.ReadSeeker,
 	if !ok {
 		return fmt.Errorf("UNSUPPORTED: independent random input readers required")
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	select {
 	case p.slots <- struct{}{}:
 		defer func() { <-p.slots }()
 	default:
 		return fmt.Errorf("RATE_LIMITED: audio processing is busy")
+	}
+	return p.run(ctx, plan.TaskID, readerAt, size, output, func(peer *pluginproto.Peer, inputURL, outputURL string) error {
+		request := StartRequest{Plan: plan, FFmpegPath: p.config.FFmpegPath, FFmpegSHA256: p.Capabilities.FFmpegSHA256, InputURL: inputURL, OutputURL: outputURL}
+		if err := peer.Call(ctx, "audio.prepare", request, nil); err != nil {
+			return err
+		}
+		return peer.Call(ctx, "audio.start", request, nil)
+	})
+}
+
+func (p *Processor) run(ctx context.Context, taskID string, readerAt io.ReaderAt, size int64, output io.Writer, operation func(*pluginproto.Peer, string, string) error) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if readerAt == nil || output == nil || size <= 0 {
+		return fmt.Errorf("ACCESS_DENIED: invalid audio task input")
 	}
 	hash, err := executableHash(p.config.WorkerPath)
 	if err != nil || hash != p.config.WorkerSHA256 {
@@ -156,21 +176,17 @@ func (p *Processor) Process(ctx context.Context, plan Plan, input io.ReadSeeker,
 	startup, startupCancel := context.WithTimeout(ctx, 5*time.Second)
 	defer startupCancel()
 	var ready pluginproto.Ready
-	err = peer.Call(startup, "host.hello", bootstrap{Hello: pluginproto.Hello{ProtocolVersion: pluginproto.ProtocolVersion, InstanceID: "audio-" + plan.TaskID, Nonce: token, ConfigRevision: "1"}, Capabilities: p.Capabilities}, &ready)
+	err = peer.Call(startup, "host.hello", bootstrap{Hello: pluginproto.Hello{ProtocolVersion: pluginproto.ProtocolVersion, InstanceID: "audio-" + taskID, Nonce: token, ConfigRevision: "1"}, Capabilities: p.Capabilities}, &ready)
 	if err != nil {
 		return err
 	}
 	if err = ready.Manifest.Validate("audio"); err != nil {
 		return err
 	}
-	if ready.Nonce != token || ready.InstanceID != "audio-"+plan.TaskID {
+	if ready.Nonce != token || ready.InstanceID != "audio-"+taskID {
 		return fmt.Errorf("PROTOCOL_MISMATCH: audio worker identity mismatch")
 	}
-	request := StartRequest{Plan: plan, FFmpegPath: p.config.FFmpegPath, FFmpegSHA256: p.Capabilities.FFmpegSHA256, InputURL: base + "/input", OutputURL: base + "/output"}
-	if err = peer.Call(ctx, "audio.prepare", request, nil); err != nil {
-		return err
-	}
-	if err = peer.Call(ctx, "audio.start", request, nil); err != nil {
+	if err = operation(peer, base+"/input", base+"/output"); err != nil {
 		return err
 	}
 	select {

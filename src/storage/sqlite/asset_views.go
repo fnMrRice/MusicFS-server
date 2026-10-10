@@ -166,6 +166,9 @@ func invalidateAsset(ctx context.Context, tx *sql.Tx, owner, id string) error {
 		return err
 	}
 	a.Current = false
+	if _, err := tx.ExecContext(ctx, "UPDATE fingerprint_indexes SET current=0 WHERE owner=? AND asset_id=?", owner, id); err != nil {
+		return err
+	}
 	if err := saveAsset(ctx, tx, owner, a); err != nil {
 		return err
 	}

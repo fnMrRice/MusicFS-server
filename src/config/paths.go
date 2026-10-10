@@ -12,9 +12,10 @@ func resolvePaths(c *Config, base string) {
 			*value = filepath.Join(base, *value)
 		}
 	}
-	for _, field := range []*string{&c.DataRoot, &c.MediaRoot, &c.CacheRoot, &c.WebRoot, &c.TLSCert, &c.TLSKey} {
+	for _, field := range []*string{&c.DataRoot, &c.MediaRoot, &c.CacheRoot, &c.WebRoot, &c.TLSCert, &c.TLSKey, &c.Fingerprinting.FpcalcPath} {
 		resolve(field)
 	}
+	c.Fingerprinting.FpcalcSHA256 = strings.ToLower(c.Fingerprinting.FpcalcSHA256)
 	for i := range c.Plugins {
 		plugin := &c.Plugins[i]
 		plugin.SHA256 = strings.ToLower(plugin.SHA256)

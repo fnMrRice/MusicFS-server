@@ -11,6 +11,7 @@ Go依赖由`go.mod/go.sum`锁定；下表跟随当前提交更新，历史验收
 | github.com/santhosh-tekuri/jsonschema/v6 | 6.0.3 | Apache-2.0；契约测试及插件提供的受限导入选项 Schema 校验；运行时仅编译内存声明，禁止外部引用 |
 | FFmpeg / ffprobe（Windows） | 实测6.1.1 Gyan GPLv3构建 | 外部工具，不随Git仓库分发；构建参数和摘要见[插件验证](validation/plugins.md) |
 | FFmpeg / ffprobe（Linux） | 实测6.1.6，官方签名源码本地构建 | LGPLv2.1+，工具不随仓库分发；签名、构建和定向音频结果见[Linux音频记录](validation/configuration-linux-audio.md) |
+| Chromaprint fpcalc | 1.6.1，CLI 算法 2 | 独立本地工具，显式固定 SHA-256；自有代码 MIT，包含 FFmpeg 后整体按 LGPL-2.1 看待，不随仓库分发。准确源码及调用方式见[来源说明](../src/identification/fingerprint/REFERENCES.md) |
 
 传递依赖由 `go list -m all` 展示，`go.sum` 固定下载摘要。未来分发时应随所用模块版本保留对应 LICENSE/NOTICE；源码仓库许可证保持原有 GPL-3.0，不将动态音频工具许可证混同为 Go 主程序的依赖许可。
 

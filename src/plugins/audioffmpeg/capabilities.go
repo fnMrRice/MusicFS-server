@@ -23,6 +23,7 @@ type Capabilities struct {
 	FFprobeSHA256 string       `json:"ffprobeSHA256"`
 	Profiles      []Profile    `json:"profiles"`
 	PCM           audio.Format `json:"pcm"`
+	Normalization bool         `json:"normalization"`
 }
 type Profile struct {
 	ID         string `json:"id"`
@@ -136,6 +137,7 @@ func Probe(ctx context.Context, ffmpeg, ffprobe string) (Capabilities, error) {
 		return c, fmt.Errorf("UNSUPPORTED: required audio components unavailable")
 	}
 	c.PCM = audio.Canonical
+	c.Normalization = strings.Contains(encoders, "pcm_s16le") && strings.Contains(muxers, " s16le ")
 	c.Profiles = []Profile{{ID: "mp3-128", MIME: "audio/mpeg", Codec: "mp3", Container: "mp3", SampleRate: 48000, Channels: 2, BitrateBps: 128000, SeekMode: "timeRestart"}}
 	return c, nil
 }

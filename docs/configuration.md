@@ -30,6 +30,11 @@
 | `hashing.auto` | 默认false；是否自动排队完整原文件 SHA-512，关闭不影响手动任务 |
 | `hashing.maxConcurrent` | 默认1，范围1—4；后台哈希任务并发上限 |
 | `hashing.bytesPerSecond` | 默认4194304（4 MiB/s），范围65536—1073741824；所有哈希任务共享的读取预算，不是每任务额度 |
+| `fingerprinting.enabled` | 默认false；是否启用本实例的手动片段指纹任务 |
+| `fingerprinting.fpcalcPath` | 默认空；启用时必填，外部 Chromaprint 1.6.1 的 fpcalc 路径，以配置目录为相对基准 |
+| `fingerprinting.fpcalcSha256` | 默认空；启用时必填64位十六进制摘要，加载后转为小写；不能仅信任程序文件名 |
+| `fingerprinting.maxConcurrent` | 默认1，范围1—2；指纹任务并发上限；DSP 前规范化和 NCM 解密各有独立的后台1槽位，不占前台播放准入槽位 |
+| `fingerprinting.timeoutSeconds` | 默认30，范围1—120；指纹任务时间上限；已有规范化管线另有30秒保护，上层较长配置不会撤销内层限制 |
 | `plugins` | 显式插件列表，可为空；模型见下一节 |
 
 优先级为内置默认值 → YAML → 支持的环境变量 → 显式CLI参数。支持 `MUSICFS_LISTEN`、`MUSICFS_DATA_ROOT`、`MUSICFS_MEDIA_ROOT`、`MUSICFS_CACHE_ROOT`、`MUSICFS_WEB_ROOT` 和 `MUSICFS_ADMIN_TOKEN`；当前CLI仅为普通配置提供 `--web-root` 覆盖，`--config`选择文件。插件及实例开关不接受环境或CLI覆盖。
@@ -37,6 +42,10 @@
 管理员令牌至少24字符，只通过 `MUSICFS_ADMIN_TOKEN` 注入，不是YAML字段。读写服务的 `Snapshot` 清空该值；凭据、环境变量和CLI生效值不写回文件。不要把凭据放入URL、长期测试材料或Git。
 
 `hashing` 可省略或只覆盖部分字段；其默认值会逐项补齐，显式0、超出上限、未知子字段或类型错误均拒绝。哈希使用独立后台队列和上述共享预算，默认自动关闭，以减少启动和扫描后的磁盘竞争。手动创建任务仍受归属、稳定完整读取能力及资源上限约束；它计算包含容器、标签、内嵌封面的原始文件字节，不能当作解码 PCM 或录音相同性证明。修改这些配置后需重启。
+
+`fingerprinting` 同样允许省略或部分覆盖，显式0、null、未知键或类型错误拒绝。启用时同时要求 `musicfs.audio.ffmpeg` 插件和一个音频实例明确启用，复用其 DSP 前规范化能力；不会自动打开音频插件。fpcalc 运行时须校验指定摘要及精确版本 1.6.1，算法固定为 2，不允许请求自选工具路径、算法或版本。禁用时可省略工具路径和摘要，不启动 fpcalc。没有 `auto`、上传、外部识别或远程检索配置项。
+
+本步只提供最长120秒的手动片段请求：起点0—86400000毫秒，请求时长10000—120000毫秒。实际读到的尾段可以更短，须如实记录覆盖样本数和 `short` 质量，不能补零冒充完整片段或当作录音匹配依据。工具不可用或摘要/版本不符时只使指纹能力返回 `UNSUPPORTED`，不使整个服务和普通播放退出。创建、取消和按所有者读取明细见[HTTP 契约](contracts/README.md#s-p5-03-本地片段指纹)，实测范围见[指纹接口验收](validation/fingerprinting-http.md)。
 
 ## 3. 插件与实例
 

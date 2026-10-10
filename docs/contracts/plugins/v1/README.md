@@ -20,6 +20,8 @@ Host 的 `host.entries` 返回固定根身份的 Entry 页；`host.state.get/com
 
 音频 Worker 的 hello 额外接收已由 Host 探测的 capabilities。`audio.describe` 返回实际工具摘要、profile 和 PCM；`audio.prepare/start` 接收固定计划与 loopback input/output 任务通道。音频二进制由任务限定的 loopback HTTP 传输，不写入控制面。宿主注入的 FFmpeg 绝对路径和可执行文件摘要仅在受信任配置边界使用，不发送给 Web。取消仍使用统一取消通知；具体字段是插件内的 `gainDB`，HTTP 用户偏好是 `gainDb`，两者在边界显式转换。
 
+Capabilities 的 `normalization` 明确报告是否具备指纹 PCM 规范化能力。`audio.normalize` 使用单独计划 `taskId/assetId/startMs/durationMs` 与宿主限定的输入、输出通道；起点范围为0—86400000毫秒，请求长度10000—120000毫秒，拒绝增益或其他 DSP 参数。输出固定为11025 Hz、单声道、s16le，规范化版本为 `s16le-mono-11025-floor-range-v1`，两端点按绝对样本位置向下量化。控制响应只含实际格式、样本起点/数量和解码器版本/摘要，不含 PCM 字节；宿主复核实际字节数、范围和工具身份。尾部不足请求长度不能补零扩窗，后续指纹质量判断与实际覆盖分开记录。
+
 独立 NCM Worker 使用 `musicfs.ncm` 标识、`audio` 角色与 `audio.decrypt` 能力，不依赖 FFmpeg。`host.hello` 的 instanceId 固定为 `ncm-<taskId>`，configRevision 为 `1`；nonce 是 24 个随机字节的 48 位小写十六进制串。一个 Worker 只接受一次 `ncm.open`，绑定 taskId、assetId、nonce、inputUrl 和加密输入 size，拒绝重新绑定。返回同一任务身份、outputUrl、解密后的 size 与 metadata；format/MIME 由解密正文确认，仅支持 MP3/FLAC，未知标签省略，不下载封面或任何外部资源。请求中没有源路径、原始音频或密钥。
 
 NCM 的 input/output 通道均只监听 `127.0.0.1` 随机端口，路径包含本次 nonce；接收方校验完整任务绑定及精确 URL。只允许单段显式 `bytes=start-end` GET，每段最多 64 KiB；返回必须为 `206` 且 Content-Range 的起止/总长、Content-Length 完全一致，禁止重定向、代理、压缩响应及其他地址。通道最多接受 8 个连接、4 个并发请求，设定标头、读写及空闲超时。Host 校验 Worker SHA-256，每次打开也复核；默认同时最多 2 个任务，最多可配置 8 个。启动及打开共限 5 秒，单任务最长 2 分钟。上层须在生命周期内读取或拷贝解密内容；取消与 Close 回收控制管道、两个 HTTP 服务和进程，不保留可复用输入能力。

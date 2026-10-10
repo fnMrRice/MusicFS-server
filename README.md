@@ -1,6 +1,6 @@
 # MusicFS-server
 
-MusicFS 的 Go 后端服务。当前已落地 Local Files 扫描、SQLite 音乐库、会话鉴权、原流 Range、独立 Go DSP 处理链和本地 NCM 解密插件，配合独立 Web 仓库提供最简列表播放器。启动步骤见[本地运行说明](docs/running.md)，每步提交与验证边界见[实施记录](docs/validation/progress.md)。
+MusicFS 的 Go 后端服务。当前已落地 Local Files 扫描、SQLite 音乐库、会话鉴权、原流 Range、独立 Go DSP 处理链、本地 NCM 解密插件、后台完整文件摘要和本地音频指纹，配合独立 Web 仓库提供最简列表播放器。启动步骤见[本地运行说明](docs/running.md)，每步提交与验证边界见[实施记录](docs/validation/progress.md)。
 
 配置已统一为 `configVersion: 1` 的 YAML，插件与实例显式登记和启用；严格解析、修订写入与崩溃恢复见[配置说明](docs/configuration.md)和[配置验收](docs/validation/configuration.md)。旧 JSON 配置不兼容。读写服务只保存期望状态，当前仍需重启应用，尚未提供动态启停管理 API/命令。
 
@@ -20,13 +20,14 @@ MusicFS 的 Go 后端服务。当前已落地 Local Files 扫描、SQLite 音乐
 - [联合实施总览](../docs/implementation.md)与[最小 Web 实施](../web/docs/implementation.md)：共同接口和真实浏览器播放验收。
 - [Server 内部架构](docs/architecture.md)：模块、数据模型、Provider/Scraper、存储与任务管理。
 - [Server 音频处理](docs/audio-processing.md)：处理链、播放交付、定位、缓存与资源约束。
+- [本地音频指纹](docs/fingerprinting.md)：固定工具、后台任务、独立明细文件、恢复和管理接口；默认禁用，不上传外部服务。
 - [内部组件图](docs/diagrams/components.puml)：可编辑的 PlantUML 源码。
 - [跨端架构](../docs/architecture.md)：Server 与客户端共同遵守的协议和行为。
 - [工作约定](AGENTS.md)：文档维护与仓库协作规则。
 
 本仓库与 Client、Web 分别管理 Git 历史。跨仓库相对链接按 MusicFS 根目录下 `server`、`client`、`web` 并列检出的工作区布局解析。
 
-工程采用根 `go.mod` 的单 module：源码放 `src/`，Server 与插件程序入口放 `src/app/<程序>/`，测试统一放根 `tests/`。使用 `scripts/build.ps1` / `scripts/build.sh` 构建四个独立程序：`musicfs`、`musicfs-plugin-local`、`musicfs-plugin-audio-ffmpeg`、`musicfs-plugin-ncm`；使用 `scripts/check.ps1` / `scripts/check.sh` 检查。真实音频工具测试需设置 `MUSICFS_FFMPEG` 和 `MUSICFS_FFPROBE`，否则明确跳过该部分。
+工程采用根 `go.mod` 的单 module：源码放 `src/`，Server 与插件程序入口放 `src/app/<程序>/`，测试统一放根 `tests/`。使用 `scripts/build.ps1` / `scripts/build.sh` 构建四个独立程序：`musicfs`、`musicfs-plugin-local`、`musicfs-plugin-audio-ffmpeg`、`musicfs-plugin-ncm`；使用 `scripts/check.ps1` / `scripts/check.sh` 检查。真实音频工具测试需设置 `MUSICFS_FFMPEG` 和 `MUSICFS_FFPROBE`；指纹测试另需 `MUSICFS_FPCALC`，缺少工具时明确跳过对应部分。
 
 第一条交付链为 Local Files 扫描 → 音乐库列表 → 授权原流 → Web 有声播放；随后补齐解码 → PCM DSP → 编码/封装 → Web 播放和时间定位。P5—P7 的匹配、刮削及在线来源逐阶段扩展，不阻塞首个本地可播放版本。
 
