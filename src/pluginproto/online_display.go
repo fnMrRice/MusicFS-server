@@ -10,3 +10,8 @@ type OnlinePlaylistTracks struct {
 	Context Context `json:"context"`
 	online.PlaylistTracksRequest
 }
+
+type OnlinePlaylists struct {
+	Context Context `json:"context"`
+	online.PlaylistsRequest
+}

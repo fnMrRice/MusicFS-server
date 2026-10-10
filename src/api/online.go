@@ -15,6 +15,7 @@ func (s *Server) RegisterOnline(service *onlinehost.Service) {
 	s.registerOnlineAccounts(service)
 	s.registerOnlineDisplay(service)
 	s.registerOnlineEntities(service)
+	s.registerOnlinePlaylists(service)
 	s.Handle("GET /api/v1/online-instances", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		if _, err := onlineQuery(r); err != nil {
 			return err

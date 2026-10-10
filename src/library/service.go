@@ -17,6 +17,7 @@ import (
 
 type Runtime struct {
 	ID, Name, Owner string
+	Plugin          *pluginproto.PluginIdentity
 	Worker          *pluginhost.Worker
 	StableHash      bool
 	ConfigRevision  string
@@ -42,6 +43,10 @@ type Service struct {
 func New(repo Repository, queue *jobs.Service, runtimes []Runtime, probe Probe) *Service {
 	s := &Service{repo: repo, jobs: queue, runtimes: map[string]Runtime{}, probe: probe, gates: map[string]*providerGate{}}
 	for _, r := range runtimes {
+		r.Plugin = nil
+		if r.Worker != nil {
+			r.Plugin = r.Worker.PluginIdentity()
+		}
 		s.runtimes[r.ID] = r
 		s.gates[r.ID] = &providerGate{barriers: map[string]bool{}, tasks: map[string]*ReadLease{}, changed: make(chan struct{})}
 	}
@@ -65,7 +70,7 @@ func (s *Service) Providers(ctx context.Context, user string) []Provider {
 				capabilities = []string{"library.scan", "metadata.read", "stream.resolve"}
 			}
 		}
-		items = append(items, Provider{ID: r.ID, Name: r.Name, Capabilities: capabilities, Availability: availability, AccountState: "notRequired", ScanState: s.repo.ProviderScanState(ctx, user, r.ID), Configuration: safeProviderConfiguration(r), Roots: s.providerRoots(ctx, r)})
+		items = append(items, Provider{ID: r.ID, Name: r.Name, Plugin: r.Plugin.Clone(), Capabilities: capabilities, Availability: availability, AccountState: "notRequired", ScanState: s.repo.ProviderScanState(ctx, user, r.ID), Configuration: safeProviderConfiguration(r), Roots: s.providerRoots(ctx, r)})
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
 	return items

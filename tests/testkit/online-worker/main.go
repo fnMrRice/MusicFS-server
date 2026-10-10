@@ -64,6 +64,11 @@ func (fixture) RoundTrip(r *http.Request) (*http.Response, error) {
 		body = `{"code":200,"songs":[{"id":42,"name":"Synthetic","ar":[],"al":{"name":"Album"},"dt":120000}]}`
 	case "/api/personalized/playlist":
 		body = `{"code":200,"result":[{"id":91,"name":"Synthetic","copywriter":"Public","trackCount":3}]}`
+	case "/api/user/playlist":
+		if r.URL.Query().Get("uid") != "12345" {
+			return nil, fmt.Errorf("account playlist request used an unexpected account")
+		}
+		body = `{"code":200,"more":false,"playlist":[{"id":91,"name":"Account playlist","trackCount":3}]}`
 	case "/api/v6/playlist/detail":
 		body = `{"code":200,"playlist":{"id":91,"name":"Synthetic","privacy":0,"trackCount":3,"trackIds":[{"id":42},{"id":42},{"id":43}]}}`
 	case "/soso/fcgi-bin/client_search_cp":
@@ -97,7 +102,7 @@ func badWorker(mode string) {
 		if method == "provider.online.describe" {
 			var r pluginproto.OnlineScope
 			_ = json.Unmarshal(raw, &r)
-			return pluginproto.OnlineResult[pluginproto.OnlineDescriptor]{Context: r.Context, Value: pluginproto.DescribeOnline(online.Netease)}, nil
+			return pluginproto.OnlineResult[pluginproto.OnlineDescriptor]{Context: r.Context, Value: provideronline.Describe(online.Netease)}, nil
 		}
 		var r pluginproto.OnlineSearch
 		_ = json.Unmarshal(raw, &r)

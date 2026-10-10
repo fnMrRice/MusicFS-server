@@ -2,7 +2,7 @@
 
 机器定义：[账号 Worker Schema](account.schema.json)；与在线资料 Schema 并列校验本扩展的方法。
 
-新增 `provider.online.account` 方法，沿用 `OnlineHello` 已绑定的 userId / instanceId、逐请求 taskId / timeoutMs 和精确上下文回显。资料协议修订为 online-authenticated-v2，所有业务调用使用本 Worker 当前已校验账号；调用方不能通过 accountRef 指定或冒用其他账号。accountRef 保留为空是控制通道身份约束，不表示匿名执行。旧匿名 Worker 的握手不再兼容。
+新增 `provider.online.account` 方法，沿用 `OnlineHello` 已绑定的 userId / instanceId、逐请求 taskId / timeoutMs 和精确上下文回显。当前资料协议修订为 online-authenticated-v3，增加[插件身份与名称](../../../plugin-identity.md)；所有业务调用使用本 Worker 当前已校验账号，调用方不能通过 accountRef 指定或冒用其他账号。accountRef 保留为空是控制通道身份约束，不表示匿名执行。旧匿名和 v2 Worker 的握手不再兼容。
 
 请求为 `{context, request}`；`request` 包含 action、可选 loginId、userToken、developerToken、secret。动作包括 state、begin、poll、complete、cancel、check、logout，以及仅 Host 可用的 restore、signalCancel。后两者不可经 HTTP 调用。signalCancel 在网络轮询仍在执行时标记挑战取消；loginId 为 * 时立即阻止并取消在途业务请求，且不占普通业务并发槽，正式 cancel 随后收尾；不向 HTTP 返回其临时结果。
 

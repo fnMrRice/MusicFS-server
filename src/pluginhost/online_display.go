@@ -34,3 +34,18 @@ func (w *OnlineWorker) PlaylistTracks(ctx context.Context, r online.PlaylistTrac
 	}
 	return result, nil
 }
+
+func (w *OnlineWorker) Playlists(ctx context.Context, r online.PlaylistsRequest) (online.PlaylistsPage, error) {
+	scope, err := w.newScope(ctx)
+	if err != nil {
+		return online.PlaylistsPage{}, err
+	}
+	result, err := onlineCall[online.PlaylistsPage](ctx, w, "provider.online.playlists", scope, pluginproto.OnlinePlaylists{Context: scope, PlaylistsRequest: r})
+	if err == nil {
+		err = online.ValidatePlaylists(w.config.Platform, result, r.Limit)
+	}
+	if err != nil {
+		return online.PlaylistsPage{}, err
+	}
+	return result, nil
+}

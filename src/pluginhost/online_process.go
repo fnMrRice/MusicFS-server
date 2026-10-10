@@ -32,6 +32,7 @@ type OnlineWorker struct {
 	peer         *pluginproto.Peer
 	cancel       context.CancelFunc
 	done         chan struct{}
+	descriptor   pluginproto.OnlineDescriptor
 }
 
 func StartOnline(parent context.Context, config OnlineConfig) (*OnlineWorker, error) {
@@ -131,7 +132,7 @@ func StartOnline(parent context.Context, config OnlineConfig) (*OnlineWorker, er
 	if pluginproto.DecodeOnline(raw, &ready) != nil || ready.Nonce != nonce || ready.InstanceID != config.InstanceID || pluginproto.ValidateOnlineManifest(ready.Manifest, config.Platform) != nil || !slices.Contains(ready.Manifest.Systems, runtime.GOOS) || !slices.Contains(ready.Manifest.Architectures, runtime.GOARCH) {
 		return nil, domain.Fail("PROTOCOL_MISMATCH", "Online worker handshake mismatch")
 	}
-	_, err = w.Describe(startup)
+	w.descriptor, err = w.Describe(startup)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +166,7 @@ func (w *OnlineWorker) Close() error {
 }
 func (w *OnlineWorker) Done() <-chan struct{} { return w.done }
 func (w *OnlineWorker) Descriptor() pluginproto.OnlineDescriptor {
-	return pluginproto.DescribeOnline(w.config.Platform)
+	return w.descriptor.Clone()
 }
 
 // Keep paths private; only identity and verified capabilities are public.

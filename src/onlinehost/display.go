@@ -12,6 +12,21 @@ type DisplayProvider interface {
 	PlaylistTracks(context.Context, online.PlaylistTracksRequest) (online.PlaylistTracksPage, error)
 }
 
+func (s *Service) Playlists(ctx context.Context, owner, id string, request online.PlaylistsRequest) (online.PlaylistsPage, error) {
+	if request.Limit < 1 || request.Limit > online.MaxPageItems || len(request.Cursor) > 1024 {
+		return online.PlaylistsPage{}, domain.Fail("INVALID_ARGUMENT", "Invalid account playlist page")
+	}
+	return call(ctx, s, owner, id, func(ctx context.Context, r Runtime) (online.PlaylistsPage, error) {
+		provider, ok := r.Provider.(interface {
+			Playlists(context.Context, online.PlaylistsRequest) (online.PlaylistsPage, error)
+		})
+		if !ok {
+			return online.PlaylistsPage{}, domain.Fail("UNSUPPORTED", "Provider does not support account playlist listing")
+		}
+		return provider.Playlists(ctx, request)
+	})
+}
+
 func (s *Service) MetadataBatch(ctx context.Context, owner, id string, ids []string) (online.TrackBatch, error) {
 	if len(ids) < 1 || len(ids) > online.MaxPageItems {
 		return online.TrackBatch{}, domain.Fail("INVALID_ARGUMENT", "Invalid track batch size")

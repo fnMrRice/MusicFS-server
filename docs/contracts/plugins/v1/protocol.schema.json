@@ -4,6 +4,7 @@
   "title": "MusicFS JSON-RPC 2.0 控制面 1.0",
   "oneOf": [{"$ref": "#/$defs/Request"}, {"$ref": "#/$defs/Success"}, {"$ref": "#/$defs/Failure"}, {"$ref": "#/$defs/Cancel"}],
   "$defs": {
+    "PluginIdentity": {"type":"object","additionalProperties":false,"required":["id","name","localizedNames","features"],"properties":{"id":{"type":"string","minLength":1,"maxLength":128},"name":{"type":"string","minLength":1,"maxLength":128},"localizedNames":{"type":"object","maxProperties":64,"propertyNames":{"type":"string","maxLength":63,"pattern":"^[A-Za-z]{1,8}(-[A-Za-z0-9]{1,8})*$"},"additionalProperties":{"type":"string","minLength":1,"maxLength":128}},"features":{"type":"array","maxItems":32,"uniqueItems":true,"items":{"type":"string","minLength":1,"maxLength":64,"pattern":"^[a-z][a-z0-9]*([.-][a-z0-9]+)*$"}}}},
     "ScrapeRef": {"type": "string", "pattern": "^[0-9a-f]{48}$"},
     "ScrapeTarget": {"type": "object", "additionalProperties": false, "required": ["sourceTrackId", "assetId", "assetVersion", "revision"], "properties": {"sourceTrackId": {"type": "string", "minLength": 1, "maxLength": 128}, "assetId": {"type": "string", "minLength": 1, "maxLength": 128}, "assetVersion": {"type": "string", "minLength": 1, "maxLength": 1024}, "revision": {"type": "integer", "minimum": 0}}},
     "ScrapeContext": {"type": "object", "additionalProperties": false, "required": ["instanceId", "userId", "taskId", "timeoutMs"], "properties": {"instanceId": {"type": "string", "minLength": 1, "maxLength": 128}, "userId": {"type": "string", "minLength": 1, "maxLength": 128}, "taskId": {"type": "string", "minLength": 1, "maxLength": 128}, "accountRef": {"const": ""}, "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000}}},
@@ -531,6 +532,7 @@
         "configuration"
       ],
       "properties": {
+        "plugin": {"$ref": "#/$defs/PluginIdentity"},
         "pluginId": {
           "$ref": "#/$defs/ID"
         },

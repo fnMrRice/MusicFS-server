@@ -7,6 +7,7 @@ import (
 	"io"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -14,7 +15,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/online"
 )
 
-const OnlineRevision = "online-authenticated-v2"
+const OnlineRevision = "online-authenticated-v3"
 
 type OnlineHello struct {
 	Hello
@@ -46,6 +47,7 @@ type OnlineResult[T any] struct {
 }
 
 type OnlineDescriptor struct {
+	Plugin         *OnlinePlugin       `json:"plugin,omitempty"`
 	Platform       string              `json:"platform"`
 	Authentication string              `json:"authentication"`
 	Capabilities   []online.Capability `json:"capabilities"`
@@ -63,7 +65,9 @@ func OnlinePluginID(platform string) string {
 	}
 }
 
-func DescribeOnline(platform string) OnlineDescriptor {
+// OnlinePolicy describes the host's verified capability and configuration policy.
+// It deliberately has no plugin display identity; only a worker may supply it.
+func OnlinePolicy(platform string) OnlineDescriptor {
 	auth := "platformAccountRequired"
 	return OnlineDescriptor{
 		Platform: platform, Authentication: auth, Capabilities: online.Capabilities(platform), SchemaRevision: OnlineRevision,
@@ -75,8 +79,15 @@ func (d OnlineDescriptor) Validate(platform string) error {
 	if OnlinePluginID(platform) == "" {
 		return Failure("PROTOCOL_MISMATCH", "Unknown online platform")
 	}
-	// JSON round trips normalize map numeric types and reject hidden extensions.
-	want, _ := json.Marshal(DescribeOnline(platform))
+	if err := d.Plugin.Validate(OnlinePluginID(platform)); err != nil {
+		return err
+	}
+	if !slices.Contains(d.Plugin.Features, "music-source") {
+		return Failure("PROTOCOL_MISMATCH", "Online plugin must declare the music-source feature")
+	}
+	// Display identity is extensible, while capability policy stays exact.
+	d.Plugin = nil
+	want, _ := json.Marshal(OnlinePolicy(platform))
 	actual, err := json.Marshal(d)
 	if err != nil || !bytes.Equal(want, actual) {
 		return Failure("PROTOCOL_MISMATCH", "Online descriptor does not match the verified adapter revision")

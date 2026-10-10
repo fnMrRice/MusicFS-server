@@ -28,6 +28,9 @@ func (s *Service) UpdateRuntime(r Runtime) error {
 		if r.Platform != old.Platform || r.ConfigRevision == "" {
 			return domain.Fail("INVALID_ARGUMENT", "Online runtime identity cannot change")
 		}
+		if err := captureDescriptor(&r, old.descriptor); err != nil {
+			return err
+		}
 		r.Gate = old.Gate
 		s.runtimes[i] = r
 		return nil

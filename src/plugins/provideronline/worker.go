@@ -81,7 +81,7 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 			return nil, err
 		}
 		scope = r.Context
-		run = func(context.Context) (any, error) { return pluginproto.DescribeOnline(w.platform), nil }
+		run = func(context.Context) (any, error) { return Describe(w.platform), nil }
 	case "provider.online.search":
 		var r pluginproto.OnlineSearch
 		if err = pluginproto.DecodeOnline(raw, &r); err != nil {
@@ -149,6 +149,13 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 		}
 		scope = r.Context
 		run = func(ctx context.Context) (any, error) { return client.PlaylistTracks(ctx, r.PlaylistTracksRequest) }
+	case "provider.online.playlists":
+		var r pluginproto.OnlinePlaylists
+		if err = pluginproto.DecodeOnline(raw, &r); err != nil {
+			return nil, err
+		}
+		scope = r.Context
+		run = func(ctx context.Context) (any, error) { return client.Playlists(ctx, r.PlaylistsRequest) }
 	case "provider.online.recommendations":
 		var r pluginproto.OnlineRecommendations
 		if err = pluginproto.DecodeOnline(raw, &r); err != nil {
@@ -199,6 +206,6 @@ func (w *worker) handshake(raw json.RawMessage) (pluginproto.Ready, error) {
 		return pluginproto.Ready{}, err
 	}
 	w.hello, w.client = hello, client
-	manifest := pluginproto.Manifest{PluginID: pluginproto.OnlinePluginID(w.platform), PluginVersion: "0.1.0", ProtocolVersion: pluginproto.ProtocolVersion, Roles: []string{"provider"}, Capabilities: pluginproto.OnlineCapabilities(w.platform), Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems}
+	manifest := pluginproto.Manifest{PluginID: Describe(w.platform).Plugin.ID, PluginVersion: "0.1.0", ProtocolVersion: pluginproto.ProtocolVersion, Roles: []string{"provider"}, Capabilities: pluginproto.OnlineCapabilities(w.platform), Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems}
 	return pluginproto.Ready{Manifest: manifest, InstanceID: hello.InstanceID, Nonce: hello.Nonce}, nil
 }

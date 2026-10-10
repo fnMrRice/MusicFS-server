@@ -10,6 +10,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/src/online"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/provideronline"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
@@ -53,7 +54,7 @@ func TestOnlineWireContractActualDTOs(t *testing.T) {
 	onlineContract(t, "Hello", hello)
 	onlineContract(t, "", map[string]any{"jsonrpc": "2.0", "id": "h-1", "method": "host.hello", "params": hello})
 	for _, platform := range []string{online.Netease, online.QQMusic, online.AppleMusic} {
-		descriptor := pluginproto.DescribeOnline(platform)
+		descriptor := provideronline.Describe(platform)
 		onlineContract(t, "Descriptor", descriptor)
 		onlineContract(t, "", map[string]any{"jsonrpc": "2.0", "id": "h-2", "result": pluginproto.OnlineResult[pluginproto.OnlineDescriptor]{Context: scope, Value: descriptor}})
 		manifest := pluginproto.Manifest{PluginID: pluginproto.OnlinePluginID(platform), PluginVersion: "0.1.0", ProtocolVersion: "1.0", Roles: []string{"provider"}, Capabilities: pluginproto.OnlineCapabilities(platform), Systems: []string{"windows", "linux"}, Architectures: []string{"amd64"}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems}
@@ -102,7 +103,7 @@ func TestOnlineWireRejectsScopeAndUnverifiedCapabilities(t *testing.T) {
 			t.Fatal("unsafe online context accepted")
 		}
 	}
-	descriptor := pluginproto.DescribeOnline(online.AppleMusic)
+	descriptor := provideronline.Describe(online.AppleMusic)
 	descriptor.Capabilities[0].Supported = true
 	if descriptor.Validate(online.AppleMusic) == nil {
 		t.Fatal("unverified Apple capability accepted by host")
@@ -111,5 +112,30 @@ func TestOnlineWireRejectsScopeAndUnverifiedCapabilities(t *testing.T) {
 	body, _ := json.Marshal(manifest)
 	if onlineSchema(t, "Manifest").Validate(testkit.DecodeJSON(t, body)) == nil || pluginproto.ValidateOnlineManifest(manifest, online.QQMusic) == nil {
 		t.Fatal("unverified audio capability accepted")
+	}
+}
+
+func TestOnlineWireRequiresPluginOwnedDisplayMetadata(t *testing.T) {
+	descriptor := provideronline.Describe(online.Netease)
+	descriptor.Plugin.Name = "Custom plugin name"
+	descriptor.Plugin.LocalizedNames = map[string]string{"fr": "Nom du plugin"}
+	onlineContract(t, "Descriptor", descriptor)
+	for _, mutate := range []func(map[string]any){
+		func(v map[string]any) { delete(v, "plugin") },
+		func(v map[string]any) { v["plugin"] = nil },
+		func(v map[string]any) { delete(v["plugin"].(map[string]any), "localizedNames") },
+		func(v map[string]any) { delete(v["plugin"].(map[string]any), "features") },
+		func(v map[string]any) { v["plugin"].(map[string]any)["name"] = "" },
+		func(v map[string]any) {
+			v["plugin"].(map[string]any)["localizedNames"] = map[string]any{"zh_CN": "Name"}
+		},
+		func(v map[string]any) { v["schemaRevision"] = "online-authenticated-v2" },
+	} {
+		encoded, _ := json.Marshal(descriptor)
+		value := testkit.DecodeJSON(t, encoded).(map[string]any)
+		mutate(value)
+		if onlineSchema(t, "Descriptor").Validate(value) == nil {
+			t.Fatal("invalid display metadata accepted by wire schema", value)
+		}
 	}
 }

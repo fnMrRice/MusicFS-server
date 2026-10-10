@@ -26,14 +26,16 @@ type Runtime struct {
 	Enabled                                           bool
 	Provider                                          Provider
 	Gate                                              *plugincontrol.Gate
+	descriptor                                        pluginproto.OnlineDescriptor
 }
 
 type Instance struct {
-	InstanceID   string `json:"instanceId"`
-	Name         string `json:"name"`
-	PluginID     string `json:"pluginId"`
-	AccountID    string `json:"accountId"`
-	Availability string `json:"availability"`
+	InstanceID      string `json:"instanceId"`
+	Name            string `json:"name"`
+	PluginID        string `json:"pluginId"`
+	AccountID       string `json:"accountId"`
+	AccountRevision string `json:"accountRevision,omitempty"`
+	Availability    string `json:"availability"`
 	pluginproto.OnlineDescriptor
 }
 
@@ -47,15 +49,20 @@ func New(runtimes []Runtime) (*Service, error) {
 	if len(runtimes) > 16 {
 		return nil, domain.Fail("INVALID_ARGUMENT", "At most 16 online instances are supported")
 	}
+	runtimes = append([]Runtime{}, runtimes...)
 	seen := map[string]bool{}
-	for _, r := range runtimes {
+	for i, r := range runtimes {
 		key := r.Owner + "\x00" + r.InstanceID
 		if !pluginproto.OnlineIdentity(r.Owner) || !pluginproto.OnlineIdentity(r.InstanceID) || pluginproto.OnlinePluginID(r.Platform) == "" || r.ConfigRevision == "" || seen[key] {
 			return nil, domain.Fail("INVALID_ARGUMENT", "Invalid online runtime identity")
 		}
 		seen[key] = true
+		if err := captureDescriptor(&r, pluginproto.OnlinePolicy(r.Platform)); err != nil {
+			return nil, err
+		}
+		runtimes[i] = r
 	}
-	return &Service{runtimes: append([]Runtime{}, runtimes...), slots: make(chan struct{}, 4)}, nil
+	return &Service{runtimes: runtimes, slots: make(chan struct{}, 4)}, nil
 }
 
 func (s *Service) Instances(ctx context.Context, owner string) ([]Instance, error) {
@@ -73,15 +80,16 @@ func (s *Service) Instances(ctx context.Context, owner string) ([]Instance, erro
 		if ready(r) && r.Gate.Check(ctx) == nil {
 			availability = "available"
 		}
-		accountID := ""
+		accountID, accountRevision := "", ""
 		if availability == "available" {
 			if view, err := platformSession(ctx, r); err == nil {
 				accountID = view.AccountID
+				accountRevision = view.Revision
 			} else {
 				availability = "loginRequired"
 			}
 		}
-		out = append(out, Instance{InstanceID: r.InstanceID, Name: r.Name, PluginID: pluginproto.OnlinePluginID(r.Platform), AccountID: accountID, Availability: availability, OnlineDescriptor: pluginproto.DescribeOnline(r.Platform)})
+		out = append(out, Instance{InstanceID: r.InstanceID, Name: r.Name, PluginID: pluginproto.OnlinePluginID(r.Platform), AccountID: accountID, AccountRevision: accountRevision, Availability: availability, OnlineDescriptor: r.descriptor.Clone()})
 	}
 	return out, nil
 }

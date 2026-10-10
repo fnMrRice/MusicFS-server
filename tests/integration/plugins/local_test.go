@@ -68,6 +68,10 @@ func TestRealWorkerScanRestartRenameResolveAndIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	identity := w.PluginIdentity()
+	if identity == nil || identity.ID != "musicfs.localfiles" || identity.Name != "Local Music Files" || identity.LocalizedNames["zh-Hans"] != "本地音乐文件" || len(identity.Features) != 1 || identity.Features[0] != "music-source" {
+		t.Fatal("local plugin did not declare its display identity and music source feature", identity)
+	}
 	page, err := w.Scan(ctx, scopedRequest(w, pluginproto.ScanRequest{RootID: "music", ScanID: "s1", Generation: 1, Limit: 1}))
 	if err != nil {
 		t.Fatal(err)

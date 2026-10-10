@@ -34,14 +34,15 @@ type Track struct {
 	Size         int64                 `json:"-"`
 }
 type Provider struct {
-	ID            string                     `json:"id"`
-	Name          string                     `json:"name"`
-	Capabilities  []string                   `json:"capabilities"`
-	Availability  string                     `json:"availability"`
-	AccountState  string                     `json:"accountState"`
-	ScanState     string                     `json:"scanState"`
-	Configuration *pluginproto.Configuration `json:"configuration"`
-	Roots         []ProviderRoot             `json:"roots"`
+	ID            string                      `json:"id"`
+	Name          string                      `json:"name"`
+	Plugin        *pluginproto.PluginIdentity `json:"plugin,omitempty"`
+	Capabilities  []string                    `json:"capabilities"`
+	Availability  string                      `json:"availability"`
+	AccountState  string                      `json:"accountState"`
+	ScanState     string                      `json:"scanState"`
+	Configuration *pluginproto.Configuration  `json:"configuration"`
+	Roots         []ProviderRoot              `json:"roots"`
 }
 type ProviderRoot struct {
 	ID        string         `json:"id"`

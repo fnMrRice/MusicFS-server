@@ -9,6 +9,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/src/online"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/provideronline"
 )
 
 func main() {
@@ -29,7 +30,7 @@ func main() {
 		}
 		switch method {
 		case "provider.online.describe":
-			return pluginproto.OnlineResult[pluginproto.OnlineDescriptor]{Context: scope.Context, Value: pluginproto.DescribeOnline(online.Netease)}, nil
+			return pluginproto.OnlineResult[pluginproto.OnlineDescriptor]{Context: scope.Context, Value: provideronline.Describe(online.Netease)}, nil
 		case "provider.online.account":
 			return pluginproto.OnlineResult[online.AccountResult]{Context: scope.Context, Value: online.AccountResult{View: online.AccountView{State: "signedIn", AccountID: "fixture-account", Revision: "fixture-revision"}}}, nil
 		case "provider.online.playlist":

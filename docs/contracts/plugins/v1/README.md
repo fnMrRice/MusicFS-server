@@ -6,6 +6,8 @@ Host 发出的 ID 为 `h-` 前缀，Worker 调用 Host 时用 `w-`。一帧只�
 
 `host.hello` 请求绑定 instanceId、配置修订和本次随机 nonce。成功结果为 Ready（逻辑上的 worker.ready），必须回显 instanceId、nonce，并用 manifest 声明精确 protocolVersion。1.0 只协商 1.0；主版本不匹配必须拒绝。每个角色实例独立 Worker，实例/账号权限由 Host 启动上下文固定，不能被请求字段切换。账户引用不是凭据。
 
+在线 Provider 的资料修订为 `online-authenticated-v3`，`provider.online.describe` 必须返回插件提供的 `plugin: {id,name,localizedNames,features}`，其 ID 与握手身份一致；Host 缓存并透传已验证值，不自行生成平台名称。显示语义、生命周期与版本兼容见 [插件身份与名称](../../../plugin-identity.md)，具体 wire 模型见 [online.schema.json](online.schema.json)。
+
 Manifest的 `configuration` 为插件提供的导入选项声明；不支持导入配置的音频插件发送null。Local Files 0.3.0声明 `local-import-v3`，字段为 `schemaRevision/importOptionsSchema/importDefaults/unavailableOptions`，标题与说明为纯文本。声明限制32 KiB、8层、每对象32属性；受限Schema支持有界字符串数组，拒绝外部引用/执行扩展。`ImportOptions` 和 `ScanScope` 新增必需 `excludePatterns` 数组，最多32条、每条UTF-8最多256字节；Host与发布范围共用根相对glob语义，见[扫描说明](../../../scanning.md)。规则排序绑定PlanDigest，cursor/grant不能在同任务中换规则；不兼容旧开发声明。
 
 宿主实际执行根授权、递归上限和排除，不依赖worker自行过滤后声称完整。`importLyrics:true` 已接入扫描后的持久歌词补缺，需要可用本地Scraper；逐目标失败不伪装成功，见[自动补缺](../../../metadata.md#导入歌词与自动补缺)。

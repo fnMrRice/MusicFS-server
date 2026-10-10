@@ -14,11 +14,11 @@
 
 三个在线源统一要求登录：实例发现、能力说明与账号控制面可以在平台未登录时使用；所有业务查询与导入/同步必须有 signedIn 账号，重启恢复的 unverified 状态也不可查询。不会退回匿名接口。网易云所有已实现业务请求改用 PC EAPI 和账号 Cookie；QQ 曲目搜索改用带 musicKey/uin 的桌面 RPC，参考原始客户端抓包说明 [QQMusicApi issue 160](https://github.com/jsososo/QQMusicApi/issues/160)，不再调用 client_search_cp。Apple Music 及 QQ 尚未实现的业务能力在登录后仍明确返回 UNSUPPORTED；不因登录成功虚构查询或完整音频能力。独立 Scraper 不获得 Provider 登录态。
 
-协议修订升级为 online-authenticated-v2，authentication 固定为 platformAccountRequired；Server 和对应 Worker 必须同时升级，旧匿名 Worker 不兼容。Web 新增 loginRequired 来源状态及 PLATFORM_AUTH_REQUIRED（HTTP 403）提示；该错误不触发 MusicFS 会话退出。旧 Client 须同步适配这些状态，不能按旧匿名能力继续发起查询。
+当前协议修订为 online-authenticated-v3，authentication 固定为 platformAccountRequired；Server 和对应 Worker 必须同时升级，旧匿名或 v2 Worker 不兼容。v3 增加插件自己的 ID、默认名与译名声明，见 [插件身份与名称](plugin-identity.md)。Web 提供 loginRequired 来源状态及 PLATFORM_AUTH_REQUIRED（HTTP 403）提示；该错误不触发 MusicFS 会话退出。旧 Client 须同步适配这些状态，不能按旧匿名能力继续发起查询。
 
 ## 使用
 
-构建并部署本次 Server、对应在线 Worker 和 Web 后，在设置页“音乐平台账号”中选择已启用实例：网易云用网易云音乐 App 扫码，QQ 音乐当前用手机 QQ 扫码。轮询至少间隔三秒，挑战有效期三分钟，可取消；失败可查看当前状态再重试，避免结果不明时重复发起。每个用户的一个实例绑定一个账号，多个账号使用多个实例。
+构建并部署本次 Server、对应在线 Worker 和 Web 后，在设置页“音乐来源”中选择已启用实例：网易云用网易云音乐 App 扫码，QQ 音乐当前用手机 QQ 扫码。轮询至少间隔三秒，挑战有效期三分钟，可取消；失败可查看当前状态再重试，避免结果不明时重复发起。每个用户的一个实例绑定一个账号，多个账号使用多个实例。
 
 Apple 由部署者将**自己的、适用于该网页来源的开发者 JWT**通过服务进程环境 `MUSICFS_APPLE_DEVELOPER_TOKEN` 提供；不把签名私钥或令牌放入配置提交。设置页先加载官方 MusicKit，再由用户点击“打开 Apple 授权”；授权结果只经同源 CSRF 保护的 POST 传给插件。未配置时入口明确不可用。开发者 JWT 会提供给本人页面用于 MusicKit，它不是 Apple 用户令牌。
 

@@ -7,12 +7,13 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
 )
 
-// Runtime returns a copy of the immutable runtime descriptor. Nested maps and
-// configuration pointers are read-only; reconfiguration replaces the descriptor.
+// Runtime detaches the plugin identity. Other nested maps and configuration
+// pointers are read-only; reconfiguration replaces the descriptor.
 func (s *Service) Runtime(id string) (Runtime, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	r, ok := s.runtimes[id]
+	r.Plugin = r.Plugin.Clone()
 	return r, ok
 }
 func (s *Service) Runtimes() []Runtime {
@@ -20,6 +21,7 @@ func (s *Service) Runtimes() []Runtime {
 	defer s.mu.RUnlock()
 	result := make([]Runtime, 0, len(s.runtimes))
 	for _, r := range s.runtimes {
+		r.Plugin = r.Plugin.Clone()
 		result = append(result, r)
 	}
 	return result
@@ -36,6 +38,10 @@ func (s *Service) UpdateRuntime(r Runtime) error {
 	}
 	if r.Gate == nil {
 		r.Gate = previous.Gate
+	}
+	r.Plugin = previous.Plugin.Clone()
+	if r.Worker != nil {
+		r.Plugin = r.Worker.PluginIdentity()
 	}
 	s.runtimes[r.ID] = r
 	return nil

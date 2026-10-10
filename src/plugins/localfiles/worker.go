@@ -37,7 +37,8 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 		}
 		w.ready = true
 		w.instance = hello.InstanceID
-		return pluginproto.Ready{InstanceID: hello.InstanceID, Nonce: hello.Nonce, Manifest: pluginproto.Manifest{PluginID: "musicfs.localfiles", PluginVersion: "0.3.0", ProtocolVersion: pluginproto.ProtocolVersion, Roles: []string{"provider"}, Capabilities: []string{"library.scan", "metadata.read", "stream.resolve"}, Configuration: pluginconfig.LocalFiles(), Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}}, nil
+		identity := Identity()
+		return pluginproto.Ready{InstanceID: hello.InstanceID, Nonce: hello.Nonce, Manifest: pluginproto.Manifest{PluginID: identity.ID, Plugin: identity, PluginVersion: "0.3.0", ProtocolVersion: pluginproto.ProtocolVersion, Roles: []string{"provider"}, Capabilities: []string{"library.scan", "metadata.read", "stream.resolve"}, Configuration: pluginconfig.LocalFiles(), Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}}, nil
 	}
 	w.mu.Lock()
 	ready := w.ready

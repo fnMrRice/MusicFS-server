@@ -57,7 +57,9 @@ func (w *OnlineWorker) Describe(ctx context.Context) (pluginproto.OnlineDescript
 	}
 	d, err := onlineCall[pluginproto.OnlineDescriptor](ctx, w, "provider.online.describe", scope, pluginproto.OnlineScope{Context: scope})
 	if err == nil {
-		err = d.Validate(w.config.Platform)
+		if validation := d.Validate(w.config.Platform); validation != nil {
+			return pluginproto.OnlineDescriptor{}, domain.Fail("PROTOCOL_MISMATCH", "Online plugin descriptor is invalid")
+		}
 	}
 	return d, err
 }

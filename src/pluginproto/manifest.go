@@ -7,16 +7,17 @@ const MaxMessageBytes = 1 << 20
 const MaxPageItems = 200
 
 type Manifest struct {
-	PluginID        string         `json:"pluginId"`
-	PluginVersion   string         `json:"pluginVersion"`
-	ProtocolVersion string         `json:"protocolVersion"`
-	Roles           []string       `json:"roles"`
-	Capabilities    []string       `json:"capabilities"`
-	Systems         []string       `json:"systems"`
-	Architectures   []string       `json:"architectures"`
-	MaxMessageBytes int            `json:"maxMessageBytes"`
-	MaxPageItems    int            `json:"maxPageItems"`
-	Configuration   *Configuration `json:"configuration"`
+	PluginID        string          `json:"pluginId"`
+	Plugin          *PluginIdentity `json:"plugin,omitempty"`
+	PluginVersion   string          `json:"pluginVersion"`
+	ProtocolVersion string          `json:"protocolVersion"`
+	Roles           []string        `json:"roles"`
+	Capabilities    []string        `json:"capabilities"`
+	Systems         []string        `json:"systems"`
+	Architectures   []string        `json:"architectures"`
+	MaxMessageBytes int             `json:"maxMessageBytes"`
+	MaxPageItems    int             `json:"maxPageItems"`
+	Configuration   *Configuration  `json:"configuration"`
 }
 
 func (m Manifest) Validate(role string) error {
@@ -32,6 +33,11 @@ func (m Manifest) Validate(role string) error {
 	}
 	if !found || m.MaxMessageBytes <= 0 || m.MaxMessageBytes > MaxMessageBytes || m.MaxPageItems <= 0 || m.MaxPageItems > MaxPageItems {
 		return fmt.Errorf("PROTOCOL_MISMATCH: invalid role or resource limits")
+	}
+	if m.Plugin != nil {
+		if err := m.Plugin.Validate(m.PluginID); err != nil {
+			return err
+		}
 	}
 	if m.Configuration != nil {
 		if role != "provider" {

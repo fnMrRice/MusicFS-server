@@ -21,7 +21,9 @@ S-P7-02 提供三个独立 Go Provider 程序的配置与公开资料接口。�
 
 QQ 和 Apple 对应 `musicfs.qqmusic`、`musicfs.applemusic`。平台由程序身份固定，实例不能通过请求改变平台。配置只接受空 `config`，拒绝上游 URL、代理、任意参数、Cookie、凭据、账号编号、musicRoots 和本地扫描导入选项。路径相对 YAML 所在目录，程序可配置 SHA-256；已配置的插件和实例支持管理员动态启停，显示名称支持在线修改；执行程序路径、程序摘要和平台身份仍由部署配置管理。三平台合计最多16个在线实例，业务使用对应实例当前已校验的账号；实例列表在未登录/待校验时显示 loginRequired，账号 ID 仅在已校验时返回。
 
-`GET /api/v1/online-instances` 只列出本人配置实例，含 `instanceId/name/pluginId/platform/accountId/availability` 及安全能力/空配置声明。`available` 表示工作进程已通过校验、仍运行且平台账号已校验，每项能力另看 `supported`；程序丢失、禁用、摘要或握手错误则为 offline。列表不公开执行路径、运行目录、配置摘要或平台凭据。
+`GET /api/v1/online-instances` 只列出本人配置实例，含 `instanceId/name/pluginId/platform/accountId/availability` 及安全能力/空配置声明。取得有效插件描述后还返回 `plugin: {id,name,localizedNames,features}`，平台标题和译名由此声明提供，不使用实例 `name` 或固定映射；字段与升级要求见 [插件身份与名称](plugin-identity.md)。`available` 表示工作进程已通过校验、仍运行且平台账号已校验，每项能力另看 `supported`；程序丢失、禁用、摘要或握手错误则为 offline。列表不公开执行路径、运行目录、配置摘要或平台凭据。
+
+账号歌单列表由新增 `playlist.list` 能力提供，`GET /online-instances/{id}/playlists` 读取对应插件当前账号的歌单。Web 只在成功取得非空列表后显示“xxx 的歌单”来源分类；协议、分页隔离及各插件支持范围见 [来源歌单](source-playlists.md)。
 
 | 平台 | 当前实际范围 | 明确限制 |
 | --- | --- | --- |

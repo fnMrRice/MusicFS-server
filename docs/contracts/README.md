@@ -110,9 +110,9 @@ Provider 响应增加 `configuration` 与 `roots`。Local Files 的配置包含�
 
 Provider 根可选 `writeBack` 为 `{enabled,available,formats,fields,replacement}`：enabled表示开关与授权，available表示实际本地存储和探测条件，仍不能替代逐文件检查。首版只支持Windows固定本地NTFS的受支持FLAC，replacement为recoverableReplace，不承诺NAS或单次原子替换。客户端可忽略该可选字段，现有Web未增加写回入口。范围、恢复和备份见[写回说明](../writeback.md)及[接口验收](../validation/writeback-http.md)。
 
-### S-P7-02 匿名在线资料
+### S-P7-02 在线资料与后续账号增量
 
-`GET /online-instances` 只返回本人在线实例的安全声明，账号固定空匿名；available与能力supported分开。查询端点为 `/online-instances/{id}/search?q=&limit=&cursor=`、`/tracks/{externalId}`、`/recommendations?limit=` 和 `/playlists/{externalId}`。默认limit20、范围1—50，未知/重复query拒绝；搜索q最多256 UTF-8字节，cursor最多1024。上游游标绑定owner/实例/查询/limit且有时限，不声明稳定快照。
+`GET /online-instances` 只返回本人在线实例的安全声明，当前业务要求平台账号已校验，available与能力supported分开。插件实际返回的 `plugin: {id,name,localizedNames,features}` 提供平台显示名称，实例 `name` 仍为管理员别名；首次未取得有效插件声明时可省略 HTTP `plugin`，见[插件身份与名称](../plugin-identity.md)。查询端点为 `/online-instances/{id}/search?q=&limit=&cursor=`、`/tracks/{externalId}`、`/recommendations?limit=` 和 `/playlists/{externalId}`。默认limit20、范围1—50，未知/重复query拒绝；搜索q最多256 UTF-8字节，cursor最多1024。上游游标绑定owner/实例/账号登录代次/查询/limit且有时限，不声明稳定快照。
 
 公共返回新增 `OnlineInstances/OnlineSearchPage/OnlineTrack/OnlineRecommendationPage/OnlineObservation`。资料页URL与音频流分离；playbackAvailability恒unknown，metadataDigest不成为asset版本或身份匹配证据。歌单保留重复出现的位置、最多10000条，complete只是观测数量完整且consistency恒unversioned。推荐为匿名第一页，personalized=false、nextCursor=null。所有这些读取不会隐式导入个人曲库。
 

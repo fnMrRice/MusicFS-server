@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sync"
 	"time"
 
@@ -21,6 +22,7 @@ type Worker struct {
 	config     Config
 	Access     *sourceaccess.Access
 	Manifest   pluginproto.Manifest
+	identity   *pluginproto.PluginIdentity
 	peer       *pluginproto.Peer
 	cmd        *exec.Cmd
 	cancel     context.CancelFunc
@@ -115,13 +117,20 @@ func Start(ctx context.Context, cfg Config) (*Worker, error) {
 	if err == nil && (ready.InstanceID != cfg.InstanceID || ready.Nonce != nonce || ready.Manifest.PluginID != "musicfs.localfiles") {
 		err = fmt.Errorf("PROTOCOL_MISMATCH: invalid handshake")
 	}
+	if err == nil && (ready.Manifest.Plugin == nil || !slices.Contains(ready.Manifest.Plugin.Features, "music-source")) {
+		err = fmt.Errorf("PROTOCOL_MISMATCH: music source declaration is required")
+	}
 	if err != nil {
 		w.Close()
 		return nil, err
 	}
 	w.Manifest = ready.Manifest
+	w.identity = ready.Manifest.Plugin.Clone()
 	return w, nil
 }
+
+// PluginIdentity returns only the verified declaration cached at startup.
+func (w *Worker) PluginIdentity() *pluginproto.PluginIdentity { return w.identity.Clone() }
 
 func (w *Worker) Scan(ctx context.Context, r pluginproto.ScanRequest) (pluginproto.ScanPage, error) {
 	if err := w.state.ready(); err != nil {
@@ -148,8 +157,8 @@ func (w *Worker) Resolve(ctx context.Context, r pluginproto.ResolveRequest) (plu
 	return result, err
 }
 func (w *Worker) Close() error {
-	w.peer.Close()
 	w.cancel()
+	w.peer.Close()
 	select {
 	case <-w.done:
 		return nil
