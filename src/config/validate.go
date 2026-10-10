@@ -35,6 +35,9 @@ func (c Config) Validate() error {
 	if c.MaxSessions < 1 || c.MaxSessions > 128 || c.MaxProcessing < 1 || c.MaxProcessing > 8 || c.MaxCacheBytes < 1<<20 || c.SessionTTLSeconds < 60 || c.SessionTTLSeconds > 86400 {
 		return errors.New("invalid resource limits")
 	}
+	if c.Hashing.MaxConcurrent < 1 || c.Hashing.MaxConcurrent > 4 || c.Hashing.BytesPerSecond < 1<<16 || c.Hashing.BytesPerSecond > 1<<30 {
+		return errors.New("invalid hashing resource limits")
+	}
 	if len(c.AllowedOrigins) == 0 {
 		return errors.New("allowedOrigins must be explicit")
 	}

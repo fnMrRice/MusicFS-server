@@ -118,6 +118,13 @@ func (a *Access) open(rootID, path, version string) (*Handle, error) {
 		return nil, fmt.Errorf("RESOURCE_CHANGED: source version changed")
 	}
 	h.Entry = entry
+	h.checkPath = func() error {
+		current, err := a.open(rootID, path, entry.ObservedVersion)
+		if err != nil {
+			return fmt.Errorf("RESOURCE_CHANGED: source path no longer identifies this version")
+		}
+		return current.Close()
+	}
 	return h, nil
 }
 
@@ -191,6 +198,7 @@ type Handle struct {
 	Entry        pluginproto.Entry
 	rootID, path string
 	stop         func() bool
+	checkPath    func() error
 }
 
 func (h *Handle) Close() error {

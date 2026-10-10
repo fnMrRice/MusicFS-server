@@ -26,9 +26,19 @@
 
 相同资产重扫时，Provider 撤销的申报不再作为当前证据；成功探测缺值或切换来源后撤销对应旧探测/估算值。失败或未尝试的探测保留同一资产最近成功的证据，人工值和完整文件摘要不受该协调过程覆盖。ffprobe 证据记录本次工具输出的版本；原始版本不符合证据标识符字符/长度限制时，以 `sha256-<原始版本摘要>` 稳定表示，避免发行版本后缀使扫描失败。
 
-`hashStatus=unknown` 表示尚无摘要任务；`pending` 表示已登记持久任务；`unavailable/failed` 区分不可获得与执行失败。除 `verified` 外，`fileSha512/hashComputedAt` 均为 `null`，具体失败由证据的 `failureCode` 表达，不能用零码率或空摘要掩盖。证据携带资产 ID/版本、代次、算法/算法版本、配置修订、范围与 `evidenceVersion=1`。范围为半开区间；摘要证据必须覆盖完整原文件。跨字段绑定、范围上限、预期版本/代次和过期任务拒绝由宿主及存储事务校验，JSON Schema 不代替这些运行时保证。S-P5-02 的后台完整文件读取与计算服务仍是后续步骤，本步定义并持久化证据生命周期。
+`hashStatus=unknown` 表示尚无摘要任务；`pending` 表示已登记持久任务；`unavailable/failed` 区分不可获得与执行失败。除 `verified` 外，`fileSha512/hashComputedAt` 均为 `null`，具体失败由证据的 `failureCode` 表达，不能用零码率或空摘要掩盖。证据携带资产 ID/版本、代次、算法/算法版本、配置修订、范围与 `evidenceVersion=1`。范围为半开区间；摘要证据必须覆盖完整原文件。跨字段绑定、范围上限、预期版本/代次和过期任务拒绝由宿主及存储事务校验，JSON Schema 不代替这些运行时保证。
 
 本项目尚未上线，本次直接更新 v1 开发基线：`SourceTrack.asset` 及插件观测的证据字段是必需项，不承诺旧契约兼容。现有最简 Web 的列表检查允许额外响应字段，继续使用原有投影字段播放；此步不增加证据界面。开发基线确定后再按下面的发布兼容规则演进。
+
+### S-P5-02 完整文件摘要任务
+
+`POST /source-tracks/{id}/hash-jobs` 接受 JSON `{}` 和 `Idempotency-Key`，返回 202 `{jobId,merged}`。手动任务不受 `hashing.auto=false` 关闭自动排队的影响；并发与所有任务共享的速度预算见[配置说明](../configuration.md)。同用户、路由与键重放已有任务，目标资产版本变化后同键请求返回 `CONFLICT`，过期键返回 `IDEMPOTENCY_EXPIRED`；其他键可以合并同资产在途任务。任务结果重试窗口为一小时，返回 ID 可继续查询已持久化任务。
+
+`GET /hash-jobs/{id}` 返回固定 `sourceTrackId/assetId/assetVersion`、`status`、`progress.completedBytes/totalBytes`、`error` 与创建/更新时间。状态为 `queued/running/succeeded/failed/unavailable/cancelled/superseded`；字节已全部读取仍须通过稳定完整读取校验才能成功。`POST /hash-jobs/{id}/cancel` 同样要求 JSON `{}`、Cookie、允许的 Origin 和 CSRF，自然幂等，无需幂等键。重复取消终态任务返回原终态，不更新完成时间或重新排队；并发完成先发生时可返回 `succeeded`。本人以外的任务和来源统一 `NOT_FOUND`，不暴露路径、内部票据或读取权限。任务错误中的 `requestId` 对应当前 HTTP 请求。
+
+成功摘要仍从当前 `SourceAsset.fileSha512` 读取，覆盖原始文件的容器、标签及内嵌封面，不能替换为解密输出、PCM 或局部片段。完整文件摘要与 Provider 申报冲突时，`asset.hashConflict` 返回 `conflictId/providerEvidenceId/verifiedEvidenceId/reason/detectedAt/resolvedAt`，原因固定 `PROVIDER_SHA512_MISMATCH`，当前未解决冲突的 `resolvedAt=null`；无当前冲突则为 `null`。错误申报仍作为申报证据保留，不能进入已验证摘要匹配，历史冲突仅留在内部审计。哈希相同不删除文件、不合并来源权限，也不能单独证明跨源续播时间轴。
+
+新增任务与冲突字段按本开发基线同步更新；Web 可忽略这些响应字段，当前没有哈希管理页面。真实文件稳定读取的系统限制和验收范围以[识别证据说明](../identification.md)及[验收记录](../validation/identification.md)为准。
 
 ### NCM 解密增量
 

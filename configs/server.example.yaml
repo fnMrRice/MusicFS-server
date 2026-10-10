@@ -47,3 +47,7 @@ maxSessions: 8
 maxProcessing: 2
 maxCacheBytes: 1073741824
 sessionTtlSeconds: 3600
+hashing:
+  auto: false
+  maxConcurrent: 1
+  bytesPerSecond: 4194304

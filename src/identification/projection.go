@@ -8,6 +8,7 @@ func (a *Asset) Project(evidence []Evidence) {
 	a.BitrateMode = "unknown"
 	a.ProviderSHA512, a.FileSHA512, a.HashComputedAt = nil, nil, nil
 	a.HashStatus = "unknown"
+	a.HashConflict = nil
 	if !a.Current {
 		a.HashStatus = "invalidated"
 		return

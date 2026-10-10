@@ -159,7 +159,7 @@ func yamlServiceConfig(t *testing.T) (config.Config, string) {
 	address := listener.Addr().String()
 	listener.Close()
 	base := "http://" + address
-	return config.Config{ConfigVersion: 1, Listen: address, AllowLoopbackHTTP: true, AllowedOrigins: []string{base}, AdminToken: domain.NewID(), DataRoot: filepath.Join(dir, "data"), MediaRoot: filepath.Join(dir, "media"), CacheRoot: filepath.Join(dir, "cache"), MaxSessions: 8, MaxProcessing: 2, MaxCacheBytes: 8 << 20, SessionTTLSeconds: 3600}, base
+	return config.Config{ConfigVersion: 1, Listen: address, AllowLoopbackHTTP: true, AllowedOrigins: []string{base}, AdminToken: domain.NewID(), DataRoot: filepath.Join(dir, "data"), MediaRoot: filepath.Join(dir, "media"), CacheRoot: filepath.Join(dir, "cache"), MaxSessions: 8, MaxProcessing: 2, MaxCacheBytes: 8 << 20, SessionTTLSeconds: 3600, Hashing: config.HashingConfig{MaxConcurrent: 1, BytesPerSecond: 4 << 20}}, base
 }
 
 func TestYAMLProviderInstancesAndMultipleRoots(t *testing.T) {

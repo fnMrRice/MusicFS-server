@@ -3,11 +3,12 @@ package stream
 import (
 	"bufio"
 	"context"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/playback"
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/playback"
 )
 
 func Serve(w http.ResponseWriter, r *http.Request, stream *playback.Stream) error {

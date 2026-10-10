@@ -5,9 +5,10 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"sync"
 	"time"
+
+	"github.com/fnMrRice/MusicFS-server/src/domain"
 )
 
 type User struct {

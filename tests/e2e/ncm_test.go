@@ -69,6 +69,7 @@ func TestNCMServerRoundTripAndDisabledPlugin(t *testing.T) {
 			listener.Close()
 			base := "http://" + address
 			cfg := config.Config{ConfigVersion: 1, Listen: address, AllowLoopbackHTTP: true, AllowedOrigins: []string{base}, AdminToken: domain.NewID(), DataRoot: filepath.Join(dir, "data"), MediaRoot: filepath.Join(dir, "media"), CacheRoot: filepath.Join(dir, "cache"), MaxSessions: 8, MaxProcessing: 2, MaxCacheBytes: cacheBudget, SessionTTLSeconds: 3600,
+				Hashing: config.HashingConfig{MaxConcurrent: 1, BytesPerSecond: 4 << 20},
 				Plugins: []config.Plugin{
 					{PluginID: "musicfs.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Name: "NCM test", Role: "provider", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "NCM test", Path: music}}}}}},
 					{PluginID: "musicfs.ncm", Executable: decoder, Enabled: enabled, Instances: []config.Instance{{InstanceID: "ncm-default", Role: "audio", Enabled: true}}},

@@ -105,13 +105,16 @@ func TestLibraryEvidenceHTTPProjection(t *testing.T) {
 			if current.FileSHA512 == nil || *current.FileSHA512 != strings.Repeat("b", 128) || current.HashComputedAt == nil {
 				t.Fatal("verified digest did not reach the HTTP projection")
 			}
+			if current.HashConflict == nil || current.HashConflict.Reason != "PROVIDER_SHA512_MISMATCH" || current.HashConflict.ResolvedAt != nil || current.HashConflict.VerifiedEvidenceID != ticket.ID || current.HashConflict.ProviderEvidenceID == "" {
+				t.Fatal("mismatched provider claim did not expose its current conflict evidence")
+			}
 		} else if current.FileSHA512 != nil || current.HashComputedAt != nil {
 			t.Fatal("failed or unavailable digest must remain null")
 		}
 	}
 	publish("version-2", "evidence-scan-replaced")
 	replaced := read()
-	if replaced.ID != track.ID || replaced.AssetID == track.AssetID || replaced.Asset.HashStatus != "unknown" || replaced.Asset.FileSHA512 != nil {
+	if replaced.ID != track.ID || replaced.AssetID == track.AssetID || replaced.Asset.HashStatus != "unknown" || replaced.Asset.FileSHA512 != nil || replaced.Asset.HashConflict != nil {
 		t.Fatal("asset replacement changed the source identity or retained old proof")
 	}
 }

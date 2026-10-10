@@ -127,6 +127,9 @@ func validateDocumentShape(root *yaml.Node) error {
 		"tlsCert": stringShape, "tlsKey": stringShape, "plugins": sequenceShape(plugin),
 		"maxSessions": intShape, "maxProcessing": intShape, "maxCacheBytes": intShape,
 		"sessionTtlSeconds": intShape,
+		"hashing": mappingShape(map[string]fieldShape{
+			"auto": boolShape, "maxConcurrent": intShape, "bytesPerSecond": intShape,
+		}),
 	}, "configVersion")
 	if err := validateShape(root, shape, "config"); err != nil {
 		return err

@@ -133,13 +133,13 @@ func TestOpenAPIReferencesAndOperations(t *testing.T) {
 				if !strings.Contains(string(encoded), "/CSRF") {
 					t.Errorf("missing CSRF contract: %s %s", method, path)
 				}
-				if method == "post" && !strings.Contains(string(encoded), "/Idempotency") {
+				if method == "post" && path != "/hash-jobs/{id}/cancel" && !strings.Contains(string(encoded), "/Idempotency") {
 					t.Errorf("missing idempotency contract: %s %s", method, path)
 				}
 			}
 		}
 	}
-	for _, id := range []string{"healthReady", "login", "currentSession", "logout", "listProviders", "createScan", "getScan", "listSourceTracks", "createPlayback", "stopPlayback", "seekPlayback", "recoverPlayback", "getStream", "headStream"} {
+	for _, id := range []string{"healthReady", "login", "currentSession", "logout", "listProviders", "createScan", "getScan", "listSourceTracks", "createPlayback", "stopPlayback", "seekPlayback", "recoverPlayback", "getStream", "headStream", "createHash", "getHash", "cancelHash"} {
 		if !ids[id] {
 			t.Errorf("missing operation %s", id)
 		}

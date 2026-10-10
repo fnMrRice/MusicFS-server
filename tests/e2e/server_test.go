@@ -112,6 +112,7 @@ func TestFreshServerScanRangePermissionsAndRestart(t *testing.T) {
 	l.Close()
 	base := "http://" + address
 	cfg := config.Config{ConfigVersion: 1, Listen: address, DataRoot: filepath.Join(dir, "data"), MediaRoot: filepath.Join(dir, "media"), CacheRoot: filepath.Join(dir, "cache"), AdminToken: domain.NewID(), AllowLoopbackHTTP: true, AllowedOrigins: []string{base}, MaxSessions: 8, MaxProcessing: 2, MaxCacheBytes: 64 << 20, SessionTTLSeconds: 3600,
+		Hashing: config.HashingConfig{MaxConcurrent: 1, BytesPerSecond: 4 << 20},
 		Plugins: []config.Plugin{{PluginID: "musicfs.localfiles", Executable: pluginPath, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Name: "Local test", Role: "provider", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Local test", Path: music}}}}}}}}
 	configPath := writeYAMLConfiguration(t, cfg)
 	start := func() func() {

@@ -3,9 +3,10 @@ package playback
 import (
 	"context"
 	"encoding/json"
+	"time"
+
 	"github.com/fnMrRice/MusicFS-server/src/auth"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"time"
 )
 
 func (s *Service) Control(ctx context.Context, who auth.Session, id, operation string, r ControlRequest, key string) (Description, error) {

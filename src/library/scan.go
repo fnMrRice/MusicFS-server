@@ -2,12 +2,13 @@ package library
 
 import (
 	"context"
+	"sort"
+	"time"
+
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
-	"sort"
-	"time"
 )
 
 func (s *Service) scan(ctx context.Context, j jobs.Job) (int, error) {

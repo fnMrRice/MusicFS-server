@@ -5,14 +5,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/fnMrRice/MusicFS-server/src/storage/migrations"
-	_ "modernc.org/sqlite"
 	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/fnMrRice/MusicFS-server/src/storage/migrations"
+	_ "modernc.org/sqlite"
 )
 
 type Store struct{ DB *sql.DB }

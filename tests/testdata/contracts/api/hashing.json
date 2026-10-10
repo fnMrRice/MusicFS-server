@@ -1,0 +1,10 @@
+[
+  {"name":"hash-empty-request","schema":"HashRequest","valid":true,"value":{}},
+  {"name":"hash-reject-partial-range","schema":"HashRequest","valid":false,"value":{"start":1,"end":32}},
+  {"name":"hash-reject-null-request","schema":"HashRequest","valid":false,"value":null},
+  {"name":"hash-reject-client-digest","schema":"HashRequest","valid":false,"value":{"fileSha512":"0000"}},
+  {"name":"hash-accepted","schema":"HashAccepted","valid":true,"value":{"jobId":"hash-job","merged":false}},
+  {"name":"hash-empty-original","schema":"HashJob","valid":true,"value":{"jobId":"hash-job","sourceTrackId":"track","assetId":"asset","assetVersion":"version","status":"succeeded","progress":{"completedBytes":0,"totalBytes":0},"error":null,"createdAt":"2026-10-10T01:00:00Z","updatedAt":"2026-10-10T01:00:00Z"}},
+  {"name":"hash-conflict","schema":"HashConflict","valid":true,"value":{"conflictId":"conflict","providerEvidenceId":"provider-evidence","verifiedEvidenceId":"verified-evidence","reason":"PROVIDER_SHA512_MISMATCH","detectedAt":"2026-10-10T01:00:00Z","resolvedAt":null}},
+  {"name":"hash-reject-boolean-progress","schema":"HashJob","valid":false,"value":{"jobId":"hash-job","sourceTrackId":"track","assetId":"asset","assetVersion":"version","status":"running","progress":{"completedBytes":true,"totalBytes":10},"error":null,"createdAt":"2026-10-10T01:00:00Z","updatedAt":"2026-10-10T01:00:00Z"}}
+]

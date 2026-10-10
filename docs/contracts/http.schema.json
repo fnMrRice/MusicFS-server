@@ -50,20 +50,43 @@
     },
     "SourceAsset": {
       "type": "object",
-      "required": ["assetId", "sourceTrackId", "version", "evidenceVersion", "current", "codec", "container", "durationMs", "fileSizeBytes", "bitrateBps", "bitrateMode", "bitrateOrigin", "providerSha512", "fileSha512", "hashStatus", "hashComputedAt", "evidence"],
+      "required": ["assetId", "sourceTrackId", "version", "evidenceVersion", "current", "codec", "container", "durationMs", "fileSizeBytes", "bitrateBps", "bitrateMode", "bitrateOrigin", "providerSha512", "fileSha512", "hashStatus", "hashComputedAt", "hashConflict", "evidence"],
       "properties": {
         "assetId": {"$ref": "#/$defs/ID"}, "sourceTrackId": {"$ref": "#/$defs/ID"}, "version": {"$ref": "#/$defs/ID"}, "evidenceVersion": {"const": 1}, "current": {"type": "boolean"},
         "codec": {"$ref": "#/$defs/NullableString"}, "container": {"$ref": "#/$defs/NullableString"}, "durationMs": {"$ref": "#/$defs/NullableCount"}, "fileSizeBytes": {"$ref": "#/$defs/NullableCount"},
         "bitrateBps": {"$ref": "#/$defs/NullableBitrate"}, "bitrateMode": {"$ref": "#/$defs/BitrateMode"}, "bitrateOrigin": {"anyOf": [{"$ref": "#/$defs/EvidenceOrigin"}, {"type": "null"}]},
         "providerSha512": {"$ref": "#/$defs/NullableSHA512"}, "fileSha512": {"$ref": "#/$defs/NullableSHA512"},
         "hashStatus": {"enum": ["unknown", "pending", "verified", "unavailable", "failed", "invalidated"]}, "hashComputedAt": {"$ref": "#/$defs/NullableTimestamp"},
+        "hashConflict": {"anyOf": [{"allOf": [{"$ref": "#/$defs/HashConflict"}, {"properties": {"resolvedAt": {"type": "null"}}}]}, {"type": "null"}]},
         "evidence": {"type": "array", "items": {"allOf": [{"$ref": "#/$defs/AssetEvidence"}, {"properties": {"status": {"not": {"const": "invalidated"}}}}]}}
       },
       "allOf": [
         {"if": {"properties": {"hashStatus": {"const": "verified"}}}, "then": {"properties": {"fileSha512": {"$ref": "#/$defs/SHA512"}, "hashComputedAt": {"$ref": "#/$defs/Timestamp"}}}, "else": {"properties": {"fileSha512": {"type": "null"}, "hashComputedAt": {"type": "null"}}}},
+        {"if": {"properties": {"hashConflict": {"type": "object"}}}, "then": {"properties": {"current": {"const": true}, "hashStatus": {"const": "verified"}, "providerSha512": {"$ref": "#/$defs/SHA512"}}}},
         {"if": {"properties": {"bitrateBps": {"type": "null"}}}, "then": {"properties": {"bitrateMode": {"const": "unknown"}, "bitrateOrigin": {"type": "null"}}}, "else": {"properties": {"bitrateOrigin": {"$ref": "#/$defs/EvidenceOrigin"}}}},
-        {"if": {"properties": {"current": {"const": false}}}, "then": {"properties": {"hashStatus": {"const": "invalidated"}, "evidence": {"maxItems": 0}}}}
+        {"if": {"properties": {"current": {"const": false}}}, "then": {"properties": {"hashStatus": {"const": "invalidated"}, "evidence": {"maxItems": 0}, "hashConflict": {"type": "null"}}}}
       ]
+    },
+    "HashConflict": {
+      "type": "object", "required": ["conflictId", "providerEvidenceId", "verifiedEvidenceId", "reason", "detectedAt", "resolvedAt"],
+      "description": "申报摘要与完整原文件验证摘要不一致；只引用证据，不输出原始路径。当前资产只返回未解决冲突，历史留在内部审计。",
+      "properties": {
+        "conflictId": {"$ref": "#/$defs/ID"}, "providerEvidenceId": {"$ref": "#/$defs/ID"}, "verifiedEvidenceId": {"$ref": "#/$defs/ID"},
+        "reason": {"const": "PROVIDER_SHA512_MISMATCH"}, "detectedAt": {"$ref": "#/$defs/Timestamp"}, "resolvedAt": {"$ref": "#/$defs/NullableTimestamp"}
+      }
+    },
+    "HashRequest": {"type": "object", "additionalProperties": false},
+    "HashAccepted": {"type": "object", "required": ["jobId", "merged"], "properties": {"jobId": {"$ref": "#/$defs/ID"}, "merged": {"type": "boolean"}}},
+    "HashJob": {
+      "type": "object", "required": ["jobId", "sourceTrackId", "assetId", "assetVersion", "status", "progress", "error", "createdAt", "updatedAt"],
+      "description": "按所有者读取的持久任务，固定原文件资产及版本；进度是已读取字节数，成功仍须稳定完整读取验证。",
+      "properties": {
+        "jobId": {"$ref": "#/$defs/ID"}, "sourceTrackId": {"$ref": "#/$defs/ID"}, "assetId": {"$ref": "#/$defs/ID"}, "assetVersion": {"$ref": "#/$defs/ID"},
+        "status": {"enum": ["queued", "running", "succeeded", "failed", "unavailable", "cancelled", "superseded"]},
+        "progress": {"type": "object", "required": ["completedBytes", "totalBytes"], "properties": {"completedBytes": {"type": "integer", "minimum": 0}, "totalBytes": {"type": "integer", "minimum": 0}}},
+        "error": {"anyOf": [{"$ref": "#/$defs/ErrorDetail"}, {"type": "null"}]},
+        "createdAt": {"$ref": "#/$defs/Timestamp"}, "updatedAt": {"$ref": "#/$defs/Timestamp"}
+      }
     },
     "ErrorDetail": {
       "type": "object", "required": ["code", "message", "requestId", "retryAfter"],

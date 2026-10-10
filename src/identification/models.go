@@ -43,23 +43,24 @@ type Evidence struct {
 }
 
 type Asset struct {
-	ID              string     `json:"assetId"`
-	SourceTrackID   string     `json:"sourceTrackId"`
-	Version         string     `json:"version"`
-	EvidenceVersion int        `json:"evidenceVersion"`
-	Current         bool       `json:"current"`
-	Codec           *string    `json:"codec"`
-	Container       *string    `json:"container"`
-	DurationMs      *int64     `json:"durationMs"`
-	FileSizeBytes   *int64     `json:"fileSizeBytes"`
-	BitrateBps      *int64     `json:"bitrateBps"`
-	BitrateMode     string     `json:"bitrateMode"`
-	BitrateOrigin   *string    `json:"bitrateOrigin"`
-	ProviderSHA512  *string    `json:"providerSha512"`
-	FileSHA512      *string    `json:"fileSha512"`
-	HashStatus      string     `json:"hashStatus"`
-	HashComputedAt  *time.Time `json:"hashComputedAt"`
-	Evidence        []Evidence `json:"evidence"`
+	ID              string        `json:"assetId"`
+	SourceTrackID   string        `json:"sourceTrackId"`
+	Version         string        `json:"version"`
+	EvidenceVersion int           `json:"evidenceVersion"`
+	Current         bool          `json:"current"`
+	Codec           *string       `json:"codec"`
+	Container       *string       `json:"container"`
+	DurationMs      *int64        `json:"durationMs"`
+	FileSizeBytes   *int64        `json:"fileSizeBytes"`
+	BitrateBps      *int64        `json:"bitrateBps"`
+	BitrateMode     string        `json:"bitrateMode"`
+	BitrateOrigin   *string       `json:"bitrateOrigin"`
+	ProviderSHA512  *string       `json:"providerSha512"`
+	FileSHA512      *string       `json:"fileSha512"`
+	HashStatus      string        `json:"hashStatus"`
+	HashComputedAt  *time.Time    `json:"hashComputedAt"`
+	HashConflict    *HashConflict `json:"hashConflict"`
+	Evidence        []Evidence    `json:"evidence"`
 }
 
 // Binding is supplied by a trusted task owner after obtaining the current asset.

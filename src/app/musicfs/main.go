@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/fnMrRice/MusicFS-server/src/bootstrap"
 	"os"
+
+	"github.com/fnMrRice/MusicFS-server/src/bootstrap"
 )
 
 func main() {

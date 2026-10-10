@@ -4,19 +4,21 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"github.com/fnMrRice/MusicFS-server/src/api"
-	"github.com/fnMrRice/MusicFS-server/src/auth"
-	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/jobs"
-	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/playback"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/fnMrRice/MusicFS-server/src/api"
+	"github.com/fnMrRice/MusicFS-server/src/auth"
+	"github.com/fnMrRice/MusicFS-server/src/config"
+	"github.com/fnMrRice/MusicFS-server/src/identification/hashworker"
+	"github.com/fnMrRice/MusicFS-server/src/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/playback"
+	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 )
 
 func checksum(path string) string {
@@ -56,9 +58,17 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 		store.Close()
 	}
 	lib := library.New(store, queue, runtimes, metadataProbe(ffprobe, decoder))
+	hashes, err := hashworker.New(store, lib, hashworker.Config{Auto: c.Hashing.Auto, MaxConcurrent: c.Hashing.MaxConcurrent, BytesPerSecond: c.Hashing.BytesPerSecond})
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	closeBeforeHashes := cleanup
+	cleanup = func() { hashes.Close(); closeBeforeHashes() }
 	sessions := auth.New(store, c.AdminToken, c.AllowedOrigins, time.Duration(c.SessionTTLSeconds)*time.Second)
 	handler := api.New(api.Options{Auth: sessions, InstanceID: instance, Ready: ready, SecureCookie: c.TLSCert != "", Logger: log})
 	handler.RegisterLibrary(lib)
+	handler.RegisterHashing(hashes)
 	player, err := playback.New(ctx, store, lib, processor, playback.Config{CacheRoot: c.CacheRoot, MaxSessions: c.MaxSessions, MaxCacheBytes: c.MaxCacheBytes, NCMDecoder: decoder})
 	if err != nil {
 		cleanup()
@@ -69,6 +79,10 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	previousCleanup := cleanup
 	cleanup = func() { player.Close(); previousCleanup() }
 	if err = queue.Start(ctx); err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	if err = hashes.Start(ctx); err != nil {
 		cleanup()
 		return nil, nil, err
 	}

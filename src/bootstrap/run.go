@@ -3,13 +3,14 @@ package bootstrap
 import (
 	"context"
 	"flag"
-	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"io"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/fnMrRice/MusicFS-server/src/config"
+	"github.com/fnMrRice/MusicFS-server/src/domain"
 )
 
 const APIVersion = "1"

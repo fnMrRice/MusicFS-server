@@ -3,8 +3,6 @@ package bootstrap
 import (
 	"context"
 	"errors"
-	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"log/slog"
 	"net"
 	"net/http"
@@ -13,6 +11,9 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/fnMrRice/MusicFS-server/src/config"
+	"github.com/fnMrRice/MusicFS-server/src/domain"
 )
 
 func Serve(ctx context.Context, c config.Config, log *slog.Logger) error {

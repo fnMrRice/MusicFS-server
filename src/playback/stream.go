@@ -2,13 +2,14 @@ package playback
 
 import (
 	"context"
-	"github.com/fnMrRice/MusicFS-server/src/auth"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
 	"io"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/fnMrRice/MusicFS-server/src/auth"
+	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
 )
 
 type Stream struct {

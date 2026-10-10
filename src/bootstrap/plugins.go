@@ -30,7 +30,7 @@ func configurePlugins(ctx context.Context, c config.Config, log *slog.Logger) ([
 				if name == "" {
 					name = instance.InstanceID
 				}
-				r := library.Runtime{ID: instance.InstanceID, Name: name, Owner: "admin"}
+				r := library.Runtime{ID: instance.InstanceID, Name: name, Owner: "admin", StableHash: true}
 				if enabled {
 					roots := make([]sourceaccess.RootConfig, 0, len(instance.Config.MusicRoots))
 					for _, root := range instance.Config.MusicRoots {

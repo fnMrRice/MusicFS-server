@@ -61,6 +61,9 @@ func saveAsset(ctx context.Context, tx *sql.Tx, owner string, a identification.A
 		return err
 	}
 	a.Project(evidence)
+	if err := reconcileHashConflict(ctx, tx, owner, &a); err != nil {
+		return err
+	}
 	raw, err = json.Marshal(a)
 	if err != nil {
 		return err

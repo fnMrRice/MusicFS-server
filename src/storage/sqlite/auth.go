@@ -2,8 +2,9 @@ package sqlite
 
 import (
 	"context"
-	"github.com/fnMrRice/MusicFS-server/src/auth"
 	"time"
+
+	"github.com/fnMrRice/MusicFS-server/src/auth"
 )
 
 func (s *Store) SaveAuth(ctx context.Context, a auth.Session) error {

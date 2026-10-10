@@ -1,6 +1,6 @@
 {
   "openapi": "3.1.0",
-  "info": {"title": "MusicFS 最小服务 API", "version": "1.0.0", "description": "P0–P4 及 S-P5-01 当前资产证据契约。接口是否可用以阶段验收记录为准。JSON 语法是 YAML 1.2 子集；模型单一来源为 http.schema.json。"},
+  "info": {"title": "MusicFS 最小服务 API", "version": "1.0.0", "description": "P0–P4、当前资产证据与 S-P5-02 完整文件摘要任务契约。接口是否可用以阶段验收记录为准。JSON 语法是 YAML 1.2 子集；模型单一来源为 http.schema.json。"},
   "servers": [{"url": "/api/v1"}],
   "security": [{"sessionCookie": []}],
   "paths": {
@@ -26,6 +26,18 @@
         {"name": "limit", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50}},
         {"name": "cursor", "in": "query", "schema": {"type": "string"}, "description": "绑定用户、实例过滤、稳定排序及 libraryRevision 的不透明游标；快照失效为 CURSOR_EXPIRED。"}
       ], "responses": {"200": {"$ref": "#/components/responses/SourceTracks"}, "default": {"$ref": "#/components/responses/Error"}}}
+    },
+    "/source-tracks/{id}/hash-jobs": {
+      "parameters": [{"$ref": "#/components/parameters/ID"}],
+      "post": {"operationId": "createHash", "description": "手动排队完整原文件 SHA-512；hashing.auto=false 时仍可用。按用户、路由、幂等键和固定资产绑定；同参数重放已有任务，在途同资产可合并。请求体必须为 {}。", "parameters": [{"$ref": "#/components/parameters/CSRF"}, {"$ref": "#/components/parameters/Idempotency"}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/HashRequest"}}}}, "responses": {"202": {"$ref": "#/components/responses/HashAccepted"}, "default": {"$ref": "#/components/responses/Error"}}}
+    },
+    "/hash-jobs/{id}": {
+      "parameters": [{"$ref": "#/components/parameters/ID"}],
+      "get": {"operationId": "getHash", "description": "只返回本人任务；其他用户与不存在的任务均为 NOT_FOUND。任务进度不会暴露路径或 Provider 凭据。", "responses": {"200": {"$ref": "#/components/responses/HashJob"}, "default": {"$ref": "#/components/responses/Error"}}}
+    },
+    "/hash-jobs/{id}/cancel": {
+      "parameters": [{"$ref": "#/components/parameters/ID"}],
+      "post": {"operationId": "cancelHash", "description": "自然幂等取消本人任务；请求体必须为 {}。终态重复取消返回该终态，不重新排队、递增代次或改写完成时间；无需 Idempotency-Key。", "parameters": [{"$ref": "#/components/parameters/CSRF"}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/HashRequest"}}}}, "responses": {"200": {"$ref": "#/components/responses/HashJob"}, "default": {"$ref": "#/components/responses/Error"}}}
     },
     "/playback/sessions": {
       "post": {"operationId": "createPlayback", "parameters": [{"$ref": "#/components/parameters/CSRF"}, {"$ref": "#/components/parameters/Idempotency"}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/CreatePlayback"}}}}, "responses": {"201": {"$ref": "#/components/responses/Playback"}, "default": {"$ref": "#/components/responses/Error"}}}
@@ -56,7 +68,7 @@
     "parameters": {
       "ID": {"name": "id", "in": "path", "required": true, "schema": {"type": "string", "minLength": 1}},
       "CSRF": {"name": "X-CSRF-Token", "in": "header", "required": true, "schema": {"type": "string", "minLength": 16}, "description": "登录后状态修改同时校验允许的 Origin。"},
-      "Idempotency": {"name": "Idempotency-Key", "in": "header", "required": true, "schema": {"type": "string", "minLength": 8, "maxLength": 128}, "description": "用户/路由/键绑定请求摘要。同键同参数重放已提交结果；不同参数返回 409。重试窗口与播放期限一致，过期明确要求重建。"}
+      "Idempotency": {"name": "Idempotency-Key", "in": "header", "required": true, "schema": {"type": "string", "minLength": 8, "maxLength": 128}, "description": "用户/路由/键绑定请求摘要。同键同参数重放已提交结果；不同参数返回 409。播放重试窗口与会话期限一致，摘要创建窗口一小时；过期明确要求使用新操作。"}
     },
     "responses": {
       "Health": {"description": "服务状态", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/Health"}}}},
@@ -64,7 +76,9 @@
       "Providers": {"description": "授权 Provider 实例，不包含根路径或凭据", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/Providers"}}}},
       "ScanAccepted": {"description": "扫描任务已排队或合并同目标的在途扫描", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/ScanAccepted"}}}},
       "ScanJob": {"description": "任务状态；未知总数不得当百分比", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/ScanJob"}}}},
-      "SourceTracks": {"description": "固定修订的持久音乐库分页；每项 asset 描述当前原始资产及有效证据，顶层 assetId/bitrateBps 是相同资产的投影。申报摘要与完整文件验证摘要分离；未知码率为 null，hashStatus=unknown 表示尚无持久摘要任务，pending 表示任务已登记。无公开历史证据或后台摘要任务端点。", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/SourceTracks"}}}},
+      "SourceTracks": {"description": "固定修订的持久音乐库分页；asset 描述当前原始资产及有效证据，顶层字段是相同资产的投影。申报摘要与完整文件验证摘要分离；未知码率为 null，hashStatus=unknown 表示尚无持久摘要任务，pending 表示任务已登记。hashConflict 引用当前不一致的申报及验证证据；无公开历史审计端点。", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/SourceTracks"}}}},
+      "HashAccepted": {"description": "完整文件摘要任务已排队、合并或重放已有任务", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/HashAccepted"}}}},
+      "HashJob": {"description": "固定资产的摘要任务状态；成功结果从当前 SourceAsset.fileSha512 读取", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/HashJob"}}}},
       "Playback": {"description": "固定输入/输出尝试与能力描述", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/Playback"}}}},
       "Error": {"description": "结构化业务错误。400 INVALID_ARGUMENT，401 AUTH_REQUIRED，403 ACCESS_DENIED，404 NOT_FOUND，409 CONFLICT/STALE_ATTEMPT/RESOURCE_CHANGED，410 CURSOR_EXPIRED/SESSION_EXPIRED，415 UNSUPPORTED，429 RATE_LIMITED，503 TEMPORARY_FAILURE/SOURCE_OFFLINE。", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/Error"}}}},
       "Stream": {"description": "音频正文；只有固定可随机访问表示声明 Content-Length、ETag 与 bytes", "headers": {"Accept-Ranges": {"schema": {"enum": ["bytes", "none"]}}, "Content-Length": {"schema": {"type": "integer", "minimum": 0}}, "ETag": {"schema": {"type": "string"}}}, "content": {"audio/*": {"schema": {"type": "string", "format": "binary"}}}},

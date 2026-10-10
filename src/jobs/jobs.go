@@ -3,9 +3,10 @@ package jobs
 import (
 	"context"
 	"errors"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"sync"
 	"time"
+
+	"github.com/fnMrRice/MusicFS-server/src/domain"
 )
 
 type Job struct {

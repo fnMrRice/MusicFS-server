@@ -28,25 +28,33 @@ type InstanceConfig struct {
 	FFprobePath string      `yaml:"ffprobePath,omitempty" json:"ffprobePath,omitempty"`
 }
 
+type HashingConfig struct {
+	Auto           bool  `yaml:"auto" json:"auto"`
+	MaxConcurrent  int   `yaml:"maxConcurrent" json:"maxConcurrent"`
+	BytesPerSecond int64 `yaml:"bytesPerSecond" json:"bytesPerSecond"`
+}
+
 type Config struct {
-	ConfigVersion     int      `yaml:"configVersion" json:"configVersion"`
-	Listen            string   `yaml:"listen" json:"listen"`
-	DataRoot          string   `yaml:"dataRoot" json:"dataRoot"`
-	MediaRoot         string   `yaml:"mediaRoot" json:"mediaRoot"`
-	CacheRoot         string   `yaml:"cacheRoot" json:"cacheRoot"`
-	WebRoot           string   `yaml:"webRoot,omitempty" json:"webRoot,omitempty"`
-	AdminToken        string   `yaml:"-" json:"-"`
-	AllowedOrigins    []string `yaml:"allowedOrigins" json:"allowedOrigins"`
-	AllowLoopbackHTTP bool     `yaml:"allowLoopbackHttp" json:"allowLoopbackHttp"`
-	TLSCert           string   `yaml:"tlsCert,omitempty" json:"tlsCert,omitempty"`
-	TLSKey            string   `yaml:"tlsKey,omitempty" json:"tlsKey,omitempty"`
-	Plugins           []Plugin `yaml:"plugins" json:"plugins"`
-	MaxSessions       int      `yaml:"maxSessions" json:"maxSessions"`
-	MaxProcessing     int      `yaml:"maxProcessing" json:"maxProcessing"`
-	MaxCacheBytes     int64    `yaml:"maxCacheBytes" json:"maxCacheBytes"`
-	SessionTTLSeconds int      `yaml:"sessionTtlSeconds" json:"sessionTtlSeconds"`
+	ConfigVersion     int           `yaml:"configVersion" json:"configVersion"`
+	Listen            string        `yaml:"listen" json:"listen"`
+	DataRoot          string        `yaml:"dataRoot" json:"dataRoot"`
+	MediaRoot         string        `yaml:"mediaRoot" json:"mediaRoot"`
+	CacheRoot         string        `yaml:"cacheRoot" json:"cacheRoot"`
+	WebRoot           string        `yaml:"webRoot,omitempty" json:"webRoot,omitempty"`
+	AdminToken        string        `yaml:"-" json:"-"`
+	AllowedOrigins    []string      `yaml:"allowedOrigins" json:"allowedOrigins"`
+	AllowLoopbackHTTP bool          `yaml:"allowLoopbackHttp" json:"allowLoopbackHttp"`
+	TLSCert           string        `yaml:"tlsCert,omitempty" json:"tlsCert,omitempty"`
+	TLSKey            string        `yaml:"tlsKey,omitempty" json:"tlsKey,omitempty"`
+	Plugins           []Plugin      `yaml:"plugins" json:"plugins"`
+	MaxSessions       int           `yaml:"maxSessions" json:"maxSessions"`
+	MaxProcessing     int           `yaml:"maxProcessing" json:"maxProcessing"`
+	MaxCacheBytes     int64         `yaml:"maxCacheBytes" json:"maxCacheBytes"`
+	SessionTTLSeconds int           `yaml:"sessionTtlSeconds" json:"sessionTtlSeconds"`
+	Hashing           HashingConfig `yaml:"hashing" json:"hashing"`
 }
 
 func defaults() Config {
-	return Config{Listen: "127.0.0.1:8080", DataRoot: "data", MediaRoot: "media", CacheRoot: "cache", MaxSessions: 8, MaxProcessing: 2, MaxCacheBytes: 1 << 30, SessionTTLSeconds: 3600}
+	return Config{Listen: "127.0.0.1:8080", DataRoot: "data", MediaRoot: "media", CacheRoot: "cache", MaxSessions: 8, MaxProcessing: 2, MaxCacheBytes: 1 << 30, SessionTTLSeconds: 3600,
+		Hashing: HashingConfig{MaxConcurrent: 1, BytesPerSecond: 4 << 20}}
 }

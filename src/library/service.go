@@ -2,18 +2,20 @@ package library
 
 import (
 	"context"
+	"io"
+	"sort"
+	"time"
+
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
 	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
-	"io"
-	"sort"
-	"time"
 )
 
 type Runtime struct {
 	ID, Name, Owner string
 	Worker          *pluginhost.Worker
+	StableHash      bool
 }
 type Probe func(context.Context, io.ReadSeeker, int64) (Observation, error)
 type Service struct {

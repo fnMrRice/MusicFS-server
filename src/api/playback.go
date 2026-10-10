@@ -1,11 +1,12 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/fnMrRice/MusicFS-server/src/auth"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
 	"github.com/fnMrRice/MusicFS-server/src/stream"
-	"net/http"
 )
 
 func (s *Server) RegisterPlayback(service *playback.Service) {

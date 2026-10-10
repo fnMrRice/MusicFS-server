@@ -103,13 +103,21 @@ func pendingEvidence(ctx context.Context, tx *sql.Tx, owner string, ticket ident
 
 // PublishEvidence is a trusted-worker boundary. A verified digest is accepted
 // only for a complete byte range, matching current asset and active generation.
-// The later hashing worker is responsible for the stable complete-read proof.
+// The hashing worker holds stable complete-read protection through its own
+// atomic task-and-evidence publication transaction.
 func (s *Store) PublishEvidence(ctx context.Context, owner string, ticket identification.Ticket, result identification.Result) error {
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
+	if err := publishEvidenceResult(ctx, tx, owner, ticket, result); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func publishEvidenceResult(ctx context.Context, tx *sql.Tx, owner string, ticket identification.Ticket, result identification.Result) error {
 	a, err := currentBinding(ctx, tx, owner, ticket.Binding)
 	if err != nil {
 		return err
@@ -143,7 +151,7 @@ func (s *Store) PublishEvidence(ctx context.Context, owner string, ticket identi
 	if err := publishAssetView(ctx, tx, owner, a); err != nil {
 		return err
 	}
-	return tx.Commit()
+	return nil
 }
 
 func (s *Store) CancelEvidence(ctx context.Context, owner string, ticket identification.Ticket) error {

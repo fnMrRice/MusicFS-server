@@ -4,8 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"time"
+
+	"github.com/fnMrRice/MusicFS-server/src/domain"
 )
 
 func (s *Store) PlaybackReset(ctx context.Context) error {

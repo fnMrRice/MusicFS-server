@@ -23,7 +23,11 @@ func describe(f *os.File, rootID, path string) (pluginproto.Entry, error) {
 	if err != nil {
 		return pluginproto.Entry{}, fmt.Errorf("SOURCE_OFFLINE: file identity unavailable")
 	}
-	version := sha256.Sum256([]byte(fmt.Sprintf("%s:%d:%d", identity, info.Size(), info.ModTime().UnixNano())))
+	change, err := fileChangeVersion(f)
+	if err != nil {
+		return pluginproto.Entry{}, fmt.Errorf("SOURCE_OFFLINE: file change information unavailable")
+	}
+	version := sha256.Sum256([]byte(fmt.Sprintf("%s:%d:%d:%s", identity, info.Size(), info.ModTime().UnixNano(), change)))
 	entry := pluginproto.Entry{RootID: rootID, RelativePath: filepath.ToSlash(path), FileIdentity: identity, ObservedVersion: fmt.Sprintf("%x", version), SizeBytes: info.Size(), MIME: "application/octet-stream"}
 	var header [64]byte
 	n, _ := f.ReadAt(header[:], 0)
