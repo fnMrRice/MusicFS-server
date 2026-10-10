@@ -41,6 +41,8 @@ NCM 无需新增页面操作：配置 Worker、重新扫描后直接选曲。内
 
 使用 `sh scripts/build.sh` 构建相同四个程序（无 `.exe`），复制相同YAML示例，并将各 `plugins[].executable` 改为 `../build/linux/` 下对应程序，配置音频实例的FFmpeg/ffprobe路径后显式启用。服务仍可通过 `--web-root` 提供独立 Web 制品。NCM 真实 Worker 已在 Arch WSL2 通过；Linux 配置与运行验收见[配置记录](validation/configuration.md)，与交叉构建结果分开，不由构建推断所有发行版支持。
 
+2026-10-10已在Arch WSL使用原生FFmpeg/ffprobe 6.1.6通过YAML处理后播放、实际PCM定位、音频启用边界和同配置重启验证；工具为官方签名源码的LGPLv2.1+本地构建，不随仓库分发。工具能力、定向结果与范围见[Linux音频记录](validation/configuration-linux-audio.md)。这项Server验证不代替Linux浏览器、人工听音或其他架构/系统验收，也不包含动态启停。
+
 开发期 Vite 仅代理 `/api` 到 Server；交付静态页面和 API 必须同源。远程访问使用 Server 的 `tlsCert/tlsKey` 与 HTTPS Origin；不会信任未配置的代理转发头。当前不提供桌面管理租约或容器运维方案。
 
 ## 数据与恢复

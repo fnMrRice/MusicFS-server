@@ -22,6 +22,8 @@
 
 表中保留首次实现及主要验证的提交标题，可按阶段号或标题检索；不固定补签时会变化的提交摘要。S-P4-08 的资产/权限/输出缓存归属 Server 播放模块。本文第 1—5 节保留最初插件基线的实测结果；后续独立 NCM Worker、依赖升级及最终全量回归见[实施记录第 4 节](progress.md#4-后续授权增量独立-ncm-插件)。
 
+2026-10-10的Linux真实音频补验单列在本文第6节及[配置Linux音频记录](configuration-linux-audio.md)，不覆盖下文旧轮次的缺工具与跳过事实。
+
 ## 2. 实际工具和输出组合
 
 - FFmpeg / ffprobe：`6.1.1-full_build-www.gyan.dev`，GCC 12.2.0；本机已有安装，通过受控绝对路径调用。
@@ -80,9 +82,9 @@ go build ./src/pluginproto ./src/pluginhost ./src/sourceaccess ./src/plugins/...
 
 默认最多两个活跃音频 Worker，无无界排队；配置允许 1–8。任务最长 30 分钟。控制 RPC 最多 16 个在途请求，单消息最多 1 MiB；扫描最多 50,000 个候选，单页最多 200 条；分页快照最多 16 份、保留 5 分钟，单页扫描不占快照槽位。资源引用最多 4096 个并具备期限。Worker stdout 只用于协议；stderr 不传播私密路径或输入能力地址。
 
-Windows 音频 Worker 置于 `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` Job Object，取消通过控制上下文和关闭管道传播；回收 Job 时终止子进程树。Linux/Darwin 代码采用进程组回收。Linux 控制 Worker 的故障回收已通过；Linux 音频子进程树和 Darwin 尚未运行验收。
+Windows 音频 Worker 置于 `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` Job Object，取消通过控制上下文和关闭管道传播；回收 Job 时终止子进程树。Linux/Darwin代码采用进程组回收。基线当时仅验证Linux控制Worker故障回收，尚未验证Linux音频子进程；后续真实音频断连回收见第6节，Darwin仍未运行验收。
 
-### Linux 原生验证
+### Linux 原生验证（基线历史）
 
 Arch WSL2，内核 `6.18.33.2-microsoft-standard-WSL2`，x86_64。测试目录为 `/mnt/d/Code/MusicFS/server`，文件系统为 WSL 挂载的 Windows 磁盘，不能据此声称 ext4/NAS 已验证。
 
@@ -92,7 +94,7 @@ Go 使用[官方 1.26.9 下载归档及校验清单](https://go.dev/dl/?mode=jso
 
 在最初基线阶段，恢复当时固定依赖 `golang.org/x/sys v0.34.0` 与 `golang.org/x/text v0.14.0` 后，再以 `-mod=readonly` 定向运行 `tests/unit/bootstrap`、`tests/contract/api`、`tests/integration/storage`、`tests/integration/playback`、`tests/e2e`，全部通过，未允许测试命令修改依赖清单。
 
-WSL DNS 无法解析下载域名，改从 Windows 下载 Linux FFmpeg 后进度仍过慢，已停止下载任务，未使用不完整归档执行测试。Linux 的真实 FFmpeg 流式处理、进程树回收、音频定位和输入播放列表隔离仍待验证。
+该轮WSL DNS无法解析下载域名，改从Windows下载Linux FFmpeg仍过慢，已停止下载任务，未使用不完整归档测试。当时Linux真实FFmpeg流式处理、音频回收、定位及播放列表隔离未验收；后续结果见第6节。
 
 ## 5. 仍需明确的边界
 
@@ -102,3 +104,15 @@ WSL DNS 无法解析下载域名，改从 Windows 下载 Linux FFmpeg 后进度�
 - 当前不自动无限重启 Worker。故障请求失败，由管理员或服务重启恢复；更完整的冷却熔断与增量断点续扫仍属后续增强。
 - 开放第三方插件、在线 Provider、指纹、刮削和写回均未在本次 P4 范围实现。
 - 独立音频集成测试不能证明某一浏览器能发声；实际浏览器格式探测、播放、快速连续定位、切歌和首声时间须在联合验收中单独记录。
+
+## 6. 2026-10-10 Linux真实音频补验
+
+Arch WSL原生FFmpeg/ffprobe 6.1.6采用官方签名源码本地构建，许可证为LGPLv2.1+，工具不随仓库分发；签名、构建与测量细节见[Linux音频记录](configuration-linux-audio.md)。使用已提交的依赖快照：yaml/v3 3.0.4、x/sys 0.48.0、x/text 0.42.0；工作区用户后续升级不属于本轮结果。
+
+| 定向检查 | 实测结果 |
+| --- | --- |
+| YAML处理、PCM定位与重启 | 20.92秒通过；完整输出6024ms、定位输出2040ms、起点23.333ms；220/440/660Hz三段标记正确，同YAML重启后行为保持 |
+| YAML音频启用边界 | 20.25秒通过；以上两项E2E包共41.185秒 |
+| 真实音频及伪装播放列表隔离 | 包测试44.075秒通过；实际Go gain的RMS比例0.500000，定位起点23.062ms、误差22.979ms；断连回收79.21ms，首块输出94.70ms |
+
+毫秒值仅为本机本轮观察，不作跨设备性能承诺。后续Linux相关包完整回归与E2E/配置读写race均通过，NCM固定摘要测试的平台修复及Windows/Linux结果见[Linux音频记录](configuration-linux-audio.md)。上述结果不代表Linux浏览器、人工听音、ARM/macOS或NAS及所有文件系统已验收，也不包含动态插件启停。

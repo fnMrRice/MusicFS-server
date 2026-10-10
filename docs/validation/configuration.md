@@ -17,7 +17,8 @@
 
 - Windows完整 `scripts/check.ps1 -Race` 通过：格式、静态检查、全部测试及全部竞争检查通过，使用真实FFmpeg/ffprobe；Server E2E普通测试27.794秒，竞争检查24.766秒。
 - Windows与Linux的Server、Local Files、音频、NCM四种程序分别构建成功。
-- Arch WSL原生运行：YAML Server E2E通过（40.539秒），配置与启动单测通过（0.061秒、0.007秒），包括真实CLI启动、扫描、多实例/多音乐根、原流Range、NCM及重启。系统没有Linux FFmpeg/ffprobe，音频插件启用边界用例明确跳过，Linux处理后播放尚未验证。
+- Arch WSL原生运行（2026-10-09历史）：YAML Server E2E通过（40.539秒），配置与启动单测通过（0.061秒、0.007秒），包括真实CLI启动、扫描、多实例/多音乐根、原流Range、NCM及重启。当时没有Linux FFmpeg/ffprobe，音频插件启用边界用例明确跳过；后续补验见下项。
+- 2026-10-10补齐Linux FFmpeg/ffprobe 6.1.6：新版YAML真实处理、三段PCM标记、4000ms定位、双层启用边界及同配置重启均通过；E2E、插件集成、配置读写、配置及启动单测的完整相关包回归通过，E2E/配置读写race通过。Windows新增YAML用例race及NCM测试两平台回归也通过。具体命令、依赖快照、测量和工具摘要见[Linux音频记录](configuration-linux-audio.md)。
 - Arch WSL在原生Linux临时目录运行配置写入集成测试，全项通过（0.082秒），包含原子替换、权限、并发、外部编辑、失败重载与替换前后崩溃恢复。
 - 正式 `configs/server.example.yaml` 同时通过文件加载器、文档解析器及编辑器Schema校验，配置单测最终通过（2.544秒）；示例路径与四程序制品、运行说明一致。38份相关README/文档的本地链接通过检查，旧JSON示例与旧迁移草案路径已移除。
 - 最终复核补充 `Local` / `local` 实例ID冲突拒绝，避免Windows状态目录重叠；单个大写ID保持不变。同插件、跨插件的加载器回归均通过；追加配置单测与配置读写集成的竞争检查分别通过（2.821秒、4.708秒），并重新完成四程序双平台构建。

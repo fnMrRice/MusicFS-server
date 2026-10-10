@@ -53,7 +53,7 @@
 | Windows 并发竞争检查 | MSYS2 UCRT64 GCC 配合 CGO，`go test -race ./tests/...` 通过 |
 | Windows 全新服务流程 | 实际扫描脚本、登录、列表、Range、跨会话拒绝、撤销、重启与退出通过 |
 | 构建产物 | Windows amd64、Linux amd64 各生成 musicfs、musicfs-plugin-local、musicfs-plugin-audio-ffmpeg；输出在忽略的 build 目录 |
-| Linux amd64 原生测试 | Arch WSL2、Go 1.26.9：`go test ./...` 通过；插件竞争检查通过；FFmpeg 缺失，四项真实音频用例明确跳过 |
+| Linux amd64 原生测试 | 基线当时在Arch WSL2、Go 1.26.9运行`go test ./...`与插件竞争检查通过；因缺FFmpeg跳过四项真实音频用例。后续补验见[Linux音频记录](configuration-linux-audio.md) |
 | Linux 文件系统 | 测试使用 /mnt/d 的 Windows 磁盘挂载，不能推定 ext4 或 NAS 已验证 |
 | 真实 Windows 音频 | Go gain -6.0206 dB 后 RMS 比例 0.5；定位误差约 23 ms；30 秒输入首块约 116 ms 且尚未处理完成；断连约 152 ms 回收 |
 | Web 自动检查 | 23 项单元测试、6 项完整 Edge E2E 及定向键盘/滚动验证通过；生产构建通过 |
@@ -72,7 +72,7 @@
 - “可用”只代表当前来源可读取，不能保证任意文件可解码。仅声明实测 WAV/MP3 原流与 MP3 处理 profile；其他浏览器、格式、ARM 和 macOS 未验收。
 - 输入在创建会话时复制到有配额的私有磁盘，保持不可变字节；不把整曲装入内存。当前每次处理均流式生成，不缓存处理输出，因此没有完成持久转码缓存、跨会话复用和缓存发布系统。
 - timeRestart 采用 100 ms 验收容忍范围；未承诺采样级定位或所有格式等同精度。处理流没有伪造 Content-Length、ETag 或原文件字节 Range。
-- Linux 真实 FFmpeg、子进程树回收、物理 NAS 失挂/重挂、junction 竞争、ext4 与人工听音仍待目标环境确认。
+- 基线当时未验证Linux真实FFmpeg及音频回收；2026-10-10的处理、定位及断连回收已补验，见[Linux音频记录](configuration-linux-audio.md)。物理NAS失挂/重挂、junction竞争、完整文件系统矩阵、Linux浏览器及人工听音仍不能由这些结果推定通过。
 - 备份/迁移已有测试；完整灾难恢复演练、Docker、桌面管理租约及所有 P8 部署要求仍未完成。
 - 在线 Provider、识别、刮削/写回、歌单、事件推送、第三方插件与 Client 均不随最简 Web 宣称交付。
 
@@ -113,4 +113,4 @@ SourceAsset 仍代表原始加密文件；纯解密表示保持内部音频字�
 | 实例隔离复核 | Server `34d32a8`：配置加载阶段拒绝忽略大小写后重复的实例ID，防止Windows状态目录重叠；定向竞争检查与双平台重建通过 |
 | S-P1-09 | Web `ff7d653`：E2E启动器实际生成YAML，三项真实Edge NCM回归通过；Server运行说明与过时配置文档同时清理 |
 
-Windows全量测试及竞争检查、四程序Windows/Linux构建、Linux原生配置写入与YAML启动扫描/原流回归均通过。Linux缺少FFmpeg/ffprobe，处理后播放未验证。读写服务仅保存期望配置并报告待应用，不包含管理HTTP/CLI、文件自动监视或动态生命周期。
+Windows全量测试及竞争检查、四程序Windows/Linux构建、Linux原生配置写入与YAML启动扫描/原流回归均已记录通过。2026-10-10补齐Linux FFmpeg/ffprobe后，YAML实际处理、PCM位置标记、启用边界及同YAML重启回归通过：两项E2E共41.185秒，真实音频及伪装播放列表隔离包44.075秒。最终Linux五个相关包完整回归、E2E/配置读写race，以及Windows新增YAML race和两平台NCM回归均通过，详见[Linux音频记录](configuration-linux-audio.md)。读写服务仅保存期望配置并报告待应用，不包含管理HTTP/CLI、文件自动监视或动态生命周期。
