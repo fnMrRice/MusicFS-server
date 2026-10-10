@@ -15,6 +15,7 @@ import (
 )
 
 type entrySnapshot struct {
+	binding          scanBinding
 	rootID, identity string
 	entries          []pluginproto.Entry
 	issues           []string
@@ -54,6 +55,13 @@ func (w *Worker) handle(ctx context.Context, method string, raw json.RawMessage)
 }
 
 func (w *Worker) entries(ctx context.Context, r pluginproto.EntriesRequest) (pluginproto.EntriesPage, error) {
+	grant, err := w.scanAuthorization(r)
+	if err != nil {
+		return pluginproto.EntriesPage{}, err
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	stop := context.AfterFunc(grant.ctx, cancel)
+	defer func() { stop(); cancel() }()
 	if err := ctx.Err(); err != nil {
 		return pluginproto.EntriesPage{}, err
 	}
@@ -64,25 +72,16 @@ func (w *Worker) entries(ctx context.Context, r pluginproto.EntriesRequest) (plu
 	var token string
 	offset := 0
 	if r.Cursor == "" {
-		entries, identity, issues, err := w.Access.Entries(ctx, r.RootID)
+		entries, identity, issues, err := w.Access.Entries(ctx, grant.binding.scope)
 		if err != nil {
 			return pluginproto.EntriesPage{}, err
-		}
-		counts := map[string]int{}
-		for _, entry := range entries {
-			counts[entry.FileIdentity]++
-		}
-		for i := range entries {
-			if counts[entries[i].FileIdentity] > 1 {
-				entries[i].FileIdentity += "/" + entries[i].RelativePath
-			}
 		}
 		var random [16]byte
 		rand.Read(random[:])
 		token = hex.EncodeToString(random[:])
 		now := time.Now()
 		idle, lifetime := w.config.snapshotTimeouts()
-		snapshot = entrySnapshot{rootID: r.RootID, identity: identity, entries: entries, issues: issues, expires: now.Add(idle), deadline: now.Add(lifetime)}
+		snapshot = entrySnapshot{binding: grant.binding, rootID: r.RootID, identity: identity, entries: entries, issues: issues, expires: now.Add(idle), deadline: now.Add(lifetime)}
 		if len(entries) > r.Limit {
 			w.mu.Lock()
 			if err := ctx.Err(); err != nil {
@@ -120,7 +119,7 @@ func (w *Worker) entries(ctx context.Context, r pluginproto.EntriesRequest) (plu
 			delete(w.snapshots, token)
 			ok = false
 		}
-		if !ok || snapshot.rootID != r.RootID || offset > len(snapshot.entries) {
+		if !ok || snapshot.rootID != r.RootID || snapshot.binding != grant.binding || offset > len(snapshot.entries) {
 			w.mu.Unlock()
 			return pluginproto.EntriesPage{}, fmt.Errorf("RESOURCE_CHANGED: scan cursor expired")
 		}

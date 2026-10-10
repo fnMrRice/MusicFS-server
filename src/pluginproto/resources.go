@@ -4,6 +4,7 @@ type Entry struct {
 	RootID          string `json:"rootId"`
 	RelativePath    string `json:"relativePath"`
 	FileIdentity    string `json:"fileIdentity"`
+	LinkCount       uint64 `json:"linkCount"`
 	ObservedVersion string `json:"observedVersion"`
 	SizeBytes       int64  `json:"sizeBytes"`
 	MIME            string `json:"mime"`
@@ -11,9 +12,10 @@ type Entry struct {
 }
 
 type EntriesRequest struct {
-	RootID string `json:"rootId"`
-	Cursor string `json:"cursor"`
-	Limit  int    `json:"limit"`
+	GrantID string `json:"grantId"`
+	RootID  string `json:"rootId"`
+	Cursor  string `json:"cursor"`
+	Limit   int    `json:"limit"`
 }
 type EntriesPage struct {
 	Items        []Entry  `json:"items"`

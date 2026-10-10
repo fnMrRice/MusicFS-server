@@ -207,7 +207,7 @@ func TestYAMLProviderInstancesAndMultipleRoots(t *testing.T) {
 	if states["local"] != "available" || states["secondary"] != "available" || states["offline"] != "offline" || states["failed"] != "offline" {
 		t.Fatalf("provider enable states ignored: %s", raw)
 	}
-	if code, _, _ := c.request(t, "POST", "/api/v1/provider-instances/offline/scan-jobs", map[string]string{"mode": "full"}, "offline-scan-001"); code != 503 {
+	if code, _, _ := c.request(t, "POST", "/api/v1/provider-instances/offline/scan-jobs", providerScanRequest(t, c, "offline"), "offline-scan-001"); code != 503 {
 		t.Fatalf("disabled instance started: %d", code)
 	}
 	tracks := scanNCM(t, c)

@@ -1,11 +1,14 @@
 package pluginproto
 
 type ScanRequest struct {
-	RootID     string `json:"rootId"`
-	ScanID     string `json:"scanId"`
-	Generation int64  `json:"generation"`
-	Cursor     string `json:"cursor,omitempty"`
-	Limit      int    `json:"limit"`
+	RootID     string    `json:"rootId"`
+	ScanID     string    `json:"scanId"`
+	Generation int64     `json:"generation"`
+	Cursor     string    `json:"cursor,omitempty"`
+	Limit      int       `json:"limit"`
+	Scope      ScanScope `json:"scope"`
+	PlanDigest string    `json:"planDigest"`
+	GrantID    string    `json:"grantId"`
 }
 
 type Observation struct {
@@ -25,6 +28,7 @@ type Observation struct {
 }
 
 type ScanPage struct {
+	PlanDigest   string        `json:"planDigest"`
 	ScanID       string        `json:"scanId"`
 	Generation   int64         `json:"generation"`
 	Page         int           `json:"page"`

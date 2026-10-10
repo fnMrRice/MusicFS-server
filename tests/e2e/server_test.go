@@ -175,7 +175,7 @@ func TestFreshServerScanRangePermissionsAndRestart(t *testing.T) {
 		t.Fatal(string(raw))
 	}
 	testkit.ValidateHTTP(t, "Providers", raw)
-	code, raw, _ = c.request(t, "POST", "/api/v1/provider-instances/local/scan-jobs", map[string]string{"mode": "full"}, "scan-key-0001")
+	code, raw, _ = c.request(t, "POST", "/api/v1/provider-instances/local/scan-jobs", providerScanRequest(t, c, "local"), "scan-key-0001")
 	if code != 202 {
 		t.Fatalf("scan %d %s", code, raw)
 	}
@@ -275,7 +275,7 @@ func TestFreshServerScanRangePermissionsAndRestart(t *testing.T) {
 	if json.Unmarshal(raw, &providers) != nil || len(providers.Items) != 1 || providers.Items[0].ID != "local" || providers.Items[0].Availability != "offline" {
 		t.Fatalf("disabled provider identity missing: %s", raw)
 	}
-	if code, _, _ = c.request(t, "POST", "/api/v1/provider-instances/local/scan-jobs", map[string]string{"mode": "full"}, "disabled-scan-0001"); code != 503 {
+	if code, _, _ = c.request(t, "POST", "/api/v1/provider-instances/local/scan-jobs", providerScanRequest(t, c, "local"), "disabled-scan-0001"); code != 503 {
 		t.Fatalf("globally disabled provider accepted scan: %d", code)
 	}
 }

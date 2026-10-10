@@ -1,5 +1,7 @@
 package config
 
+import "github.com/fnMrRice/MusicFS-server/src/pluginproto"
+
 type MusicRoot struct {
 	ID   string `yaml:"id" json:"id"`
 	Name string `yaml:"name" json:"name"`
@@ -15,11 +17,12 @@ type Plugin struct {
 }
 
 type Instance struct {
-	InstanceID string         `yaml:"instanceId" json:"instanceId"`
-	Name       string         `yaml:"name,omitempty" json:"name,omitempty"`
-	Role       string         `yaml:"role" json:"role"`
-	Enabled    bool           `yaml:"enabled" json:"enabled"`
-	Config     InstanceConfig `yaml:"config" json:"config"`
+	InstanceID     string                       `yaml:"instanceId" json:"instanceId"`
+	Name           string                       `yaml:"name,omitempty" json:"name,omitempty"`
+	Role           string                       `yaml:"role" json:"role"`
+	Enabled        bool                         `yaml:"enabled" json:"enabled"`
+	Config         InstanceConfig               `yaml:"config" json:"config"`
+	ImportDefaults *pluginproto.ImportOverrides `yaml:"importDefaults,omitempty" json:"importDefaults,omitempty"`
 }
 
 type InstanceConfig struct {

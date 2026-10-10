@@ -27,8 +27,12 @@ func describe(f *os.File, rootID, path string) (pluginproto.Entry, error) {
 	if err != nil {
 		return pluginproto.Entry{}, fmt.Errorf("SOURCE_OFFLINE: file change information unavailable")
 	}
+	links, err := fileLinkCount(f)
+	if err != nil || links == 0 {
+		return pluginproto.Entry{}, fmt.Errorf("SOURCE_OFFLINE: file link information unavailable")
+	}
 	version := sha256.Sum256([]byte(fmt.Sprintf("%s:%d:%d:%s", identity, info.Size(), info.ModTime().UnixNano(), change)))
-	entry := pluginproto.Entry{RootID: rootID, RelativePath: filepath.ToSlash(path), FileIdentity: identity, ObservedVersion: fmt.Sprintf("%x", version), SizeBytes: info.Size(), MIME: "application/octet-stream"}
+	entry := pluginproto.Entry{RootID: rootID, RelativePath: filepath.ToSlash(path), FileIdentity: identity, LinkCount: links, ObservedVersion: fmt.Sprintf("%x", version), SizeBytes: info.Size(), MIME: "application/octet-stream"}
 	var header [64]byte
 	n, _ := f.ReadAt(header[:], 0)
 	switch {
@@ -56,7 +60,14 @@ func describe(f *os.File, rootID, path string) (pluginproto.Entry, error) {
 	return entry, nil
 }
 
-func (a *Access) Entries(ctx context.Context, rootID string) ([]pluginproto.Entry, string, []string, error) {
+func (a *Access) Entries(ctx context.Context, scope pluginproto.ScanScope) ([]pluginproto.Entry, string, []string, error) {
+	if err := scope.Validate(); err != nil {
+		return nil, "", nil, err
+	}
+	rootID := scope.RootID
+	if root, ok := a.roots[rootID]; !ok || root.ExpectedIdentity != scope.RootIdentity {
+		return nil, "", nil, fmt.Errorf("ACCESS_DENIED: scan root is not authorized")
+	}
 	r, err := a.openRoot(rootID)
 	if err != nil {
 		return nil, "", nil, err
@@ -81,6 +92,12 @@ func (a *Access) Entries(ctx context.Context, rootID string) ([]pluginproto.Entr
 			return nil
 		}
 		if d.IsDir() {
+			if path != "." && strings.Count(path, "/")+1 > scope.MaxDepth {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if !scope.Contains(rootID, path) {
 			return nil
 		}
 		ext := strings.ToLower(filepath.Ext(path))

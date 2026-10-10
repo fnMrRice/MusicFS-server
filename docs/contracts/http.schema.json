@@ -3,6 +3,256 @@
   "$id": "https://musicfs.invalid/contracts/http.schema.json",
   "title": "MusicFS HTTP v1 模型",
   "$defs": {
+    "PluginConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaRevision",
+        "importOptionsSchema",
+        "importDefaults",
+        "unavailableOptions"
+      ],
+      "properties": {
+        "schemaRevision": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+        },
+        "importOptionsSchema": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/ImportOptionSchema"
+            },
+            {
+              "required": [
+                "type",
+                "additionalProperties"
+              ],
+              "properties": {
+                "type": {
+                  "const": "object"
+                },
+                "additionalProperties": {
+                  "const": false
+                }
+              }
+            }
+          ]
+        },
+        "importDefaults": {
+          "$ref": "#/$defs/ImportOptions"
+        },
+        "unavailableOptions": {
+          "type": "object",
+          "maxProperties": 32,
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "reason"
+            ],
+            "properties": {
+              "code": {
+                "const": "UNSUPPORTED"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1024
+              }
+            }
+          }
+        }
+      }
+    },
+    "ImportOptionSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "object",
+            "boolean",
+            "integer",
+            "string"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "properties": {
+          "type": "object",
+          "maxProperties": 32,
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/ImportOptionSchema"
+          }
+        },
+        "required": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+          }
+        },
+        "additionalProperties": {
+          "const": false
+        },
+        "default": {
+          "type": [
+            "boolean",
+            "number",
+            "string"
+          ]
+        },
+        "const": {
+          "type": [
+            "boolean",
+            "number",
+            "string"
+          ]
+        },
+        "enum": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": [
+              "boolean",
+              "number",
+              "string"
+            ]
+          }
+        },
+        "minimum": {
+          "type": "number"
+        },
+        "maximum": {
+          "type": "number"
+        },
+        "minLength": {
+          "type": "number"
+        },
+        "maxLength": {
+          "type": "number"
+        },
+        "if": {
+          "$ref": "#/$defs/ImportOptionSchema"
+        },
+        "then": {
+          "$ref": "#/$defs/ImportOptionSchema"
+        },
+        "else": {
+          "$ref": "#/$defs/ImportOptionSchema"
+        }
+      },
+      "maxProperties": 20,
+      "description": "受限本地 JSON Schema；运行时另限制 32 KiB 与 8 层。禁止 $ref、脚本、HTML 执行和未知关键字。"
+    },
+    "ImportOverrides": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "recursive": {
+          "type": "boolean"
+        },
+        "maxDepth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 64
+        },
+        "importLyrics": {
+          "type": "boolean"
+        }
+      },
+      "if": {
+        "properties": {
+          "recursive": {
+            "const": true
+          }
+        },
+        "required": [
+          "recursive"
+        ]
+      },
+      "then": {
+        "properties": {
+          "maxDepth": {
+            "minimum": 1
+          }
+        }
+      },
+      "else": {
+        "if": {
+          "required": [
+            "recursive"
+          ]
+        },
+        "then": {
+          "properties": {
+            "maxDepth": {
+              "const": 0
+            }
+          }
+        }
+      },
+      "description": "部分覆盖；关闭且未给深度规范为 0；从关闭切换开启且未给深度恢复 64。null 与未知字段拒绝。importLyrics=true 在语义校验返回 UNSUPPORTED。"
+    },
+    "ImportOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recursive",
+        "maxDepth",
+        "importLyrics"
+      ],
+      "properties": {
+        "recursive": {
+          "type": "boolean"
+        },
+        "maxDepth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 64
+        },
+        "importLyrics": {
+          "type": "boolean"
+        }
+      },
+      "if": {
+        "properties": {
+          "recursive": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "maxDepth": {
+            "minimum": 1
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "maxDepth": {
+            "const": 0
+          }
+        }
+      }
+    },
     "ID": {"type": "string", "minLength": 1, "maxLength": 256},
     "NullableString": {"type": ["string", "null"]},
     "NullableCount": {"type": ["integer", "null"], "minimum": 0},
@@ -110,27 +360,204 @@
       }
     },
     "Provider": {
-      "type": "object", "required": ["id", "name", "capabilities", "availability"],
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "capabilities",
+        "availability",
+        "configuration",
+        "roots"
+      ],
       "properties": {
-        "id": {"$ref": "#/$defs/ID"}, "name": {"type": "string", "minLength": 1},
-        "capabilities": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
-        "availability": {"enum": ["available", "offline", "unavailable"]},
-        "accountState": {"enum": ["notRequired", "authorized", "authRequired"]},
-        "scanState": {"enum": ["idle", "queued", "running", "succeeded", "failed", "cancelled"]}
+        "id": {
+          "$ref": "#/$defs/ID"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "availability": {
+          "enum": [
+            "available",
+            "offline",
+            "unavailable"
+          ]
+        },
+        "accountState": {
+          "enum": [
+            "notRequired",
+            "authorized",
+            "authRequired"
+          ]
+        },
+        "scanState": {
+          "enum": [
+            "idle",
+            "queued",
+            "running",
+            "succeeded",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "configuration": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PluginConfiguration"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "roots": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/ID"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
       }
     },
     "Providers": {"type": "object", "required": ["items"], "properties": {"items": {"type": "array", "items": {"$ref": "#/$defs/Provider"}}}},
-    "ScanRequest": {"type": "object", "additionalProperties": false, "required": ["mode"], "properties": {"mode": {"enum": ["full", "incremental"]}}},
+    "ScanRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "schemaRevision",
+        "rootIds",
+        "options"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "full",
+            "incremental"
+          ]
+        },
+        "schemaRevision": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+        },
+        "rootIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          }
+        },
+        "options": {
+          "$ref": "#/$defs/ImportOverrides"
+        }
+      }
+    },
     "ScanAccepted": {"type": "object", "required": ["jobId", "merged"], "properties": {"jobId": {"$ref": "#/$defs/ID"}, "merged": {"type": "boolean"}}},
     "ScanJob": {
-      "type": "object", "required": ["jobId", "providerInstanceId", "status", "progress", "complete", "error", "lastSuccessAt"],
+      "type": "object",
+      "required": [
+        "jobId",
+        "providerInstanceId",
+        "status",
+        "progress",
+        "complete",
+        "error",
+        "lastSuccessAt",
+        "rootIds",
+        "effectiveOptions",
+        "schemaRevision"
+      ],
       "properties": {
-        "jobId": {"$ref": "#/$defs/ID"}, "providerInstanceId": {"$ref": "#/$defs/ID"},
-        "status": {"enum": ["queued", "running", "succeeded", "failed", "cancelled"]},
-        "progress": {"type": "object", "required": ["observed"], "properties": {"observed": {"type": "integer", "minimum": 0}, "total": {"$ref": "#/$defs/NullableCount"}}},
-        "complete": {"type": "boolean"}, "error": {"anyOf": [{"$ref": "#/$defs/ErrorDetail"}, {"type": "null"}]},
-        "lastSuccessAt": {"$ref": "#/$defs/NullableTimestamp"}
-      }
+        "jobId": {
+          "$ref": "#/$defs/ID"
+        },
+        "providerInstanceId": {
+          "$ref": "#/$defs/ID"
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "running",
+            "succeeded",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "progress": {
+          "type": "object",
+          "required": [
+            "observed"
+          ],
+          "properties": {
+            "observed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "total": {
+              "$ref": "#/$defs/NullableCount"
+            }
+          }
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorDetail"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lastSuccessAt": {
+          "$ref": "#/$defs/NullableTimestamp"
+        },
+        "rootIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          }
+        },
+        "effectiveOptions": {
+          "$ref": "#/$defs/ImportOptions"
+        },
+        "schemaRevision": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+        }
+      },
+      "description": "complete 仅表示请求选中的目录与深度范围已完成；其他范围保留。内部计划、真实根身份和配置摘要不公开。"
     },
     "SourceTrack": {
       "type": "object",

@@ -2,6 +2,7 @@ package storage_test
 
 import (
 	"context"
+	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 	"path/filepath"
 	"testing"
 
@@ -16,7 +17,7 @@ func TestJobPreservesFailureCodeAndLastSuccessfulScan(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer store.Close()
-	if _, _, err := store.Enqueue(ctx, "admin", "root", "scan-full", "successful-job"); err != nil {
+	if _, _, err := store.Enqueue(ctx, "admin", "root", testkit.ScanPlan("root"), "successful-job"); err != nil {
 		t.Fatal(err)
 	}
 	first, err := store.Claim(ctx)
@@ -30,7 +31,7 @@ func TestJobPreservesFailureCodeAndLastSuccessfulScan(t *testing.T) {
 	if err != nil || prior.LastSuccessAt == nil {
 		t.Fatal("successful job has no completion time", err)
 	}
-	if _, _, err := store.Enqueue(ctx, "admin", "root", "scan-full", "offline-next-job"); err != nil {
+	if _, _, err := store.Enqueue(ctx, "admin", "root", testkit.ScanPlan("root"), "offline-next-job"); err != nil {
 		t.Fatal(err)
 	}
 	next, err := store.Claim(ctx)

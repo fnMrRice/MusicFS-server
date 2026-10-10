@@ -70,7 +70,7 @@ func playbackService(t *testing.T) (*playback.Service, *gatedRepository, auth.Se
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { store.Close() })
-	if _, _, err := store.Enqueue(ctx, "admin", "root", "scan-full", "fixture-scan"); err != nil {
+	if _, _, err := store.Enqueue(ctx, "admin", "root", testkit.ScanPlan("root"), "fixture-scan"); err != nil {
 		t.Fatal(err)
 	}
 	job, err := store.Claim(ctx)
@@ -78,7 +78,7 @@ func playbackService(t *testing.T) (*playback.Service, *gatedRepository, auth.Se
 		t.Fatal(err)
 	}
 	observation := library.Observation{Observation: pluginproto.Observation{ExternalID: "track", RootID: "root", RelativePath: "track.wav", ObservedVersion: entry.ObservedVersion, DisplayName: "track.wav", MIME: entry.MIME, DurationMs: entry.DurationMs, SizeBytes: entry.SizeBytes}, Artists: []string{}}
-	if err := store.Publish(ctx, job, []library.Observation{observation}); err != nil {
+	if err := store.Publish(ctx, job, testkit.ScanPublication(job, []library.Observation{observation})); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Finish(ctx, job, 1, nil); err != nil {

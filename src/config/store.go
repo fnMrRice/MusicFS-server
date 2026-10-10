@@ -106,6 +106,9 @@ func cloneConfig(c Config) Config {
 		for j := range c.Plugins[i].Instances {
 			instance := &c.Plugins[i].Instances[j]
 			instance.Config.MusicRoots = append([]MusicRoot(nil), instance.Config.MusicRoots...)
+			if instance.ImportDefaults != nil {
+				instance.ImportDefaults = instance.ImportDefaults.Clone()
+			}
 		}
 	}
 	return c

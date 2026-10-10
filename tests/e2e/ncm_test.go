@@ -190,7 +190,7 @@ func scanNCM(t *testing.T, c *client) map[string]library.Track {
 
 func scanProvider(t *testing.T, c *client, provider, key string) map[string]library.Track {
 	t.Helper()
-	code, raw, _ := c.request(t, "POST", "/api/v1/provider-instances/"+provider+"/scan-jobs", map[string]string{"mode": "full"}, key)
+	code, raw, _ := c.request(t, "POST", "/api/v1/provider-instances/"+provider+"/scan-jobs", providerScanRequest(t, c, provider), key)
 	var accepted struct {
 		JobID string `json:"jobId"`
 	}

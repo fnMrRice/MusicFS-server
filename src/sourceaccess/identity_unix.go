@@ -19,3 +19,15 @@ func fileIdentity(f *os.File) (string, error) {
 	}
 	return fmt.Sprintf("%x:%x", s.Dev, s.Ino), nil
 }
+
+func fileLinkCount(f *os.File) (uint64, error) {
+	i, err := f.Stat()
+	if err != nil {
+		return 0, err
+	}
+	s, ok := i.Sys().(*syscall.Stat_t)
+	if !ok {
+		return 0, fmt.Errorf("unsupported file link count")
+	}
+	return uint64(s.Nlink), nil
+}

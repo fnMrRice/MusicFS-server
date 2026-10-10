@@ -29,7 +29,9 @@ $env:MUSICFS_ADMIN_TOKEN = (& ./build/windows/musicfs.exe token).Trim()
 
 终端会阻塞运行服务。凭据保存在本次终端环境中，需要预先复制给登录输入框；`musicfs token` 是显式管理输出，普通服务日志不会打印凭据。不要将真实凭据提交到配置或复制到 URL。
 
-扫描由管理 API 执行，页面不承担目录管理。在另一个设置了同一 `MUSICFS_ADMIN_TOKEN` 的终端运行 `./scripts/scan.ps1 -ProviderID local`；脚本使用独立临时登录会话，等待扫描完成并退出该会话。Linux 可按 OpenAPI 使用同样的登录、创建扫描和查询任务接口。
+扫描由管理 API 执行，页面不承担目录管理。在另一个设置了同一 `MUSICFS_ADMIN_TOKEN` 的终端运行 `./scripts/scan.ps1 -ProviderID local`；脚本使用独立临时登录会话，先读取 Provider 声明和授权根列表，再提交 `mode/schemaRevision/rootIds/options`，等待扫描完成并退出该会话。默认选择该实例全部授权根并使用实例导入默认值。Linux 可用 PowerShell 7 执行脚本，或按 OpenAPI 使用同样的登录、创建扫描和查询任务接口；旧的仅 `{mode}` 请求不再接受。
+
+只扫描选中根的本层文件可运行 `./scripts/scan.ps1 -ProviderID local -RootIDs local -Recursive:$false`；扫描到两层子目录可运行 `./scripts/scan.ps1 -ProviderID local -RootIDs local -Recursive:$true -MaxDepth 2`。多个根使用 `-RootIDs root1,root2`，增量模式使用 `-Mode incremental`。根编号应来自 Provider 的 `roots`，不是磁盘路径；`importLyrics` 尚未实现，`-ImportLyrics:$true` 会明确失败。递归开关与深度的逐层规则见[配置说明](configuration.md#导入选项)。脚本最多等待一小时；超时后先用返回的任务状态查询接口确认结果，不假定任务已取消。
 
 打开 `http://127.0.0.1:8080`，使用管理员凭据登录，选择来源并刷新列表。点击真实文件的播放按钮，使用原生控件暂停/继续；原流时间轴可定位。选中服务端处理选项后可使用简单曲目位置输入，处理后原生时间轴只代表当前片段。按 Ctrl+C 退出。
 

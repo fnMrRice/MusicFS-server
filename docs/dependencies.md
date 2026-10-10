@@ -8,7 +8,7 @@ Go依赖由`go.mod/go.sum`锁定；下表跟随当前提交更新，历史验收
 | modernc.org/sqlite | 1.60.1 | BSD-3-Clause；纯 Go SQLite 驱动，WAL、迁移、事务和 VACUUM INTO 备份已测 |
 | golang.org/x/sys | 0.49.0 | BSD-3-Clause；Windows 文件锁与进程树回收、Linux 文件锁及稳定读租约 |
 | go.yaml.in/yaml/v3 | [3.0.5](https://pkg.go.dev/go.yaml.in/yaml/v3@v3.0.5) | [MIT 与 Apache-2.0](https://github.com/yaml/go-yaml/blob/v3.0.5/LICENSE)；YAML组织维护，配置语法树解析、严格校验及保留注释的开关写入 |
-| github.com/santhosh-tekuri/jsonschema/v6 | 6.0.3 | Apache-2.0；只用于根 tests 的 Schema 校验，不进入业务请求解析路径 |
+| github.com/santhosh-tekuri/jsonschema/v6 | 6.0.3 | Apache-2.0；契约测试及插件提供的受限导入选项 Schema 校验；运行时仅编译内存声明，禁止外部引用 |
 | FFmpeg / ffprobe（Windows） | 实测6.1.1 Gyan GPLv3构建 | 外部工具，不随Git仓库分发；构建参数和摘要见[插件验证](validation/plugins.md) |
 | FFmpeg / ffprobe（Linux） | 实测6.1.6，官方签名源码本地构建 | LGPLv2.1+，工具不随仓库分发；签名、构建和定向音频结果见[Linux音频记录](validation/configuration-linux-audio.md) |
 

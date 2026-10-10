@@ -5,6 +5,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
+	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 	"path/filepath"
 	"testing"
 )
@@ -18,7 +19,7 @@ func TestLibraryStableIdentitySnapshotAndPermissions(t *testing.T) {
 	defer s.Close()
 	items := []library.Observation{{Observation: pluginproto.Observation{ExternalID: "one", DisplayName: "same", RootID: "root", RelativePath: "a.wav", ObservedVersion: "v1"}}, {Observation: pluginproto.Observation{ExternalID: "two", DisplayName: "same", RootID: "root", RelativePath: "b.wav", ObservedVersion: "v1"}}}
 	publish := func(key string) {
-		_, _, err := s.Enqueue(ctx, "admin", "root", "scan", key)
+		_, _, err := s.Enqueue(ctx, "admin", "root", testkit.ScanPlan("root"), key)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -26,7 +27,7 @@ func TestLibraryStableIdentitySnapshotAndPermissions(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err = s.Publish(ctx, j, items); err != nil {
+		if err = s.Publish(ctx, j, testkit.ScanPublication(j, items)); err != nil {
 			t.Fatal(err)
 		}
 		s.Finish(ctx, j, len(items), nil)

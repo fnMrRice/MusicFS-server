@@ -12,7 +12,7 @@ import (
 )
 
 func TestHostAndAudioWireDTOsMatchContract(t *testing.T) {
-	testkit.ValidatePlugin(t, "EntriesRequest", pluginproto.EntriesRequest{RootID: "root", Limit: 200})
+	testkit.ValidatePlugin(t, "EntriesRequest", pluginproto.EntriesRequest{GrantID: "grant-1", RootID: "root", Limit: 200})
 	testkit.ValidatePlugin(t, "EntriesPage", pluginproto.EntriesPage{Items: []pluginproto.Entry{{RootID: "root", RelativePath: "a.wav", FileIdentity: "file", ObservedVersion: "v1", MIME: "audio/wav", SizeBytes: 44}}, RootIdentity: "root-v1", Issues: []string{}})
 	testkit.ValidatePlugin(t, "StateGet", pluginproto.StateRequest{Key: "track-1"})
 	testkit.ValidatePlugin(t, "StateCAS", pluginproto.StateRequest{Key: "track-1", Revision: 1, Value: []byte(`{"id":"track-1"}`)})

@@ -4,22 +4,397 @@
   "title": "MusicFS JSON-RPC 2.0 控制面 1.0",
   "oneOf": [{"$ref": "#/$defs/Request"}, {"$ref": "#/$defs/Success"}, {"$ref": "#/$defs/Failure"}, {"$ref": "#/$defs/Cancel"}],
   "$defs": {
+    "ScanScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rootId",
+        "rootIdentity",
+        "recursive",
+        "maxDepth"
+      ],
+      "properties": {
+        "rootId": {
+          "$ref": "#/$defs/ID"
+        },
+        "rootIdentity": {
+          "$ref": "#/$defs/ID"
+        },
+        "recursive": {
+          "type": "boolean"
+        },
+        "maxDepth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 64
+        }
+      },
+      "if": {
+        "properties": {
+          "recursive": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "maxDepth": {
+            "minimum": 1
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "maxDepth": {
+            "const": 0
+          }
+        }
+      }
+    },
+    "PluginConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaRevision",
+        "importOptionsSchema",
+        "importDefaults",
+        "unavailableOptions"
+      ],
+      "properties": {
+        "schemaRevision": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+        },
+        "importOptionsSchema": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/ImportOptionSchema"
+            },
+            {
+              "required": [
+                "type",
+                "additionalProperties"
+              ],
+              "properties": {
+                "type": {
+                  "const": "object"
+                },
+                "additionalProperties": {
+                  "const": false
+                }
+              }
+            }
+          ]
+        },
+        "importDefaults": {
+          "$ref": "#/$defs/ImportOptions"
+        },
+        "unavailableOptions": {
+          "type": "object",
+          "maxProperties": 32,
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "reason"
+            ],
+            "properties": {
+              "code": {
+                "const": "UNSUPPORTED"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1024
+              }
+            }
+          }
+        }
+      }
+    },
+    "ImportOptionSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "object",
+            "boolean",
+            "integer",
+            "string"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "properties": {
+          "type": "object",
+          "maxProperties": 32,
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/ImportOptionSchema"
+          }
+        },
+        "required": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+          }
+        },
+        "additionalProperties": {
+          "const": false
+        },
+        "default": {
+          "type": [
+            "boolean",
+            "number",
+            "string"
+          ]
+        },
+        "const": {
+          "type": [
+            "boolean",
+            "number",
+            "string"
+          ]
+        },
+        "enum": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": [
+              "boolean",
+              "number",
+              "string"
+            ]
+          }
+        },
+        "minimum": {
+          "type": "number"
+        },
+        "maximum": {
+          "type": "number"
+        },
+        "minLength": {
+          "type": "number"
+        },
+        "maxLength": {
+          "type": "number"
+        },
+        "if": {
+          "$ref": "#/$defs/ImportOptionSchema"
+        },
+        "then": {
+          "$ref": "#/$defs/ImportOptionSchema"
+        },
+        "else": {
+          "$ref": "#/$defs/ImportOptionSchema"
+        }
+      },
+      "maxProperties": 20,
+      "description": "受限本地 JSON Schema；运行时另限制 32 KiB 与 8 层。禁止 $ref、脚本、HTML 执行和未知关键字。"
+    },
+    "ImportOverrides": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "recursive": {
+          "type": "boolean"
+        },
+        "maxDepth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 64
+        },
+        "importLyrics": {
+          "type": "boolean"
+        }
+      },
+      "if": {
+        "properties": {
+          "recursive": {
+            "const": true
+          }
+        },
+        "required": [
+          "recursive"
+        ]
+      },
+      "then": {
+        "properties": {
+          "maxDepth": {
+            "minimum": 1
+          }
+        }
+      },
+      "else": {
+        "if": {
+          "required": [
+            "recursive"
+          ]
+        },
+        "then": {
+          "properties": {
+            "maxDepth": {
+              "const": 0
+            }
+          }
+        }
+      },
+      "description": "部分覆盖；关闭且未给深度规范为 0；从关闭切换开启且未给深度恢复 64。null 与未知字段拒绝。importLyrics=true 在语义校验返回 UNSUPPORTED。"
+    },
+    "ImportOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recursive",
+        "maxDepth",
+        "importLyrics"
+      ],
+      "properties": {
+        "recursive": {
+          "type": "boolean"
+        },
+        "maxDepth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 64
+        },
+        "importLyrics": {
+          "type": "boolean"
+        }
+      },
+      "if": {
+        "properties": {
+          "recursive": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "maxDepth": {
+            "minimum": 1
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "maxDepth": {
+            "const": 0
+          }
+        }
+      }
+    },
     "ID": {"type": "string", "minLength": 1, "maxLength": 256},
     "RequestID": {"type": "string", "pattern": "^[hw]-[A-Za-z0-9_-]+$", "maxLength": 128},
     "Version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$"},
     "Manifest": {
       "type": "object",
-      "required": ["pluginId", "pluginVersion", "protocolVersion", "roles", "capabilities", "systems", "architectures", "maxMessageBytes", "maxPageItems"],
+      "required": [
+        "pluginId",
+        "pluginVersion",
+        "protocolVersion",
+        "roles",
+        "capabilities",
+        "systems",
+        "architectures",
+        "maxMessageBytes",
+        "maxPageItems",
+        "configuration"
+      ],
       "properties": {
-        "pluginId": {"$ref": "#/$defs/ID"}, "pluginVersion": {"$ref": "#/$defs/Version"}, "protocolVersion": {"const": "1.0"},
-        "roles": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["provider", "audio", "scraper"]}},
-        "capabilities": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z0-9]*(?:\\.[a-z][a-zA-Z0-9]*)+$"}},
-        "systems": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["windows", "linux"]}},
-        "architectures": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["amd64", "arm64"]}},
-        "maxMessageBytes": {"type": "integer", "minimum": 1, "maximum": 1048576},
-        "maxPageItems": {"type": "integer", "minimum": 1, "maximum": 200},
-        "maxInflightRequests": {"type": "integer", "minimum": 1, "maximum": 256},
-        "configSchema": {"type": "object"}
+        "pluginId": {
+          "$ref": "#/$defs/ID"
+        },
+        "pluginVersion": {
+          "$ref": "#/$defs/Version"
+        },
+        "protocolVersion": {
+          "const": "1.0"
+        },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "provider",
+              "audio",
+              "scraper"
+            ]
+          }
+        },
+        "capabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(?:\\.[a-z][a-zA-Z0-9]*)+$"
+          }
+        },
+        "systems": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "windows",
+              "linux"
+            ]
+          }
+        },
+        "architectures": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "amd64",
+              "arm64"
+            ]
+          }
+        },
+        "maxMessageBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        },
+        "maxPageItems": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "maxInflightRequests": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        },
+        "configuration": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PluginConfiguration"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
       }
     },
     "Context": {
@@ -35,8 +410,46 @@
       "properties": {"manifest": {"$ref": "#/$defs/Manifest"}, "instanceId": {"$ref": "#/$defs/ID"}, "nonce": {"$ref": "#/$defs/ID"}}
     },
     "ScanRequest": {
-      "type": "object", "additionalProperties": false, "required": ["rootId", "scanId", "generation", "limit"],
-      "properties": {"rootId": {"$ref": "#/$defs/ID"}, "scanId": {"$ref": "#/$defs/ID"}, "generation": {"type": "integer", "minimum": 1}, "cursor": {"type": "string"}, "limit": {"type": "integer", "minimum": 1, "maximum": 200}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rootId",
+        "scanId",
+        "generation",
+        "limit",
+        "scope",
+        "planDigest",
+        "grantId"
+      ],
+      "properties": {
+        "rootId": {
+          "$ref": "#/$defs/ID"
+        },
+        "scanId": {
+          "$ref": "#/$defs/ID"
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "cursor": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "scope": {
+          "$ref": "#/$defs/ScanScope"
+        },
+        "planDigest": {
+          "$ref": "#/$defs/SHA256"
+        },
+        "grantId": {
+          "$ref": "#/$defs/ID"
+        }
+      }
     },
     "Observation": {
       "type": "object", "required": ["externalId", "rootId", "relativePath", "sourceRef", "observedVersion", "displayName", "sizeBytes", "mime", "codec", "durationMs", "bitrateBps", "bitrateMode", "providerSha512"],
@@ -50,11 +463,54 @@
       }
     },
     "ScanPage": {
-      "type": "object", "required": ["scanId", "generation", "page", "items", "complete", "rootIdentity", "issues"],
+      "type": "object",
+      "required": [
+        "scanId",
+        "generation",
+        "page",
+        "items",
+        "complete",
+        "rootIdentity",
+        "issues",
+        "planDigest"
+      ],
       "properties": {
-        "scanId": {"$ref": "#/$defs/ID"}, "generation": {"type": "integer", "minimum": 1}, "page": {"type": "integer", "minimum": 0},
-        "items": {"type": "array", "items": {"$ref": "#/$defs/Observation"}, "maxItems": 200}, "nextCursor": {"type": "string"},
-        "complete": {"type": "boolean"}, "rootIdentity": {"$ref": "#/$defs/ID"}, "issues": {"type": "array", "items": {"type": "string"}}
+        "scanId": {
+          "$ref": "#/$defs/ID"
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Observation"
+          },
+          "maxItems": 200
+        },
+        "nextCursor": {
+          "type": "string"
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "rootIdentity": {
+          "$ref": "#/$defs/ID"
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "planDigest": {
+          "$ref": "#/$defs/SHA256"
+        }
       }
     },
     "ResolveRequest": {
@@ -70,12 +526,74 @@
       }
     },
     "EntriesRequest": {
-      "type": "object", "additionalProperties": false, "required": ["rootId", "limit"],
-      "properties": {"rootId": {"$ref": "#/$defs/ID"}, "cursor": {"type": "string"}, "limit": {"type": "integer", "minimum": 1, "maximum": 200}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rootId",
+        "limit",
+        "grantId"
+      ],
+      "properties": {
+        "rootId": {
+          "$ref": "#/$defs/ID"
+        },
+        "cursor": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "grantId": {
+          "$ref": "#/$defs/ID"
+        }
+      }
     },
     "Entry": {
-      "type": "object", "required": ["rootId", "relativePath", "fileIdentity", "observedVersion", "sizeBytes", "mime", "durationMs"],
-      "properties": {"rootId": {"$ref": "#/$defs/ID"}, "relativePath": {"$ref": "#/$defs/RelativePath"}, "fileIdentity": {"$ref": "#/$defs/ID"}, "observedVersion": {"$ref": "#/$defs/ID"}, "sizeBytes": {"type": "integer", "minimum": 0}, "mime": {"type": "string"}, "durationMs": {"type": ["integer", "null"], "minimum": 0}}
+      "type": "object",
+      "required": [
+        "rootId",
+        "relativePath",
+        "fileIdentity",
+        "observedVersion",
+        "sizeBytes",
+        "mime",
+        "durationMs",
+        "linkCount"
+      ],
+      "properties": {
+        "rootId": {
+          "$ref": "#/$defs/ID"
+        },
+        "relativePath": {
+          "$ref": "#/$defs/RelativePath"
+        },
+        "fileIdentity": {
+          "$ref": "#/$defs/ID"
+        },
+        "observedVersion": {
+          "$ref": "#/$defs/ID"
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mime": {
+          "type": "string"
+        },
+        "durationMs": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "linkCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
     },
     "EntriesPage": {
       "type": "object", "required": ["items", "rootIdentity", "issues"],

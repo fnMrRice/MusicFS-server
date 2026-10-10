@@ -47,7 +47,7 @@ func TestRealWorkerScanSnapshotLifetime(t *testing.T) {
 	}
 	scan := func(t *testing.T, ctx context.Context, worker *pluginhost.Worker, root, cursor string) pluginproto.ScanPage {
 		t.Helper()
-		page, err := worker.Scan(ctx, pluginproto.ScanRequest{RootID: root, ScanID: "scan", Generation: 1, Limit: 1, Cursor: cursor})
+		page, err := worker.Scan(ctx, scopedRequest(worker, pluginproto.ScanRequest{RootID: root, ScanID: "scan", Generation: 1, Limit: 1, Cursor: cursor}))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -85,16 +85,16 @@ func TestRealWorkerScanSnapshotLifetime(t *testing.T) {
 		worker, ctx := start(t, cfg)
 		page := scan(t, ctx, worker, "music", "")
 		time.Sleep(250 * time.Millisecond)
-		if _, err := worker.Scan(ctx, pluginproto.ScanRequest{RootID: "other-root", ScanID: "scan", Generation: 1, Limit: 1, Cursor: page.NextCursor}); pluginproto.ErrorCode(err) != "RESOURCE_CHANGED" {
+		if _, err := worker.Scan(ctx, scopedRequest(worker, pluginproto.ScanRequest{RootID: "other-root", ScanID: "scan", Generation: 1, Limit: 1, Cursor: page.NextCursor})); pluginproto.ErrorCode(err) != "RESOURCE_CHANGED" {
 			t.Fatalf("foreign-root cursor accepted: %v", err)
 		}
 		cancelled, cancel := context.WithCancel(ctx)
 		cancel()
-		if _, err := worker.Scan(cancelled, pluginproto.ScanRequest{RootID: "music", ScanID: "scan", Generation: 1, Limit: 1, Cursor: page.NextCursor}); err == nil {
+		if _, err := worker.Scan(cancelled, scopedRequest(worker, pluginproto.ScanRequest{RootID: "music", ScanID: "scan", Generation: 1, Limit: 1, Cursor: page.NextCursor})); err == nil {
 			t.Fatal("cancelled continuation succeeded")
 		}
 		time.Sleep(250 * time.Millisecond)
-		if _, err := worker.Scan(ctx, pluginproto.ScanRequest{RootID: "music", ScanID: "scan", Generation: 1, Limit: 1, Cursor: page.NextCursor}); pluginproto.ErrorCode(err) != "RESOURCE_CHANGED" {
+		if _, err := worker.Scan(ctx, scopedRequest(worker, pluginproto.ScanRequest{RootID: "music", ScanID: "scan", Generation: 1, Limit: 1, Cursor: page.NextCursor})); pluginproto.ErrorCode(err) != "RESOURCE_CHANGED" {
 			t.Fatalf("idle snapshot remained alive after invalid/cancelled calls: %v", err)
 		}
 		scan(t, ctx, worker, "music", "")
@@ -108,7 +108,7 @@ func TestRealWorkerScanSnapshotLifetime(t *testing.T) {
 		started := time.Now()
 		for {
 			time.Sleep(100 * time.Millisecond)
-			next, err := worker.Scan(ctx, pluginproto.ScanRequest{RootID: "music", ScanID: "scan", Generation: 1, Limit: 1, Cursor: page.NextCursor})
+			next, err := worker.Scan(ctx, scopedRequest(worker, pluginproto.ScanRequest{RootID: "music", ScanID: "scan", Generation: 1, Limit: 1, Cursor: page.NextCursor}))
 			if err != nil {
 				if pluginproto.ErrorCode(err) != "RESOURCE_CHANGED" || time.Since(started) < cfg.SnapshotMaxLifetime-100*time.Millisecond {
 					t.Fatalf("active snapshot failed before its hard limit: %v after %s", err, time.Since(started))
@@ -141,7 +141,7 @@ func TestRealWorkerScanSnapshotLifetime(t *testing.T) {
 			{worker, "music", token + ":999999", "RESOURCE_CHANGED"},
 			{worker, "music", "malformed", "ACCESS_DENIED"},
 		} {
-			if _, err := tc.worker.Scan(ctx, pluginproto.ScanRequest{RootID: tc.root, ScanID: "scan", Generation: 1, Limit: 1, Cursor: tc.cursor}); pluginproto.ErrorCode(err) != tc.code {
+			if _, err := tc.worker.Scan(ctx, scopedRequest(tc.worker, pluginproto.ScanRequest{RootID: tc.root, ScanID: "scan", Generation: 1, Limit: 1, Cursor: tc.cursor})); pluginproto.ErrorCode(err) != tc.code {
 				t.Fatalf("isolated scan cursor accepted: %v", err)
 			}
 		}

@@ -18,6 +18,14 @@
 
 ## 兼容与验证
 
+### 插件导入选项
+
+Provider 响应增加 `configuration` 与 `roots`。Local Files 的配置包含插件提供的 `schemaRevision/importOptionsSchema/importDefaults/unavailableOptions`；实例默认已合成到公开 `importDefaults`。根列表只含授权编号和显示名，不含路径、真实文件系统身份、能力票据或内部配置摘要。当前 Web 列表/播放允许忽略新响应字段，本步骤没有导入表单 UI。
+
+创建扫描必须提交 `{mode,schemaRevision,rootIds,options}`。`rootIds` 为 1—256 个不重复的已授权根编号，`options` 可为 `{}` 或部分覆盖；不兼容旧的仅 `{mode}` 请求。实例与请求层都遵守[递归归一规则](../configuration.md#导入选项)：默认 true/64/false，关闭规范为 0，从关闭重新开启且未给深度恢复 64，开启深度 1—64。类型错误、矛盾深度或未知字段为 400；不属于当前实例的根为 403；旧 schema 修订为 409；未实现的 `importLyrics=true` 为 415 `UNSUPPORTED`。
+
+任务只合并同所有者、实例与有效计划的在途请求；同幂等键改变选中根、选项、模式或绑定版本返回 `CONFLICT`。根顺序不改变计划。读取任务新增 `rootIds/effectiveOptions/schemaRevision`，内部计划摘要和根身份不公开。`complete` 表示所选范围完整完成；未选根和范围之外的更深曲目保留。排队后有效计划持久固定，重启配置改变不能静默改用新参数。
+
 ### S-P5-01 当前资产证据
 
 `SourceTrack.asset` 是必需的当前原始资产对象；即使媒体信息未知也存在非空 `assetId`。顶层 `assetId`、`codec/container/durationMs/bitrateBps` 保留为当前资产投影，稳定 `sourceTrackId` 不随编码、音质或标签修改而改变。原文件版本变化会创建新资产并使旧证据失效；旧证据不出现在当前资产的 `evidence` 中。历史查询仅为宿主内部、按所有者限制的审计接口，本步没有公开历史 HTTP 端点。
@@ -54,4 +62,4 @@ SourceAsset 和 `assetId` 始终指向原始 NCM；列表保留 `container=ncm`�
 
 执行 `go test ./tests/contract/api`。测试编译全部 HTTP/插件模型、验证有效/无效/新增响应字段兼容样本，并校验 OpenAPI 路径、引用和幂等/CSRF 声明。该测试的 OpenAPI 检查是项目结构校验，JSON Schema 模型验证由独立库执行；不将项目结构检查描述为完整 OpenAPI 官方元规范验证。后续 API handler 集成测试须调用 `tests/testkit.ValidateHTTP` 校验真实序列化响应，防止样本与 DTO 各自通过但相互漂移。
 
-验证库为 `github.com/santhosh-tekuri/jsonschema/v6`，只用于测试；当前固定版本与许可证见[依赖记录](../dependencies.md)。Schema 不通过网络装载依赖。NCM 增量另由 `go test ./tests/contract/plugins` 验证有效/无效 wire 样本，真实 Worker 与 Server 测试校验实际序列化结果。
+验证库为 `github.com/santhosh-tekuri/jsonschema/v6`，用于契约测试和运行时受限插件导入选项校验；当前固定版本与许可证见[依赖记录](../dependencies.md)。运行时声明最多 32 KiB、8 层与每对象 32 个属性，采用关键字白名单，不接受外部 `$ref`、脚本或任意扩展；Schema 不通过网络装载依赖。NCM 增量另由 `go test ./tests/contract/plugins` 验证有效/无效 wire 样本，真实 Worker 与 Server 测试校验实际序列化结果。

@@ -3,6 +3,7 @@ package storage_test
 import (
 	"context"
 	"encoding/json"
+	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 	"path/filepath"
 	"testing"
 
@@ -37,15 +38,15 @@ func TestLibraryRejectsDuplicateObservationAtomically(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer store.Close()
-	if _, _, err := store.Enqueue(ctx, "admin", "root", "scan-full", "duplicate-scan"); err != nil {
+	if _, _, err := store.Enqueue(ctx, "admin", "root", testkit.ScanPlan("root"), "duplicate-scan"); err != nil {
 		t.Fatal(err)
 	}
 	job, err := store.Claim(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	item := library.Observation{Observation: pluginproto.Observation{ExternalID: "one", RootID: "root", ObservedVersion: "v1", DisplayName: "a.wav"}}
-	if err := store.Publish(ctx, job, []library.Observation{item, item}); err == nil {
+	item := library.Observation{Observation: pluginproto.Observation{ExternalID: "one", RootID: "root", ObservedVersion: "v1", DisplayName: "a.wav", RelativePath: "a.wav"}}
+	if err := store.Publish(ctx, job, testkit.ScanPublication(job, []library.Observation{item, item})); err == nil {
 		t.Fatal("duplicate identity was accepted")
 	}
 	page, err := store.ListTracks(ctx, "admin", "root", "", 50)
@@ -61,7 +62,7 @@ func TestCursorRetryReusesCursorAndCorruptionFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer store.Close()
-	if _, _, err := store.Enqueue(ctx, "admin", "root", "scan-full", "three-tracks"); err != nil {
+	if _, _, err := store.Enqueue(ctx, "admin", "root", testkit.ScanPlan("root"), "three-tracks"); err != nil {
 		t.Fatal(err)
 	}
 	job, err := store.Claim(ctx)
@@ -70,9 +71,9 @@ func TestCursorRetryReusesCursorAndCorruptionFails(t *testing.T) {
 	}
 	items := []library.Observation{}
 	for _, name := range []string{"a", "b", "c"} {
-		items = append(items, library.Observation{Observation: pluginproto.Observation{ExternalID: name, RootID: "root", ObservedVersion: "v1", DisplayName: name}})
+		items = append(items, library.Observation{Observation: pluginproto.Observation{ExternalID: name, RootID: "root", ObservedVersion: "v1", DisplayName: name, RelativePath: name}})
 	}
-	if err := store.Publish(ctx, job, items); err != nil {
+	if err := store.Publish(ctx, job, testkit.ScanPublication(job, items)); err != nil {
 		t.Fatal(err)
 	}
 	first, err := store.ListTracks(ctx, "admin", "root", "", 1)
@@ -102,7 +103,7 @@ func TestPublishChecksOwnerAndPreservesOldLibraryOnCorruption(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer store.Close()
-	if _, _, err := store.Enqueue(ctx, "admin", "root", "scan-full", "owner-check"); err != nil {
+	if _, _, err := store.Enqueue(ctx, "admin", "root", testkit.ScanPlan("root"), "owner-check"); err != nil {
 		t.Fatal(err)
 	}
 	job, err := store.Claim(ctx)
@@ -110,17 +111,17 @@ func TestPublishChecksOwnerAndPreservesOldLibraryOnCorruption(t *testing.T) {
 		t.Fatal(err)
 	}
 	forged := jobs.Job{ID: job.ID, Owner: "other", ProviderInstanceID: "root", Generation: job.Generation}
-	if err := store.Publish(ctx, forged, nil); err == nil {
+	if err := store.Publish(ctx, forged, testkit.ScanPublication(forged, nil)); err == nil {
 		t.Fatal("publish accepted a job with different ownership")
 	}
-	item := library.Observation{Observation: pluginproto.Observation{ExternalID: "one", RootID: "root", ObservedVersion: "v1", DisplayName: "a"}}
-	if err := store.Publish(ctx, job, []library.Observation{item}); err != nil {
+	item := library.Observation{Observation: pluginproto.Observation{ExternalID: "one", RootID: "root", ObservedVersion: "v1", DisplayName: "a", RelativePath: "a"}}
+	if err := store.Publish(ctx, job, testkit.ScanPublication(job, []library.Observation{item})); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := store.DB.ExecContext(ctx, "UPDATE tracks SET document='invalid'"); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Publish(ctx, job, nil); err == nil {
+	if err := store.Publish(ctx, job, testkit.ScanPublication(job, nil)); err == nil {
 		t.Fatal("publish ignored corrupt previous track data")
 	}
 	var raw []byte

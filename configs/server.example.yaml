@@ -18,6 +18,10 @@ plugins:
         name: '本地音乐'
         role: 'provider'
         enabled: true
+        importDefaults:
+          recursive: true
+          maxDepth: 64
+          importLyrics: false
         config:
           musicRoots:
             # Replace with your music directory; this sample uses project fixtures.

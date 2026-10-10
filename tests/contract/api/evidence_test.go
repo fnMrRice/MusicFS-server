@@ -141,7 +141,7 @@ func TestProviderEvidenceWireContract(t *testing.T) {
 	observation.BitrateBps, observation.BitrateMode = evidenceValue(int64(44576)), evidenceValue("vbr")
 	observation.ProviderSHA512 = evidenceValue(strings.Repeat("a", 128))
 	testkit.ValidatePlugin(t, "Observation", observation)
-	page := pluginproto.ScanPage{ScanID: "scan-1", Generation: 1, Items: []pluginproto.Observation{observation}, Complete: true, RootIdentity: "root-version", Issues: []string{}}
+	page := pluginproto.ScanPage{PlanDigest: strings.Repeat("a", 64), ScanID: "scan-1", Generation: 1, Items: []pluginproto.Observation{observation}, Complete: true, RootIdentity: "root-version", Issues: []string{}}
 	testkit.ValidatePlugin(t, "ScanPage", page)
 	for _, field := range []string{"bitrateMode", "providerSha512"} {
 		var incomplete map[string]any

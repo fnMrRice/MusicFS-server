@@ -29,6 +29,7 @@ type Worker struct {
 	state      *stateStore
 	mu         sync.Mutex
 	snapshots  map[string]entrySnapshot
+	scanGrants map[string]scanGrant
 }
 
 func Start(ctx context.Context, cfg Config) (*Worker, error) {
@@ -98,7 +99,7 @@ func Start(ctx context.Context, cfg Config) (*Worker, error) {
 		os.Remove(privateDir)
 		return nil, fmt.Errorf("UNSUPPORTED: worker failed to start")
 	}
-	w := &Worker{config: cfg, Access: access, cmd: cmd, cancel: cancel, done: make(chan struct{}), privateDir: privateDir, state: state, snapshots: map[string]entrySnapshot{}}
+	w := &Worker{config: cfg, Access: access, cmd: cmd, cancel: cancel, done: make(chan struct{}), privateDir: privateDir, state: state, snapshots: map[string]entrySnapshot{}, scanGrants: map[string]scanGrant{}}
 	w.peer = pluginproto.NewPeer(workerCtx, stdout, stdin, "h-", w.handle)
 	go func() { cmd.Wait(); w.peer.Close(); close(w.done); os.Remove(privateDir) }()
 	var random [24]byte
@@ -123,8 +124,16 @@ func Start(ctx context.Context, cfg Config) (*Worker, error) {
 }
 
 func (w *Worker) Scan(ctx context.Context, r pluginproto.ScanRequest) (pluginproto.ScanPage, error) {
+	grant, err := w.authorizeScan(ctx, &r)
+	if err != nil {
+		return pluginproto.ScanPage{}, err
+	}
+	defer func() { w.mu.Lock(); delete(w.scanGrants, grant); w.mu.Unlock() }()
 	var page pluginproto.ScanPage
-	err := w.peer.Call(ctx, "provider.scan", r, &page)
+	err = w.peer.Call(ctx, "provider.scan", r, &page)
+	if err == nil && page.PlanDigest != r.PlanDigest {
+		err = fmt.Errorf("PROTOCOL_MISMATCH: scan result belongs to another plan")
+	}
 	return page, err
 }
 func (w *Worker) Resolve(ctx context.Context, r pluginproto.ResolveRequest) (pluginproto.Resource, error) {

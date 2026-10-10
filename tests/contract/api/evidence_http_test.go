@@ -21,7 +21,7 @@ func TestLibraryEvidenceHTTPProjection(t *testing.T) {
 	ctx := context.Background()
 	publish := func(version, key string) {
 		t.Helper()
-		if _, _, err := store.Enqueue(ctx, "admin", "mine", "scan-full", key); err != nil {
+		if _, _, err := store.Enqueue(ctx, "admin", "mine", testkit.ScanPlan("mine"), key); err != nil {
 			t.Fatal(err)
 		}
 		job, err := store.Claim(ctx)
@@ -31,7 +31,7 @@ func TestLibraryEvidenceHTTPProjection(t *testing.T) {
 		item := library.Observation{Observation: pluginproto.Observation{
 			ExternalID: "one", RootID: "mine", RelativePath: "private/path/vbr.mp3", ObservedVersion: version, DisplayName: "vbr.mp3",
 			MIME: "audio/mpeg", SizeBytes: 33432, BitrateBps: evidenceValue(int64(44576)), BitrateMode: evidenceValue("vbr"), ProviderSHA512: evidenceValue(strings.Repeat("a", 128))}, Artists: []string{}}
-		if err := store.Publish(ctx, job, []library.Observation{item}); err != nil {
+		if err := store.Publish(ctx, job, testkit.ScanPublication(job, []library.Observation{item})); err != nil {
 			t.Fatal(err)
 		}
 		if err := store.Finish(ctx, job, 1, nil); err != nil {

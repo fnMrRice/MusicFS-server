@@ -52,6 +52,23 @@
 
 示例显式启用Local Files与NCM；音频插件和实例默认false。需要转码/DSP时，填写音频实例的两个工具路径，并将两层 `enabled` 都改为true后重启。Linux将`executable`改为对应Linux构建路径，程序无`.exe`后缀。可选`sha256`用于钉住管理员审核的程序；省略时采用现有显式本机路径信任与本次启动摘要检查，不代表跨重启钉住版本。
 
+### 导入选项
+
+Local Files 实例可在 `config` 同级声明 `importDefaults`。这些字段的标题、说明、默认值与校验规则由官方插件的 `Manifest.configuration` 提供；宿主加载器共用该声明，实际遍历还受宿主的根授权和深度上限约束。每个实例最多授权 256 个根，客户端只能选择已授权根编号。
+
+```yaml
+importDefaults:
+  recursive: true
+  maxDepth: 64
+  importLyrics: false
+```
+
+插件默认值是 `true/64/false`，然后依次叠加实例默认与单次扫描请求的部分覆盖。根目录中的文件深度为 0：关闭递归且未给深度时规范为 0；显式 `recursive: false` 搭配非 0 深度拒绝。从关闭切到开启且本层未给深度时恢复 64；开启递归的有效深度只能为 1—64。只覆盖深度会保留继承的递归开关，矛盾时拒绝；null、未知选项、数值字符串均拒绝。
+
+`importLyrics` 目前不可用。插件声明公开该限制，请求或 YAML 将其设为 true 均明确返回 `UNSUPPORTED`，没有空的成功开关。音频/NCM 实例不接受 `importDefaults`。实例修改须重启；本步骤没有动态启停，也没有导入表单界面。
+
+客户端先读取 Provider 的 `configuration` 与安全 `roots[{id,name}]`，再提交 `mode/schemaRevision/rootIds/options`；不返回磁盘路径或真实根身份。详见[共同契约](contracts/README.md)。扫描任务固定有效选项、根及插件/配置版本，范围外曲目保留；不能把一次浅层扫描当作完整音乐根的删除证明。
+
 ## 4. 配置读写服务
 
 `src/config` 提供以下内部接口，使用同一解析器及SQLite操作日志；尚未接入HTTP管理路由或管理CLI。

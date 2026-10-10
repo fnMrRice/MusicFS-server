@@ -33,6 +33,55 @@
     "plugins": {"type": "array", "items": {"oneOf": [{"$ref": "#/$defs/LocalPlugin"}, {"$ref": "#/$defs/FFmpegPlugin"}, {"$ref": "#/$defs/NCMPlugin"}]}}
   },
   "$defs": {
+    "ImportOverrides": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "recursive": {
+          "type": "boolean"
+        },
+        "maxDepth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 64
+        },
+        "importLyrics": {
+          "type": "boolean"
+        }
+      },
+      "if": {
+        "properties": {
+          "recursive": {
+            "const": true
+          }
+        },
+        "required": [
+          "recursive"
+        ]
+      },
+      "then": {
+        "properties": {
+          "maxDepth": {
+            "minimum": 1
+          }
+        }
+      },
+      "else": {
+        "if": {
+          "required": [
+            "recursive"
+          ]
+        },
+        "then": {
+          "properties": {
+            "maxDepth": {
+              "const": 0
+            }
+          }
+        }
+      },
+      "description": "部分覆盖；关闭且未给深度规范为 0；从关闭切换开启且未给深度恢复 64。null 与未知字段拒绝。importLyrics=true 在语义校验返回 UNSUPPORTED。"
+    },
     "ID": {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,128}$"},
     "Path": {"type": "string", "not": {"pattern": "\u0000"}},
     "NonemptyPath": {"$ref": "#/$defs/Path", "minLength": 1},
@@ -50,11 +99,36 @@
       "then": {"required": ["executable"], "properties": {"executable": {"$ref": "#/$defs/NonemptyPath"}}}
     },
     "Instance": {
-      "type": "object", "additionalProperties": false, "required": ["instanceId", "role", "config"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instanceId",
+        "role",
+        "config"
+      ],
       "properties": {
-        "instanceId": {"$ref": "#/$defs/ID"}, "name": {"type": "string"},
-        "role": {"enum": ["provider", "audio"]}, "enabled": {"type": "boolean", "default": false},
-        "config": {"type": "object"}
+        "instanceId": {
+          "$ref": "#/$defs/ID"
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "provider",
+            "audio"
+          ]
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "config": {
+          "type": "object"
+        },
+        "importDefaults": {
+          "$ref": "#/$defs/ImportOverrides"
+        }
       }
     },
     "MusicRoot": {
@@ -63,7 +137,7 @@
     },
     "LocalSettings": {
       "type": "object", "additionalProperties": false,
-      "properties": {"musicRoots": {"type": "array", "items": {"$ref": "#/$defs/MusicRoot"}}}
+      "properties": {"musicRoots": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/MusicRoot"}}}
     },
     "FFmpegSettings": {
       "type": "object", "additionalProperties": false,
@@ -79,25 +153,116 @@
       "then": {"properties": {"instances": {"items": {"if": {"$ref": "#/$defs/Enabled"}, "then": {"properties": {"config": {"required": ["musicRoots"], "properties": {"musicRoots": {"minItems": 1}}}}}}}}}
     },
     "FFmpegPlugin": {
-      "allOf": [{"$ref": "#/$defs/Plugin"}],
+      "allOf": [
+        {
+          "$ref": "#/$defs/Plugin"
+        }
+      ],
       "properties": {
-        "pluginId": {"const": "musicfs.audio.ffmpeg"},
-        "instances": {"items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"role": {"const": "audio"}, "config": {"$ref": "#/$defs/FFmpegSettings"}}}}
+        "pluginId": {
+          "const": "musicfs.audio.ffmpeg"
+        },
+        "instances": {
+          "items": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/Instance"
+              }
+            ],
+            "properties": {
+              "role": {
+                "const": "audio"
+              },
+              "config": {
+                "$ref": "#/$defs/FFmpegSettings"
+              },
+              "importDefaults": false
+            }
+          }
+        }
       },
-      "if": {"$ref": "#/$defs/Enabled"},
-      "then": {"properties": {"instances": {
-        "contains": {"$ref": "#/$defs/Enabled"}, "minContains": 0, "maxContains": 1,
-        "items": {"if": {"$ref": "#/$defs/Enabled"}, "then": {"properties": {"config": {"required": ["ffmpegPath", "ffprobePath"], "properties": {"ffmpegPath": {"$ref": "#/$defs/NonemptyPath"}, "ffprobePath": {"$ref": "#/$defs/NonemptyPath"}}}}}}
-      }}}
+      "if": {
+        "$ref": "#/$defs/Enabled"
+      },
+      "then": {
+        "properties": {
+          "instances": {
+            "contains": {
+              "$ref": "#/$defs/Enabled"
+            },
+            "minContains": 0,
+            "maxContains": 1,
+            "items": {
+              "if": {
+                "$ref": "#/$defs/Enabled"
+              },
+              "then": {
+                "properties": {
+                  "config": {
+                    "required": [
+                      "ffmpegPath",
+                      "ffprobePath"
+                    ],
+                    "properties": {
+                      "ffmpegPath": {
+                        "$ref": "#/$defs/NonemptyPath"
+                      },
+                      "ffprobePath": {
+                        "$ref": "#/$defs/NonemptyPath"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "NCMPlugin": {
-      "allOf": [{"$ref": "#/$defs/Plugin"}],
+      "allOf": [
+        {
+          "$ref": "#/$defs/Plugin"
+        }
+      ],
       "properties": {
-        "pluginId": {"const": "musicfs.ncm"},
-        "instances": {"items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"role": {"const": "audio"}, "config": {"type": "object", "maxProperties": 0}}}}
+        "pluginId": {
+          "const": "musicfs.ncm"
+        },
+        "instances": {
+          "items": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/Instance"
+              }
+            ],
+            "properties": {
+              "role": {
+                "const": "audio"
+              },
+              "config": {
+                "type": "object",
+                "maxProperties": 0
+              },
+              "importDefaults": false
+            }
+          }
+        }
       },
-      "if": {"$ref": "#/$defs/Enabled"},
-      "then": {"properties": {"instances": {"contains": {"$ref": "#/$defs/Enabled"}, "minContains": 0, "maxContains": 1}}}
+      "if": {
+        "$ref": "#/$defs/Enabled"
+      },
+      "then": {
+        "properties": {
+          "instances": {
+            "contains": {
+              "$ref": "#/$defs/Enabled"
+            },
+            "minContains": 0,
+            "maxContains": 1
+          }
+        }
+      }
     }
   }
 }

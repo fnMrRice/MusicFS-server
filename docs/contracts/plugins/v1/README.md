@@ -6,7 +6,9 @@ Host 发出的 ID 为 `h-` 前缀，Worker 调用 Host 时用 `w-`。一帧只�
 
 `host.hello` 请求绑定 instanceId、配置修订和本次随机 nonce。成功结果为 Ready（逻辑上的 worker.ready），必须回显 instanceId、nonce，并用 manifest 声明精确 protocolVersion。1.0 只协商 1.0；主版本不匹配必须拒绝。每个角色实例独立 Worker，实例/账号权限由 Host 启动上下文固定，不能被请求字段切换。账户引用不是凭据。
 
-`provider.scan` 返回带 scanId/generation/page 的观测页，末页 complete 还须结合 issues 和根身份决定是否可以发布完整扫描。持久身份由 Host 命名空间状态维护。`provider.resolve` 返回受限资源引用，rootId/relativePath 只在受信任控制面使用，浏览器看不到它们；Host 实际打开时仍需验证根、版本和授权。
+Manifest 的 `configuration` 为插件提供的导入选项声明；不支持导入配置的音频插件发送 null。Local Files 声明 `schemaRevision/importOptionsSchema/importDefaults/unavailableOptions`，标题与说明是纯文本。声明限制为 32 KiB、8 层、每对象 32 个属性及有限 JSON Schema 关键字，拒绝引用与可执行扩展。宿主共用声明校验实例默认和单次请求，但根授权、递归深度上限与真实遍历限制始终由宿主执行。歌词选项尚未实现，true 返回 `UNSUPPORTED`。
+
+`provider.scan` 携带 scope（rootId/rootIdentity/recursive/maxDepth）、planDigest 和 Host 生成的单页 grantId。Worker 调用 `host.entries` 必须携带该 grantId；授权绑定任务、代次、范围和游标，不能跨任务、根或选项重用。返回页包含 scanId/generation/page/planDigest，末页 complete 还须结合 issues 和根身份决定是否可以发布完整请求范围。范围外曲目不能被标记缺失。Entry 的 fileIdentity 为原始身份，linkCount 为实际硬链接数，不能按本轮枚举数量改写身份。持久来源身份由 Host 命名空间状态维护。`provider.resolve` 返回受限资源引用，rootId/relativePath 只在受信任控制面使用，浏览器看不到它们；Host 实际打开时仍需验证根、版本和授权。
 
 S-P5-01 观测增加必需但可为 `null` 的 `bitrateMode` 与 `providerSha512`：模式仅接受 `cbr/vbr/unknown`，摘要必须是 128 个小写十六进制字符。`bitrateBps` 仅接受正整数或 `null`，质量档位不能作为数值。Provider 的摘要与码率属于申报证据，不能自行声明 `verified` 或选择 `bitrateOrigin`；Host 单独记录其实际探测来源，并将证据绑定到当前资产、版本、扫描代次和算法配置。尚未上线的 v1 开发基线直接要求新字段，未知值须显式发送 `null`。
 

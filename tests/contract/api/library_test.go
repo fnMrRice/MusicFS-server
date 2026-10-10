@@ -42,7 +42,7 @@ func TestLibraryHTTPAuthorizationAndModel(t *testing.T) {
 		if owner == "other" {
 			provider = "private"
 		}
-		if _, _, err := store.Enqueue(ctx, owner, provider, "scan-full", "scan-test-key"); err != nil {
+		if _, _, err := store.Enqueue(ctx, owner, provider, testkit.ScanPlan(provider), "scan-test-key"); err != nil {
 			t.Fatal(err)
 		}
 		job, err := store.Claim(ctx)
@@ -51,7 +51,7 @@ func TestLibraryHTTPAuthorizationAndModel(t *testing.T) {
 		}
 		item := library.Observation{Observation: pluginproto.Observation{
 			ExternalID: "one", RootID: provider, RelativePath: "private/path/中文.wav", ObservedVersion: "version-1", DisplayName: "中文.wav", MIME: "audio/wav", SizeBytes: 100}, Artists: []string{}}
-		if err := store.Publish(ctx, job, []library.Observation{item}); err != nil {
+		if err := store.Publish(ctx, job, testkit.ScanPublication(job, []library.Observation{item})); err != nil {
 			t.Fatal(err)
 		}
 		if err := store.Finish(ctx, job, 1, nil); err != nil {
@@ -91,7 +91,7 @@ func TestLibraryHTTPAuthorizationAndModel(t *testing.T) {
 func TestJobHTTPErrorContractAndOwnership(t *testing.T) {
 	server, store, cookie := libraryHTTP(t)
 	ctx := context.Background()
-	if _, _, err := store.Enqueue(ctx, "admin", "mine", "scan-full", "failed-job-key"); err != nil {
+	if _, _, err := store.Enqueue(ctx, "admin", "mine", testkit.ScanPlan("mine"), "failed-job-key"); err != nil {
 		t.Fatal(err)
 	}
 	job, err := store.Claim(ctx)
@@ -109,7 +109,7 @@ func TestJobHTTPErrorContractAndOwnership(t *testing.T) {
 	if strings.Contains(w.Body.String(), "private") {
 		t.Fatal("job error leaked raw storage detail")
 	}
-	if _, _, err := store.Enqueue(ctx, "other", "private", "scan-full", "private-job-key"); err != nil {
+	if _, _, err := store.Enqueue(ctx, "other", "private", testkit.ScanPlan("private"), "private-job-key"); err != nil {
 		t.Fatal(err)
 	}
 	job, err = store.Claim(ctx)

@@ -3,6 +3,7 @@ package storage_test
 import (
 	"context"
 	"encoding/json"
+	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -32,14 +33,14 @@ func evidenceStore(t *testing.T) *sqlite.Store {
 func publishEvidenceTracks(t *testing.T, s *sqlite.Store, items ...library.Observation) []library.Track {
 	t.Helper()
 	ctx := context.Background()
-	if _, _, err := s.Enqueue(ctx, "admin", "local", "scan-full", domain.NewID()); err != nil {
+	if _, _, err := s.Enqueue(ctx, "admin", "local", testkit.ScanPlan("music"), domain.NewID()); err != nil {
 		t.Fatal(err)
 	}
 	j, err := s.Claim(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Publish(ctx, j, items); err != nil {
+	if err := s.Publish(ctx, j, testkit.ScanPublication(j, items)); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Finish(ctx, j, len(items), nil); err != nil {

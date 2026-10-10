@@ -30,12 +30,18 @@ type Track struct {
 	Size         int64                 `json:"-"`
 }
 type Provider struct {
-	ID           string   `json:"id"`
-	Name         string   `json:"name"`
-	Capabilities []string `json:"capabilities"`
-	Availability string   `json:"availability"`
-	AccountState string   `json:"accountState"`
-	ScanState    string   `json:"scanState"`
+	ID            string                     `json:"id"`
+	Name          string                     `json:"name"`
+	Capabilities  []string                   `json:"capabilities"`
+	Availability  string                     `json:"availability"`
+	AccountState  string                     `json:"accountState"`
+	ScanState     string                     `json:"scanState"`
+	Configuration *pluginproto.Configuration `json:"configuration"`
+	Roots         []ProviderRoot             `json:"roots"`
+}
+type ProviderRoot struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 type Page struct {
 	Items           []Track `json:"items"`
@@ -52,7 +58,7 @@ type Observation struct {
 	ProbeStatus         string
 }
 type Repository interface {
-	Publish(context.Context, jobs.Job, []Observation) error
+	Publish(context.Context, jobs.Job, ScanPublication) error
 	ListTracks(context.Context, string, string, string, int) (Page, error)
 	FindTrack(context.Context, string, string) (Track, error)
 	ProviderScanState(context.Context, string, string) string

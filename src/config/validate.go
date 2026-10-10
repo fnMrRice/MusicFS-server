@@ -96,6 +96,9 @@ func (c Config) validatePlugins(writable []string) error {
 		}
 		active := 0
 		for _, instance := range plugin.Instances {
+			if _, err := EffectiveImportDefaults(plugin.PluginID, instance); err != nil {
+				return err
+			}
 			identityKey := strings.ToLower(instance.InstanceID)
 			if !validConfigID(instance.InstanceID) || instances[identityKey] {
 				return errors.New("instanceId must be valid and globally unique ignoring case")
@@ -135,6 +138,9 @@ func validConfigID(id string) bool {
 }
 
 func validateSettings(plugin string, settings InstanceConfig, enabled bool, writable []string) error {
+	if len(settings.MusicRoots) > 256 {
+		return errors.New("musicRoots cannot exceed 256 authorized roots per instance")
+	}
 	if strings.ContainsRune(settings.FFmpegPath, 0) || strings.ContainsRune(settings.FFprobePath, 0) {
 		return errors.New("invalid audio tool path")
 	}

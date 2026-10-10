@@ -7,15 +7,21 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
 type Job struct {
-	ID                 string `json:"jobId"`
-	Owner              string `json:"-"`
-	ProviderInstanceID string `json:"providerInstanceId"`
-	Kind               string `json:"-"`
-	Generation         int64  `json:"-"`
-	Status             string `json:"status"`
+	ID                 string                    `json:"jobId"`
+	Owner              string                    `json:"-"`
+	ProviderInstanceID string                    `json:"providerInstanceId"`
+	Kind               string                    `json:"-"`
+	Generation         int64                     `json:"-"`
+	Plan               pluginproto.ScanPlan      `json:"-"`
+	PlanDigest         string                    `json:"-"`
+	RootIDs            []string                  `json:"rootIds"`
+	EffectiveOptions   pluginproto.ImportOptions `json:"effectiveOptions"`
+	SchemaRevision     string                    `json:"schemaRevision"`
+	Status             string                    `json:"status"`
 	Progress           struct {
 		Observed int `json:"observed"`
 	} `json:"progress"`
@@ -24,7 +30,7 @@ type Job struct {
 	LastSuccessAt *time.Time    `json:"lastSuccessAt"`
 }
 type Repository interface {
-	Enqueue(context.Context, string, string, string, string) (Job, bool, error)
+	Enqueue(context.Context, string, string, pluginproto.ScanPlan, string) (Job, bool, error)
 	Claim(context.Context) (Job, error)
 	Finish(context.Context, Job, int, error) error
 	GetJob(context.Context, string, string) (Job, error)
@@ -41,8 +47,8 @@ type Service struct {
 
 func New(repo Repository) *Service                 { return &Service{repo: repo, handlers: map[string]Handler{}} }
 func (s *Service) Register(kind string, h Handler) { s.handlers[kind] = h }
-func (s *Service) Submit(ctx context.Context, user, target, kind, key string) (Job, bool, error) {
-	return s.repo.Enqueue(ctx, user, target, kind, key)
+func (s *Service) Submit(ctx context.Context, user, target string, plan pluginproto.ScanPlan, key string) (Job, bool, error) {
+	return s.repo.Enqueue(ctx, user, target, plan, key)
 }
 func (s *Service) Get(ctx context.Context, user, id string) (Job, error) {
 	return s.repo.GetJob(ctx, user, id)

@@ -2,6 +2,7 @@ package storage_test
 
 import (
 	"context"
+	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -99,7 +100,7 @@ func TestInvalidDeclarationRollsBackAssetReplacement(t *testing.T) {
 	if err := s.PublishEvidence(ctx, "admin", ticket, hashResult()); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := s.Enqueue(ctx, "admin", "local", "scan-full", domain.NewID()); err != nil {
+	if _, _, err := s.Enqueue(ctx, "admin", "local", testkit.ScanPlan("music"), domain.NewID()); err != nil {
 		t.Fatal(err)
 	}
 	j, err := s.Claim(ctx)
@@ -108,7 +109,7 @@ func TestInvalidDeclarationRollsBackAssetReplacement(t *testing.T) {
 	}
 	bogus := "etag-is-not-a-sha512"
 	o.ObservedVersion, o.ProviderSHA512 = "v2", &bogus
-	if err := s.Publish(ctx, j, []library.Observation{o}); err == nil {
+	if err := s.Publish(ctx, j, testkit.ScanPublication(j, []library.Observation{o})); err == nil {
 		t.Fatal("invalid provider hash was accepted")
 	}
 	after, err := s.FindTrack(ctx, "admin", before.ID)

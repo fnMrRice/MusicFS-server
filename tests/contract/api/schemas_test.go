@@ -70,8 +70,8 @@ func TestPluginDTOsMatchContract(t *testing.T) {
 	testkit.ValidatePlugin(t, "Manifest", manifest)
 	testkit.ValidatePlugin(t, "Hello", pluginproto.Hello{ProtocolVersion: "1.0", InstanceID: "local", Nonce: "nonce", ConfigRevision: "1"})
 	testkit.ValidatePlugin(t, "Ready", pluginproto.Ready{Manifest: manifest, InstanceID: "local", Nonce: "nonce"})
-	testkit.ValidatePlugin(t, "ScanRequest", pluginproto.ScanRequest{RootID: "root", ScanID: "scan", Generation: 1, Limit: 200})
-	testkit.ValidatePlugin(t, "ScanPage", pluginproto.ScanPage{ScanID: "scan", Generation: 1, Page: 0, Items: []pluginproto.Observation{}, Complete: true, RootIdentity: "root-version", Issues: []string{}})
+	testkit.ValidatePlugin(t, "ScanRequest", pluginproto.ScanRequest{RootID: "root", ScanID: "scan", Generation: 1, Limit: 200, Scope: pluginproto.ScanScope{RootID: "root", RootIdentity: "root-version", Recursive: true, MaxDepth: 64}, PlanDigest: strings.Repeat("a", 64), GrantID: "grant-1"})
+	testkit.ValidatePlugin(t, "ScanPage", pluginproto.ScanPage{PlanDigest: strings.Repeat("a", 64), ScanID: "scan", Generation: 1, Page: 0, Items: []pluginproto.Observation{}, Complete: true, RootIdentity: "root-version", Issues: []string{}})
 	testkit.ValidatePlugin(t, "ResolveRequest", pluginproto.ResolveRequest{ExternalID: "track", ExpectedVersion: "asset-version"})
 	testkit.ValidatePlugin(t, "Resource", pluginproto.Resource{ResourceRef: "resource", RootID: "root", RelativePath: "中文 曲目.wav", ObservedVersion: "version", SizeBytes: 4096, MIME: "audio/wav", Range: true})
 }

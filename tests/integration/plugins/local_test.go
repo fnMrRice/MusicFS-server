@@ -68,14 +68,14 @@ func TestRealWorkerScanRestartRenameResolveAndIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	page, err := w.Scan(ctx, pluginproto.ScanRequest{RootID: "music", ScanID: "s1", Generation: 1, Limit: 1})
+	page, err := w.Scan(ctx, scopedRequest(w, pluginproto.ScanRequest{RootID: "music", ScanID: "s1", Generation: 1, Limit: 1}))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(page.Items) != 1 || page.NextCursor == "" || page.Complete {
 		t.Fatalf("unexpected first page: %+v", page)
 	}
-	last, err := w.Scan(ctx, pluginproto.ScanRequest{RootID: "music", ScanID: "s1", Generation: 1, Limit: 1, Cursor: page.NextCursor})
+	last, err := w.Scan(ctx, scopedRequest(w, pluginproto.ScanRequest{RootID: "music", ScanID: "s1", Generation: 1, Limit: 1, Cursor: page.NextCursor}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func TestRealWorkerScanRestartRenameResolveAndIsolation(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer w.Close()
-	again, err := w.Scan(ctx, pluginproto.ScanRequest{RootID: "music", ScanID: "s2", Generation: 2, Limit: 200})
+	again, err := w.Scan(ctx, scopedRequest(w, pluginproto.ScanRequest{RootID: "music", ScanID: "s2", Generation: 2, Limit: 200}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func TestRealWorkerScanRestartRenameResolveAndIsolation(t *testing.T) {
 	}
 	canceled, stop := context.WithCancel(ctx)
 	stop()
-	if _, err = w.Scan(canceled, pluginproto.ScanRequest{RootID: "music", ScanID: "cancel", Generation: 3, Limit: 200}); err == nil {
+	if _, err = w.Scan(canceled, scopedRequest(w, pluginproto.ScanRequest{RootID: "music", ScanID: "cancel", Generation: 3, Limit: 200})); err == nil {
 		t.Fatal("canceled scan succeeded")
 	}
 }

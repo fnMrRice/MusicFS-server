@@ -8,14 +8,16 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
 type worker struct {
-	peer     *pluginproto.Peer
-	mu       sync.Mutex
-	ready    bool
-	instance string
+	peer       *pluginproto.Peer
+	mu         sync.Mutex
+	identityMu sync.Mutex
+	ready      bool
+	instance   string
 }
 
 func Run(ctx context.Context, input io.ReadCloser, output io.WriteCloser) error {
@@ -35,7 +37,7 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 		}
 		w.ready = true
 		w.instance = hello.InstanceID
-		return pluginproto.Ready{InstanceID: hello.InstanceID, Nonce: hello.Nonce, Manifest: pluginproto.Manifest{PluginID: "musicfs.localfiles", PluginVersion: "0.1.0", ProtocolVersion: pluginproto.ProtocolVersion, Roles: []string{"provider"}, Capabilities: []string{"library.scan", "metadata.read", "stream.resolve"}, Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}}, nil
+		return pluginproto.Ready{InstanceID: hello.InstanceID, Nonce: hello.Nonce, Manifest: pluginproto.Manifest{PluginID: "musicfs.localfiles", PluginVersion: "0.2.0", ProtocolVersion: pluginproto.ProtocolVersion, Roles: []string{"provider"}, Capabilities: []string{"library.scan", "metadata.read", "stream.resolve"}, Configuration: pluginconfig.LocalFiles(), Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}}, nil
 	}
 	w.mu.Lock()
 	ready := w.ready

@@ -7,6 +7,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/auth"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
 func (s *Server) RegisterLibrary(service *library.Service) {
@@ -17,15 +18,19 @@ func (s *Server) RegisterLibrary(service *library.Service) {
 	})
 	s.Handle("POST /api/v1/provider-instances/{id}/scan-jobs", true, true, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		var request struct {
-			Mode string `json:"mode"`
+			Mode           string                       `json:"mode"`
+			SchemaRevision string                       `json:"schemaRevision"`
+			RootIDs        []string                     `json:"rootIds"`
+			Options        *pluginproto.ImportOverrides `json:"options"`
 		}
 		if err := DecodeJSON(w, r, &request); err != nil {
 			return err
 		}
-		if request.Mode != "full" && request.Mode != "incremental" {
-			return domain.Fail("INVALID_ARGUMENT", "Invalid scan mode")
+		if request.Mode != "full" && request.Mode != "incremental" || request.SchemaRevision == "" || len(request.RootIDs) == 0 || len(request.RootIDs) > 256 || request.Options == nil {
+			return domain.Fail("INVALID_ARGUMENT", "Scan mode, schema revision, roots and options are required")
 		}
-		job, merged, err := service.Scan(r.Context(), session.User.ID, r.PathValue("id"), request.Mode, r.Header.Get("Idempotency-Key"))
+		input := library.ScanInput{Mode: request.Mode, SchemaRevision: request.SchemaRevision, RootIDs: request.RootIDs, Options: *request.Options}
+		job, merged, err := service.Scan(r.Context(), session.User.ID, r.PathValue("id"), input, r.Header.Get("Idempotency-Key"))
 		if err != nil {
 			return err
 		}

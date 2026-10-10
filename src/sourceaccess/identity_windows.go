@@ -15,3 +15,11 @@ func fileIdentity(f *os.File) (string, error) {
 	}
 	return fmt.Sprintf("%08x:%08x%08x", i.VolumeSerialNumber, i.FileIndexHigh, i.FileIndexLow), nil
 }
+
+func fileLinkCount(f *os.File) (uint64, error) {
+	var i syscall.ByHandleFileInformation
+	if err := syscall.GetFileInformationByHandle(syscall.Handle(f.Fd()), &i); err != nil {
+		return 0, err
+	}
+	return uint64(i.NumberOfLinks), nil
+}

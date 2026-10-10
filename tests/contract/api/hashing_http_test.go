@@ -38,7 +38,7 @@ func TestHashHTTPAuthorizationIdempotencyAndCancel(t *testing.T) {
 	source := hashHTTPSource{}
 	publish := func(owner, provider, version string) identification.HashTarget {
 		t.Helper()
-		if _, _, err := store.Enqueue(ctx, owner, provider, "scan-full", "hash-scan-"+version); err != nil {
+		if _, _, err := store.Enqueue(ctx, owner, provider, testkit.ScanPlan(provider), "hash-scan-"+version); err != nil {
 			t.Fatal(err)
 		}
 		job, err := store.Claim(ctx)
@@ -47,7 +47,7 @@ func TestHashHTTPAuthorizationIdempotencyAndCancel(t *testing.T) {
 		}
 		observation := library.Observation{Observation: pluginproto.Observation{ExternalID: "track", RootID: provider,
 			RelativePath: "private-path.wav", DisplayName: "track.wav", MIME: "audio/wav", ObservedVersion: version, SizeBytes: 4}, Artists: []string{}}
-		if err := store.Publish(ctx, job, []library.Observation{observation}); err != nil {
+		if err := store.Publish(ctx, job, testkit.ScanPublication(job, []library.Observation{observation})); err != nil {
 			t.Fatal(err)
 		}
 		if err := store.Finish(ctx, job, 1, nil); err != nil {

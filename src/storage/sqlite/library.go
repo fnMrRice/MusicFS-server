@@ -14,28 +14,30 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library"
 )
 
-func (s *Store) Publish(ctx context.Context, j jobs.Job, observations []library.Observation) error {
+func (s *Store) Publish(ctx context.Context, supplied jobs.Job, publication library.ScanPublication) error {
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	var active int
-	err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM jobs WHERE id=? AND owner=? AND target=? AND generation=? AND state='running' AND generation=(SELECT MAX(generation) FROM jobs WHERE owner=? AND target=?)", j.ID, j.Owner, j.ProviderInstanceID, j.Generation, j.Owner, j.ProviderInstanceID).Scan(&active)
+	j, err := activeScan(ctx, tx, supplied)
 	if err != nil {
 		return err
 	}
-	if active != 1 {
-		return domain.Fail("CONFLICT", "Scan generation is no longer active")
+	scopes, err := validatePublication(j, publication)
+	if err != nil {
+		return err
 	}
-	rows, err := tx.QueryContext(ctx, "SELECT document FROM tracks WHERE owner=? AND provider=?", j.Owner, j.ProviderInstanceID)
+	observations := publication.Observations
+	rows, err := tx.QueryContext(ctx, "SELECT document,root_id,path FROM tracks WHERE owner=? AND provider=?", j.Owner, j.ProviderInstanceID)
 	if err != nil {
 		return err
 	}
 	old := map[string]library.Track{}
 	for rows.Next() {
 		var raw []byte
-		if err := rows.Scan(&raw); err != nil {
+		var root, path string
+		if err := rows.Scan(&raw, &root, &path); err != nil {
 			rows.Close()
 			return err
 		}
@@ -44,6 +46,7 @@ func (s *Store) Publish(ctx context.Context, j jobs.Job, observations []library.
 			rows.Close()
 			return err
 		}
+		t.RootID, t.Path = root, path
 		old[t.ID] = t
 	}
 	err = rows.Err()
@@ -84,7 +87,7 @@ func (s *Store) Publish(ctx context.Context, j jobs.Job, observations []library.
 		seen[id] = true
 	}
 	for id, t := range old {
-		if !seen[id] {
+		if !seen[id] && scopes[t.RootID].Contains(t.RootID, t.Path) {
 			t.Availability = "missing"
 			if err := invalidateAsset(ctx, tx, j.Owner, t.AssetID); err != nil {
 				return err
@@ -131,7 +134,7 @@ func (s *Store) FindTrack(ctx context.Context, user, id string) (library.Track, 
 }
 func (s *Store) ProviderScanState(ctx context.Context, user, id string) string {
 	var state string
-	if s.DB.QueryRowContext(ctx, "SELECT state FROM jobs WHERE owner=? AND target=? ORDER BY generation DESC LIMIT 1", user, id).Scan(&state) != nil {
+	if s.DB.QueryRowContext(ctx, "SELECT state FROM jobs WHERE owner=? AND target=? ORDER BY CASE state WHEN 'running' THEN 0 WHEN 'queued' THEN 1 ELSE 2 END,created_at DESC,id DESC LIMIT 1", user, id).Scan(&state) != nil {
 		return "idle"
 	}
 	return state

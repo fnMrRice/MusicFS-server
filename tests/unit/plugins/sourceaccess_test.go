@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
 )
 
@@ -92,7 +93,7 @@ func TestReplacedRootNeverLooksLikeAnEmptyLibrary(t *testing.T) {
 	if err = os.Mkdir(root, 0700); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err = a.Entries(context.Background(), "root"); err == nil {
+	if _, _, _, err = a.Entries(context.Background(), pluginproto.ScanScope{RootID: "root", RootIdentity: a.Roots()[0].ExpectedIdentity, Recursive: true, MaxDepth: 64}); err == nil {
 		t.Fatal("replaced root reported a successful empty scan")
 	}
 }

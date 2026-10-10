@@ -2,7 +2,6 @@ package library
 
 import (
 	"context"
-	"sort"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/domain"
@@ -16,50 +15,50 @@ func (s *Service) scan(ctx context.Context, j jobs.Job) (int, error) {
 	if !ok || r.Owner != j.Owner || r.Worker == nil {
 		return 0, domain.Fail("SOURCE_OFFLINE", "Provider is offline")
 	}
+	if err := validateRuntimePlan(r, j.Plan); err != nil {
+		return 0, err
+	}
 	ctx, cancel := context.WithTimeout(ctx, time.Hour)
 	defer cancel()
 	defer r.Worker.Access.Revoke(j.ID)
 	all := []Observation{}
-	roots := r.Worker.Access.Roots()
-	sort.Slice(roots, func(i, k int) bool { return roots[i].ID < roots[k].ID })
-	if len(roots) == 0 {
-		return 0, domain.Fail("SOURCE_OFFLINE", "Provider has no configured roots")
-	}
+	roots := j.Plan.Roots
 	seenTracks := map[string]bool{}
 	for _, root := range roots {
 		var err error
-		all, err = s.scanRoot(ctx, j, r, root.ID, all, seenTracks)
+		all, err = s.scanRoot(ctx, j, r, root.RootID, all, seenTracks)
 		if err != nil {
 			return len(all), err
 		}
 	}
-	return len(all), s.repo.Publish(ctx, j, all)
+	return len(all), s.repo.Publish(ctx, j, ScanPublication{PlanDigest: j.PlanDigest, CompletedRoots: roots, Observations: all})
 }
 
 func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID string, all []Observation, seenTracks map[string]bool) ([]Observation, error) {
 	cursor := ""
-	rootIdentity := ""
+	scope, err := j.Plan.Scope(rootID)
+	if err != nil {
+		return all, err
+	}
 	expectedPage := 0
 	seenCursors := map[string]bool{}
 	for {
-		page, err := r.Worker.Scan(ctx, pluginproto.ScanRequest{RootID: rootID, ScanID: j.ID, Generation: j.Generation, Cursor: cursor, Limit: 200})
+		page, err := r.Worker.Scan(ctx, pluginproto.ScanRequest{RootID: rootID, ScanID: j.ID, Generation: j.Generation, Cursor: cursor, Limit: 200, Scope: scope, PlanDigest: j.PlanDigest})
 		if err != nil {
 			if ctx.Err() != nil {
 				return all, ctx.Err()
 			}
 			return all, domain.Fail(pluginproto.ErrorCode(err), "Provider scan failed; previous library retained")
 		}
-		if page.ScanID != j.ID || page.Generation != j.Generation || page.Page != expectedPage || len(page.Items) > pluginproto.MaxPageItems || len(page.Issues) > 0 || page.RootIdentity == "" {
+		if page.ScanID != j.ID || page.Generation != j.Generation || page.PlanDigest != j.PlanDigest || page.Page != expectedPage || len(page.Items) > pluginproto.MaxPageItems || len(page.Issues) > 0 || page.RootIdentity == "" {
 			return all, domain.Fail("TEMPORARY_FAILURE", "Scan is incomplete")
 		}
-		if expectedPage == 0 {
-			rootIdentity = page.RootIdentity
-		} else if page.RootIdentity != rootIdentity {
+		if page.RootIdentity != scope.RootIdentity {
 			return all, domain.Fail("RESOURCE_CHANGED", "Scan root identity changed")
 		}
 		expectedPage++
 		for _, o := range page.Items {
-			if o.ExternalID == "" || o.ObservedVersion == "" || o.RootID != rootID || seenTracks[o.ExternalID] {
+			if o.ExternalID == "" || o.ObservedVersion == "" || !scope.Contains(o.RootID, o.RelativePath) || seenTracks[o.ExternalID] {
 				return all, domain.Fail("CONFLICT", "Scan contains an invalid or repeated track identity")
 			}
 			seenTracks[o.ExternalID] = true

@@ -2,11 +2,13 @@ package bootstrap
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"path/filepath"
 
 	"github.com/fnMrRice/MusicFS-server/src/config"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
@@ -30,13 +32,37 @@ func configurePlugins(ctx context.Context, c config.Config, log *slog.Logger) ([
 				if name == "" {
 					name = instance.InstanceID
 				}
-				r := library.Runtime{ID: instance.InstanceID, Name: name, Owner: "admin", StableHash: true}
+				defaults, defaultsErr := config.EffectiveImportDefaults(plugin.PluginID, instance)
+				declaration := pluginconfig.LocalFiles()
+				binaryHash := ""
 				if enabled {
+					binaryHash = expectedChecksum(plugin.SHA256, plugin.Executable)
+				}
+				rootNames := map[string]string{}
+				for _, root := range instance.Config.MusicRoots {
+					rootNames[root.ID] = root.Name
+				}
+				r := library.Runtime{ID: instance.InstanceID, Name: name, Owner: "admin", StableHash: true,
+					ImportDefaults: defaults, Configuration: declaration, RootNames: rootNames,
+					ConfigRevision: providerConfigRevision(instance, binaryHash, defaults)}
+				err = defaultsErr
+				if enabled && err == nil {
 					roots := make([]sourceaccess.RootConfig, 0, len(instance.Config.MusicRoots))
 					for _, root := range instance.Config.MusicRoots {
 						roots = append(roots, sourceaccess.RootConfig{ID: root.ID, Path: root.Path})
 					}
-					r.Worker, err = pluginhost.Start(ctx, pluginhost.Config{Executable: plugin.Executable, SHA256: expectedChecksum(plugin.SHA256, plugin.Executable), InstanceID: instance.InstanceID, UserID: "admin", Roots: roots, StateDir: filepath.Join(c.DataRoot, "providers", instance.InstanceID)})
+					r.Worker, err = pluginhost.Start(ctx, pluginhost.Config{Executable: plugin.Executable, SHA256: binaryHash, InstanceID: instance.InstanceID, UserID: "admin", Roots: roots, StateDir: filepath.Join(c.DataRoot, "providers", instance.InstanceID)})
+					if err == nil {
+						// The verified worker must describe the same official options used by YAML.
+						workerConfig := r.Worker.Manifest.Configuration
+						if workerConfig == nil || workerConfig.SchemaRevision != declaration.SchemaRevision || workerConfig.ValidateOptions(defaults) != nil {
+							r.Worker.Close()
+							r.Worker = nil
+							err = fmt.Errorf("PROTOCOL_MISMATCH: provider configuration declaration mismatch")
+						} else {
+							r.Configuration = workerConfig
+						}
+					}
 				}
 				runtimes = append(runtimes, r)
 			case "musicfs.audio.ffmpeg":

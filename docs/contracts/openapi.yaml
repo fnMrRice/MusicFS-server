@@ -11,10 +11,10 @@
       "get": {"operationId": "currentSession", "responses": {"200": {"$ref": "#/components/responses/Session"}, "default": {"$ref": "#/components/responses/Error"}}},
       "delete": {"operationId": "logout", "parameters": [{"$ref": "#/components/parameters/CSRF"}], "responses": {"204": {"description": "当前会话已撤销"}, "default": {"$ref": "#/components/responses/Error"}}}
     },
-    "/provider-instances": {"get": {"operationId": "listProviders", "responses": {"200": {"$ref": "#/components/responses/Providers"}, "default": {"$ref": "#/components/responses/Error"}}}},
+    "/provider-instances": {"get": {"operationId": "listProviders", "description": "返回插件提供的导入配置声明、已合成的实例默认值与授权根编号/显示名；无路径、凭据或真实根身份。", "responses": {"200": {"$ref": "#/components/responses/Providers"}, "default": {"$ref": "#/components/responses/Error"}}}},
     "/provider-instances/{id}/scan-jobs": {
       "parameters": [{"$ref": "#/components/parameters/ID"}],
-      "post": {"operationId": "createScan", "parameters": [{"$ref": "#/components/parameters/CSRF"}, {"$ref": "#/components/parameters/Idempotency"}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/ScanRequest"}}}}, "responses": {"202": {"$ref": "#/components/responses/ScanAccepted"}, "default": {"$ref": "#/components/responses/Error"}}}
+      "post": {"operationId": "createScan", "description": "提交模式、当前 schemaRevision、显式 rootIds 与 options 部分覆盖。按有效范围/选项/版本合并；旧 schema 修订返回 CONFLICT，歌词导入 true 返回 UNSUPPORTED。", "parameters": [{"$ref": "#/components/parameters/CSRF"}, {"$ref": "#/components/parameters/Idempotency"}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/ScanRequest"}}}}, "responses": {"202": {"$ref": "#/components/responses/ScanAccepted"}, "default": {"$ref": "#/components/responses/Error"}}}
     },
     "/scan-jobs/{id}": {
       "parameters": [{"$ref": "#/components/parameters/ID"}],
@@ -74,7 +74,7 @@
       "Health": {"description": "服务状态", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/Health"}}}},
       "Session": {"description": "登录会话", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/Session"}}}},
       "Providers": {"description": "授权 Provider 实例，不包含根路径或凭据", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/Providers"}}}},
-      "ScanAccepted": {"description": "扫描任务已排队或合并同目标的在途扫描", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/ScanAccepted"}}}},
+      "ScanAccepted": {"description": "扫描任务已排队、重放或合并相同有效计划的在途扫描", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/ScanAccepted"}}}},
       "ScanJob": {"description": "任务状态；未知总数不得当百分比", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/ScanJob"}}}},
       "SourceTracks": {"description": "固定修订的持久音乐库分页；asset 描述当前原始资产及有效证据，顶层字段是相同资产的投影。申报摘要与完整文件验证摘要分离；未知码率为 null，hashStatus=unknown 表示尚无持久摘要任务，pending 表示任务已登记。hashConflict 引用当前不一致的申报及验证证据；无公开历史审计端点。", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/SourceTracks"}}}},
       "HashAccepted": {"description": "完整文件摘要任务已排队、合并或重放已有任务", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/HashAccepted"}}}},

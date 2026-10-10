@@ -9,6 +9,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
+	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
 )
 
@@ -16,6 +17,10 @@ type Runtime struct {
 	ID, Name, Owner string
 	Worker          *pluginhost.Worker
 	StableHash      bool
+	ConfigRevision  string
+	ImportDefaults  pluginproto.ImportOptions
+	RootNames       map[string]string
+	Configuration   *pluginproto.Configuration
 }
 type Probe func(context.Context, io.ReadSeeker, int64) (Observation, error)
 type Service struct {
@@ -50,28 +55,17 @@ func (s *Service) Providers(ctx context.Context, user string) []Provider {
 				capabilities = []string{"library.scan", "metadata.read", "stream.resolve"}
 			}
 		}
-		items = append(items, Provider{ID: r.ID, Name: r.Name, Capabilities: capabilities, Availability: availability, AccountState: "notRequired", ScanState: s.repo.ProviderScanState(ctx, user, r.ID)})
+		items = append(items, Provider{ID: r.ID, Name: r.Name, Capabilities: capabilities, Availability: availability, AccountState: "notRequired", ScanState: s.repo.ProviderScanState(ctx, user, r.ID), Configuration: safeProviderConfiguration(r), Roots: providerRoots(r)})
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
 	return items
 }
-func (s *Service) Scan(ctx context.Context, user, provider, mode, key string) (jobs.Job, bool, error) {
-	r, ok := s.runtimes[provider]
-	if !ok || r.Owner != user {
-		return jobs.Job{}, false, domain.Fail("NOT_FOUND", "Provider not found")
+func (s *Service) Scan(ctx context.Context, user, provider string, input ScanInput, key string) (jobs.Job, bool, error) {
+	plan, err := s.BuildScanPlan(ctx, user, provider, input)
+	if err != nil {
+		return jobs.Job{}, false, err
 	}
-	if r.Worker == nil {
-		return jobs.Job{}, false, domain.Fail("SOURCE_OFFLINE", "Provider is offline")
-	}
-	select {
-	case <-r.Worker.Done():
-		return jobs.Job{}, false, domain.Fail("SOURCE_OFFLINE", "Provider is offline")
-	default:
-	}
-	if mode != "full" && mode != "incremental" {
-		return jobs.Job{}, false, domain.Fail("INVALID_ARGUMENT", "Invalid scan mode")
-	}
-	return s.jobs.Submit(ctx, user, provider, "scan-"+mode, key)
+	return s.jobs.Submit(ctx, user, provider, plan, key)
 }
 func (s *Service) Job(ctx context.Context, user, id string) (jobs.Job, error) {
 	return s.jobs.Get(ctx, user, id)
