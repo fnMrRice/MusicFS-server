@@ -1,6 +1,6 @@
 # MusicFS Server 内部架构设计
 
-状态：长期架构与实现约束；2026-10-09。最小本地播放已有实现，具体范围见[实施记录](validation/progress.md)，本文全部设计不因此视为已完成。跨端行为、公共 API 与事件契约以[总体架构](../../docs/architecture.md)为准；Server 在本仓库 `docs/contracts` 维护 OpenAPI 与 JSON Schema，不在内部设计中另立一套接口。
+状态：长期架构与实现约束；2026-10-10。当前已实现本地扫描与受限读取、原流/处理/NCM播放、资产识别与人工关联、内容刮削和受限写回、匿名在线资料与歌单、处理输出缓存、备份部署及Server生命周期。逐项功能、所测环境和限制见[文档核对](validation/documentation-audit.md)与[实施记录](validation/progress.md)；动态插件启停、平台账号和在线完整音频不在已实现范围，本文全部长期设计也不因此视为完成。跨端行为、公共API与事件契约以[总体架构](../../docs/architecture.md)为准；Server在本仓库`docs/contracts`维护OpenAPI与JSON Schema，不在内部设计中另立一套接口。
 
 ## 1. 范围与模块
 

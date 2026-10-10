@@ -1,6 +1,6 @@
 # NCM 解密插件
 
-本插件已实现本地 `.ncm` 读取、内部 MP3/FLAC 原字节提取、扫描元数据及播放接入。核心、独立 Worker、Server 和最简 Web 链路已通过下述验证。没有实现网易云账号登录、在线歌曲下载或在线 Provider；真实下载 NCM 样本尚未验收。
+本插件已实现本地 `.ncm` 读取、内部MP3/FLAC原字节提取、扫描元数据及播放接入。核心、独立Worker、Server与最简Web已通过合成样本验证，后续真实本地库抽样包含4个NCM，见[真实库记录](validation/real-local-library.md)。本插件不负责账号登录或在线下载；另一个[网易公开资料插件](online.md)不提供完整音频，两者能力不混用。
 
 ## 1. 边界与参考
 
@@ -11,7 +11,7 @@
 
 ## 2. 运行
 
-运行 `scripts/build.ps1`（Linux 为 `sh scripts/build.sh`）构建 Server、Local Files、音频处理和 NCM 共四个程序。配置增加：
+运行 `scripts/build.ps1`（Linux为 `sh scripts/build.sh`）构建Server与七个官方Worker，共八个程序；其中 `musicfs-plugin-ncm` 是本功能入口。配置增加：
 
 ```yaml
 # Under the top-level plugins sequence:
@@ -45,7 +45,7 @@ HTTP 播放描述的 `effectiveProcessing` 增加 `{ "type": "ncmDecrypt", "gain
 
 ## 4. 验证状态
 
-核查日期：2026-10-09。下表只记录已完成的验证；历史基线与本轮最终全量检查分开见[实施记录](validation/progress.md)。
+下表保留2026-10-09首次NCM增量的验证事实与当时四程序构建范围。2026-10-10后续YAML/Linux音频及真实库结果单列，不能将新结果追记为首次浏览器样本范围；完整阶段记录见[实施记录](validation/progress.md)。
 
 | 验证层 | 实际结果 |
 | --- | --- |
@@ -59,7 +59,7 @@ HTTP 播放描述的 `effectiveProcessing` 增加 `{ "type": "ncmDecrypt", "gain
 | Linux 原生 Worker | Arch WSL2 / Go 1.26.9 真实 NCM Worker 测试通过，8.622 秒；不依赖 FFmpeg |
 | 本轮全量回归 | 配置真实 FFmpeg/ffprobe 后，`scripts/check.ps1 -Race` 的格式、vet、全部测试及 race 通过；四程序 Windows amd64 / Linux amd64 构建通过 |
 
-浏览器样本、摘要、测量值与截图见 [Web NCM 验证记录](../../web/docs/ncm-validation.md)及其[机器可读证据](../../web/docs/validation/ncm-edge-2026-10-09.json)。尚未人工扬声器试听；其他浏览器、真实下载 NCM 变体和不同网易云客户端版本不在当前验收结论内。
+浏览器合成样本、摘要、测量值与截图见[Web NCM记录](../../web/docs/ncm-validation.md)及[机器证据](../../web/docs/validation/ncm-edge-2026-10-09.json)。后续[真实库验收](validation/real-local-library.md)覆盖4个真实本地NCM的HTTP播放/定位/摘要不变；[Linux音频记录](validation/configuration-linux-audio.md)覆盖实际处理链。尚未人工扬声器试听，也未遍历其他浏览器、所有NCM变体或不同网易云客户端版本。
 
 可重复执行：
 
@@ -74,7 +74,7 @@ go test -mod=readonly ./tests/e2e -run '^TestNCMServerRoundTripAndDisabledPlugin
 
 ## 5. 手工验证
 
-1. 按[运行说明](running.md)构建四个程序，配置 NCM Worker 与音乐目录，重启 Server 后重新扫描。用测试目录或自己的本地 NCM 样本验证，保留原文件副本及摘要。
+1. 按[运行说明](running.md)构建当前八程序制品，配置NCM Worker与音乐目录，重启Server后重新扫描。用测试目录或自己的本地NCM样本验证，保留原文件副本及摘要。
 2. 登录 Web、刷新来源列表，确认 NCM 条目的容器为 `ncm`、codec 来自内部 MP3/FLAC；未配置 ffprobe 时，时长和码率可以未知。
 3. 播放内部 MP3：页面应显示“服务端解密输出”，可以暂停、继续和停止；有时长时检查定位。开发者工具中输出为音频 MIME，Range 长度与解密表示一致。
 4. 配齐 FFmpeg/ffprobe 后播放内部 FLAC：页面应显示“服务端解密并转码输出”。输入目标位置并定位，确认新片段开始；勾选既有 -6 dB 选项并重新选曲后再检查增益处理。

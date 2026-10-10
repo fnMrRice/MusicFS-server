@@ -96,6 +96,8 @@ SourceAccess authorized input
 
 ### S-P4-08：输出版本和缓存
 
+持久处理输出缓存已实现并通过Windows/Linux真实Worker与播放race验证；完整发布、跨会话及重启复用、半成品拒绝、当前授权、共享配额和引用回收见[缓存说明与实测](../processed-cache.md)。命中仍为processed/timeRestart，不据缓存存在新增未验证的MP3字节定位能力。
+
 1. 缓存键包含资产版本、用户/账号授权范围、插件/参数/profile 和生成起点；不同用户私有来源不能因 hash 相同就共享可读缓存。
 2. 正在生成的输出与已校验完整输出分开；中断产物不标 complete，不提供伪造长度或稳定 ETag。
 3. 写缓存走临时文件与发布状态，活动 attempt 保留引用；回收只清理没有引用且过宽限期的对象。
@@ -103,10 +105,14 @@ SourceAccess authorized input
 
 ## 6. P4 完成门槛
 
-- [ ] 非直放输入经 decoder→独立 PCM DSP→encoder/mux，真实浏览器在全曲生成前有声播放。
-- [ ] 至少一个实际输出 profile 的非零 timeRestart、映射精度、快速连续定位通过。
-- [ ] 原流路径仍可用，同一效果未两端重复，输入文件未被修改。
-- [ ] 缺工具、崩溃、损坏输入、慢消费者、取消、重启和退出无永久进程/缓存泄漏。
-- [ ] 构建/profile/浏览器支持矩阵和已知限制记录完整，未支持能力明确返回。
+- [x] 非直放输入经 decoder→独立 PCM DSP→encoder/mux，实际Edge在全曲生成前解码出非零PCM。
+- [x] MP3 profile的非零 timeRestart、频率标记、100ms容差及快速连续定位通过。
+- [x] 原流路径仍可用，同一效果未两端重复，输入文件未修改。
+- [x] 缺工具、崩溃、损坏输入、慢消费者、取消、重启和退出的现有处理资源回收通过。
+- [x] 所测构建/profile/浏览器矩阵和限制已有记录，未支持能力明确返回。
+- [x] S-P4-08持久输出缓存及其发布、复用、回收全链验收，限已验证mp3-128/gain-v1处理profile。
+- [ ] 人工扬声器听音及其他浏览器/profile实测；不得从当前PCM证据推定。
+
+已有证据见[插件音频验证](../validation/plugins.md)、[Linux实际音频](../validation/configuration-linux-audio.md)与[Web兼容记录](../../../web/docs/compatibility.md)。CPU、内存、文件句柄及并行后台任务的资源测量属于P8单独记录，不承诺跨机器性能。
 
 依据：[FFmpeg 处理流程](https://ffmpeg.org/ffmpeg.html#Detailed-description)、[封装格式文档](https://ffmpeg.org/ffmpeg-formats.html)。具体 flags 由原型确定后记录，不把命令行示例当跨浏览器兼容证明。

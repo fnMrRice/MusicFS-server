@@ -1,6 +1,6 @@
 # 在线平台能力调查（S-P7-01）
 
-核查日期：2026-10-10。本文是 [P7 实现计划](implementation/07-online-library.md)的调查结果，不是在线 Provider 已实现声明。当前 MusicFS 尚未实现网易云、QQ 音乐或 Apple Music Provider；本次没有新增平台运行依赖。实测请求、时间和限制见[验证记录](validation/platform-research.md)。
+核查日期：2026-10-10。本文保留S-P7-01调查时的参考源码、官方文档与匿名探测范围，当时尚未接入生产Provider，不将后续实现追记为调查实测。现已交付三个独立Go Worker及[在线HTTP](online.md)、[推荐](recommendations.md)、[远程歌单](remote-playlists.md)；最新能力以[正式宿主验收](validation/online-http.md)为准。调查请求和限制见[原记录](validation/platform-research.md)，没有引入参考项目运行服务。
 
 证据分为三类：**官方文档**描述平台公开契约；**参考源码**说明指定提交如何调用接口，不代表平台承诺或当前可用；**匿名实测**仅证明记录中的一次请求结果。网易云与 QQ 的参考仓库是各项目的官方仓库，并非音乐平台发布的官方 SDK。
 
@@ -14,7 +14,9 @@
 
 Apple 的能力判断以 [Apple Music API](https://developer.apple.com/documentation/applemusicapi)和 [MusicKit](https://developer.apple.com/musickit/)官方文档为准。上表日期是提交时间，不是平台接口最近验证时间；未归档也不等于仍在维护。项目许可不代表依赖许可、平台内容授权或账号权限；后续若复制、改写或分发参考实现，仍须核对相应许可，换语言不消除原有义务。
 
-## 2. 能力矩阵
+## 2. 调查时能力矩阵
+
+下表记录原调查轮；后续正式Worker已实际验证网易搜索/资料/推荐/公开歌单，QQ在后续请求中出现HTTP500且未宣告supported，Apple仍缺授权。原调查的一次QQ搜索成功不覆盖后续失败，也不意味着该接口当前稳定可用。
 
 | 能力 | 网易云音乐 | QQ 音乐 | Apple Music |
 | --- | --- | --- | --- |
@@ -59,7 +61,9 @@ MusicKit Web 提供浏览器内播放；参考播放器也调用 `MusicKit.confi
 
 分页跟随平台相对 `next`，且关系对象也可能独立分页；宿主仍须限制合法平台路径和请求预算。当前 [Playlists.Attributes](https://developer.apple.com/documentation/applemusicapi/playlists/attributes-data.dictionary)有可选 lastModifiedDate；本次该模型未见 versionHash 字段，也未核到把修改日期用作强一致分页快照的承诺。[分页文档](https://developer.apple.com/documentation/applemusicapi/fetching-resources-by-page)。
 
-## 4. 建议的后续实施顺序（尚未实施）
+## 4. 调查提出的实施顺序与后续进展
+
+以下保留原建议顺序。第1项已按S-P7-02—04实现并验证；第2项完成Go搜索适配但上游近期失败，其他QQ能力保持不支持；第3—4项涉及真实平台授权，仍待后续实施与验收。
 
 1. 先做 Go 独立网易云 Provider 的公开搜索、曲目资料、公开推荐和显式公开歌单读取；每个入口先有公开实测和脱敏契约，失败能力保持不可用。公开推荐不带账号兜底，歌单仅由用户明确导入时入库。
 2. QQ 先落实已探测搜索类型，再逐一验证资料和公开歌单/分类推荐。保留平台 ID 的字符串表示；不移植全局 Cookie 或跨账号 URL 缓存。
@@ -68,7 +72,7 @@ MusicKit Web 提供浏览器内播放；参考播放器也调用 `MusicKit.confi
 
 所有 Go 适配都独立构建，不隐式启动 Node/Python 服务、不安装参考项目依赖。若未来改用服务包装，应显式修改部署和许可说明并重新验证，不作为本调查的既定实现。
 
-三个平台目前都按“未证明跨页一致”设计同步：有界读取并暂存、检查重复页/循环 cursor/半途失败，只在有效任务代次下发布。缺失项先记 suspectedRemoved，经后续完整同步或独立查询复核后再移除来源贡献；失败、权限收缩与推荐列表变化都不直接删除既有导入内容。这是 P7-04 待实现要求，不是当前已有功能。
+调查将三平台均视为“未证明跨页一致”。后续S-P7-04已实现有界暂存、完整性检查、有效代次发布和保守缺失确认；当前只有已验证网易公开歌单能力进入该链路。缺失先标 `suspectedRemoved`，后续时间更晚的完整观测确认后才移除来源贡献；失败保留旧快照，见[远程歌单验收](validation/remote-playlists-http.md)。这不是所有平台强版本或授权同步均已实现的证明。
 
 ## 5. 真实授权验收需要的输入
 

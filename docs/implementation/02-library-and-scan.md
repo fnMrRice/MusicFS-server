@@ -1,6 +1,6 @@
 # P2：Local Files、扫描与音乐库
 
-状态：真实 Local Files worker、完整复核、稳定身份和固定修订列表已落地；实际 NAS、通知增量等边界见[实施记录](../validation/progress.md)。返回[实施入口](../implementation.md)。[插件任务](plugins.md)保留后续扩展要求。
+状态：真实Local Files worker、完整复核、稳定身份、固定修订列表、可配置排除和默认关闭的文件通知/周期补漏已落地。范围与暂停语义见[扫描说明](../scanning.md)，实测与实体NAS等未验边界见[实施记录](../validation/progress.md)。返回[实施入口](../implementation.md)。[插件任务](plugins.md)保留后续扩展要求。
 
 ## 1. 拟建模块与关键数据
 
@@ -74,10 +74,14 @@ SourceTrack 使用稳定内部 ID，并保存 providerInstanceId + externalId �
 
 ## 3. P2 完成门槛
 
-- [ ] 从空库扫描真实受限目录，经 worker/Host 建档，而非直接硬编码列表。
-- [ ] 重启不改变稳定 SourceTrack ID；移动歧义和重复文件不会丢出处。
-- [ ] NAS 失挂、取消及旧代次不清空/覆盖已发布库。
-- [ ] 列表分页固定版本并正确隔离权限。
-- [ ] 受限读取、基础探测和进程失败测试完成；P3 可复用这些真实模块。
+- [x] 从空库扫描真实受限目录，经 worker/Host 建档。
+- [x] 重启保持 SourceTrack ID；重命名、硬链接及范围变化保持已知出处。
+- [x] 根身份变化、离线、取消及旧代次测试不会清空/覆盖已发布库。
+- [x] 列表分页固定版本并隔离权限；扫描分页按空闲期限续期且受总寿命限制。
+- [x] 受限读取、基础探测、进程失败、导入配置及范围对账已有真实Worker验证。
+- [x] S-P2-03排除规则、通知合并、最大等待和周期完整复核；通知仅作提示，实际任务仍受选根/递归/深度/排除约束。Windows真实宿主流程与Windows/Linux原生通知分别记录，不以原生通知单测代替整个Linux宿主验收。
+- [ ] 实体NAS失挂/重挂及对应文件系统竞争实机验收；根身份替换测试不替代此项。
+
+证据见[导入选项](../validation/plugin-import-options.md)、[排除与范围保护](../validation/scan-exclusions.md)、[文件通知](../validation/scan-watch.md)、[扫描期限](../validation/scan-snapshot-lifetime.md)、[真实双根库](../validation/real-local-library.md)及[核对表](../validation/documentation-audit.md#p2扫描与音乐库)。S-P2-01所述运行时平滑停用属于后置的[插件管理](plugin-management.md)，当前仅启动时双层开关。
 
 技术依据：[Go 受限文件访问](https://go.dev/blog/osroot)。具体 OS 和文件系统行为需在目标机器测试，不能将路径校验等同于完整内容快照保证。

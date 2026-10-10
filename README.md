@@ -1,14 +1,14 @@
 # MusicFS-server
 
-MusicFS 的 Go 后端服务。当前已落地 Local Files 扫描、SQLite 音乐库、会话鉴权、原流 Range、独立 Go DSP 处理链、本地 NCM 解密插件、后台完整文件摘要和本地音频指纹，配合独立 Web 仓库提供最简列表播放器。启动步骤见[本地运行说明](docs/running.md)，每步提交与验证边界见[实施记录](docs/validation/progress.md)。
+MusicFS的Go后端服务。已实现本地扫描/音乐库、鉴权与原流Range、Go DSP与NCM播放、资产摘要/指纹及人工关联、歌词/封面/专辑、受限写回、匿名在线资料、推荐和歌单。独立Web仍为最简列表播放器，新增管理能力通过API使用。启动见[运行说明](docs/running.md)，安装与数据恢复见[部署](docs/deployment.md)、[备份](docs/backup.md)，每步证据及未验范围见[实施记录](docs/validation/progress.md)和[文档核对](docs/validation/documentation-audit.md)。
 
 配置已统一为 `configVersion: 1` 的 YAML，插件与实例显式登记和启用；严格解析、修订写入与崩溃恢复见[配置说明](docs/configuration.md)和[配置验收](docs/validation/configuration.md)。旧 JSON 配置不兼容。读写服务只保存期望状态，当前仍需重启应用，尚未提供动态启停管理 API/命令。
 
-长期设计包括（未列入实施记录的能力仍为计划）：
+实现范围与后续边界：
 
-- 插件管理：支持插件及实例的启用/禁用；默认平滑停用，停止接收新任务并等待现有播放结束，另提供强制停止。具体步骤见[插件管理计划](docs/implementation/plugin-management.md)，当前尚未实现完整管理链路。
-- 插件化 Music Provider：本地文件、已挂载 NAS 和在线音乐来源；推荐歌单是 Provider 可选能力。
-- 独立 Scraper 插件：支持自动刮削及手动搜索、预览和选用。歌词、封面等内容保存在独立文件目录，数据库保存索引与引用；默认不写入原始音频文件，可对授权本地来源配置写回。
+- 插件管理：已实现启动时插件与实例双层显式开关；运行时平滑停用、排空与强制停止按用户要求后置，见[插件管理计划](docs/implementation/plugin-management.md)。
+- Music Provider：本地文件与受限在线资料已实现；实体NAS仍需实机验收。当前只有网易公开资料能力实测可用，QQ近期失败、Apple缺授权；没有平台账号登录或在线完整音频。
+- 独立本地Scraper已实现内嵌/旁置候选、预览、人工选用和保守自动补缺；查询修正与远程Scraper未实现。内容在独立文件目录，数据库保存引用；默认不改原件，显式写回仅支持逐根授权的Windows本地NTFS FLAC。
 - 插件化音频处理：解复用、解码、DSP、编码及封装，向 Web 等客户端交付兼容输出；适用时保留直接播放或代理路径。
 - 记录资产码率、完整文件 SHA-512，并以音频指纹辅助匹配；跨端播放与续播行为遵守共同协议。
 
@@ -16,10 +16,12 @@ MusicFS 的 Go 后端服务。当前已落地 Local Files 扫描、SQLite 音乐
 
 - [Server 分阶段实施](docs/implementation.md)：P0—P8 的文件职责、逐步任务、测试与完成门槛。
 - [YAML 配置](docs/configuration.md)：字段、插件与实例、覆盖顺序、配置读写及应用边界。
+- [扫描与文件通知](docs/scanning.md)：选根、递归深度、排除规则、默认关闭的监听与周期补漏，以及暂停任务的处理方式。
 - [插件实施计划](docs/implementation/plugins.md)：协议宿主、Local Files、音频链、独立 Scraper 和平台适配。
 - [联合实施总览](../docs/implementation.md)与[最小 Web 实施](../web/docs/implementation.md)：共同接口和真实浏览器播放验收。
 - [Server 内部架构](docs/architecture.md)：模块、数据模型、Provider/Scraper、存储与任务管理。
 - [Server 音频处理](docs/audio-processing.md)：处理链、播放交付、定位、缓存与资源约束。
+- [完整处理输出缓存](docs/processed-cache.md)：完整发布、私有复用、共享配额、引用回收和重启校验，仍使用timeRestart。
 - [本地音频指纹](docs/fingerprinting.md)：固定工具、后台任务、独立明细文件、恢复和管理接口；默认禁用，不上传外部服务。
 - [候选与人工关联](docs/matching.md)：有界比较、排除优先、修订冲突、解除/拆分和可逆审计；保留全部来源。
 - [歌词与封面文件](docs/media.md)：有界上传、私有预览、按来源资产选用、人工锁和版本失效。
@@ -29,6 +31,10 @@ MusicFS 的 Go 后端服务。当前已落地 Local Files 扫描、SQLite 音乐
 - [公开推荐](docs/recommendations.md)：按本人在线来源聚合、有限缓存、失败保留与刷新；读取不导入或播放。
 - [远程歌单](docs/remote-playlists.md)：显式导入、保守同步、固定本地快照、待复核缺失与取消；保留重复出现。
 - [个人歌单](docs/playlists.md)：有序组合、本地追加、完整出处、独立隐藏修订和关联扩大确认。
+- [播放恢复](docs/recovery.md)：有限恢复预算、人工时间对齐证据及默认重新播放提示。
+- [安装与部署](docs/deployment.md)：八程序制品、外部工具、TLS及尚未运行验收的容器/代理示例。
+- [完整备份与恢复](docs/backup.md)：停服创建、清单校验、新目录恢复与同平台回滚边界。
+- [本地生命周期](docs/lifecycle.md)：独立启动或鉴权租约、多个客户端与有界退出；不包含桌面Client实现。
 - [内部组件图](docs/diagrams/components.puml)：可编辑的 PlantUML 源码。
 - [跨端架构](../docs/architecture.md)：Server 与客户端共同遵守的协议和行为。
 - [工作约定](AGENTS.md)：文档维护与仓库协作规则。
@@ -37,7 +43,7 @@ MusicFS 的 Go 后端服务。当前已落地 Local Files 扫描、SQLite 音乐
 
 工程采用根 `go.mod` 的单 module：源码放 `src/`，Server 与插件程序入口放 `src/app/<程序>/`，测试统一放根 `tests/`。使用 `scripts/build.ps1` / `scripts/build.sh` 构建八个独立程序：`musicfs`、`musicfs-plugin-local`、`musicfs-plugin-audio-ffmpeg`、`musicfs-plugin-ncm`、`musicfs-plugin-scraper-local`，以及[在线资料插件](docs/online.md) `musicfs-plugin-netease`、`musicfs-plugin-qqmusic`、`musicfs-plugin-applemusic`；使用 `scripts/check.ps1` / `scripts/check.sh` 检查。真实音频工具测试需设置 `MUSICFS_FFMPEG` 和 `MUSICFS_FFPROBE`；指纹测试另需 `MUSICFS_FPCALC`，缺少工具时明确跳过对应部分。
 
-第一条交付链为 Local Files 扫描 → 音乐库列表 → 授权原流 → Web 有声播放；随后补齐解码 → PCM DSP → 编码/封装 → Web 播放和时间定位。P5—P7 的匹配、刮削及在线来源逐阶段扩展，不阻塞首个本地可播放版本。
+第一条交付链为Local Files扫描→音乐库→授权原流→Web实际解码，随后完成解码→PCM DSP→编码/封装→Web播放与时间定位。浏览器非零PCM、频率标记与控制操作已有证据，人工扬声器听音仍待用户验收。P5—P7扩展不改变未匹配来源可播放的规则；所有未测环境单独保留。
 
 ## 开源项目参考
 
@@ -62,6 +68,6 @@ NCM 插件已按以下 MIT 项目的容器布局和解密流程，用 Go 标准�
 | [taurusxin/ncmdump-go](https://git.taurusxin.com/taurusxin/ncmdump-go) | [MIT](https://git.taurusxin.com/taurusxin/ncmdump-go/src/branch/main/LICENSE) | 参考 `ncmcrypt/ncmcrypt.go` 的文件头、密钥/元数据区和封面填充布局；重写解析和随机读取，加入严格边界检查，不采用联网补封面或改写音乐标签的逻辑 |
 | [iqiziqi/ncmdump.rs](https://github.com/iqiziqi/ncmdump.rs) | [MIT 声明](https://github.com/iqiziqi/ncmdump.rs/blob/master/Cargo.toml) | 对照 `crates/ncmdump/src/ncmdump.rs` 的音频载荷偏移与读取/定位语义；不引入 Rust 运行依赖 |
 
-核心、真实 Worker、Server 端到端和 Edge 三项 NCM 联调已通过；浏览器样本由独立 Node 生成器封装本项目 CC0 MP3/FLAC，另经 Go 核心逐字节校验。已执行 299,534 次模糊测试，Linux 真实 Worker 测试通过。升级依赖后的全量检查、竞争检查和四程序 Windows/Linux 构建均通过，详细证据见[实施记录](docs/validation/progress.md)。后续真实双根扫描发布 1,943 条来源，并通过 6 个真实文件（含 4 个 NCM）的 HTTP 播放、定位及原件不变校验，见[真实库验收](docs/validation/real-local-library.md)；结论不外推到所有网易云客户端下载版本。
+核心、真实 Worker、Server 端到端和 Edge 三项 NCM 联调已通过；浏览器样本由独立 Node 生成器封装本项目 CC0 MP3/FLAC，另经 Go 核心逐字节校验。首次NCM阶段完成299,534次模糊测试、Linux真实Worker及当时四程序双平台构建；这些是历史验证范围，当前构建已为上述八程序，详细证据见[实施记录](docs/validation/progress.md)。后续真实双根扫描发布1,943条来源，并通过6个真实文件（含4个NCM）的HTTP播放、定位及原件不变校验，见[真实库验收](docs/validation/real-local-library.md)；结论不外推到所有网易云客户端下载版本。
 
 歌词/封面的独立上传、预览与人工锁见[内容接口](docs/media.md)；本地内嵌/旁置候选、批量任务、人工选用、导入歌词和自动补缺见[补全任务](docs/metadata.md)。默认关闭的[显式原件写回](docs/writeback.md)只支持逐根授权的本地NTFS FLAC，当前通过API操作。最简Web仍保持列表与播放。

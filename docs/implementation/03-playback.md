@@ -80,10 +80,13 @@
 
 ## 3. P3 门槛与记录
 
-- [ ] 至少一组真实本地格式在声明的浏览器上有声播放，输入/浏览器/Server 版本有记录。
-- [ ] 非零定位、暂停/恢复、快速切歌、停止和会话失效通过。
-- [ ] 列表、会话、流都按同一用户授权，不暴露原路径。
-- [ ] Range、并发读取、变更、慢消费者和取消测试通过。
-- [ ] 文档明确尚未覆盖的格式、浏览器、平台和跨源恢复能力。
+- [x] 实际Edge浏览器解码本地音频得到非零PCM；输入、浏览器与Server版本有记录。
+- [x] 非零定位、暂停/恢复、快速切歌、停止和会话失效通过。
+- [x] 列表、会话、流按用户及具体登录会话授权，不暴露原路径。
+- [x] Range、并发读取、变更、慢消费者和取消测试通过。
+- [x] 未覆盖格式/浏览器/平台单列；后续跨源恢复只使用独立适用的人工时间证据。
+- [ ] 人工扬声器听音；非零PCM、频率标记和浏览器事件不替代人工确认。
+
+浏览器证据见[Web兼容记录](../../../web/docs/compatibility.md)与[NCM验证](../../../web/docs/ncm-validation.md)，Server真实原流见[实施记录](../validation/progress.md)；P7有限恢复增量见[恢复说明与实测](../recovery.md)。初始 `src/stream` 职责实际由 `src/playback` 和API流处理实现，不为目录名创建空包。
 
 依据：[ServeContent](https://pkg.go.dev/net/http#ServeContent)、[HTTP Range](https://www.rfc-editor.org/rfc/rfc9110.html#name-range)。真实浏览器验证不能由 handler 单元测试替代。

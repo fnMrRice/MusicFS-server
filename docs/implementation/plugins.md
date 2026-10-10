@@ -1,6 +1,6 @@
 # Server 插件分阶段实现计划
 
-状态：2026-10-09，Go 插件协议、Local Files 与音频 Worker 已有可运行实现，独立 [NCM 解密 Worker](../ncm.md)也已完成并接入播放；基线提交和实测见[插件验证](../validation/plugins.md)，NCM 增量见[实施记录](../validation/progress.md)。本文件仍保留独立 Scraper、在线 Provider 等未实现任务；服务端业务与数据库顺序见 [Server 实现总览](../implementation.md)，跨端门槛见[总体实现计划](../../../docs/implementation.md)。
+状态：2026-10-10。Local Files、音频处理、[NCM解密](../ncm.md)、[本地Scraper](../metadata.md)及网易/QQ/Apple三个[在线资料Worker](../online.md)均已有独立程序；在线能力逐项声明，未实现平台账号登录或完整音频。连同Server共八个构建入口。本文保留各阶段任务与扩展边界，当前结果见[逐项核对](../validation/documentation-audit.md)、[实施记录](../validation/progress.md)；动态启停、第三方SDK和恶意插件OS沙箱仍未交付。
 
 设计约束来自 [Server 架构](../architecture.md)和[音频处理设计](../audio-processing.md)。本文保留计划边界，已存在代码及已验证能力以验证记录为准。阶段编号与 Server / Web 共用；源文件尽量不超过 400 行，按职责拆分。
 
@@ -311,14 +311,14 @@ fixtures 包含同录音不同编码、仅改标签、前导静音、截短、�
 
 ### PL-P6-03：授权本地写回
 
-1. 写回由核心 `metadata-write-jobs` 调度，Scraper 没有原文件写权限。Local Files Provider 只有实例显式允许、目标目录可写、格式适配已验证时才声明 `metadata.write`。
+1. 写回由核心 `writeback-jobs` 调度，Scraper没有原文件写权限。当前由Provider逐根的`writeBack`能力报告授权字段、真实本地文件系统与工具是否可用；提交时仍逐文件检查，不把插件名称或声明当作任意写入授权。
 2. 输入带预期 assetId、要写字段、引用内容对象和覆盖策略；默认禁用且只补缺失，明确拒绝任意路径、跨实例对象和在线平台写入。
 3. 在源文件同一文件系统准备副本，保留未知标签和可恢复备份，校验内容再安全替换。替换阶段持久记录，支持 Server 或 Worker 中断后的判定。
 4. 活动播放延后写回；重试前检查当前版本，用户已修改时转冲突，不再次覆盖。
 5. 成功通知核心建立新资产 / 摘要任务，保留 SourceTrack、Recording、歌单与人工关系。tag-only 修改也不得沿用旧 SHA-512。
 6. 选定标签库及文件系统安全替换行为需要单独样例验证；NAS 不具备已验证恢复能力则保持只读。
 
-拟建文件：`src/plugins/localfiles/writeback.go`，`tests/integration/plugins/writeback_test.go`，达到行数边界按 prepare / validate / replace / recover 拆分。测试默认原文件摘要不变、未选标签保留、失败留原件、并发修改冲突、崩溃恢复以及成功后资产变更但曲目身份稳定。
+当前写回由独立 `src/writeback` 文件操作模块与 `src/writebackhost` 业务组装实现，配合Local身份映射和SQLite发布；并未把原件写回塞进Local worker。测试默认原件不变、未选标签保留、失败保留原件、并发冲突、崩溃恢复和稳定SourceTrack，见[写回说明](../writeback.md)及[验收](../validation/writeback.md)。仅Windows本地NTFS FLAC可用，不外推NAS。
 
 ## 10. P7：在线 Provider、推荐歌单与聚合
 

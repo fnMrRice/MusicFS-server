@@ -1,6 +1,6 @@
 # 本地最简 Web 运行
 
-最简Web提供本地文件列表、授权原流、Go DSP处理播放和本地NCM解密。Server另提供本地指纹、人工关联及歌词/封面补全API；默认关闭的原件写回见[写回说明](writeback.md)。桌面Client、在线Provider和歌单尚未实现。实际验证范围见[实施记录](validation/progress.md)及Web兼容性记录。
+最简Web提供本地文件列表、授权原流、Go DSP处理播放和本地NCM解密。Server另提供指纹/人工关联、歌词/封面、专辑、[公开在线资料](online.md)、[推荐](recommendations.md)、[远程歌单](remote-playlists.md)和[个人歌单](playlists.md)API；这些功能没有新增Web管理页面。默认关闭的原件写回见[写回说明](writeback.md)。桌面Client、平台账号登录与在线完整音频未实现；实际范围见[实施记录](validation/progress.md)及[Web兼容记录](../../web/docs/compatibility.md)。
 
 ## Windows
 
@@ -33,11 +33,13 @@ $env:MUSICFS_ADMIN_TOKEN = (& ./build/windows/musicfs.exe token).Trim()
 
 只扫描选中根的本层文件可运行 `./scripts/scan.ps1 -ProviderID local -RootIDs local -Recursive:$false`；扫描到两层子目录可运行 `./scripts/scan.ps1 -ProviderID local -RootIDs local -Recursive:$true -MaxDepth 2`。多个根使用 `-RootIDs root1,root2`，增量模式使用 `-Mode incremental`。根编号应来自 Provider 的 `roots`，不是磁盘路径；启用本地 Scraper 后，`-ImportLyrics:$true` 会在扫描成功后独立补齐歌词；扫描完成后继续查询 `/api/v1/scan-jobs/{id}/metadata-results` 确认逐项结果。递归开关与深度的逐层规则见[配置说明](configuration.md#导入选项)。脚本最多等待一小时；超时后先用返回的任务状态查询接口确认结果，不假定任务已取消。
 
+排除临时目录可传 `-ExcludePatterns '**/cache','**/*.tmp'`，`-ExcludePatterns @()`清除实例继承。需要自动复核时，在Local实例的`config.watch`中显式启用后重启；默认仍手动扫描。监听与周期复核使用实例默认范围，手工覆盖不改变监听配置。`retry_wait`继续等待原任务；`paused`需修正依赖/权限后手工重试，自动监听须重启才恢复。具体范围、资源上限及跨范围移动的复核方法见[扫描说明](scanning.md)。
+
 打开 `http://127.0.0.1:8080`，使用管理员凭据登录，选择来源并刷新列表。点击真实文件的播放按钮，使用原生控件暂停/继续；原流时间轴可定位。选中服务端处理选项后可使用简单曲目位置输入，处理后原生时间轴只代表当前片段。按 Ctrl+C 退出。
 
 测试素材在 `tests/testdata/audio`；包含项目自行生成的 CC0 文件、AIFF、VBR、中文名以及损坏样本。不要将损坏样本当作可播放成功标准。
 
-NCM 无需新增页面操作：配置 Worker、重新扫描后直接选曲。内部 MP3 以固定解密表示交付，内部 FLAC 按当前策略进入 MP3 处理链；后者需要 FFmpeg/ffprobe。仅配置 NCM Worker 时可播放兼容的内部 MP3，未探测的时长/码率保持未知。手工检查及真实浏览器三项证据见 [NCM 插件说明](ncm.md)；真实下载 NCM 样本尚未验收。
+NCM无需新增页面操作：配置Worker、重新扫描后直接选曲。内部MP3以固定解密表示交付，内部FLAC按当前策略进入MP3处理链；后者需要FFmpeg/ffprobe。仅配置NCM Worker时可播放兼容的内部MP3，未探测的时长/码率保持未知。合成样本真实浏览器证据见[NCM说明](ncm.md)，后续真实本地库4个NCM的HTTP播放、定位和原件不变证据见[真实库验收](validation/real-local-library.md)；未外推所有客户端格式变体。
 
 ## Linux 与同源部署
 
@@ -45,24 +47,24 @@ NCM 无需新增页面操作：配置 Worker、重新扫描后直接选曲。内
 
 2026-10-10已在Arch WSL使用原生FFmpeg/ffprobe 6.1.6通过YAML处理后播放、实际PCM定位、音频启用边界和同配置重启验证；工具为官方签名源码的LGPLv2.1+本地构建，不随仓库分发。工具能力、定向结果与范围见[Linux音频记录](validation/configuration-linux-audio.md)。这项Server验证不代替Linux浏览器、人工听音或其他架构/系统验收，也不包含动态启停。
 
-开发期 Vite 仅代理 `/api` 到 Server；交付静态页面和 API 必须同源。远程访问使用 Server 的 `tlsCert/tlsKey` 与 HTTPS Origin；不会信任未配置的代理转发头。当前不提供桌面管理租约或容器运维方案。
+开发期Vite仅代理 `/api` 到Server；静态页面和API必须同源。远程访问使用 `tlsCert/tlsKey` 与HTTPS Origin；不信任代理转发头。直接TLS已有双平台实际请求验证；安装制品、Docker/反向代理示例及其未验边界见[部署说明](deployment.md)。Server已提供[本地生命周期租约](lifecycle.md)，默认仍独立启动；桌面Client尚未实现。
 
 ## 数据与恢复
 
 SQLite WAL 只放本地文件系统；音乐可以来自已挂载目录。初次成功注册记录根身份，身份变化或无法打开时保留旧库并将来源视为离线。恢复原挂载后重启服务；不要通过删除状态文件来规避身份检查。
 
-备份前正常停止服务，保留完整 `dataRoot`（含数据库、插件稳定身份与根身份）、`mediaRoot`、配置和所用制品版本。凭据单独安全保存。`cacheRoot` 可重建，无需备份。恢复到新的隔离目录后调整配置中的路径，重新登录并扫描验证。库内 API 使用 SQLite `VACUUM INTO` 生成一致性数据库备份，自动测试已覆盖从该备份重新打开。跨版本回滚应恢复相应备份，不能任意使用旧二进制打开新 schema。
+正常停止服务后，用 `musicfs backup --config <配置> --output <已存在的备份父目录>` 创建完整包，再用 `verify-backup --input <备份目录>` 校验；`restore --input <备份目录> --destination <不存在的新安装目录>` 恢复。备份含一致性SQLite、被引用媒体、插件身份/恢复状态与配置，缓存可重建。原音乐、原件旁边的写回恢复文件、令牌、TLS私钥和程序须另外保留。恢复默认撤销旧会话并禁用插件/自动任务/写回，重新配置后再扫描播放。精确限制及回滚流程见[完整备份恢复](backup.md)，不要仅复制活动WAL主数据库。
 
 ## 当前资源和能力边界
 
-- 默认最多 8 个播放会话、2 条同时处理管线，私有原文件快照总额 1 GiB；复制超出预算会明确拒绝。
-- 每个来源最多 50,000 个候选；增量请求当前执行完整受控复核，不依赖文件通知。
+- 默认最多8个播放会话、2条同时处理管线；`maxCacheBytes`默认1GiB，由输入快照、处理临时输出、完整缓存和待删除文件共同计费。输入复制超预算明确拒绝，输出缓存不能写入时仍可交付未缓存处理流。
+- 每个来源最多50,000个候选；增量请求仍执行完整受控复核。可选文件通知只触发任务，周期完整复核补漏，不将通知当作完整文件清单。
 - 原流以私有不可变磁盘副本提供真实 Range；输入复制为有界流，不在内存缓存整首歌。复制准备期间尚未开始播放。
 - NCM 原文件保持只读，解密表示也受同一磁盘预算约束。解密 Worker 默认并发 2、打开限 5 秒、任务最长 2 分钟；复制结束即回收，随后从固定快照播放。
 - 处理输出为 MP3 128 kb/s、48 kHz、双声道；Go PCM 增益在 -60 到 0 dB，未经处理的原始文件不被修改。
-- 处理输出不持久缓存，不声明原始长度/ETag/字节定位；固定输入、参数和起点的处理尝试通过时间定位重建。
+- 完整处理输出可按来源/用户/资产/工具/参数/起点私有复用，只有成功完成才发布；缓存命中仍不声明长度/ETag/字节定位，定位仍使用timeRestart。配额、半成品清理和硬期限见[完整处理输出缓存](processed-cache.md)。
 - 停止、退出撤销资源；无消费者会话有 90 秒空闲宽限期，最长 30 分钟且不超过登录会话有效期。超过期限后需要重新播放。
-- 浏览器中间断线可能需要明确重新播放。恢复次数有上限；没有实现跨来源自动续播。
+- 浏览器中间断线可能需要明确重新播放；Server同源及跨来源恢复有次数、目标数与总期限。跨来源只有适用的人工时间对齐证据才可继续，默认提示重新播放，见[恢复说明](recovery.md)；最简Web没有该管理界面。
 - Worker 是受信任官方程序，当前不是恶意插件的完整操作系统沙箱。
 
 本地歌词/封面补全使用独立 `musicfs.scraper.local` 实例。示例已双层启用该插件，构建包含对应程序；配置、逐目标预览与人工选用见[补全任务](metadata.md)，无需启用FFmpeg或指纹。修改YAML后重启生效，不提供动态启停；单次 `importLyrics` 与默认关闭的 `metadata.automatic` 可分别开启，人工锁不被覆盖；详见[自动补缺](metadata.md#导入歌词与自动补缺)。

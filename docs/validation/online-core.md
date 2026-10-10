@@ -1,6 +1,6 @@
 # S-P7-02：Go 公开元数据适配核心验证
 
-核查日期：2026-10-10。本文对应 `src/online` 核心、独立在线 Provider Worker 与宿主接口；尚未接入 Server 配置、个人曲库或 HTTP 管理接口，不能据此认定整个 P7 完成。前期能力调查见[平台能力矩阵](../platform-capabilities.md)和[调查记录](platform-research.md)。没有新增 Go 依赖、Node/Python 运行依赖或系统软件。
+核查日期：2026-10-10。本文保留 `src/online` 核心、独立Worker与宿主接口的首轮验证范围，当时尚未接入Server配置和HTTP。后续组合已完成，见[在线宿主验收](online-http.md)；显式歌单入库另见[远程同步](remote-playlists-http.md)。不能用本核心记录认定整个P7完成。前期调查见[平台矩阵](../platform-capabilities.md)与[调查记录](platform-research.md)，没有新增Go或Node/Python运行依赖。
 
 ## 本轮范围与接口
 

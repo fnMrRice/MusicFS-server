@@ -119,7 +119,7 @@ server/
 5. 小型专用夹具可放测试目录自己的 testdata，共享音频放 tests/testdata。临时工作目录用测试提供的临时目录并可靠清理，不使用私人音乐库。
 6. 运行真实浏览器的 E2E 在 Web 仓库维护；Server 的 e2e 校验 HTTP/进程/磁盘行为，双方使用同一夹具说明。
 
-### S-P0-04：拟采用的构建与检查入口
+### S-P0-04：构建与检查入口
 
 以下为检查入口；Windows/Linux 的实际执行范围与限制见[实施记录](../validation/progress.md)，不能由一处通过推定所有目标环境通过：
 
@@ -157,10 +157,12 @@ Windows 制品使用 `.exe` 后缀。格式化脚本枚举 src 与 tests 中的 
 
 ## 4. P0 完成门槛
 
-- [ ] 用户指定目录、module 导入和外置 tests 在 Windows/Linux 构建验证。
-- [ ] 覆盖率确实包含 src，被测包没有测试专用后门。
-- [ ] HTTP/插件契约具备有效、无效、兼容性样本。
-- [ ] 媒体夹具与 P3/P4 验收模板可复用且可分发。
-- [ ] 所有未来阶段仍为待实现，没有把空工程标为可播放产品。
+- [x] 用户指定目录、module 导入和外置 tests 在 Windows/Linux 构建验证。
+- [x] 覆盖率包含 src；测试通过正式接口或明确的可信测试依赖注入验证。
+- [x] HTTP/插件契约具备有效、无效及协议版本拒绝样本；不为未上线开发基线增加旧格式兼容。
+- [x] 合成媒体夹具与 P3/P4 验收记录可复用，来源/许可明确。
+- [x] 工程建立与各功能阶段分别记录，不用空包或构建成功证明可播放。
+
+逐步证据见[核对表](../validation/documentation-audit.md#p0工程与契约)、[夹具](../validation/fixtures.md)和[制品验收](../validation/release.md)。上方目录树是初始职责规划，现有八个程序入口以 `src/app` 与构建脚本为准；实现包不要求与规划一一同名。
 
 依据：[Go 模块组织](https://go.dev/doc/modules/layout)、[go.mod](https://go.dev/doc/modules/gomod-ref)、[Go 测试](https://pkg.go.dev/testing)。官方包/测试规则与本项目的目录选择分别说明，不将其他社区目录模板称为强制标准。
