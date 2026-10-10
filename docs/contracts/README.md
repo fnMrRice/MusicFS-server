@@ -126,6 +126,14 @@ Provider 根可选 `writeBack` 为 `{enabled,available,formats,fields,replacemen
 
 `GET /remote-playlists/{id}/snapshots/{revision}?offset=0&limit=50` 固定本地修订分页。当前consistency恒unversioned、remoteVersion恒null，重复曲目保留不同entryId；首次完整观测缺失仅suspectedRemoved，后续较晚完整观测才确认移除。RemoteSource无Asset，播放能力固定unsupported，metadataDigest不成为音频版本。首版只有已验证网易公开歌单可导入；参数、限额和幂等边界见[操作说明](../remote-playlists.md)与[HTTP验收](../validation/remote-playlists-http.md)。
 
+### S-P7-05 个人歌单、出处与隐藏
+
+`POST/GET /playlists` 与 `GET/PUT /playlists/{id}` 管理本人有序规则。binding.kind为local/remote/playlist；显式追加SourceRef恰一local或remote身份，新bindingId/entryId为空由宿主生成，既有ID不能换目标。PUT必填expectedRevision；ruleRevision与hideRevision独立。
+
+`POST /playlists/{id}/rebuild {expectedRuleRevision}` 返回PlaylistSnapshotReceipt；`GET /{id}/snapshots/{revision}?offset&limit` 按固定本地修订读取可见项和全部provenance，limit1—100，旧修订不可变且每次重新授权来源。删除绑定只移除该出处，不清其他贡献；确认同Recording才去重，未知来源保持原身份。
+
+`GET/POST /{id}/hidden-rules` 与 `PUT /{id}/hidden-rules/{ruleId}` 保存原SourceRef锚点和allSources/binding/entry范围。创建默认allSources，必填expectedRevision/source；更新必填expectedRevision/active/confirm。关联扩大后needsConfirmation，新成员不会自动隐藏；显式active=true,confirm=true才扩大，解除/拆分保留锚点意图。所有修改需幂等键和CSRF。`GET /{id}/changes` 返回独立修订审计，after是十进制序号。完整限额、重放与分页语义见[个人歌单说明](../playlists.md)和[接口验收](../validation/playlists-http.md)。
+
 ### NCM 解密增量
 
 本次沿用既有 `/api/v1` 端点、请求和鉴权规则。播放描述的 `effectiveProcessing` 新增 `{ "type": "ncmDecrypt", "gainDb": 0, "version": "1", "execution": "server" }`。Schema 的 type 原已允许扩展字符串，无需收紧枚举或增加必填字段；客户端可以忽略未知处理项。该项表示外层容器解密，`gainDb: 0` 不代表执行了增益 DSP。后续进入转码管线时再报告独立 `gain` 项；用户未请求衰减时其值也可为 0。

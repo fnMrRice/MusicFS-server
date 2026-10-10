@@ -21,6 +21,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/matching"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
+	"github.com/fnMrRice/MusicFS-server/src/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 )
 
@@ -125,6 +126,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	handler.RegisterOnline(online)
 	handler.RegisterRecommendations(recommendations)
 	handler.RegisterRemotePlaylists(remotePlaylists)
+	handler.RegisterPlaylists(playlists.NewAggregate(store))
 	handler.RegisterHashing(hashes)
 	handler.RegisterFingerprinting(fingerprints)
 	handler.RegisterMedia(content)

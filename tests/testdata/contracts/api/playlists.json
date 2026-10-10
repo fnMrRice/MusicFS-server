@@ -1,0 +1,81 @@
+[
+  {
+    "name": "aggregate-source-exactly-one",
+    "schema": "PlaylistSourceInput",
+    "valid": true,
+    "value": {
+      "sourceTrackId": "source"
+    }
+  },
+  {
+    "name": "aggregate-source-no-double-identity",
+    "schema": "PlaylistSourceInput",
+    "valid": false,
+    "value": {
+      "sourceTrackId": "source",
+      "remoteSourceId": "remote"
+    }
+  },
+  {
+    "name": "aggregate-source-no-empty-identity",
+    "schema": "PlaylistSourceInput",
+    "valid": false,
+    "value": {}
+  },
+  {
+    "name": "aggregate-local-does-not-retarget",
+    "schema": "PlaylistBindingInput",
+    "valid": false,
+    "value": {
+      "kind": "local",
+      "targetId": "some-playlist",
+      "entries": []
+    }
+  },
+  {
+    "name": "aggregate-remote-cannot-append-inline",
+    "schema": "PlaylistBindingInput",
+    "valid": false,
+    "value": {
+      "kind": "remote",
+      "targetId": "remote-playlist",
+      "entries": [
+        {
+          "source": {
+            "sourceTrackId": "track"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "aggregate-hide-explicit-zero-revision",
+    "schema": "HidePlaylistRequest",
+    "valid": true,
+    "value": {
+      "expectedRevision": 0,
+      "source": {
+        "sourceTrackId": "track"
+      }
+    }
+  },
+  {
+    "name": "aggregate-hide-missing-revision",
+    "schema": "HidePlaylistRequest",
+    "valid": false,
+    "value": {
+      "source": {
+        "sourceTrackId": "track"
+      }
+    }
+  },
+  {
+    "name": "aggregate-hidden-confirm-required",
+    "schema": "ChangePlaylistHiddenRequest",
+    "valid": false,
+    "value": {
+      "expectedRevision": 1,
+      "active": true
+    }
+  }
+]
