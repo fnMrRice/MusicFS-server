@@ -91,7 +91,7 @@ func (s *Store) RecordPlaybackStarted(ctx context.Context, who auth.Session, inp
 		return entry, err
 	}
 	entry.RecordedAt = time.Now().UTC()
-	stamp = entry.RecordedAt.Format(time.RFC3339Nano)
+	stamp = entry.RecordedAt.Format("2006-01-02T15:04:05.000000000Z")
 	if _, err = tx.ExecContext(ctx, "INSERT INTO personal_recently_played VALUES(?,?,?) ON CONFLICT(owner,source_track_id) DO UPDATE SET played_at=excluded.played_at", who.User.ID, input.SourceTrackID, stamp); err != nil {
 		return entry, err
 	}

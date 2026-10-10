@@ -74,6 +74,17 @@ func TestPersonalHTTPProfileFavoritesHistoryAndAuthorization(t *testing.T) {
 		if w.Code != status {
 			t.Fatalf("%s %s: %d %s", method, path, w.Code, w.Body.String())
 		}
+		switch {
+		case status >= 400:
+			testkit.ValidateHTTP(t, "Error", w.Body.Bytes())
+		case status == http.StatusNoContent:
+		case strings.HasPrefix(path, "/me/profile"):
+			testkit.ValidateHTTP(t, "PersonalProfile", w.Body.Bytes())
+		case method == "GET":
+			testkit.ValidateHTTP(t, "PersonalCollectionPage", w.Body.Bytes())
+		default:
+			testkit.ValidateHTTP(t, "PersonalCollectionEntry", w.Body.Bytes())
+		}
 		if strings.Contains(w.Body.String(), "secret/") || strings.Contains(w.Body.String(), tracks["other/first"].ID) {
 			t.Fatal("personal response leaked private source")
 		}

@@ -146,7 +146,7 @@ func (s *Store) PutFavorite(ctx context.Context, owner, id string) (personal.Ent
 		if count >= personal.MaxFavorites {
 			return entry, domain.Fail("RATE_LIMITED", "Favorite collection limit reached")
 		}
-		stamp = time.Now().UTC().Format(time.RFC3339Nano)
+		stamp = time.Now().UTC().Format("2006-01-02T15:04:05.000000000Z")
 		if _, err = tx.ExecContext(ctx, "INSERT INTO personal_favorites VALUES(?,?,?)", owner, id, stamp); err != nil {
 			return entry, err
 		}
