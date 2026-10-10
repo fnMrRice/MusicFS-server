@@ -69,6 +69,9 @@ func (s *Store) Publish(ctx context.Context, supplied jobs.Job, publication libr
 		if id == "" {
 			id = domain.NewID()
 		}
+		if previous, exists := old[id]; exists && !scopes[previous.RootID].Contains(previous.RootID, previous.Path) {
+			return domain.Fail("ACCESS_DENIED", "Existing track is outside the scan scope")
+		}
 		current, err := scanAsset(ctx, tx, j.Owner, id, asset, o)
 		if err != nil {
 			return err

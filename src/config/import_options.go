@@ -37,6 +37,8 @@ func importDefaultsShape() fieldShape {
 			fields[name] = intShape
 		case "string":
 			fields[name] = stringShape
+		case "array":
+			fields[name] = sequenceShape(stringShape)
 		}
 	}
 	return mappingShape(fields)

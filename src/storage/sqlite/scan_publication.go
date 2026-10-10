@@ -18,7 +18,11 @@ func validatePublication(j jobs.Job, p library.ScanPublication) (map[string]plug
 	}
 	scopes := make(map[string]pluginproto.ScanScope, len(roots))
 	for _, root := range roots {
-		scopes[root.RootID] = pluginproto.ScanScope{RootID: root.RootID, RootIdentity: root.RootIdentity, Recursive: j.Plan.Options.Recursive, MaxDepth: j.Plan.Options.MaxDepth}
+		scope, err := j.Plan.Scope(root.RootID)
+		if err != nil {
+			return nil, err
+		}
+		scopes[root.RootID] = scope
 	}
 	for _, o := range p.Observations {
 		if !scopes[o.RootID].Contains(o.RootID, o.RelativePath) {

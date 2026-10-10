@@ -16,16 +16,18 @@ const ScanPlanVersion = 1
 const MaxScanDepth = 64
 
 type ImportOptions struct {
-	Recursive    bool `json:"recursive" yaml:"recursive"`
-	MaxDepth     int  `json:"maxDepth" yaml:"maxDepth"`
-	ImportLyrics bool `json:"importLyrics" yaml:"importLyrics"`
+	Recursive       bool     `json:"recursive" yaml:"recursive"`
+	MaxDepth        int      `json:"maxDepth" yaml:"maxDepth"`
+	ImportLyrics    bool     `json:"importLyrics" yaml:"importLyrics"`
+	ExcludePatterns []string `json:"excludePatterns" yaml:"excludePatterns"`
 }
 
 func (o ImportOptions) Validate() error {
 	if o.Recursive && (o.MaxDepth < 1 || o.MaxDepth > MaxScanDepth) || !o.Recursive && o.MaxDepth != 0 {
 		return domain.Fail("INVALID_ARGUMENT", "Invalid recursive scan depth")
 	}
-	return nil
+	_, err := CanonicalExclusions(o.ExcludePatterns)
+	return err
 }
 
 type ScanRoot struct {
@@ -45,10 +47,11 @@ type ScanPlan struct {
 }
 
 type ScanScope struct {
-	RootID       string `json:"rootId"`
-	RootIdentity string `json:"rootIdentity"`
-	Recursive    bool   `json:"recursive"`
-	MaxDepth     int    `json:"maxDepth"`
+	RootID          string   `json:"rootId"`
+	RootIdentity    string   `json:"rootIdentity"`
+	Recursive       bool     `json:"recursive"`
+	MaxDepth        int      `json:"maxDepth"`
+	ExcludePatterns []string `json:"excludePatterns"`
 }
 
 func scanLabel(s string) bool {
@@ -59,7 +62,7 @@ func (s ScanScope) Validate() error {
 	if !scanLabel(s.RootID) || !scanLabel(s.RootIdentity) {
 		return domain.Fail("INVALID_ARGUMENT", "Invalid scan root binding")
 	}
-	return (ImportOptions{Recursive: s.Recursive, MaxDepth: s.MaxDepth}).Validate()
+	return (ImportOptions{Recursive: s.Recursive, MaxDepth: s.MaxDepth, ExcludePatterns: s.ExcludePatterns}).Validate()
 }
 
 func (p ScanPlan) Canonical() (ScanPlan, error) {
@@ -69,6 +72,7 @@ func (p ScanPlan) Canonical() (ScanPlan, error) {
 	if err := p.Options.Validate(); err != nil {
 		return ScanPlan{}, err
 	}
+	p.Options.ExcludePatterns, _ = CanonicalExclusions(p.Options.ExcludePatterns)
 	p.Roots = append([]ScanRoot(nil), p.Roots...)
 	sort.Slice(p.Roots, func(i, j int) bool { return p.Roots[i].RootID < p.Roots[j].RootID })
 	for i, root := range p.Roots {
@@ -99,7 +103,7 @@ func (p ScanPlan) Scope(rootID string) (ScanScope, error) {
 	}
 	for _, root := range canonical.Roots {
 		if root.RootID == rootID {
-			return ScanScope{RootID: root.RootID, RootIdentity: root.RootIdentity, Recursive: p.Options.Recursive, MaxDepth: p.Options.MaxDepth}, nil
+			return ScanScope{RootID: root.RootID, RootIdentity: root.RootIdentity, Recursive: canonical.Options.Recursive, MaxDepth: canonical.Options.MaxDepth, ExcludePatterns: canonical.Options.ExcludePatterns}, nil
 		}
 	}
 	return ScanScope{}, domain.Fail("ACCESS_DENIED", "Root is outside the scan plan")
@@ -118,7 +122,7 @@ func ValidScanPath(p string) bool {
 }
 
 func (s ScanScope) Contains(rootID, relativePath string) bool {
-	return s.Validate() == nil && rootID == s.RootID && ValidScanPath(relativePath) && strings.Count(relativePath, "/") <= s.MaxDepth
+	return s.Validate() == nil && rootID == s.RootID && ValidScanPath(relativePath) && strings.Count(relativePath, "/") <= s.MaxDepth && !Excludes(s.ExcludePatterns, relativePath)
 }
 
 func (p ScanPlan) Contains(rootID, relativePath string) bool {

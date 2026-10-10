@@ -75,7 +75,7 @@
     "/provider-instances": {"get": {"operationId": "listProviders", "description": "返回插件提供的导入配置声明、已合成的实例默认值与授权根编号/显示名；无路径、凭据或真实根身份。", "responses": {"200": {"$ref": "#/components/responses/Providers"}, "default": {"$ref": "#/components/responses/Error"}}}},
     "/provider-instances/{id}/scan-jobs": {
       "parameters": [{"$ref": "#/components/parameters/ID"}],
-      "post": {"operationId": "createScan", "description": "提交模式、当前 schemaRevision、显式 rootIds 与 options 部分覆盖。按有效范围/选项/版本合并；旧 schema 修订返回 CONFLICT；importLyrics=true 在扫描成功后独立触发歌词补缺，子任务状态从 metadata-results 查询。", "parameters": [{"$ref": "#/components/parameters/CSRF"}, {"$ref": "#/components/parameters/Idempotency"}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/ScanRequest"}}}}, "responses": {"202": {"$ref": "#/components/responses/ScanAccepted"}, "default": {"$ref": "#/components/responses/Error"}}}
+      "post": {"operationId": "createScan", "description": "提交模式、当前 schemaRevision、显式 rootIds 与 options 部分覆盖。按有效范围/选项/版本合并；excludePatterns 整组覆盖并绑定范围，排除的既有曲目保留；旧 schema 修订返回 CONFLICT；importLyrics=true 在扫描成功后独立触发歌词补缺，子任务状态从 metadata-results 查询。", "parameters": [{"$ref": "#/components/parameters/CSRF"}, {"$ref": "#/components/parameters/Idempotency"}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/ScanRequest"}}}}, "responses": {"202": {"$ref": "#/components/responses/ScanAccepted"}, "default": {"$ref": "#/components/responses/Error"}}}
     },
     "/scan-jobs/{id}": {
       "parameters": [{"$ref": "#/components/parameters/ID"}],

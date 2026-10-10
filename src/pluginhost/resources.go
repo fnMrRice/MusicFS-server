@@ -122,7 +122,7 @@ func (w *Worker) entries(ctx context.Context, r pluginproto.EntriesRequest) (plu
 			delete(w.snapshots, token)
 			ok = false
 		}
-		if !ok || snapshot.rootID != r.RootID || snapshot.binding != grant.binding || offset > len(snapshot.entries) {
+		if !ok || snapshot.rootID != r.RootID || !snapshot.binding.equal(grant.binding) || offset > len(snapshot.entries) {
 			w.mu.Unlock()
 			return pluginproto.EntriesPage{}, fmt.Errorf("RESOURCE_CHANGED: scan cursor expired")
 		}

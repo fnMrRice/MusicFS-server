@@ -311,7 +311,8 @@
             "object",
             "boolean",
             "integer",
-            "string"
+            "string",
+            "array"
           ]
         },
         "title": {
@@ -345,17 +346,41 @@
           "const": false
         },
         "default": {
-          "type": [
-            "boolean",
-            "number",
-            "string"
+          "anyOf": [
+            {
+              "type": [
+                "boolean",
+                "number",
+                "string"
+              ]
+            },
+            {
+              "type": "array",
+              "maxItems": 32,
+              "items": {
+                "type": "string",
+                "maxLength": 256
+              }
+            }
           ]
         },
         "const": {
-          "type": [
-            "boolean",
-            "number",
-            "string"
+          "anyOf": [
+            {
+              "type": [
+                "boolean",
+                "number",
+                "string"
+              ]
+            },
+            {
+              "type": "array",
+              "maxItems": 32,
+              "items": {
+                "type": "string",
+                "maxLength": 256
+              }
+            }
           ]
         },
         "enum": {
@@ -389,6 +414,22 @@
         },
         "else": {
           "$ref": "#/$defs/ImportOptionSchema"
+        },
+        "items": {
+          "$ref": "#/$defs/ImportOptionSchema"
+        },
+        "minItems": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32
+        },
+        "maxItems": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32
+        },
+        "uniqueItems": {
+          "const": true
         }
       },
       "maxProperties": 20,
@@ -408,6 +449,17 @@
         },
         "importLyrics": {
           "type": "boolean"
+        },
+        "excludePatterns": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "description": "根相对 / 路径，*、? 和独立段 **；大小写敏感。匹配目录排除整支。运行时另验证UTF-8字节上限、禁止绝对/点路径、反斜线、字符类和否定。"
         }
       },
       "if": {
@@ -449,7 +501,8 @@
       "required": [
         "recursive",
         "maxDepth",
-        "importLyrics"
+        "importLyrics",
+        "excludePatterns"
       ],
       "properties": {
         "recursive": {
@@ -462,6 +515,17 @@
         },
         "importLyrics": {
           "type": "boolean"
+        },
+        "excludePatterns": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "description": "根相对 / 路径，*、? 和独立段 **；大小写敏感。匹配目录排除整支。运行时另验证UTF-8字节上限、禁止绝对/点路径、反斜线、字符类和否定。"
         }
       },
       "if": {

@@ -5,7 +5,8 @@ param(
     [string[]]$RootIDs,
     [bool]$Recursive,
     [ValidateRange(0, 64)][int]$MaxDepth,
-    [bool]$ImportLyrics
+    [bool]$ImportLyrics,
+    [AllowEmptyCollection()][string[]]$ExcludePatterns
 )
 $ErrorActionPreference = 'Stop'
 $BaseURL = $BaseURL.TrimEnd('/')
@@ -33,6 +34,7 @@ try {
     if ($PSBoundParameters.ContainsKey('Recursive')) { $options.recursive = $Recursive }
     if ($PSBoundParameters.ContainsKey('MaxDepth')) { $options.maxDepth = $MaxDepth }
     if ($PSBoundParameters.ContainsKey('ImportLyrics')) { $options.importLyrics = $ImportLyrics }
+    if ($PSBoundParameters.ContainsKey('ExcludePatterns')) { $options.excludePatterns = @($ExcludePatterns) }
     $body = @{
         mode = $Mode
         schemaRevision = $selected.configuration.schemaRevision

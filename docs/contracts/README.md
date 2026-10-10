@@ -22,7 +22,7 @@
 
 Provider 响应增加 `configuration` 与 `roots`。Local Files 的配置包含插件提供的 `schemaRevision/importOptionsSchema/importDefaults/unavailableOptions`；实例默认已合成到公开 `importDefaults`。根列表只含授权编号、显示名与可选安全写回能力，不含路径、真实文件系统身份、能力票据或内部配置摘要。当前 Web 列表/播放允许忽略新响应字段，本步骤没有导入表单 UI。
 
-创建扫描必须提交 `{mode,schemaRevision,rootIds,options}`。`rootIds` 为 1—256 个不重复的已授权根编号，`options` 可为 `{}` 或部分覆盖；不兼容旧的仅 `{mode}` 请求。实例与请求层都遵守[递归归一规则](../configuration.md#导入选项)：默认 true/64/false，关闭规范为 0，从关闭重新开启且未给深度恢复 64，开启深度 1—64。类型错误、矛盾深度或未知字段为 400；不属于当前实例的根为 403；旧 schema 修订为 409。当前 `local-import-v2` 支持 `importLyrics=true`，扫描成功后独立处理歌词，结果另查 metadata-results。
+创建扫描必须提交 `{mode,schemaRevision,rootIds,options}`。`rootIds` 为1—256个不重复授权根，`options` 可为 `{}` 或部分覆盖，不兼容旧的仅 `{mode}` 请求。实例/请求遵守[归一规则](../configuration.md#导入选项)：默认true/64/false/空排除集，关闭深度为0，重新开启且未给深度恢复64，开启深度1—64。错误类型/矛盾/未知键为400，未授权根403，旧schema修订409。当前 `local-import-v3` 新增 `excludePatterns` 整组替换（`[]`清除继承），规则进入持久计划/摘要及Host范围核验，排除范围的旧库保留；请求最多32条、每条UTF-8最多256字节，语法见[扫描范围](../scanning.md)。歌词导入仍在成功扫描后独立执行，另查metadata-results。
 
 任务只合并同所有者、实例与有效计划的在途请求；同幂等键改变选中根、选项、模式或绑定版本返回 `CONFLICT`。根顺序不改变计划。读取任务新增 `rootIds/effectiveOptions/schemaRevision`，内部计划摘要和根身份不公开。`complete` 表示所选范围完整完成；未选根和范围之外的更深曲目保留。排队后有效计划持久固定，重启配置改变不能静默改用新参数。
 

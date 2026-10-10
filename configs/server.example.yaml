@@ -22,6 +22,7 @@ plugins:
           recursive: true
           maxDepth: 64
           importLyrics: false
+          excludePatterns: []
         config:
           musicRoots:
             # Replace with your music directory; this sample uses project fixtures.

@@ -7,5 +7,5 @@
   {"name":"automation-null-items","schema":"MetadataAutomationPage","valid":false,"value":{"items":null,"nextCursor":null}},
   {"name":"automation-missing-cursor","schema":"MetadataAutomationPage","valid":false,"value":{"items":[]}},
   {"name":"automation-empty-cursor","schema":"MetadataAutomationPage","valid":false,"value":{"items":[],"nextCursor":""}},
-  {"name":"scan-lyrics-v2","schema":"ScanRequest","valid":true,"value":{"mode":"full","schemaRevision":"local-import-v2","rootIds":["music"],"options":{"importLyrics":true}}}
+  {"name":"scan-lyrics-v2","schema":"ScanRequest","valid":true,"value":{"mode":"full","schemaRevision":"local-import-v3","rootIds":["music"],"options":{"importLyrics":true}}}
 ]

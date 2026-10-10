@@ -17,6 +17,10 @@ type scanBinding struct {
 	scope      pluginproto.ScanScope
 }
 
+func (b scanBinding) equal(other scanBinding) bool {
+	return b.scanID == other.scanID && b.generation == other.generation && b.digest == other.digest && b.scope.Equal(other.scope)
+}
+
 type scanGrant struct {
 	binding scanBinding
 	cursor  string
@@ -35,6 +39,7 @@ func (w *Worker) authorizeScan(ctx context.Context, r *pluginproto.ScanRequest) 
 	if err := r.Scope.Validate(); err != nil {
 		return "", err
 	}
+	r.Scope.ExcludePatterns, _ = pluginproto.CanonicalExclusions(r.Scope.ExcludePatterns)
 	allowed := false
 	for _, root := range w.Access.Roots() {
 		allowed = allowed || root.ID == r.RootID && root.ExpectedIdentity == r.Scope.RootIdentity

@@ -21,6 +21,7 @@ func safeProviderConfiguration(r Runtime) *pluginproto.Configuration {
 		return nil
 	}
 	declaration.ImportDefaults = r.ImportDefaults
+	declaration.ImportDefaults.ExcludePatterns = append([]string{}, r.ImportDefaults.ExcludePatterns...)
 	return &declaration
 }
 

@@ -1,0 +1,8 @@
+[
+  {"name":"exclusions-effective-empty","schema":"ImportOptions","valid":true,"value":{"recursive":true,"maxDepth":64,"importLyrics":false,"excludePatterns":[]}},
+  {"name":"exclusions-override","schema":"ImportOverrides","valid":true,"value":{"excludePatterns":["**/cache","*.tmp"]}},
+  {"name":"exclusions-missing-effective-field","schema":"ImportOptions","valid":false,"value":{"recursive":true,"maxDepth":64,"importLyrics":false}},
+  {"name":"exclusions-null","schema":"ImportOverrides","valid":false,"value":{"excludePatterns":null}},
+  {"name":"exclusions-repeated","schema":"ImportOverrides","valid":false,"value":{"excludePatterns":["cache","cache"]}},
+  {"name":"exclusions-empty-pattern","schema":"ImportOverrides","valid":false,"value":{"excludePatterns":[""]}}
+]

@@ -52,7 +52,7 @@ func boundedSchema(schema map[string]any, depth int) error {
 	for key, value := range schema {
 		switch key {
 		case "type":
-			if value != "object" && value != "boolean" && value != "integer" && value != "string" {
+			if value != "object" && value != "boolean" && value != "integer" && value != "string" && value != "array" {
 				return fail()
 			}
 		case "title", "description":
@@ -74,7 +74,7 @@ func boundedSchema(schema map[string]any, depth int) error {
 					return err
 				}
 			}
-		case "if", "then", "else":
+		case "if", "then", "else", "items":
 			child, ok := value.(map[string]any)
 			if !ok {
 				return fail()
@@ -96,13 +96,24 @@ func boundedSchema(schema map[string]any, depth int) error {
 			if value != false {
 				return fail()
 			}
-		case "minimum", "maximum", "minLength", "maxLength":
+		case "minimum", "maximum", "minLength", "maxLength", "minItems", "maxItems":
 			if _, ok := value.(float64); !ok {
 				return fail()
 			}
 		case "default", "const":
 			switch value.(type) {
 			case bool, string, float64:
+			case []any:
+				items := value.([]any)
+				if len(items) > MaxExcludePatterns {
+					return fail()
+				}
+				for _, item := range items {
+					text, ok := item.(string)
+					if !ok || len(text) > MaxExcludePatternBytes {
+						return fail()
+					}
+				}
 			default:
 				return fail()
 			}
@@ -117,6 +128,10 @@ func boundedSchema(schema map[string]any, depth int) error {
 				default:
 					return fail()
 				}
+			}
+		case "uniqueItems":
+			if value != true {
+				return fail()
 			}
 		default:
 			return fail()
@@ -137,6 +152,9 @@ func (c *Configuration) Validate() error {
 	if err != nil {
 		return err
 	}
+	if err := c.ImportDefaults.Validate(); err != nil {
+		return fmt.Errorf("PROTOCOL_MISMATCH: invalid import defaults")
+	}
 	if err := schema.Validate(optionValue(c.ImportDefaults)); err != nil {
 		return fmt.Errorf("PROTOCOL_MISMATCH: defaults violate configuration schema")
 	}
@@ -155,6 +173,9 @@ func (c *Configuration) Validate() error {
 }
 
 func (c *Configuration) ValidateOptions(options ImportOptions) error {
+	if err := options.Validate(); err != nil {
+		return err
+	}
 	schema, err := c.schema()
 	if err != nil {
 		return err

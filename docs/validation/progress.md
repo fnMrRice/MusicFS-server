@@ -145,5 +145,6 @@ Windows全量测试及竞争检查、四程序Windows/Linux构建、Linux原生�
 | S-P8-05 | 完整离线备份/校验/新目录恢复CLI，保存一致DB、全部媒体引用、配置和插件状态；撤销旧登录与处理缓存，默认关闭插件和写回，不完整恢复屏障阻止启动。Windows/Linux真SQLite与CLI恢复race通过，见[备份验收](backup.md) |
 | S-P8-06 | 独立启动与Client托管模式、实例归属记录、鉴权本地租约/续租/释放/崩溃超时、多客户端保活及有界draining；Windows/Linux实际CLI与HTTP race通过，超时清理完成前仍持有数据锁，见[生命周期验收](lifecycle.md) |
 | S-P8-02 | Windows真实CLI四轮扫描/摘要/指纹/并发慢消费者资源采样、进程身份复核与完整输出复用；取消后回到Server+Local Worker、无partial、输入可独占重开，保留有界完整缓存。具体CPU/内存/句柄及残留限制见[资源基线](resource-baseline.md)，不外推NAS/ARM或未测环境 |
+| S-P2 排除规则补齐 | Local0.3.0/local-import-v3提供根相对有界glob排除配置，进入完整计划/游标摘要，Host和库对账共同执行；范围外旧记录及证据不变，拒绝借用旧身份跨范围重绑。Windows/Linux真实Worker、HTTP/SQLite和race通过，见[排除规则验收](scan-exclusions.md) |
 
 P6本期门槛已通过；在线平台目前仅宣告已验收的公开资料能力，账号、完整音频和其他未列明能力不随此交付。歌单和完整部署继续分步推进。新增插件导入选项（歌词、递归与深度）均已接入实际扫描及补全流程。

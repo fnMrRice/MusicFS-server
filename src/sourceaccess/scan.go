@@ -85,6 +85,12 @@ func (a *Access) Entries(ctx context.Context, scope pluginproto.ScanScope) ([]pl
 			}
 			return nil
 		}
+		if path != "." && pluginproto.Excludes(scope.ExcludePatterns, path) {
+			if d.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
+		}
 		if d.Type()&os.ModeSymlink != 0 {
 			if len(issues) < 100 {
 				issues = append(issues, "symbolic link skipped")
@@ -92,7 +98,7 @@ func (a *Access) Entries(ctx context.Context, scope pluginproto.ScanScope) ([]pl
 			return nil
 		}
 		if d.IsDir() {
-			if path != "." && strings.Count(path, "/")+1 > scope.MaxDepth {
+			if !scope.ContainsDirectory(path) {
 				return fs.SkipDir
 			}
 			return nil

@@ -6,7 +6,9 @@ Host 发出的 ID 为 `h-` 前缀，Worker 调用 Host 时用 `w-`。一帧只�
 
 `host.hello` 请求绑定 instanceId、配置修订和本次随机 nonce。成功结果为 Ready（逻辑上的 worker.ready），必须回显 instanceId、nonce，并用 manifest 声明精确 protocolVersion。1.0 只协商 1.0；主版本不匹配必须拒绝。每个角色实例独立 Worker，实例/账号权限由 Host 启动上下文固定，不能被请求字段切换。账户引用不是凭据。
 
-Manifest 的 `configuration` 为插件提供的导入选项声明；不支持导入配置的音频插件发送 null。Local Files 声明 `schemaRevision/importOptionsSchema/importDefaults/unavailableOptions`，标题与说明是纯文本。声明限制为 32 KiB、8 层、每对象 32 个属性及有限 JSON Schema 关键字，拒绝引用与可执行扩展。宿主共用声明校验实例默认和单次请求，但根授权、递归深度上限与真实遍历限制始终由宿主执行。歌词选项尚未实现，true 返回 `UNSUPPORTED`。
+Manifest的 `configuration` 为插件提供的导入选项声明；不支持导入配置的音频插件发送null。Local Files 0.3.0声明 `local-import-v3`，字段为 `schemaRevision/importOptionsSchema/importDefaults/unavailableOptions`，标题与说明为纯文本。声明限制32 KiB、8层、每对象32属性；受限Schema支持有界字符串数组，拒绝外部引用/执行扩展。`ImportOptions` 和 `ScanScope` 新增必需 `excludePatterns` 数组，最多32条、每条UTF-8最多256字节；Host与发布范围共用根相对glob语义，见[扫描说明](../../../scanning.md)。规则排序绑定PlanDigest，cursor/grant不能在同任务中换规则；不兼容旧开发声明。
+
+宿主实际执行根授权、递归上限和排除，不依赖worker自行过滤后声称完整。`importLyrics:true` 已接入扫描后的持久歌词补缺，需要可用本地Scraper；逐目标失败不伪装成功，见[自动补缺](../../../metadata.md#导入歌词与自动补缺)。
 
 `provider.scan` 携带 scope（rootId/rootIdentity/recursive/maxDepth）、planDigest 和 Host 生成的单页 grantId。Worker 调用 `host.entries` 必须携带该 grantId；授权绑定任务、代次、范围和游标，不能跨任务、根或选项重用。返回页包含 scanId/generation/page/planDigest，末页 complete 还须结合 issues 和根身份决定是否可以发布完整请求范围。范围外曲目不能被标记缺失。Entry 的 fileIdentity 为原始身份，linkCount 为实际硬链接数，不能按本轮枚举数量改写身份。持久来源身份由 Host 命名空间状态维护。`provider.resolve` 返回受限资源引用，rootId/relativePath 只在受信任控制面使用，浏览器看不到它们；Host 实际打开时仍需验证根、版本和授权。
 

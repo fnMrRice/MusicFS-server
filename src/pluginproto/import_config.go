@@ -10,13 +10,18 @@ import (
 
 // ImportOverrides preserves the difference between omission and an explicit zero.
 type ImportOverrides struct {
-	Recursive    *bool `json:"recursive,omitempty" yaml:"recursive,omitempty"`
-	MaxDepth     *int  `json:"maxDepth,omitempty" yaml:"maxDepth,omitempty"`
-	ImportLyrics *bool `json:"importLyrics,omitempty" yaml:"importLyrics,omitempty"`
+	Recursive       *bool     `json:"recursive,omitempty" yaml:"recursive,omitempty"`
+	MaxDepth        *int      `json:"maxDepth,omitempty" yaml:"maxDepth,omitempty"`
+	ImportLyrics    *bool     `json:"importLyrics,omitempty" yaml:"importLyrics,omitempty"`
+	ExcludePatterns *[]string `json:"excludePatterns,omitempty" yaml:"excludePatterns,omitempty"`
 }
 
 func (p ImportOverrides) Clone() *ImportOverrides {
 	result := p
+	if p.ExcludePatterns != nil {
+		value := append([]string{}, (*p.ExcludePatterns)...)
+		result.ExcludePatterns = &value
+	}
 	if p.Recursive != nil {
 		value := *p.Recursive
 		result.Recursive = &value
@@ -58,6 +63,10 @@ func (p *ImportOverrides) UnmarshalJSON(data []byte) error {
 
 func MergeImportOptions(base ImportOptions, patch ImportOverrides) (ImportOptions, error) {
 	result := base
+	result.ExcludePatterns = append([]string{}, base.ExcludePatterns...)
+	if patch.ExcludePatterns != nil {
+		result.ExcludePatterns = append([]string{}, (*patch.ExcludePatterns)...)
+	}
 	if patch.Recursive != nil {
 		result.Recursive = *patch.Recursive
 		if patch.MaxDepth == nil {
@@ -77,7 +86,9 @@ func MergeImportOptions(base ImportOptions, patch ImportOverrides) (ImportOption
 	if result.Recursive && (result.MaxDepth < 1 || result.MaxDepth > 64) || !result.Recursive && result.MaxDepth != 0 {
 		return ImportOptions{}, domain.Fail("INVALID_ARGUMENT", "Recursion and maximum depth are inconsistent")
 	}
-	return result, nil
+	var err error
+	result.ExcludePatterns, err = CanonicalExclusions(result.ExcludePatterns)
+	return result, err
 }
 
 type UnavailableOption struct {
