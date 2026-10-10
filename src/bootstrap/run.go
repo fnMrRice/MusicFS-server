@@ -30,6 +30,7 @@ func Run(args []string, output io.Writer) error {
 	f.SetOutput(output)
 	path := f.String("config", "", "Configuration YAML path (.yaml or .yml)")
 	web := f.String("web-root", "", "Built Web artifact directory")
+	startupMode := f.String("startup-mode", "standalone", "Startup ownership: standalone or client-managed")
 	version := f.Bool("version", false, "Print version")
 	if err := f.Parse(args); err != nil {
 		return err
@@ -37,6 +38,12 @@ func Run(args []string, output io.Writer) error {
 	if *version {
 		_, err := io.WriteString(output, "MusicFS Server 0.1.0 (API v1)\n")
 		return err
+	}
+	if *startupMode != "standalone" && *startupMode != "client-managed" {
+		return domain.Fail("INVALID_ARGUMENT", "Startup mode must be standalone or client-managed")
+	}
+	if f.NArg() != 0 {
+		return domain.Fail("INVALID_ARGUMENT", "Unexpected command arguments")
 	}
 	overrides := map[string]string{}
 	f.Visit(func(v *flag.Flag) {
@@ -50,5 +57,5 @@ func Run(args []string, output io.Writer) error {
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-	return Serve(ctx, c, slog.New(slog.NewJSONHandler(output, nil)))
+	return ServeWithOptions(ctx, c, slog.New(slog.NewJSONHandler(output, nil)), ServeOptions{StartupMode: *startupMode})
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/identification/hashworker"
 	"github.com/fnMrRice/MusicFS-server/src/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/lifecycle"
 	"github.com/fnMrRice/MusicFS-server/src/matching"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
@@ -45,7 +46,7 @@ func expectedChecksum(configured, path string) string {
 	return checksum(path)
 }
 
-func compose(ctx context.Context, c config.Config, log *slog.Logger, instance string, ready func() bool) (*api.Server, func(), error) {
+func compose(ctx context.Context, c config.Config, log *slog.Logger, instance string, ready func() bool, lifecycleManagers ...*lifecycle.Manager) (*api.Server, func(), error) {
 	store, err := sqlite.Open(ctx, filepath.Join(c.DataRoot, "musicfs.sqlite"))
 	if err != nil {
 		return nil, nil, err
@@ -145,6 +146,11 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 		return nil, nil, err
 	}
 	sessions.OnRevoke = player.Revoke
+	if len(lifecycleManagers) > 0 && lifecycleManagers[0] != nil {
+		manager := lifecycleManagers[0]
+		handler.RegisterLifecycle(manager)
+		sessions.OnRevoke = func(id string) { manager.RevokeSession(id); player.Revoke(id) }
+	}
 	handler.RegisterPlayback(player)
 	previousCleanup := cleanup
 	cleanup = func() { player.Close(); previousCleanup() }

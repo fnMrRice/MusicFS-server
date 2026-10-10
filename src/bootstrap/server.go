@@ -14,14 +14,25 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/src/config"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/lifecycle"
 )
 
 func Serve(ctx context.Context, c config.Config, log *slog.Logger) error {
+	return ServeWithOptions(ctx, c, log, ServeOptions{})
+}
+
+func ServeWithOptions(ctx context.Context, c config.Config, log *slog.Logger, options ServeOptions) (result error) {
+	if err := validateStartupMode(options.StartupMode, c.Listen); err != nil {
+		return err
+	}
+	if options.ShutdownTimeout < 0 {
+		return errors.New("shutdown timeout must be positive")
+	}
 	if err := c.Validate(); err != nil {
 		return err
 	}
 	if _, err := os.Lstat(filepath.Join(c.DataRoot, ".restore-incomplete")); !os.IsNotExist(err) {
-		return errors.New("installation restore is incomplete")
+		return errors.New("installation restore is incomplete; restore into a new directory")
 	}
 	for _, dir := range []string{c.DataRoot, c.MediaRoot, c.CacheRoot} {
 		if err := os.MkdirAll(dir, 0700); err != nil {
@@ -38,7 +49,12 @@ func Serve(ctx context.Context, c config.Config, log *slog.Logger) error {
 	if err != nil {
 		return errors.New("cannot open data lock")
 	}
-	defer lock.Close()
+	lockOwned := true
+	defer func() {
+		if lockOwned {
+			_ = lock.Close()
+		}
+	}()
 	if err = lockFile(lock); err != nil {
 		return errors.New("data directory is already in use")
 	}
@@ -49,18 +65,41 @@ func Serve(ctx context.Context, c config.Config, log *slog.Logger) error {
 	defer listener.Close()
 	var ready atomic.Bool
 	instance := domain.NewID()
-	handler, cleanup, err := compose(ctx, c, log, instance, ready.Load)
+	manager, err := lifecycle.New(lifecycle.Options{Mode: options.StartupMode, InstanceID: instance, LeaseTTL: options.LeaseTTL, StartupTimeout: options.StartupTimeout, Now: options.Now})
 	if err != nil {
 		return err
 	}
-	defer cleanup()
+	if err = saveStartupRecord(lock, manager); err != nil {
+		return err
+	}
+	runCtx, cancelRun := context.WithCancel(ctx)
+	defer cancelRun()
+	isReady := func() bool { return ready.Load() && manager.Ready() }
+	handler, cleanup, err := compose(runCtx, c, log, instance, isReady, manager)
+	if err != nil {
+		return err
+	}
+	server := &http.Server{ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 32 << 10, BaseContext: func(net.Listener) context.Context { return runCtx }}
+	closeAll := cleanup
+	defer func() {
+		ready.Store(false)
+		manager.BeginDrain("shutdown")
+		cancelRun()
+		lockOwned = false
+		if err := finishServer(server, closeAll, lock, manager, options.ShutdownTimeout, options.BeforeCleanup); err != nil {
+			result = errors.Join(result, err)
+		} else {
+			log.Info("server stopped", "instanceId", instance)
+		}
+	}()
 	var web http.Handler
 	if c.WebRoot != "" {
 		root, err := os.OpenRoot(c.WebRoot)
 		if err != nil {
 			return errors.New("cannot open Web artifact directory")
 		}
-		defer root.Close()
+		previous := closeAll
+		closeAll = func() { previous(); _ = root.Close() }
 		web = http.FileServerFS(root.FS())
 	}
 	router := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -76,8 +115,11 @@ func Serve(ctx context.Context, c config.Config, log *slog.Logger) error {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		web.ServeHTTP(w, r)
 	})
+	server.Handler = router
+	if err = manager.Activate(); err != nil {
+		return err
+	}
 	ready.Store(true)
-	server := &http.Server{Handler: router, ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 32 << 10}
 	done := make(chan error, 1)
 	go func() {
 		if c.TLSCert != "" {
@@ -86,21 +128,22 @@ func Serve(ctx context.Context, c config.Config, log *slog.Logger) error {
 			done <- server.Serve(listener)
 		}
 	}()
-	log.Info("server ready", "instanceId", instance)
-	select {
-	case err = <-done:
-		if !errors.Is(err, http.ErrServerClosed) {
-			return err
+	log.Info("server ready", "instanceId", instance, "startupMode", manager.Status().StartupMode)
+	tick := time.NewTicker(20 * time.Millisecond)
+	defer tick.Stop()
+	for {
+		select {
+		case err = <-done:
+			if !errors.Is(err, http.ErrServerClosed) {
+				return err
+			}
+			return nil
+		case <-ctx.Done():
+			return nil
+		case <-manager.Done():
+			return nil
+		case <-tick.C:
+			manager.Tick()
 		}
-	case <-ctx.Done():
 	}
-	ready.Store(false)
-	shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := server.Shutdown(shutdown); err != nil {
-		server.Close()
-		return errors.New("server shutdown timed out")
-	}
-	log.Info("server stopped")
-	return nil
 }
