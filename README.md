@@ -38,15 +38,15 @@ MusicFS 的 Go 后端服务。当前已落地 Local Files 扫描、SQLite 音乐
 
 ## 开源项目参考
 
-在线音乐平台插件可参考以下开源项目的接口与实现。核查日期：2026-10-09；当前仅列为实现参考，尚未引入这些项目的代码或运行时依赖，也未完成平台账号与播放能力联调。
+在线音乐平台参考在2026-10-10重新核查，固定版本、指定文件、官方文档与匿名实测分列在[平台能力调查](docs/platform-capabilities.md)和[验证记录](docs/validation/platform-research.md)。下列项目不作为隐式运行依赖；采用Go独立适配时仍需分别核对代码来源和实际能力，账号及完整音频不能由资料查询成功推定。
 
 | 平台 | 开源项目及许可证 | 计划参考内容 | 当前边界 |
 | --- | --- | --- | --- |
-| 网易云音乐 | [NeteaseCloudMusicApiEnhanced/api-enhanced](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced)，[MIT](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced/blob/main/LICENSE) | 搜索、歌曲元数据、歌单分页、推荐和账号上下文的请求 / 响应结构 | 按实际授权和接口验证结果开放能力；不因参考项目存在某接口便承诺 MusicFS 支持 |
-| QQ 音乐 | [jsososo/QQMusicApi](https://github.com/jsososo/QQMusicApi)，[GPL-3.0](https://github.com/jsososo/QQMusicApi/blob/master/LICENSE) | 接口组织、搜索 / 歌单解析、分页和账号 Cookie 作用范围 | 先作接口参考；复制、修改或作为运行依赖前核对目标版本许可和交付要求 |
-| Apple Music | [zachomedia/apple-music-webplayer](https://github.com/zachomedia/apple-music-webplayer)，[MIT](https://github.com/zachomedia/apple-music-webplayer/blob/master/LICENSE) | MusicKit JS 授权、音乐目录 / 资料库访问及浏览器播放器交互 | 这是 Web 播放器示例，不是 Go 音频流 SDK；其代码不能证明 Server 可获得或转码完整音乐裸流 |
+| 网易云音乐 | [api-enhanced](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced/tree/2db6684453297ee86dec0492842f2320b08182d9)，[MIT](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced/blob/2db6684453297ee86dec0492842f2320b08182d9/LICENSE) | `v4.41.1` / `2db6684453297ee86dec0492842f2320b08182d9`；搜索、详情、公开推荐及歌单字段 | 只为实际通过的能力宣告支持；不采用unblock或其他来源补解锁分支 |
+| QQ 音乐 | [QQMusicApi](https://github.com/jsososo/QQMusicApi/tree/13b08afd3180cc74d76fff208956b77a560abd22)，[GPL-3.0](https://github.com/jsososo/QQMusicApi/blob/13b08afd3180cc74d76fff208956b77a560abd22/LICENSE) | `13b08afd3180cc74d76fff208956b77a560abd22`；历史接口结构、ID和账号范围调查 | 不复制其源码，不引入运行服务；旧接口每项重新验收，账号Cookie不隐式共享 |
+| Apple Music | [apple-music-webplayer](https://github.com/zachomedia/apple-music-webplayer/tree/87dbad9984691b927e5c13ca53006372a4257cdd)，[MIT](https://github.com/zachomedia/apple-music-webplayer/blob/87dbad9984691b927e5c13ca53006372a4257cdd/LICENSE) | `87dbad9984691b927e5c13ca53006372a4257cdd`；MusicKit授权与浏览器播放器分工 | 不是Go音频流SDK；实际能力以Apple官方API/MusicKit契约及授权实测为准 |
 
-上述仓库页面在核查时可访问且未显示归档标记；持续维护状态和具体接口的现网可用性需在接入时重新验证。每个平台实际采用参考内容时，补充准确 commit / tag、所参考文件、采用方式、验证结果及必要的署名 / 许可证记录。仅列出仓库名称不能代替依赖和代码来源记录。
+核查时三个仓库均未归档；QQ与Apple标签查询为空，未将其package版本伪称发布tag。未归档不等于持续维护，一次匿名成功不代表接口稳定。调查与生产验收分开记录，参考项目许可也不等于平台内容或账号权限。
 
 Apple Music 的资料接口与播放分别核对 [Apple Music API](https://developer.apple.com/documentation/applemusicapi) 和 [MusicKit 官方文档](https://developer.apple.com/musickit/)；完整音乐播放按官方播放器和用户授权能力单独适配，不将 catalog / preview 地址等同于可经 Server DSP 的整曲资源。插件分阶段步骤见[插件实现计划](docs/implementation/plugins.md)。
 

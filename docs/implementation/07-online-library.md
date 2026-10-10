@@ -1,6 +1,6 @@
 # P7：在线 Provider、推荐、歌单与跨来源恢复
 
-状态：待实现；依赖 P2/P3，处理输出依赖 P4，自动匹配/时间证据依赖 P5。返回[实施入口](../implementation.md)。逐平台、逐能力验收，不要求网易云、QQ 音乐和 Apple Music 同时可用才交付本地播放。
+状态：S-P7-01平台调查已完成，见[能力调查](../platform-capabilities.md)与[实测记录](../validation/platform-research.md)；其他步骤实施中，完成情况以[实施记录](../validation/progress.md)为准。依赖P2/P3，处理输出依赖P4，匹配与时间证据依赖P5。返回[实施入口](../implementation.md)。逐平台、逐能力验收，不要求网易云、QQ音乐和Apple Music同时可用才交付本地播放。
 
 ## 1. 模块与研究产物
 
