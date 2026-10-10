@@ -1,6 +1,6 @@
 # MusicFS Server 实施文档
 
-状态：2026-10-10。本地扫描与文件通知、NCM、YAML配置、P5识别、P6内容与受限写回已实现；P7已有匿名在线资料、推荐、远程同步、个人歌单及人工时间对齐恢复，P8已有安装制品、资源基线、离线备份恢复和Server生命周期协议。持久处理输出缓存及有界扫描重试也已补齐。各步骤完成范围与外部验收边界见[逐项文档核对](validation/documentation-audit.md)和[实施记录](validation/progress.md)；本轮Windows/Linux检查、补跑、Edge十项及干净制品的实际结果集中在[最终联合验收](validation/final-validation.md)。后续已交付[Web所需查询与个人接口](web-ui-api-gaps.md)、[插件动态管理和配置](implementation/plugin-management.md)，增量证据见[管理验收](validation/plugin-management.md)；前述联合验收保留原阶段结果，本轮最终回归另记。桌面Client不在本轮范围。真实平台账号、在线完整音频、未测部署环境不因接口存在而视为可用。
+状态：2026-10-10。本地扫描与文件通知、NCM、YAML配置、P5识别、P6内容与受限写回已实现；P7已有在线资料、推荐、远程同步、个人歌单及人工时间对齐恢复，P8已有安装制品、资源基线、离线备份恢复和Server生命周期协议。持久处理输出缓存及有界扫描重试也已补齐。后续已交付[Web所需查询与个人接口](web-ui-api-gaps.md)、[插件动态管理和配置](implementation/plugin-management.md)，本轮证据见[管理验收](validation/plugin-management.md)。原阶段的Windows/Linux、Edge十项及干净制品结果保留在[历史联合验收](validation/final-validation.md)；桌面Client不在本轮范围。真实平台账号、在线完整音频和未测部署环境不能据接口存在认定可用。
 
 ## 1. 范围与导航
 
@@ -20,7 +20,7 @@
 | P7 | [在线来源与歌单](implementation/07-online-library.md) | 平台适配、推荐、快照同步、隐藏、有限恢复 |
 | P8 | [交付与验收](implementation/08-release.md) | 构建制品、部署、恢复、兼容矩阵与验收记录 |
 | 插件专题 | [插件实现步骤](implementation/plugins.md) | 各阶段插件协议、进程、适配器、测试及参考来源 |
-| 配置增量 | [YAML 配置](configuration.md) | 严格校验、显式插件/实例、修订与原子写入；管理操作保存后由Manager排空／重建并确认应用，配置基础见[配置验收](validation/configuration.md) |
+| 配置增量 | [YAML 配置](configuration.md) | 严格校验、显式插件/实例、修订与原子写入已实现；保存后仍需应用/重启，见[配置验收](validation/configuration.md) |
 | 管理补充 | [插件管理](implementation/plugin-management.md) | HTTP状态／配置、平滑停用、强制停止、恢复与SSE能力通知已实现；管理CLI仍待实施 |
 
 ## 2. 实施规则与完成记录

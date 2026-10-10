@@ -2,9 +2,7 @@
 
 平台账号后续增量见[登录与客户端接口](platform-login.md)：三平台登录适配及 Web 入口已接入，网易/QQ 二维码创建已实测，完整用户授权仍待验收。下文长期架构和原阶段状态不等于该增量已通过全部验收。
 
-状态：长期架构与实现约束；2026-10-10。当前已实现本地扫描与受限读取、原流/处理/NCM播放、资产识别与人工关联、内容刮削和受限写回、匿名在线资料与歌单、处理输出缓存、备份部署及Server生命周期。逐项功能、所测环境和限制见[文档核对](validation/documentation-audit.md)与[实施记录](validation/progress.md)；插件动态启停与管理 HTTP 已由后续增量实现；平台账号以上方专项说明为准，在线完整音频不在本轮增量交付范围，本文全部长期设计也不因此视为完成。跨端行为、公共API与事件契约以[总体架构](../../docs/architecture.md)为准；Server在本仓库`docs/contracts`维护OpenAPI与JSON Schema，不在内部设计中另立一套接口。
-
-本轮 HTTP 增量还提供完整本地查询、在线四类资料与详情、个人资料／收藏／最近播放、来源引用批量展示；接口和页面接入边界见[交付对照](web-ui-api-gaps.md)。Web 本轮仅新增能力变更订阅和已有来源列表刷新。
+状态：长期架构与实现约束；2026-10-10。当前已实现本地扫描与受限读取、原流/处理/NCM播放、资产识别与人工关联、内容刮削和受限写回、在线资料与歌单、处理输出缓存、备份部署、Server生命周期，以及插件动态启停与配置管理。逐项功能、所测环境和限制见[实施记录](validation/progress.md)；平台账号增量以上方专项说明为准，在线完整音频与其他长期设计不能因此视为完成。跨端行为、公共API与事件契约以[总体架构](../../docs/architecture.md)为准；Server在本仓库`docs/contracts`维护OpenAPI与JSON Schema，不在内部设计中另立一套接口。
 
 ## 1. 范围与模块
 
@@ -92,7 +90,7 @@ TimelineEvidence 单独记录跨资产映射、有效区间及验证版本，纳
 
 统一插件管理器区分插件级总开关与角色实例开关，同时启用且运行就绪才能接收新工作。默认平滑停用立即关闭新任务／新播放准入，已有播放和执行中任务凭原租约完成后停止；显式 force 取消后等待真实资源清理。禁用保留库、账号引用、人工结果与媒体文件，重新启用不恢复已被单独禁用的实例。期望开关、运行状态、活动租约和配置应用修订分别报告；详见[插件管理](implementation/plugin-management.md)。
 
-Server及插件实例配置已统一为YAML，启动时读取显式插件/实例双层开关。配置读写服务按修订校验并原子更新同一份YAML，SQLite仅记录操作与恢复事实，不另存权威开关；HTTP保存返回202和操作编号，Manager完成排空／重建后才确认应用。SSE `capabilities.changed` 通知客户端重新读取授权能力。覆盖、严格解析、路径脱敏、恢复与限制见[配置说明](configuration.md)；旧JSON配置不兼容。
+Server及插件实例配置使用YAML。配置读写服务按修订校验并原子更新同一文件，SQLite仅记录操作与恢复事实，不另存权威开关；HTTP保存返回202和操作编号，Manager完成排空／重建后才确认应用。SSE `capabilities.changed` 通知客户端重新读取授权能力。严格解析、路径脱敏、写入和恢复边界见[配置说明](configuration.md)；旧JSON配置不兼容。
 
 manifest 描述 id、version、protocolVersion、roles、能力、配置 schema 和权限。请求带 requestId、instanceRef、可选 accountRef、deadline、cursor 与取消令牌；账号只能属于本次用户及角色实例。分页返回 nextCursor 和可用快照版本；错误含 AUTH_REQUIRED、ACCESS_DENIED、NOT_FOUND、RATE_LIMITED、TEMPORARY_FAILURE、UNSUPPORTED、UNAVAILABLE、retryAfter 及可重试性，不包含密钥。
 
