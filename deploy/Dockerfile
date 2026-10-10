@@ -9,7 +9,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 COPY --chmod=0555 bin/ /opt/musicfs/bin/
 COPY --chmod=0444 LICENSE release.json SHA256SUMS /opt/musicfs/
 COPY --chown=10001:10001 licenses/ /opt/musicfs/licenses/
-COPY --chown=10001:10001 docs/ /opt/musicfs/docs/
 USER 10001:10001
 WORKDIR /opt/musicfs
 ENV MUSICFS_HEALTH_URL=https://localhost:8443/api/v1/health/ready

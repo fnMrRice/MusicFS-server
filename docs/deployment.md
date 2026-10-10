@@ -17,6 +17,8 @@ sh scripts/release.sh --os linux --output ./build/releases/linux-amd64 --web-roo
 
 Web 先在独立仓库按自己的工具链构建。`--web-root` 可省略；只复制静态制品，拒绝隐藏文件、链接、源码映射和超限文件，不复制 Web 源码或 Git。制品中的 `bin` 包含八个程序；`release.json` 记录源提交、脏树状态、平台、版本/协议和实际编译依赖，`SHA256SUMS` 覆盖所有交付文件。存在 `.incomplete` 表示失败，不可当成完成的制品。校验清单证明文件一致性，不代表有发布者签名。
 
+安装包不包含 `docs/` 目录，运行、配置和协议文档保留在对应版本的源码仓库中。
+
 配置示例自动改为 `../bin`，Windows 保留 `.exe`；全部插件默认关闭，音乐根为待替换的 `../music`。复制为 `configs/server.yaml`，配置实际音乐路径、需要的插件与实例双层开关，然后创建管理员令牌并启动：
 
 ```powershell
@@ -47,7 +49,7 @@ Chromaprint `fpcalc` 1.6.1 是默认禁用的指纹功能所需外部工具，�
 docker build -f deploy/Dockerfile -t musicfs-server:local build/releases/linux-amd64
 ```
 
-Dockerfile 默认基础镜像为 `debian:bookworm-slim`；正式使用前将 `BASE_IMAGE` 固定到审核的镜像摘要，记录 FFmpeg 的实际包版本/配置并运行同样的音频验收。本仓库未拉取或验证该镜像。镜像只复制程序、文档和许可证，不复制开发库、音乐、测试目录或凭据；不包含 Web，需要时把单独 Web 制品以只读卷挂载，并设置 `webRoot`。受限用户为 UID/GID 10001，Docker 的 USER/HEALTHCHECK/停止信号语义参考[官方文档](https://docs.docker.com/reference/dockerfile/)。
+Dockerfile 默认基础镜像为 `debian:bookworm-slim`；正式使用前将 `BASE_IMAGE` 固定到审核的镜像摘要，记录 FFmpeg 的实际包版本/配置并运行同样的音频验收。本仓库未拉取或验证该镜像。镜像只复制程序、发布清单和许可证，不复制开发库、音乐、测试目录或凭据；不包含 Web，需要时把单独 Web 制品以只读卷挂载，并设置 `webRoot`。受限用户为 UID/GID 10001，Docker 的 USER/HEALTHCHECK/停止信号语义参考[官方文档](https://docs.docker.com/reference/dockerfile/)。
 
 把 `deploy/compose.example.yaml` 复制到独立安装目录。创建 `configuration/server.yaml`（取自容器 YAML 示例）、`music` 和 `tls` 目录；配置目录须允许 10001 写入，私钥只授予服务用户读取。`musicfs.env` 由管理员在该安装目录创建，只包含自己的 `MUSICFS_ADMIN_TOKEN`，不要加入 Git。TLS 证书须匹配浏览器使用的名字；示例健康检查使用 `localhost`，其证书也须包含该名称，CA 放 `tls/ca.pem`。端口仅发布到宿主 loopback。
 
