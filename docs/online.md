@@ -46,7 +46,7 @@ QQ 和 Apple 对应 `musicfs.qqmusic`、`musicfs.applemusic`。平台由程序�
 
 曲目 `metadataDigest` 是规范元数据的摘要，不能当作音频资产版本、文件 SHA-512 或识别证据。`playbackAvailability=unknown`，`sourceUrl` 是固定平台资料页。接口不返回 SourceAsset、streamUrl、请求私密头或播放SDK句柄，不把目录preview当作完整裸流。
 
-歌单最多10000条，按这次观测的 `position` 保留顺序和重复曲目。`complete=true` 仅说明返回数与本次申报总数相等；`consistency=unversioned` 明确没有远端固定版本。公开推荐和歌单查询不会导入个人曲库、创建媒体资产或据缺失条目删除本地数据；显式导入和持久同步属于独立操作。
+歌单最多10000条，按这次观测的 `position` 保留顺序和重复曲目。`complete=true` 仅说明返回数与本次申报总数相等；`consistency=unversioned` 明确没有远端固定版本。公开推荐和歌单查询不会导入个人曲库、创建媒体资产或据缺失条目删除本地数据；[显式导入和持久同步](remote-playlists.md)使用独立操作。
 
 ## 资源与失败边界
 

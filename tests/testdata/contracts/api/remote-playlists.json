@@ -1,0 +1,69 @@
+[
+  {
+    "name": "remote-playlist-explicit-anonymous",
+    "schema": "ImportRemotePlaylistRequest",
+    "valid": true,
+    "value": {
+      "instanceId": "net",
+      "accountId": "",
+      "externalId": "91"
+    }
+  },
+  {
+    "name": "remote-playlist-no-account-impersonation",
+    "schema": "ImportRemotePlaylistRequest",
+    "valid": false,
+    "value": {
+      "instanceId": "net",
+      "accountId": "private",
+      "externalId": "91"
+    }
+  },
+  {
+    "name": "remote-playlist-no-upstream-url",
+    "schema": "ImportRemotePlaylistRequest",
+    "valid": false,
+    "value": {
+      "instanceId": "net",
+      "accountId": "",
+      "externalId": "https://private.invalid/list"
+    }
+  },
+  {
+    "name": "remote-playlist-no-config-injection",
+    "schema": "ImportRemotePlaylistRequest",
+    "valid": false,
+    "value": {
+      "instanceId": "net",
+      "accountId": "",
+      "externalId": "91",
+      "configRevision": "forged"
+    }
+  },
+  {
+    "name": "remote-playlist-sync-explicit-revision",
+    "schema": "RemotePlaylistSyncRequest",
+    "valid": false,
+    "value": {}
+  },
+  {
+    "name": "remote-playlist-sync-positive-revision",
+    "schema": "RemotePlaylistSyncRequest",
+    "valid": true,
+    "value": {
+      "expectedBindingRevision": 1
+    }
+  },
+  {
+    "name": "remote-source-no-audio",
+    "schema": "RemoteSource",
+    "valid": false,
+    "value": {
+      "remoteSourceId": "source",
+      "instanceId": "net",
+      "accountId": "",
+      "externalId": "42",
+      "playbackAvailability": "available"
+    }
+  }
+]

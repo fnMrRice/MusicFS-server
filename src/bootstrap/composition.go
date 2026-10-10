@@ -112,11 +112,19 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	}
 	closeBeforeRecommendations := cleanup
 	cleanup = func() { _ = recommendations.Close(); closeBeforeRecommendations() }
+	remotePlaylists, err := configureRemotePlaylists(ctx, store, online)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	closeBeforeRemotePlaylists := cleanup
+	cleanup = func() { remotePlaylists.Close(); closeBeforeRemotePlaylists() }
 	sessions := auth.New(store, c.AdminToken, c.AllowedOrigins, time.Duration(c.SessionTTLSeconds)*time.Second)
 	handler := api.New(api.Options{Auth: sessions, InstanceID: instance, Ready: ready, SecureCookie: c.TLSCert != "", Logger: log})
 	handler.RegisterLibrary(lib)
 	handler.RegisterOnline(online)
 	handler.RegisterRecommendations(recommendations)
+	handler.RegisterRemotePlaylists(remotePlaylists)
 	handler.RegisterHashing(hashes)
 	handler.RegisterFingerprinting(fingerprints)
 	handler.RegisterMedia(content)

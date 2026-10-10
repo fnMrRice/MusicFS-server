@@ -118,6 +118,14 @@ Provider 根可选 `writeBack` 为 `{enabled,available,formats,fields,replacemen
 
 来源错误是每项 `error:{code,message,retryAfter}`，整体200仍须逐项检查；从未成功时items为空且时间为空，刷新失败保留上次成功项目与UTC时间并标stale。refresh不能绕过失败冷却。owner/实例/账号/配置修订/limit共同隔离缓存，重启清空内存；没有声称账号登录或个性化推荐已实现。限额、响应语义和验证范围见[推荐说明](../recommendations.md)与[接口验收](../validation/recommendations-http.md)。
 
+### S-P7-04 远程歌单导入与同步
+
+`POST /remote-playlists` 必填instanceId/accountId/externalId，账号显式空匿名，返回201 `{playlist,merged}`；只持久导入意图，不访问远端。`GET /remote-playlists` 返回 `{items,nextAfter}`，limit1—100默认50，GET `/{id}` 返回绑定、当前本地修订与状态；其他所有者与不存在均404，停用后历史仍能读取。
+
+`POST /remote-playlists/{id}/sync-jobs` 必填expectedBindingRevision并带幂等键，返回202 `{jobId,merged}`；GET `/remote-playlist-sync-jobs/{id}` 读取queued/running/succeeded/failed/cancelled，嵌套error携带本次requestId。POST `/{id}/cancel {}` 自然幂等无key，仍需CSRF。入队、执行及发布均核对范围/配置/代次，失败和取消保留旧快照。
+
+`GET /remote-playlists/{id}/snapshots/{revision}?offset=0&limit=50` 固定本地修订分页。当前consistency恒unversioned、remoteVersion恒null，重复曲目保留不同entryId；首次完整观测缺失仅suspectedRemoved，后续较晚完整观测才确认移除。RemoteSource无Asset，播放能力固定unsupported，metadataDigest不成为音频版本。首版只有已验证网易公开歌单可导入；参数、限额和幂等边界见[操作说明](../remote-playlists.md)与[HTTP验收](../validation/remote-playlists-http.md)。
+
 ### NCM 解密增量
 
 本次沿用既有 `/api/v1` 端点、请求和鉴权规则。播放描述的 `effectiveProcessing` 新增 `{ "type": "ncmDecrypt", "gainDb": 0, "version": "1", "execution": "server" }`。Schema 的 type 原已允许扩展字符串，无需收紧枚举或增加必填字段；客户端可以忽略未知处理项。该项表示外层容器解密，`gainDb: 0` 不代表执行了增益 DSP。后续进入转码管线时再报告独立 `gain` 项；用户未请求衰减时其值也可为 0。

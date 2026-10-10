@@ -27,6 +27,7 @@ MusicFS 的 Go 后端服务。当前已落地 Local Files 扫描、SQLite 音乐
 - [来源专辑与发行](docs/albums.md)：显式有序成员、独立封面、人工锁、修订及按专辑刮削。
 - [派生媒体](docs/derived-media.md)：封面缩略图、完整刮削记录、授权读取与历史备份。
 - [公开推荐](docs/recommendations.md)：按本人在线来源聚合、有限缓存、失败保留与刷新；读取不导入或播放。
+- [远程歌单](docs/remote-playlists.md)：显式导入、保守同步、固定本地快照、待复核缺失与取消；保留重复出现。
 - [内部组件图](docs/diagrams/components.puml)：可编辑的 PlantUML 源码。
 - [跨端架构](../docs/architecture.md)：Server 与客户端共同遵守的协议和行为。
 - [工作约定](AGENTS.md)：文档维护与仓库协作规则。
