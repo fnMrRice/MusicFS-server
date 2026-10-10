@@ -14,7 +14,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/online"
 )
 
-const OnlineRevision = "online-anonymous-v1"
+const OnlineRevision = "online-authenticated-v2"
 
 type OnlineHello struct {
 	Hello
@@ -64,10 +64,7 @@ func OnlinePluginID(platform string) string {
 }
 
 func DescribeOnline(platform string) OnlineDescriptor {
-	auth := "anonymous"
-	if platform == online.AppleMusic {
-		auth = "developerTokenRequired"
-	}
+	auth := "platformAccountRequired"
 	return OnlineDescriptor{
 		Platform: platform, Authentication: auth, Capabilities: online.Capabilities(platform), SchemaRevision: OnlineRevision,
 		ConfigSchema: map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{}}, ConfigDefaults: map[string]any{},

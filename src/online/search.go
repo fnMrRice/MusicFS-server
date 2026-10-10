@@ -21,7 +21,7 @@ type searchCursor struct {
 	Version string `json:"v,omitempty"`
 }
 
-func (c *Client) Search(ctx context.Context, request SearchRequest) (SearchPage, error) {
+func (c *Client) search(ctx context.Context, request SearchRequest) (SearchPage, error) {
 	if request.Kind == "" {
 		request.Kind = "tracks"
 	}
@@ -66,11 +66,13 @@ func (c *Client) Search(ctx context.Context, request SearchRequest) (SearchPage,
 func (c *Client) cursorBinding(r SearchRequest) string {
 	return digest(struct {
 		Platform string
+		Account  string
+		Revision string
 		Scope    Scope
 		Query    string
 		Limit    int
 		Kind     string
-	}{c.platform, c.scope, r.Query, r.Limit, r.Kind})
+	}{c.platform, c.account.secret.AccountID, c.account.view.Revision, c.scope, r.Query, r.Limit, r.Kind})
 }
 
 func (c *Client) readCursor(r SearchRequest) (int, error) {

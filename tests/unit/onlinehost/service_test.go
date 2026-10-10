@@ -50,7 +50,7 @@ func TestOnlineOwnerCapacityAndCancellation(t *testing.T) {
 	if _, err := s.Runtime(ctx, "other", "public", ""); !errors.As(err, &detail) || detail.Code != "NOT_FOUND" {
 		t.Fatal("owner bypass", err)
 	}
-	if _, err := s.Runtime(ctx, "owner", "public", "account"); !errors.As(err, &detail) || detail.Code != "UNSUPPORTED" {
+	if _, err := s.Runtime(ctx, "owner", "public", "account"); !errors.As(err, &detail) || detail.Code != "ACCESS_DENIED" {
 		t.Fatal("account accepted", err)
 	}
 	cancel()
@@ -76,4 +76,8 @@ func TestOnlineTypedNilAndPrivateDescriptors(t *testing.T) {
 	if !errors.As(err, &detail) || detail.Code != "SOURCE_OFFLINE" {
 		t.Fatal("typed nil provider accepted", err)
 	}
+}
+
+func (p *blocked) PlatformSession(context.Context) (online.AccountView, error) {
+	return online.AccountView{State: "signedIn", AccountID: "12345", Revision: "fixture-generation"}, nil
 }

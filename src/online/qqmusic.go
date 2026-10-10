@@ -3,8 +3,6 @@ package online
 import (
 	"context"
 	"html"
-	"net/url"
-	"strconv"
 )
 
 type qqSong struct {
@@ -16,43 +14,54 @@ type qqSong struct {
 }
 
 func (c *Client) qqSearch(ctx context.Context, request SearchRequest, offset int) ([]Track, bool, error) {
+	if err := c.admit(ctx); err != nil {
+		return nil, false, err
+	}
 	pageNumber := offset/request.Limit + 1
-	var response struct {
+	var result struct {
 		Code *int `json:"code"`
-		Data *struct {
+		Body *struct {
 			Song *struct {
-				List        []qqSong `json:"list"`
-				CurrentPage *int     `json:"curpage"`
-				Total       *int64   `json:"totalnum"`
+				List []struct {
+					MID      string   `json:"mid"`
+					Name     string   `json:"name"`
+					Singer   []artist `json:"singer"`
+					Album    album    `json:"album"`
+					Interval *int64   `json:"interval"`
+				} `json:"list"`
 			} `json:"song"`
-		} `json:"data"`
+		} `json:"body"`
+		Meta *struct {
+			CurrentPage *int   `json:"curpage"`
+			Total       *int64 `json:"sum"`
+		} `json:"meta"`
 	}
-	query := url.Values{"format": {"json"}, "n": {strconv.Itoa(request.Limit)}, "p": {strconv.Itoa(pageNumber)}, "w": {request.Query}, "cr": {"1"}, "g_tk": {"5381"}, "t": {"0"}}
-	if err := c.get(ctx, "/soso/fcgi-bin/client_search_cp", query, &response); err != nil {
+	// Desktop protocol reference: jsososo/QQMusicApi issue 160.
+	err := c.qqAccountRPC(ctx, &c.account.secret, "music.search.SearchCgiService", "DoSearchForQQMusicDesktop",
+		map[string]any{"num_per_page": request.Limit, "page_num": pageNumber, "query": request.Query, "search_type": 0}, &result)
+	if err != nil {
 		return nil, false, err
 	}
-	if response.Code == nil {
+	if result.Code == nil {
 		return nil, false, upstreamInvalid()
 	}
-	if err := c.businessError(*response.Code, 0); err != nil {
+	if err = c.businessError(*result.Code, 0); err != nil {
 		return nil, false, err
 	}
-	if response.Data == nil || response.Data.Song == nil {
+	if result.Body == nil || result.Body.Song == nil || result.Meta == nil || result.Meta.Total == nil || *result.Meta.Total < 0 ||
+		result.Meta.CurrentPage == nil || *result.Meta.CurrentPage != pageNumber || len(result.Body.Song.List) > request.Limit {
 		return nil, false, upstreamInvalid()
 	}
-	song := response.Data.Song
-	if song.Total == nil || *song.Total < 0 || song.CurrentPage == nil || *song.CurrentPage != pageNumber || len(song.List) > request.Limit {
-		return nil, false, upstreamInvalid()
-	}
-	tracks := make([]Track, 0, len(song.List))
-	for _, source := range song.List {
-		track, err := source.track()
+	tracks := make([]Track, 0, len(result.Body.Song.List))
+	for _, source := range result.Body.Song.List {
+		song := qqSong{MID: source.MID, Name: source.Name, Singer: source.Singer, Album: source.Album.Name, Interval: source.Interval}
+		track, err := song.track()
 		if err != nil {
 			return nil, false, err
 		}
 		tracks = append(tracks, track)
 	}
-	return tracks, int64(offset+len(tracks)) < *song.Total, nil
+	return tracks, int64(offset+len(tracks)) < *result.Meta.Total, nil
 }
 
 func (s qqSong) track() (Track, error) {

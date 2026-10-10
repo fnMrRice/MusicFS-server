@@ -57,12 +57,8 @@ func (s *Service) Lookup(ctx context.Context, owner string, refs []playlists.Sou
 	groups := map[string][]int{}
 	for i, item := range page.Items {
 		if item.RemoteSource != nil && item.ErrorCode == nil {
-			if item.RemoteSource.AccountID != "" {
-				code := "UNSUPPORTED"
-				page.Items[i].ErrorCode = &code
-				continue
-			}
-			groups[item.RemoteSource.InstanceID] = append(groups[item.RemoteSource.InstanceID], i)
+			key := item.RemoteSource.InstanceID + "\x00" + item.RemoteSource.AccountID
+			groups[key] = append(groups[key], i)
 		}
 	}
 	instances := []string{}
@@ -81,7 +77,8 @@ func (s *Service) Lookup(ctx context.Context, owner string, refs []playlists.Sou
 		if s.online == nil {
 			e = domain.Fail("SOURCE_OFFLINE", "Online service is unavailable")
 		} else {
-			batch, e = s.online.MetadataBatch(ctx, owner, id, ids)
+			ref := page.Items[indices[0]].RemoteSource
+			batch, e = s.online.MetadataBatchForAccount(ctx, owner, ref.InstanceID, ref.AccountID, ids)
 		}
 		if e != nil {
 			if ctx.Err() != nil {

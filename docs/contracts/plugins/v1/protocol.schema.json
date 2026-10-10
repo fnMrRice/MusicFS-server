@@ -1146,7 +1146,7 @@
     "ErrorData": {
       "type": "object", "required": ["code", "retryable"],
       "properties": {
-        "code": {"enum": ["INVALID_ARGUMENT", "AUTH_REQUIRED", "ACCESS_DENIED", "NOT_FOUND", "UNSUPPORTED", "SOURCE_OFFLINE", "RESOURCE_CHANGED", "RATE_LIMITED", "TEMPORARY_FAILURE", "CANCELED", "PROTOCOL_MISMATCH", "CONFLICT"]},
+        "code": {"enum": ["INVALID_ARGUMENT", "AUTH_REQUIRED", "PLATFORM_AUTH_REQUIRED", "ACCESS_DENIED", "NOT_FOUND", "UNSUPPORTED", "SOURCE_OFFLINE", "RESOURCE_CHANGED", "RATE_LIMITED", "TEMPORARY_FAILURE", "CANCELED", "PROTOCOL_MISMATCH", "CONFLICT"]},
         "retryable": {"type": "boolean"}, "retryAfterMs": {"type": "integer", "minimum": 0}
       }
     },

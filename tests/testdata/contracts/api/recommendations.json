@@ -1,8 +1,118 @@
 [
-  {"name":"recommendations-partial-offline","schema":"Recommendations","valid":true,"value":{"sources":[{"instanceId":"offline","name":"Offline","platform":"netease","accountId":"","items":[],"personalized":false,"nextCursor":null,"stale":false,"lastSuccessAt":null,"expiresAt":null,"error":{"code":"SOURCE_OFFLINE","message":"Source is offline","retryAfter":2}}]}},
-  {"name":"recommendations-not-personalized","schema":"RecommendationSource","valid":false,"value":{"instanceId":"net","name":"Net","platform":"netease","accountId":"","items":[],"personalized":true,"nextCursor":null,"stale":false,"lastSuccessAt":null,"expiresAt":null,"error":null}},
-  {"name":"recommendations-no-account-impersonation","schema":"RecommendationSource","valid":false,"value":{"instanceId":"net","name":"Net","platform":"netease","accountId":"other","items":[],"personalized":false,"nextCursor":null,"stale":false,"lastSuccessAt":null,"expiresAt":null,"error":null}},
-  {"name":"recommendations-no-invented-pagination","schema":"RecommendationSource","valid":false,"value":{"instanceId":"net","name":"Net","platform":"netease","accountId":"","items":[],"personalized":false,"nextCursor":"next","stale":false,"lastSuccessAt":null,"expiresAt":null,"error":null}},
-  {"name":"recommendations-utc-success","schema":"RecommendationSource","valid":true,"value":{"instanceId":"net","name":"Net","platform":"netease","accountId":"","items":[],"personalized":false,"nextCursor":null,"stale":false,"lastSuccessAt":"2026-10-10T05:00:00Z","expiresAt":"2026-10-10T05:02:00Z","error":null}},
-  {"name":"recommendations-local-time-rejected","schema":"RecommendationSource","valid":false,"value":{"instanceId":"net","name":"Net","platform":"netease","accountId":"","items":[],"personalized":false,"nextCursor":null,"stale":false,"lastSuccessAt":"2026-10-10T13:00:00+08:00","expiresAt":"2026-10-10T13:02:00+08:00","error":null}}
+  {
+    "name": "recommendations-partial-offline",
+    "schema": "Recommendations",
+    "valid": true,
+    "value": {
+      "sources": [
+        {
+          "instanceId": "offline",
+          "name": "Offline",
+          "platform": "netease",
+          "accountId": "",
+          "items": [],
+          "personalized": false,
+          "nextCursor": null,
+          "stale": false,
+          "lastSuccessAt": null,
+          "expiresAt": null,
+          "error": {
+            "code": "SOURCE_OFFLINE",
+            "message": "Source is offline",
+            "retryAfter": 2
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "recommendations-not-personalized",
+    "schema": "RecommendationSource",
+    "valid": false,
+    "value": {
+      "instanceId": "net",
+      "name": "Net",
+      "platform": "netease",
+      "accountId": "",
+      "items": [],
+      "personalized": true,
+      "nextCursor": null,
+      "stale": false,
+      "lastSuccessAt": null,
+      "expiresAt": null,
+      "error": null
+    }
+  },
+  {
+    "name": "recommendations-account-id-validated-by-host",
+    "schema": "RecommendationSource",
+    "valid": true,
+    "value": {
+      "instanceId": "net",
+      "name": "Net",
+      "platform": "netease",
+      "accountId": "other",
+      "items": [],
+      "personalized": false,
+      "nextCursor": null,
+      "stale": false,
+      "lastSuccessAt": null,
+      "expiresAt": null,
+      "error": null
+    }
+  },
+  {
+    "name": "recommendations-no-invented-pagination",
+    "schema": "RecommendationSource",
+    "valid": false,
+    "value": {
+      "instanceId": "net",
+      "name": "Net",
+      "platform": "netease",
+      "accountId": "",
+      "items": [],
+      "personalized": false,
+      "nextCursor": "next",
+      "stale": false,
+      "lastSuccessAt": null,
+      "expiresAt": null,
+      "error": null
+    }
+  },
+  {
+    "name": "recommendations-utc-success",
+    "schema": "RecommendationSource",
+    "valid": true,
+    "value": {
+      "instanceId": "net",
+      "name": "Net",
+      "platform": "netease",
+      "accountId": "",
+      "items": [],
+      "personalized": false,
+      "nextCursor": null,
+      "stale": false,
+      "lastSuccessAt": "2026-10-10T05:00:00Z",
+      "expiresAt": "2026-10-10T05:02:00Z",
+      "error": null
+    }
+  },
+  {
+    "name": "recommendations-local-time-rejected",
+    "schema": "RecommendationSource",
+    "valid": false,
+    "value": {
+      "instanceId": "net",
+      "name": "Net",
+      "platform": "netease",
+      "accountId": "",
+      "items": [],
+      "personalized": false,
+      "nextCursor": null,
+      "stale": false,
+      "lastSuccessAt": "2026-10-10T13:00:00+08:00",
+      "expiresAt": "2026-10-10T13:02:00+08:00",
+      "error": null
+    }
+  }
 ]

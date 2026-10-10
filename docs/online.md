@@ -1,6 +1,6 @@
-# 在线来源的匿名资料接口
+# 在线来源的账号资料接口
 
-S-P7-02 提供三个独立 Go Provider 程序的配置与公开资料接口。后续[平台账号登录增量](platform-login.md)已接入登录控制面及 Web 设置入口，网易/QQ 二维码创建实测通过，真实用户授权仍待验收。本页资料接口继续匿名读取，不自动消费账号凭据；尚无订阅或地区权益验证，也没有经过授权验证的整曲音频资源。
+S-P7-02 提供三个独立 Go Provider 程序的配置与公开资料接口。后续[平台账号登录增量](platform-login.md)已接入登录控制面及 Web 设置入口，网易/QQ 二维码创建实测通过，真实用户授权仍待验收。本页所有业务接口要求已校验的平台账号；网易云使用带会话的客户端 EAPI、QQ 搜索使用桌面 RPC，拒绝匿名回退；尚无订阅或地区权益验证，也没有经过授权验证的整曲音频资源。
 
 ## 配置和实例状态
 
@@ -18,15 +18,15 @@ S-P7-02 提供三个独立 Go Provider 程序的配置与公开资料接口。�
       config: {}
 ```
 
-QQ 和 Apple 对应 `musicfs.qqmusic`、`musicfs.applemusic`。平台由程序身份固定，实例不能通过请求改变平台。配置只接受空 `config`，拒绝上游 URL、代理、任意参数、Cookie、凭据、账号编号、musicRoots 和本地扫描导入选项。路径相对 YAML 所在目录，程序可配置 SHA-256；修改配置重启生效，没有动态启停。三平台合计最多16个在线实例，账号范围固定为空字符串，表示匿名，不表示默认登录用户。
+QQ 和 Apple 对应 `musicfs.qqmusic`、`musicfs.applemusic`。平台由程序身份固定，实例不能通过请求改变平台。配置只接受空 `config`，拒绝上游 URL、代理、任意参数、Cookie、凭据、账号编号、musicRoots 和本地扫描导入选项。路径相对 YAML 所在目录，程序可配置 SHA-256；修改配置重启生效，没有动态启停。三平台合计最多16个在线实例，业务使用对应实例当前已校验的账号；实例列表在未登录/待校验时显示 loginRequired，账号 ID 仅在已校验时返回。
 
-`GET /api/v1/online-instances` 只列出本人配置实例，含 `instanceId/name/pluginId/platform/accountId/availability` 及安全能力/空配置声明。`available` 只表示工作进程已通过校验并仍运行，每项能力另看 `supported`；程序丢失、禁用、摘要或握手错误则为 offline。列表不公开执行路径、运行目录、配置摘要或平台凭据。
+`GET /api/v1/online-instances` 只列出本人配置实例，含 `instanceId/name/pluginId/platform/accountId/availability` 及安全能力/空配置声明。`available` 表示工作进程已通过校验、仍运行且平台账号已校验，每项能力另看 `supported`；程序丢失、禁用、摘要或握手错误则为 offline。列表不公开执行路径、运行目录、配置摘要或平台凭据。
 
 | 平台 | 当前实际范围 | 明确限制 |
 | --- | --- | --- |
-| 网易云 | 匿名曲目／专辑／歌手／歌单四类搜索、批量曲目资料、公开歌单曲目分页、公共推荐第一页和公开歌单条目观测已实测 | 不登录、不读取私人歌单、不解析音频；上游无固定快照版本 |
-| QQ | 匿名搜索适配存在，可返回真实上游结果/失败 | 最近核心验收收到 HTTP 500，因此没有 supported 能力声明；资料、推荐和歌单不支持 |
-| Apple Music | 声明目录需要开发者授权 | 未接入凭据，目录操作返回401 AUTH_REQUIRED；没有 MusicKit/preview/完整音频交付 |
+| 网易云 | 现有四类搜索、资料、推荐与歌单观测已迁移至带账号会话的 EAPI；合成测试通过，待实号验收 | 必须登录；不解析音频，上游无固定快照版本 |
+| QQ | 搜索改用带账号凭据的桌面 RPC；待实号验收 | 必须登录；仍不标为已验证能力，其他资料、推荐和歌单不支持 |
+| Apple Music | MusicKit 登录控制面已接入，待实号验收 | 必须登录；目录查询尚未实现，登录后返回 UNSUPPORTED；没有完整音频交付 |
 
 各次外网验证的具体时间和差异见[核心证据](validation/online-core.md)及[HTTP组合验收](validation/online-http.md)。某次成功不是持续可用承诺，失败也不会被转换成空的成功结果。
 
@@ -62,10 +62,10 @@ QQ 和 Apple 对应 `musicfs.qqmusic`、`musicfs.applemusic`。平台由程序�
 
 ## 资源与失败边界
 
-宿主同时最多4个在线查询，每次最多10秒；超额返回429和秒单位的 `retryAfter/Retry-After`，不创建无界等待。每个工作进程另有2个RPC并发限制，以及复用的每秒一次匿名网络准入。上游429/业务限流会维持冷却，不隐藏重试；调用方应按提示有界重试。断连或取消传递到工作进程请求。
+宿主同时最多4个在线查询，每次最多10秒；超额返回429和秒单位的 `retryAfter/Retry-After`，不创建无界等待。每个工作进程另有2个RPC并发限制，以及复用的每秒一次平台网络准入。上游429/业务限流会维持冷却，不隐藏重试；调用方应按提示有界重试。断连或取消传递到工作进程请求。
 
 网络仅使用程序固定的 HTTPS 主机与路径，校验DNS公网地址、固定已校验目标连接并验证TLS，不跟随重定向、不继承代理/Cookie和账号环境。正式入口不能通过配置或RPC替换测试Transport。程序仍是管理员选择的受信任本地可执行文件，进程生命周期隔离不等于操作系统网络/文件沙箱。
 
-离线为503 SOURCE_OFFLINE，上游异常为503 TEMPORARY_FAILURE，当前未实现能力为415 UNSUPPORTED，Apple目录授权缺失为401 AUTH_REQUIRED。最后一种表示平台授权尚未接入，不能用本地登录凭据替代。公开错误不携带上游原始正文、网络地址参数或账号秘密；已有本地曲库和播放流程保持独立。
+离线为503 SOURCE_OFFLINE，上游异常为503 TEMPORARY_FAILURE，当前未实现能力为415 UNSUPPORTED，平台未登录或待校验为403 PLATFORM_AUTH_REQUIRED；不会退出 MusicFS 会话。公开错误不携带上游原始正文、网络地址参数或账号秘密；已有本地曲库和播放流程保持独立。
 
 按来源聚合读取、部分失败与缓存刷新见[公开推荐](recommendations.md)；该接口同样不隐式导入曲库。公开模型见 [OpenAPI](contracts/openapi.yaml)、[HTTP Schema](contracts/http.schema.json)；独立进程契约见 [online.schema.json](contracts/plugins/v1/online.schema.json)。没有新增Node运行依赖，参考来源及许可核对见[平台调查](platform-capabilities.md)。

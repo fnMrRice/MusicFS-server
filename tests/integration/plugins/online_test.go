@@ -64,6 +64,7 @@ func TestActualOnlineWorkerMappingScopeAndCleanup(t *testing.T) {
 	path := onlineBinary(t, "./tests/testkit/online-worker", "online-fixture")
 	cfg := onlineConfig(t, path, online.Netease)
 	w := onlineStart(t, cfg)
+	loginOnlineFixture(t, w)
 	page, err := w.Search(context.Background(), online.SearchRequest{Query: "fixture", Limit: 1})
 	if err != nil || len(page.Tracks) != 1 || page.Tracks[0].ExternalID != "42" {
 		t.Fatalf("search: %+v %v", page, err)
@@ -104,6 +105,7 @@ func TestActualOnlineWorkerCancellationAndInvalidResults(t *testing.T) {
 	path := onlineBinary(t, "./tests/testkit/online-worker", "online-fixture")
 	cfg := onlineConfig(t, path, online.Netease)
 	w := onlineStart(t, cfg)
+	loginOnlineFixture(t, w)
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	_, err := w.Search(ctx, online.SearchRequest{Query: "slow", Limit: 1})
@@ -139,14 +141,14 @@ func TestActualOnlineEntrypointsAndUnsupportedPlatforms(t *testing.T) {
 			if d := w.Descriptor(); d.Platform != platform || d.Validate(platform) != nil {
 				t.Fatal("descriptor mismatch")
 			}
-			onlineExpect(t, w.Resolve(context.Background(), "42"), "UNSUPPORTED")
+			onlineExpect(t, w.Resolve(context.Background(), "42"), "PLATFORM_AUTH_REQUIRED")
 			if platform == online.AppleMusic {
 				_, err := w.Search(context.Background(), online.SearchRequest{Query: "fixture", Limit: 1})
-				onlineExpect(t, err, "AUTH_REQUIRED")
+				onlineExpect(t, err, "PLATFORM_AUTH_REQUIRED")
 			}
 			if platform == online.QQMusic {
 				_, err := w.Metadata(context.Background(), "SyntheticMID")
-				onlineExpect(t, err, "UNSUPPORTED")
+				onlineExpect(t, err, "PLATFORM_AUTH_REQUIRED")
 			}
 			_ = w.Close()
 			cfg.Platform = online.AppleMusic
@@ -180,5 +182,19 @@ func TestOnlineDisabledAndChecksumRejectBeforeStart(t *testing.T) {
 	cfg = onlineConfig(t, path, online.QQMusic)
 	w := onlineStart(t, cfg)
 	_, err := w.Search(context.Background(), online.SearchRequest{Query: "fixture", Limit: 1})
-	onlineExpect(t, err, "TEMPORARY_FAILURE")
+	onlineExpect(t, err, "PLATFORM_AUTH_REQUIRED")
+}
+
+func loginOnlineFixture(t *testing.T, w *pluginhost.OnlineWorker) {
+	t.Helper()
+	begin, err := w.PlatformAccount(context.Background(), online.AccountRequest{Action: "begin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(3100 * time.Millisecond)
+	result, err := w.PlatformAccount(context.Background(), online.AccountRequest{Action: "poll", LoginID: begin.LoginID})
+	if err != nil || result.State != "signedIn" {
+		t.Fatal("fixture login", result.State, err)
+	}
+	time.Sleep(1010 * time.Millisecond)
 }

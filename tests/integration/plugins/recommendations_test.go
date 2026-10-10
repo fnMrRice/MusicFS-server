@@ -12,6 +12,7 @@ func TestRecommendationsActualWorkerCacheAndFailureState(t *testing.T) {
 	path := onlineBinary(t, "./tests/testkit/online-worker", "online-fixture")
 	cfg := onlineConfig(t, path, online.Netease)
 	w := onlineStart(t, cfg)
+	loginOnlineFixture(t, w)
 	s, err := recommendations.New([]recommendations.Runtime{{Owner: cfg.UserID, InstanceID: cfg.InstanceID, Platform: cfg.Platform, ConfigRevision: "anonymous-v1", Provider: w}}, recommendations.Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -39,7 +40,7 @@ func TestRecommendationsActualWorkerCacheAndFailureState(t *testing.T) {
 		t.Fatal(err)
 	}
 	again, err = s.List(context.Background(), cfg.UserID, request)
-	if err != nil || again.Sources[0].Error.Code != "RATE_LIMITED" || again.Sources[0].Error.RetryAfter == nil {
+	if err != nil || again.Sources[0].Error.Code != "SOURCE_OFFLINE" || len(again.Sources[0].Items) != 0 {
 		t.Fatal("explicit refresh ignored the shared cooldown")
 	}
 	if err = s.Close(); err != nil {

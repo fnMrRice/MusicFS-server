@@ -61,7 +61,7 @@ func decodeEAPI(t *testing.T, r *http.Request) map[string]any {
 func TestNeteaseAccountLifecycleAndPrivateSnapshot(t *testing.T) {
 	t.Parallel()
 	poll := 0
-	c := scoped(t, online.Netease, roundTrip(func(r *http.Request) (*http.Response, error) {
+	c := anonymousScoped(t, online.Netease, roundTrip(func(r *http.Request) (*http.Response, error) {
 		data := decodeEAPI(t, r)
 		switch r.URL.Path {
 		case "/eapi/login/qrcode/unikey":
@@ -120,7 +120,7 @@ func TestNeteaseAccountLifecycleAndPrivateSnapshot(t *testing.T) {
 	defer other.Close()
 	_, err = other.Account(ctx, online.AccountRequest{Action: "restore", Secret: done.Secret})
 	expectCode(t, err, "ACCESS_DENIED")
-	restored := scoped(t, online.Netease, response(`{}`))
+	restored := anonymousScoped(t, online.Netease, response(`{}`))
 	v, err := restored.Account(ctx, online.AccountRequest{Action: "restore", Secret: done.Secret})
 	if err != nil || v.View.State != "unverified" {
 		t.Fatal("restored credential incorrectly trusted")
@@ -135,7 +135,7 @@ func TestNeteaseAccountLifecycleAndPrivateSnapshot(t *testing.T) {
 
 func TestCanceledLoginCannotComplete(t *testing.T) {
 	t.Parallel()
-	c := scoped(t, online.Netease, response(`{"code":200,"unikey":"fixture"}`))
+	c := anonymousScoped(t, online.Netease, response(`{"code":200,"unikey":"fixture"}`))
 	ctx := context.Background()
 	begin, err := c.Account(ctx, online.AccountRequest{Action: "begin"})
 	if err != nil {
@@ -150,7 +150,7 @@ func TestCanceledLoginCannotComplete(t *testing.T) {
 }
 func TestAppleRequiresUserTokenAndValidatesWithApple(t *testing.T) {
 	t.Parallel()
-	c := scoped(t, online.AppleMusic, roundTrip(func(r *http.Request) (*http.Response, error) {
+	c := anonymousScoped(t, online.AppleMusic, roundTrip(func(r *http.Request) (*http.Response, error) {
 		if r.URL.Host != "api.music.apple.com" || r.URL.Path != "/v1/me/storefront" || r.Header.Get("Authorization") != "Bearer developer-fixture" || r.Header.Get("Music-User-Token") != "user-fixture" {
 			t.Fatal("invalid MusicKit authorization request")
 		}
@@ -175,7 +175,7 @@ func TestAppleRequiresUserTokenAndValidatesWithApple(t *testing.T) {
 }
 func TestQQQRAndDesktopAccountExchange(t *testing.T) {
 	t.Parallel()
-	c := scoped(t, online.QQMusic, roundTrip(func(r *http.Request) (*http.Response, error) {
+	c := anonymousScoped(t, online.QQMusic, roundTrip(func(r *http.Request) (*http.Response, error) {
 		switch r.URL.Path {
 		case "/ptqrshow":
 			return accountResponse("\x89PNG\r\n\x1a\nfixture", "qrsig=fixture-signature; Secure"), nil

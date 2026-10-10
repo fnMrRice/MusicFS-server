@@ -34,15 +34,15 @@ func TestRemotePlaylistAdapterScopeAndConfigurationBinding(t *testing.T) {
 	}
 	r := host.PlaylistRemote()
 	ctx := context.Background()
-	ref := playlists.RemoteRef{InstanceID: "net", ExternalID: "91"}
+	ref := playlists.RemoteRef{InstanceID: "net", AccountID: "12345", ExternalID: "91"}
 	binding, err := r.Authorize(ctx, "mine", ref)
 	if err != nil || binding.RemoteRef != ref || binding.ConfigRevision != "current" || p.calls != 0 {
 		t.Fatal("authorization changed scope or fetched data", err)
 	}
 	for _, tc := range []struct{ owner, instance, account, external, code string }{
-		{"other", "net", "", "91", "NOT_FOUND"}, {"mine", "net", "other", "91", "UNSUPPORTED"},
-		{"mine", "qq", "", "91", "UNSUPPORTED"}, {"mine", "off", "", "91", "SOURCE_OFFLINE"},
-		{"mine", "net", "", "https://private.invalid/91", "INVALID_ARGUMENT"}, {"mine", "net", "", "fake", "INVALID_ARGUMENT"},
+		{"other", "net", "", "91", "NOT_FOUND"}, {"mine", "net", "other", "91", "ACCESS_DENIED"},
+		{"mine", "qq", "12345", "91", "UNSUPPORTED"}, {"mine", "off", "", "91", "SOURCE_OFFLINE"},
+		{"mine", "net", "", "https://private.invalid/91", "INVALID_ARGUMENT"}, {"mine", "net", "12345", "fake", "INVALID_ARGUMENT"},
 	} {
 		_, err := r.Authorize(ctx, tc.owner, playlists.RemoteRef{InstanceID: tc.instance, AccountID: tc.account, ExternalID: tc.external})
 		var failure *domain.Error
@@ -62,4 +62,8 @@ func TestRemotePlaylistAdapterScopeAndConfigurationBinding(t *testing.T) {
 	if err != nil || observation.Version != nil || observation.Consistency != online.Unversioned || p.calls != 1 {
 		t.Fatal("current anonymous observation failed", err)
 	}
+}
+
+func (p *observedPlaylist) PlatformSession(context.Context) (online.AccountView, error) {
+	return online.AccountView{State: "signedIn", AccountID: "12345", Revision: "fixture-generation"}, nil
 }

@@ -41,3 +41,21 @@ func (s *Service) PlaylistTracks(ctx context.Context, owner, id string, request 
 		return provider.PlaylistTracks(ctx, request)
 	})
 }
+
+// MetadataBatchForAccount refuses records imported under a different login.
+func (s *Service) MetadataBatchForAccount(ctx context.Context, owner, id, account string, ids []string) (online.TrackBatch, error) {
+	return call(ctx, s, owner, id, func(ctx context.Context, r Runtime) (online.TrackBatch, error) {
+		view, err := platformSession(ctx, r)
+		if err != nil {
+			return online.TrackBatch{}, err
+		}
+		if account == "" || view.AccountID != account {
+			return online.TrackBatch{}, domain.Fail("ACCESS_DENIED", "Remote source belongs to a different platform account")
+		}
+		provider, ok := r.Provider.(DisplayProvider)
+		if !ok {
+			return online.TrackBatch{}, domain.Fail("UNSUPPORTED", "Provider does not support display metadata")
+		}
+		return provider.MetadataBatch(ctx, ids)
+	})
+}

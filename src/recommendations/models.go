@@ -16,7 +16,8 @@ type Provider interface {
 }
 
 // Runtime is trusted composition data. Provider must already be bound to Owner
-// and InstanceID. AccountID is explicitly empty for this anonymous revision.
+// and InstanceID. Composition leaves AccountID empty; AccountScope supplies the
+// validated account and login generation for each cache access.
 type Runtime struct {
 	Owner, InstanceID, Name, Platform, AccountID, ConfigRevision string
 	Provider                                                     Provider

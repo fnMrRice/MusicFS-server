@@ -3,8 +3,6 @@ package online
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
-	"io"
 	"net"
 	"net/http"
 	"net/netip"
@@ -68,45 +66,17 @@ func (c *Client) get(ctx context.Context, path string, query url.Values, dst any
 	if err := c.admit(ctx); err != nil {
 		return err
 	}
-	host := "music.163.com"
-	if c.platform == QQMusic {
-		host = "c.y.qq.com"
+	if ctx.Value(accountContextKey{}) != c || c.account.revoked.Load() {
+		return platformLoginRequired()
 	}
-	u := url.URL{Scheme: "https", Host: host, Path: path, RawQuery: query.Encode()}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
-	if err != nil {
-		return upstreamInvalid()
+	if c.platform != Netease {
+		return domain.Fail("UNSUPPORTED", "No authenticated client adapter is available for this operation")
 	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "MusicFS/online-metadata-v1")
-	if c.platform == QQMusic {
-		req.Header.Set("Referer", "https://y.qq.com/")
+	data := make(map[string]any, len(query))
+	for key := range query {
+		data[key] = query.Get(key)
 	}
-	res, err := c.http.Do(req)
-	if err != nil {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		return domain.Fail("TEMPORARY_FAILURE", "Online metadata request failed")
-	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return c.statusError(res)
-	}
-	if res.ContentLength > maxResponseBytes {
-		return upstreamInvalid()
-	}
-	body, err := io.ReadAll(io.LimitReader(res.Body, maxResponseBytes+1))
-	if err != nil || len(body) > maxResponseBytes {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		return upstreamInvalid()
-	}
-	if err := json.Unmarshal(body, dst); err != nil {
-		return upstreamInvalid()
-	}
-	return nil
+	return c.neteaseAccountRequest(ctx, &c.account.secret, path, data, dst)
 }
 
 func (c *Client) statusError(res *http.Response) error {

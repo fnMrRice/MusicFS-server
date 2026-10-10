@@ -20,7 +20,7 @@ type AccountOptions struct {
 }
 
 func (s *Service) AccountOptions(ctx context.Context, owner, id string) (AccountOptions, error) {
-	return call(ctx, s, owner, id, func(_ context.Context, r Runtime) (AccountOptions, error) {
+	return callControl(ctx, s, owner, id, func(_ context.Context, r Runtime) (AccountOptions, error) {
 		p, ok := r.Provider.(accountProvider)
 		if !ok {
 			return AccountOptions{}, domain.Fail("UNSUPPORTED", "Platform login is not supported by this worker")
@@ -37,7 +37,7 @@ func (s *Service) AccountOptions(ctx context.Context, owner, id string) (Account
 	})
 }
 func (s *Service) Account(ctx context.Context, owner, id string, request online.AccountRequest) (online.AccountView, error) {
-	return call(ctx, s, owner, id, func(ctx context.Context, r Runtime) (online.AccountView, error) {
+	return callControl(ctx, s, owner, id, func(ctx context.Context, r Runtime) (online.AccountView, error) {
 		p, ok := r.Provider.(accountProvider)
 		if !ok {
 			return online.AccountView{}, domain.Fail("UNSUPPORTED", "Platform login is not supported by this worker")
@@ -45,7 +45,7 @@ func (s *Service) Account(ctx context.Context, owner, id string, request online.
 		view, err := p.PlatformAccount(ctx, request)
 		var failure *domain.Error
 		if errors.As(err, &failure) && failure.Code == "AUTH_REQUIRED" {
-			err = domain.Fail("ACCESS_DENIED", "Platform authorization or developer configuration is required")
+			err = domain.Fail("PLATFORM_AUTH_REQUIRED", "Platform authorization or developer configuration is required")
 		}
 		return view, err
 	})

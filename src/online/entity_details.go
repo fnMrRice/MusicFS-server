@@ -61,11 +61,11 @@ func (c *Client) readAlbum(ctx context.Context, id string) (Album, []Track, erro
 	}
 	return a, tracks, nil
 }
-func (c *Client) Album(ctx context.Context, id string) (Album, error) {
+func (c *Client) album(ctx context.Context, id string) (Album, error) {
 	a, _, err := c.readAlbum(ctx, id)
 	return a, err
 }
-func (c *Client) Artist(ctx context.Context, id string) (Artist, error) {
+func (c *Client) artist(ctx context.Context, id string) (Artist, error) {
 	if err := c.requireEntity(ctx, id); err != nil {
 		return Artist{}, err
 	}
@@ -96,7 +96,7 @@ func entityPageBinding(kind string, r EntityPageRequest) (SearchRequest, error) 
 	}
 	return SearchRequest{Kind: kind, Query: r.ExternalID, Limit: r.Limit, Cursor: r.Cursor}, nil
 }
-func (c *Client) AlbumTracks(ctx context.Context, r EntityPageRequest) (SearchPage, error) {
+func (c *Client) albumTracks(ctx context.Context, r EntityPageRequest) (SearchPage, error) {
 	binding, err := entityPageBinding("albumTracks", r)
 	if err != nil {
 		return SearchPage{}, err
@@ -134,7 +134,7 @@ func (c *Client) AlbumTracks(ctx context.Context, r EntityPageRequest) (SearchPa
 	}
 	return page, nil
 }
-func (c *Client) ArtistAlbums(ctx context.Context, r EntityPageRequest) (SearchPage, error) {
+func (c *Client) artistAlbums(ctx context.Context, r EntityPageRequest) (SearchPage, error) {
 	if err := c.requireEntity(ctx, r.ExternalID); err != nil {
 		return SearchPage{}, err
 	}
@@ -175,7 +175,7 @@ func (c *Client) ArtistAlbums(ctx context.Context, r EntityPageRequest) (SearchP
 	c.finishEntityPage(&page, binding, offset, len(page.Albums), *response.More)
 	return page, nil
 }
-func (c *Client) ArtistTracks(ctx context.Context, r EntityPageRequest) (SearchPage, error) {
+func (c *Client) artistTracks(ctx context.Context, r EntityPageRequest) (SearchPage, error) {
 	if err := c.requireEntity(ctx, r.ExternalID); err != nil {
 		return SearchPage{}, err
 	}

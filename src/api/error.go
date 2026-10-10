@@ -17,7 +17,7 @@ func classifyError(err error) (string, int) {
 			return failure.Code, http.StatusBadRequest
 		case "AUTH_REQUIRED":
 			return failure.Code, http.StatusUnauthorized
-		case "ACCESS_DENIED":
+		case "ACCESS_DENIED", "PLATFORM_AUTH_REQUIRED":
 			return failure.Code, http.StatusForbidden
 		case "NOT_FOUND":
 			return failure.Code, http.StatusNotFound

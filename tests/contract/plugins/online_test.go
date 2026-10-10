@@ -65,20 +65,21 @@ func TestOnlineWireContractActualDTOs(t *testing.T) {
 	if err := onlineSchema(t, "").Validate(fixture); err != nil {
 		t.Fatal(err)
 	}
-	c, err := online.New(online.Netease, online.Scope{UserID: "owner", InstanceID: "instance"}, online.Options{Transport: onlineResponse(func(*http.Request) (*http.Response, error) {
+	c, err := online.New(online.Netease, online.Scope{UserID: "owner", InstanceID: "instance"}, online.Options{Transport: testkit.OnlineAccountTransport(onlineResponse(func(*http.Request) (*http.Response, error) {
 		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"code":200,"result":{"songs":[{"id":42,"name":"Synthetic","artists":[],"album":{},"duration":1}],"songCount":1,"hasMore":false}}`))}, nil
-	})})
+	}))})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
+	testkit.RestoreOnlineFixture(t, c, online.Netease, "owner", "instance")
 	page, err := c.Search(context.Background(), online.SearchRequest{Query: "Synthetic", Limit: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
 	onlineContract(t, "SearchPage", page)
 	onlineContract(t, "", map[string]any{"jsonrpc": "2.0", "id": "h-3", "result": pluginproto.OnlineResult[online.SearchPage]{Context: scope, Value: page}})
-	for _, code := range []string{"AUTH_REQUIRED", "TEMPORARY_FAILURE", "UNSUPPORTED"} {
+	for _, code := range []string{"AUTH_REQUIRED", "PLATFORM_AUTH_REQUIRED", "TEMPORARY_FAILURE", "UNSUPPORTED"} {
 		onlineContract(t, "", map[string]any{"jsonrpc": "2.0", "id": "h-4", "error": pluginproto.Failure(code, "Synthetic result")})
 	}
 	page.Tracks[0].SourceURL = "http://127.0.0.1/private"

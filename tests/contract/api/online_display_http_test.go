@@ -19,11 +19,12 @@ func TestOnlineDisplayHTTPKindsBatchAndSourcePermissions(t *testing.T) {
 	cookie, session := login(t, server)
 	runtimes := []onlinehost.Runtime{}
 	for _, id := range []string{"albums", "artists", "playlists", "batch", "detail", "albumdetail", "artistdetail", "albumtracks", "artistalbums", "artisttracks"} {
-		client, err := online.New(online.Netease, online.Scope{UserID: "admin", InstanceID: id}, online.Options{Transport: onlineTransport{}})
+		client, err := online.New(online.Netease, online.Scope{UserID: "admin", InstanceID: id}, online.Options{Transport: testkit.OnlineAccountTransport(onlineTransport{})})
 		if err != nil {
 			t.Fatal(err)
 		}
 		t.Cleanup(client.Close)
+		testkit.RestoreOnlineFixture(t, client, online.Netease, "admin", id)
 		runtimes = append(runtimes, onlinehost.Runtime{Owner: "admin", InstanceID: id, Name: id, Platform: online.Netease, ConfigRevision: "revision", Enabled: true, Provider: client})
 	}
 	service, err := onlinehost.New(runtimes)

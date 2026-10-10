@@ -25,6 +25,16 @@ func (p *playlistRemote) Authorize(ctx context.Context, owner string, ref playli
 	if err != nil {
 		return playlists.Binding{}, err
 	}
+	view, err := platformSession(ctx, runtime)
+	if err != nil {
+		return playlists.Binding{}, err
+	}
+	if ref.AccountID == "" {
+		return playlists.Binding{}, domain.Fail("RESOURCE_CHANGED", "Select the current platform account and import again")
+	}
+	if ref.AccountID != view.AccountID {
+		return playlists.Binding{}, domain.Fail("ACCESS_DENIED", "Platform account does not match the playlist")
+	}
 	supported := false
 	for _, capability := range online.Capabilities(runtime.Platform) {
 		if capability.Name == "playlist.observe" && capability.Supported {

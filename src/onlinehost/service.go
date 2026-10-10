@@ -67,7 +67,15 @@ func (s *Service) Instances(ctx context.Context, owner string) ([]Instance, erro
 		if ready(r) {
 			availability = "available"
 		}
-		out = append(out, Instance{InstanceID: r.InstanceID, Name: r.Name, PluginID: pluginproto.OnlinePluginID(r.Platform), AccountID: "", Availability: availability, OnlineDescriptor: pluginproto.DescribeOnline(r.Platform)})
+		accountID := ""
+		if availability == "available" {
+			if view, err := platformSession(ctx, r); err == nil {
+				accountID = view.AccountID
+			} else {
+				availability = "loginRequired"
+			}
+		}
+		out = append(out, Instance{InstanceID: r.InstanceID, Name: r.Name, PluginID: pluginproto.OnlinePluginID(r.Platform), AccountID: accountID, Availability: availability, OnlineDescriptor: pluginproto.DescribeOnline(r.Platform)})
 	}
 	return out, nil
 }
@@ -83,7 +91,13 @@ func (s *Service) Runtime(ctx context.Context, owner, id, account string) (Runti
 			continue
 		}
 		if account != "" {
-			return Runtime{}, domain.Fail("UNSUPPORTED", "Online account authorization is not implemented")
+			view, err := platformSession(ctx, r)
+			if err != nil {
+				return Runtime{}, err
+			}
+			if view.AccountID != account {
+				return Runtime{}, domain.Fail("ACCESS_DENIED", "Platform account does not match the binding")
+			}
 		}
 		if !ready(r) {
 			return Runtime{}, domain.Fail("SOURCE_OFFLINE", "Online instance is unavailable")
@@ -107,7 +121,7 @@ func ready(r Runtime) bool {
 	return true
 }
 
-func call[T any](ctx context.Context, s *Service, owner, id string, f func(context.Context, Runtime) (T, error)) (T, error) {
+func callControl[T any](ctx context.Context, s *Service, owner, id string, f func(context.Context, Runtime) (T, error)) (T, error) {
 	var empty T
 	r, err := s.Runtime(ctx, owner, id, "")
 	if err != nil {

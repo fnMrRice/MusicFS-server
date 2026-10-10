@@ -15,6 +15,7 @@
       "type": "object", "additionalProperties": false, "required": ["state"],
       "properties": {
         "state": {"enum": ["signedOut", "waiting", "scanned", "signedIn", "unverified", "expired", "canceled"]},
+        "revision": {"type": "string", "minLength": 1, "maxLength": 128},
         "accountId": {"type": "string", "minLength": 1, "maxLength": 128},
         "displayName": {"type": "string", "maxLength": 512},
         "loginId": {"type": "string", "minLength": 1, "maxLength": 128},

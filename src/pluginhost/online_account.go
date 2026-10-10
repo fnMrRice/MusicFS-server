@@ -76,3 +76,20 @@ func (w *OnlineWorker) PlatformDeveloperToken() string {
 	}
 	return os.Getenv("MUSICFS_APPLE_DEVELOPER_TOKEN")
 }
+
+// PlatformSession reads worker state without exposing or rewriting its secret.
+func (w *OnlineWorker) PlatformSession(ctx context.Context) (online.AccountView, error) {
+	result, err := w.accountCall(ctx, online.AccountRequest{Action: "state"})
+	return result.View, err
+}
+
+func (w *OnlineWorker) AccountScope(ctx context.Context) (string, string, error) {
+	view, err := w.PlatformSession(ctx)
+	if err != nil {
+		return "", "", err
+	}
+	if view.State != "signedIn" || view.Revision == "" {
+		return "", "", domain.Fail("PLATFORM_AUTH_REQUIRED", "Sign in to the music platform")
+	}
+	return view.AccountID, view.Revision, nil
+}

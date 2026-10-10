@@ -1,8 +1,8 @@
 [
   {
-    "name": "remote-playlist-explicit-anonymous",
+    "name": "remote-playlist-reject-anonymous-import",
     "schema": "ImportRemotePlaylistRequest",
-    "valid": true,
+    "valid": false,
     "value": {
       "instanceId": "net",
       "accountId": "",
@@ -10,9 +10,9 @@
     }
   },
   {
-    "name": "remote-playlist-no-account-impersonation",
+    "name": "remote-playlist-account-id-validated-by-host",
     "schema": "ImportRemotePlaylistRequest",
-    "valid": false,
+    "valid": true,
     "value": {
       "instanceId": "net",
       "accountId": "private",

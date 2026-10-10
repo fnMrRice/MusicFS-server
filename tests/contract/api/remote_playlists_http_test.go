@@ -77,7 +77,7 @@ func TestRemotePlaylistsHTTPImportSyncSnapshotPrivacyAndErrors(t *testing.T) {
 		testkit.ValidateHTTP(t, schema, w.Body.Bytes())
 		return w
 	}
-	ref := playlists.RemoteRef{InstanceID: "net", ExternalID: "91"}
+	ref := playlists.RemoteRef{InstanceID: "net", AccountID: "12345", ExternalID: "91"}
 	decodeImported := func(w *httptest.ResponseRecorder) playlists.RemotePlaylist {
 		t.Helper()
 		var result struct {
@@ -103,7 +103,7 @@ func TestRemotePlaylistsHTTPImportSyncSnapshotPrivacyAndErrors(t *testing.T) {
 	for _, tc := range []struct {
 		ref    playlists.RemoteRef
 		status int
-	}{{playlists.RemoteRef{InstanceID: "net", AccountID: "other", ExternalID: "91"}, 415}, {playlists.RemoteRef{InstanceID: "private", ExternalID: "91"}, 404}, {playlists.RemoteRef{InstanceID: "qq", ExternalID: "91"}, 415}, {playlists.RemoteRef{InstanceID: "net", ExternalID: "https://private.invalid"}, 400}} {
+	}{{playlists.RemoteRef{InstanceID: "net", AccountID: "other", ExternalID: "91"}, 403}, {playlists.RemoteRef{InstanceID: "private", ExternalID: "91"}, 404}, {playlists.RemoteRef{InstanceID: "qq", AccountID: "12345", ExternalID: "91"}, 415}, {playlists.RemoteRef{InstanceID: "net", ExternalID: "https://private.invalid"}, 400}} {
 		expect("POST", "/remote-playlists", tc.ref, "invalid-ref", tc.status, "Error")
 	}
 	for _, change := range []func(*http.Request){func(r *http.Request) { r.Header.Del("Cookie") }, func(r *http.Request) { r.Header.Del("X-CSRF-Token") }, func(r *http.Request) { r.Header.Set("Origin", "https://untrusted.invalid") }} {
@@ -211,4 +211,8 @@ func TestRemotePlaylistsHTTPImportSyncSnapshotPrivacyAndErrors(t *testing.T) {
 	if err != nil || len(tracks.Items) != 0 {
 		t.Fatal("remote metadata created audio assets", err)
 	}
+}
+
+func (*playlistHTTPProvider) PlatformSession(context.Context) (online.AccountView, error) {
+	return online.AccountView{State: "signedIn", AccountID: "12345", Revision: "fixture-generation"}, nil
 }

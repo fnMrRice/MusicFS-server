@@ -31,7 +31,7 @@ func TestMalformedSearchAndDetailNeverBecomeEmptySuccess(t *testing.T) {
 }
 
 func TestStatusMappingAndRetryAfterWithoutUpstreamTextLeak(t *testing.T) {
-	for status, code := range map[int]string{401: "AUTH_REQUIRED", 403: "ACCESS_DENIED", 404: "NOT_FOUND", 429: "RATE_LIMITED", 500: "TEMPORARY_FAILURE", 302: "TEMPORARY_FAILURE"} {
+	for status, code := range map[int]string{401: "PLATFORM_AUTH_REQUIRED", 403: "ACCESS_DENIED", 404: "NOT_FOUND", 429: "RATE_LIMITED", 500: "TEMPORARY_FAILURE", 302: "TEMPORARY_FAILURE"} {
 		c := scoped(t, online.Netease, roundTrip(func(*http.Request) (*http.Response, error) {
 			return &http.Response{StatusCode: status, Header: http.Header{"Retry-After": []string{"17"}}, Body: io.NopCloser(strings.NewReader("private-upstream-detail"))}, nil
 		}))

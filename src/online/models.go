@@ -1,4 +1,4 @@
-// Package online reads bounded public platform metadata without resolving audio.
+// Package online reads bounded platform metadata under a validated account.
 package online
 
 import (
@@ -24,8 +24,8 @@ const (
 	MaxPlaylistEntries = 10000
 )
 
-// Scope is supplied by the host, never by an upstream response. Anonymous
-// adapters reject a nonempty AccountRef rather than silently discarding it.
+// Scope is supplied by the host, never by an upstream response. Account selection
+// is managed through login; callers cannot inject another AccountRef.
 type Scope struct {
 	UserID     string
 	InstanceID string
@@ -124,27 +124,27 @@ func (c *Client) Capabilities() []Capability {
 // Capabilities describes only capabilities verified for this adapter revision.
 func Capabilities(platform string) []Capability {
 	return []Capability{
-		{"search.tracks", platform == Netease, "Netease verified; QQ adapter exists but its latest live check failed; Apple requires credentials"},
-		{"search.albums", platform == Netease, "Netease anonymous public search verified"},
-		{"search.artists", platform == Netease, "Netease anonymous public search verified"},
-		{"search.playlists", platform == Netease, "Netease anonymous public search verified"},
-		{"metadata.album", platform == Netease, "Netease anonymous album detail verified"},
-		{"metadata.artist", platform == Netease, "Netease anonymous artist detail verified"},
+		{"search.tracks", platform == Netease, "Login required; Netease EAPI and QQ desktop RPC; real account queries pending; Apple catalog unsupported"},
+		{"search.albums", platform == Netease, "Netease authenticated client public search verified"},
+		{"search.artists", platform == Netease, "Netease authenticated client public search verified"},
+		{"search.playlists", platform == Netease, "Netease authenticated client public search verified"},
+		{"metadata.album", platform == Netease, "Netease authenticated client album detail verified"},
+		{"metadata.artist", platform == Netease, "Netease authenticated client artist detail verified"},
 		{"album.tracks", platform == Netease, "Digest-bound album observation with paged tracks"},
 		{"artist.albums", platform == Netease, "Netease public artist album paging verified"},
 		{"artist.tracks", platform == Netease, "Netease public artist track paging verified; order remains upstream hot order"},
 		{"metadata.tracks.batch", platform == Netease, "At most 50 public track identities per request"},
 		{"playlist.tracks", platform == Netease, "Digest-bound observation with batched display metadata; no audio authorization"},
-		{"metadata.track", platform == Netease, "Only Netease anonymous detail has been verified"},
+		{"metadata.track", platform == Netease, "Only Netease authenticated client detail has been verified"},
 		{"playlist.observe", platform == Netease, "Unversioned public entry observations only"},
-		{"recommendations.playlists", platform == Netease, "Anonymous first page only; no personalized recommendations"},
+		{"recommendations.playlists", platform == Netease, "Login required; first-page recommendations; personalization is not verified"},
 		{"account.login", false, "Login adapters are available for evaluation; live account validation is pending"},
 		{"stream.resolve", false, "No authorized complete audio resource has been verified"},
 	}
 }
 
 // Resolve is deliberately unable to return a URL or headers for audio.
-func (c *Client) Resolve(ctx context.Context, externalID string) error {
+func (c *Client) resolve(ctx context.Context, externalID string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}

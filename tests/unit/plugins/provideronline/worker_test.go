@@ -15,6 +15,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/online"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/provideronline"
+	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 
 type transport func(*http.Request) (*http.Response, error)
@@ -26,7 +27,10 @@ func worker(t *testing.T, roundTripper http.RoundTripper) *pluginproto.Peer {
 	client, server := net.Pipe()
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
-	go func() { _ = provideronline.Serve(ctx, online.Netease, server, server, roundTripper); close(done) }()
+	go func() {
+		_ = provideronline.Serve(ctx, online.Netease, server, server, testkit.OnlineAccountTransport(roundTripper))
+		close(done)
+	}()
 	peer := pluginproto.NewPeer(ctx, client, client, "h-", nil)
 	t.Cleanup(func() {
 		cancel()
@@ -94,6 +98,7 @@ func TestOnlineWorkerCancellationReachesTransport(t *testing.T) {
 		return nil, r.Context().Err()
 	}))
 	hello(t, peer)
+	authenticate(t, peer)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	done := make(chan error, 1)
@@ -131,9 +136,22 @@ func TestOnlineWorkerOversizedResultDoesNotCorruptControlChannel(t *testing.T) {
 		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(string(body)))}, nil
 	}))
 	hello(t, peer)
+	authenticate(t, peer)
 	assertCode(t, peer.Call(context.Background(), "provider.online.search", pluginproto.OnlineSearch{Context: scope(), Query: "large", Limit: 2}, nil), "RATE_LIMITED")
 	var descriptor pluginproto.OnlineResult[pluginproto.OnlineDescriptor]
 	if err := peer.Call(context.Background(), "provider.online.describe", pluginproto.OnlineScope{Context: scope()}, &descriptor); err != nil {
 		t.Fatalf("oversized result killed peer: %v", err)
 	}
+}
+
+func authenticate(t *testing.T, peer *pluginproto.Peer) {
+	t.Helper()
+	secret := json.RawMessage(`{"platform":"netease","userId":"owner","instanceId":"instance","accountId":"12345","deviceId":"fixture","cookies":{"MUSIC_U":"fixture-private-token"}}`)
+	for _, r := range []online.AccountRequest{{Action: "restore", Secret: secret}, {Action: "check"}} {
+		var result pluginproto.OnlineResult[online.AccountResult]
+		if err := peer.Call(context.Background(), "provider.online.account", pluginproto.OnlineAccount{Context: scope(), Request: r}, &result); err != nil {
+			t.Fatal(err)
+		}
+	}
+	time.Sleep(1010 * time.Millisecond)
 }

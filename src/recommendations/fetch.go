@@ -71,6 +71,11 @@ func (s *Service) fetch(ctx context.Context, key cacheKey, r Runtime, e *entry, 
 	}
 	if err != nil {
 		failure, cooldown := failureFor(err, s.config.FailureCooldown)
+		if failure.Code == "PLATFORM_AUTH_REQUIRED" || failure.Code == "AUTH_REQUIRED" || failure.Code == "ACCESS_DENIED" {
+			s.bytes -= e.bytes
+			e.bytes = 0
+			e.source = sourceFor(r)
+		}
 		e.source.Error = failure
 		e.source.Stale = e.source.LastSuccessAt != nil
 		e.retry = now.Add(cooldown)
@@ -114,7 +119,7 @@ func failureFor(err error, cooldown time.Duration) (*Failure, time.Duration) {
 		}
 	}
 	switch code {
-	case "AUTH_REQUIRED", "ACCESS_DENIED", "NOT_FOUND", "UNSUPPORTED", "SOURCE_OFFLINE", "RATE_LIMITED", "TEMPORARY_FAILURE", "PROTOCOL_MISMATCH", "CANCELED":
+	case "AUTH_REQUIRED", "PLATFORM_AUTH_REQUIRED", "ACCESS_DENIED", "NOT_FOUND", "UNSUPPORTED", "SOURCE_OFFLINE", "RATE_LIMITED", "TEMPORARY_FAILURE", "PROTOCOL_MISMATCH", "CANCELED":
 	default:
 		code = "TEMPORARY_FAILURE"
 	}

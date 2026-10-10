@@ -23,7 +23,7 @@ func onlinePlugin(platform, program string, ids ...string) config.Plugin {
 	return config.Plugin{PluginID: "musicfs." + platform, Executable: program, Enabled: true, Instances: instances}
 }
 
-func TestOnlineActualServerAnonymousWorkerAndDisabledRestart(t *testing.T) {
+func TestOnlineActualServerRequiresPlatformLoginAndDisabledRestart(t *testing.T) {
 	suffix := ""
 	if runtime.GOOS == "windows" {
 		suffix = ".exe"
@@ -46,7 +46,7 @@ func TestOnlineActualServerAnonymousWorkerAndDisabledRestart(t *testing.T) {
 	cfg, base := yamlServiceConfig(t)
 	cfg.Plugins = []config.Plugin{onlinePlugin(online.Netease, fixture, "net", "net2"), onlinePlugin(online.QQMusic, qqFixture, "qq"), onlinePlugin(online.AppleMusic, build(t, "musicfs-plugin-applemusic"), "apple")}
 	cfg.Plugins[0].Instances = append(cfg.Plugins[0].Instances, config.Instance{InstanceID: "disabled", Role: "provider"})
-	t.Run("read-only-public-scope", func(t *testing.T) {
+	t.Run("authenticated-source-scope", func(t *testing.T) {
 		startNCMServer(t, cfg, base)
 		c := login(t, base, cfg.AdminToken)
 		instances := albumRequest[struct {
@@ -56,7 +56,7 @@ func TestOnlineActualServerAnonymousWorkerAndDisabledRestart(t *testing.T) {
 			t.Fatal("configured online instances missing")
 		}
 		for _, instance := range instances.Items {
-			want := "available"
+			want := "loginRequired"
 			if instance.InstanceID == "disabled" {
 				want = "offline"
 			}
@@ -64,6 +64,23 @@ func TestOnlineActualServerAnonymousWorkerAndDisabledRestart(t *testing.T) {
 				t.Fatalf("incorrect runtime availability: %+v", instance)
 			}
 		}
+		for _, id := range []string{"net", "net2", "qq", "apple"} {
+			code, raw, _ := c.request(t, "GET", "/api/v1/online-instances/"+id+"/search?q=sample", nil, "")
+			if code != 403 {
+				t.Fatalf("anonymous query allowed: %s %d %s", id, code, raw)
+			}
+		}
+		code, raw, _ := c.request(t, "POST", "/api/v1/online-instances/net/account", map[string]string{"action": "begin"}, "")
+		var begin online.AccountView
+		if code != 200 || json.Unmarshal(raw, &begin) != nil {
+			t.Fatalf("begin: %d %s", code, raw)
+		}
+		time.Sleep(3100 * time.Millisecond)
+		code, raw, _ = c.request(t, "POST", "/api/v1/online-instances/net/account", map[string]string{"action": "poll", "loginId": begin.LoginID}, "")
+		if code != 200 {
+			t.Fatalf("poll: %d %s", code, raw)
+		}
+		time.Sleep(1010 * time.Millisecond)
 		page := albumRequest[online.SearchPage](t, c, "GET", "/online-instances/net/search?q=Synthetic&limit=1", nil, "", 200, "OnlineSearchPage")
 		if len(page.Tracks) != 1 || page.Tracks[0].ExternalID != "42" {
 			t.Fatal("real worker metadata was not delivered")
@@ -71,7 +88,7 @@ func TestOnlineActualServerAnonymousWorkerAndDisabledRestart(t *testing.T) {
 		for _, tc := range []struct {
 			path   string
 			status int
-		}{{"net/search?q=Synthetic&limit=1", 429}, {"disabled/search?q=Synthetic", 503}, {"apple/search?q=Synthetic", 401}, {"qq/search?q=Synthetic", 503}} {
+		}{{"net/search?q=Synthetic&limit=1", 429}, {"disabled/search?q=Synthetic", 503}, {"apple/search?q=Synthetic", 403}, {"qq/search?q=Synthetic", 403}} {
 			code, raw, _ := c.request(t, "GET", "/api/v1/online-instances/"+tc.path, nil, "")
 			if code != tc.status {
 				t.Fatalf("bounded platform failure %s: %d %s", tc.path, code, raw)
@@ -86,7 +103,7 @@ func TestOnlineActualServerAnonymousWorkerAndDisabledRestart(t *testing.T) {
 		time.Sleep(1050 * time.Millisecond)
 		recommendations := albumRequest[online.RecommendationPage](t, c, "GET", "/online-instances/net/recommendations?limit=1", nil, "", 200, "OnlineRecommendationPage")
 		if recommendations.Personalized || recommendations.NextCursor != nil {
-			t.Fatal("anonymous recommendations falsely personalized")
+			t.Fatal("recommendation personalization is not verified")
 		}
 		time.Sleep(1050 * time.Millisecond)
 		observation := albumRequest[online.PlaylistObservation](t, c, "GET", "/online-instances/net/playlists/91", nil, "", 200, "OnlineObservation")
@@ -95,9 +112,21 @@ func TestOnlineActualServerAnonymousWorkerAndDisabledRestart(t *testing.T) {
 		}
 		for _, id := range []string{"net", "qq", "apple"} {
 			code, raw, _ := c.request(t, "POST", "/api/v1/online-instances/"+id+"/tracks/42/resolve", struct{}{}, "")
-			if code != 415 {
+			want := 403
+			if id == "net" {
+				want = 415
+			}
+			if code != want {
 				t.Fatalf("unsupported audio resolve: %d %s", code, raw)
 			}
+		}
+		code, raw, _ = c.request(t, "POST", "/api/v1/online-instances/net/account", map[string]string{"action": "logout"}, "")
+		if code != 200 {
+			t.Fatalf("logout: %d %s", code, raw)
+		}
+		code, raw, _ = c.request(t, "GET", "/api/v1/online-instances/net/search?q=sample", nil, "")
+		if code != 403 {
+			t.Fatalf("query after logout: %d %s", code, raw)
 		}
 		assertOnlineDoesNotImport(t, c)
 	})

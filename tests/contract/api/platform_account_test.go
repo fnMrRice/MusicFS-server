@@ -40,6 +40,11 @@ func TestPlatformAccountHTTPIsolationAndCSRF(t *testing.T) {
 		status             int
 	}{
 		{"GET", "net/account", "", false, 200},
+		{"GET", "net/search?q=sample", "", false, 403},
+		{"GET", "net/tracks/42", "", false, 403},
+		{"GET", "net/playlists/42", "", false, 403},
+		{"GET", "net/recommendations?limit=1", "", false, 403},
+		{"POST", "net/tracks/42/resolve", "{}", true, 403},
 		{"GET", "private/account", "", false, 404},
 		{"POST", "net/account", `{"action":"logout"}`, false, 403},
 		{"POST", "net/account", `{"action":"restore","secret":{}}`, true, 400},
@@ -58,6 +63,9 @@ func TestPlatformAccountHTTPIsolationAndCSRF(t *testing.T) {
 		server.ServeHTTP(w, r)
 		if w.Code != tc.status {
 			t.Fatalf("%s %s: %d", tc.method, tc.path, w.Code)
+		}
+		if tc.status == 403 && tc.method == "GET" && (!strings.Contains(w.Body.String(), "PLATFORM_AUTH_REQUIRED") || w.Header().Get("WWW-Authenticate") != "") {
+			t.Fatal("platform gate used MusicFS session authentication")
 		}
 		if strings.Contains(w.Body.String(), `"secret"`) {
 			t.Fatal("private snapshot leaked over HTTP")

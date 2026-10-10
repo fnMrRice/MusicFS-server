@@ -35,7 +35,7 @@ func New(platform string, scope Scope, opts Options) (*Client, error) {
 		}
 	}
 	if scope.AccountRef != "" {
-		return nil, domain.Fail("UNSUPPORTED", "Account-scoped access is not implemented")
+		return nil, domain.Fail("UNSUPPORTED", "Account selection is managed through platform login")
 	}
 	if opts.Timeout == 0 {
 		opts.Timeout = 10 * time.Second
@@ -78,7 +78,7 @@ func (c *Client) requireNetease(ctx context.Context) error {
 		return err
 	}
 	if c.platform == AppleMusic {
-		return domain.Fail("AUTH_REQUIRED", "Apple Music catalog requires a developer token; this adapter has no credential support")
+		return domain.Fail("UNSUPPORTED", "Apple Music catalog queries have not been implemented by this adapter")
 	}
 	if c.platform != Netease {
 		return domain.Fail("UNSUPPORTED", "This public metadata capability has not been verified for this platform")

@@ -38,7 +38,7 @@ type PlaylistTracksPage struct {
 
 // MetadataBatch uses a single upstream request, and preserves the caller's
 // order and duplicate occurrences. Missing items are explicit, not dropped.
-func (c *Client) MetadataBatch(ctx context.Context, ids []string) (TrackBatch, error) {
+func (c *Client) metadataBatch(ctx context.Context, ids []string) (TrackBatch, error) {
 	if err := c.requireNetease(ctx); err != nil {
 		return TrackBatch{}, err
 	}
@@ -98,7 +98,7 @@ func (c *Client) MetadataBatch(ctx context.Context, ids []string) (TrackBatch, e
 	return result, nil
 }
 
-func (c *Client) PlaylistTracks(ctx context.Context, r PlaylistTracksRequest) (PlaylistTracksPage, error) {
+func (c *Client) playlistTracks(ctx context.Context, r PlaylistTracksRequest) (PlaylistTracksPage, error) {
 	if r.Limit < 1 || r.Limit > MaxPageItems || len(r.Cursor) > 1024 {
 		return PlaylistTracksPage{}, domain.Fail("INVALID_ARGUMENT", "Invalid playlist page")
 	}

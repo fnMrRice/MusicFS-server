@@ -15,19 +15,29 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/online"
+	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 
 type roundTrip func(*http.Request) (*http.Response, error)
 
 func (f roundTrip) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
-func scoped(t *testing.T, platform string, transport http.RoundTripper) *online.Client {
+func anonymousScoped(t *testing.T, platform string, transport http.RoundTripper) *online.Client {
 	t.Helper()
 	c, err := online.New(platform, online.Scope{UserID: "user", InstanceID: "instance"}, online.Options{Transport: transport})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(c.Close)
+	return c
+}
+
+func scoped(t *testing.T, platform string, transport http.RoundTripper) *online.Client {
+	t.Helper()
+	c := anonymousScoped(t, platform, testkit.OnlineAccountTransport(transport))
+	if platform != online.AppleMusic {
+		testkit.RestoreOnlineFixture(t, c, platform, "user", "instance")
+	}
 	return c
 }
 
@@ -54,8 +64,8 @@ func TestSearchMappingAndScopeBoundCursor(t *testing.T) {
 		if r.URL.Scheme != "https" || r.URL.Host != "music.163.com" || r.URL.Path != "/api/search/get" || r.URL.Query().Get("s") != "synthetic" {
 			t.Errorf("unexpected request: %s", r.URL)
 		}
-		if r.Header.Get("Cookie") != "" || r.Header.Get("Authorization") != "" {
-			t.Error("anonymous request has credentials")
+		if !strings.Contains(r.Header.Get("Cookie"), "MUSIC_U=fixture-private-token") || r.Header.Get("Authorization") != "" {
+			t.Error("account request is missing its platform session")
 		}
 		return response(neSearch).RoundTrip(r)
 	})
@@ -90,10 +100,17 @@ func TestSearchMappingAndScopeBoundCursor(t *testing.T) {
 
 func TestSearchQQMappingAndPartialPage(t *testing.T) {
 	c := scoped(t, online.QQMusic, roundTrip(func(r *http.Request) (*http.Response, error) {
-		if r.URL.Host != "c.y.qq.com" || r.URL.Query().Get("p") != "1" || r.Header.Get("Referer") != "https://y.qq.com/" {
-			t.Error("invalid QQ request")
+		var payload struct {
+			Comm    map[string]string
+			Request struct {
+				Method string
+				Param  map[string]any
+			} `json:"req_0"`
 		}
-		return response(`{"code":0,"data":{"song":{"curpage":1,"totalnum":3,"list":[{"songmid":"Ab12","songname":"Title &amp; Artist","singer":[{"name":"A"}],"albumname":"Album","interval":123}]}}}`).RoundTrip(r)
+		if json.NewDecoder(r.Body).Decode(&payload) != nil || r.URL.Host != "u.y.qq.com" || payload.Request.Method != "DoSearchForQQMusicDesktop" || payload.Comm["authst"] != "fixture-private-token" || payload.Comm["ct"] != "19" || payload.Request.Param["page_num"] != float64(1) {
+			t.Fatal("invalid authenticated QQ desktop request")
+		}
+		return response(`{"code":0,"req_0":{"code":0,"data":{"code":0,"body":{"song":{"list":[{"mid":"Ab12","name":"Title &amp; Artist","singer":[{"name":"A"}],"album":{"name":"Album"},"interval":123}]}},"meta":{"curpage":1,"sum":3}}}}`).RoundTrip(r)
 	}))
 	page, err := c.Search(context.Background(), online.SearchRequest{Query: "test", Limit: 2})
 	if err != nil {
@@ -126,7 +143,7 @@ func TestAppleAndAccountAccessAreExplicitlyUnavailable(t *testing.T) {
 	})
 	c := scoped(t, online.AppleMusic, transport)
 	_, err := c.Search(context.Background(), online.SearchRequest{Query: "synthetic", Limit: 1})
-	expectCode(t, err, "AUTH_REQUIRED")
+	expectCode(t, err, "PLATFORM_AUTH_REQUIRED")
 	for _, capability := range c.Capabilities() {
 		if capability.Supported {
 			t.Fatalf("unverified Apple capability: %+v", capability)
@@ -139,12 +156,12 @@ func TestAppleAndAccountAccessAreExplicitlyUnavailable(t *testing.T) {
 	}
 }
 
-func TestAnonymousHTTPRedirectAndCookies(t *testing.T) {
+func TestAuthenticatedHTTPDoesNotFollowRedirects(t *testing.T) {
 	var calls atomic.Int32
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
-		if r.Header.Get("Cookie") != "" {
-			t.Error("cookie was accepted")
+		if !strings.Contains(r.Header.Get("Cookie"), "MUSIC_U=fixture-private-token") {
+			t.Error("platform cookie is missing")
 		}
 		w.Header().Set("Set-Cookie", "secret=ignored")
 		w.Header().Set("Location", "http://127.0.0.1/private")

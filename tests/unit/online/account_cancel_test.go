@@ -12,7 +12,7 @@ func TestPlatformCancelSignalsInFlightPoll(t *testing.T) {
 	t.Parallel()
 	entered := make(chan struct{})
 	release := make(chan struct{})
-	c := scoped(t, online.Netease, roundTrip(func(r *http.Request) (*http.Response, error) {
+	c := anonymousScoped(t, online.Netease, roundTrip(func(r *http.Request) (*http.Response, error) {
 		switch r.URL.Path {
 		case "/eapi/login/qrcode/unikey":
 			return accountResponse(`{"code":200,"unikey":"fixture"}`), nil

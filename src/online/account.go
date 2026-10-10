@@ -14,6 +14,7 @@ import (
 
 // AccountView is the only account data exposed to HTTP consumers.
 type AccountView struct {
+	Revision         string     `json:"revision,omitempty"`
 	State            string     `json:"state"`
 	AccountID        string     `json:"accountId,omitempty"`
 	DisplayName      string     `json:"displayName,omitempty"`
@@ -39,6 +40,8 @@ type AccountResult struct {
 	Secret json.RawMessage `json:"secret,omitempty"`
 }
 type accountState struct {
+	revoked  atomic.Bool
+	active   atomic.Pointer[context.CancelFunc]
 	canceled atomic.Pointer[string]
 	mu       sync.Mutex
 	view     AccountView
@@ -62,6 +65,12 @@ type accountSecret struct {
 
 func (c *Client) Account(ctx context.Context, r AccountRequest) (AccountResult, error) {
 	a := &c.account
+	if r.Action == "logout" || (r.Action == "signalCancel" && r.LoginID == "*") {
+		a.revoked.Store(true)
+		if cancel := a.active.Load(); cancel != nil {
+			(*cancel)()
+		}
+	}
 	if (r.Action == "cancel" || r.Action == "signalCancel") && r.LoginID != "" {
 		id := r.LoginID
 		a.canceled.Store(&id)
@@ -89,8 +98,12 @@ func (c *Client) Account(ctx context.Context, r AccountRequest) (AccountResult, 
 			return AccountResult{}, domain.Fail("ACCESS_DENIED", "Stored platform account scope is invalid")
 		}
 		a.secret = secret
+		a.revoked.Store(false)
 		a.view = AccountView{State: "unverified", AccountID: secret.AccountID, DisplayName: secret.Name}
 	case "state":
+		if a.revoked.Load() {
+			return AccountResult{View: AccountView{State: "signedOut"}}, nil
+		}
 	case "cancel":
 		if a.view.State == "canceled" {
 			return AccountResult{View: a.view}, nil
@@ -180,6 +193,7 @@ func (c *Client) Account(ctx context.Context, r AccountRequest) (AccountResult, 
 			a.view = AccountView{State: "expired"}
 		}
 	case "check":
+		revision := a.view.Revision
 		if a.secret.AccountID == "" {
 			return AccountResult{View: a.view}, nil
 		}
@@ -210,6 +224,10 @@ func (c *Client) Account(ctx context.Context, r AccountRequest) (AccountResult, 
 		} else {
 			a.view = c.savedAccountView()
 			a.view.State = "signedIn"
+			a.view.Revision = revision
+			if a.view.Revision == "" {
+				a.view.Revision = domain.NewID()
+			}
 		}
 	default:
 		return AccountResult{}, domain.Fail("INVALID_ARGUMENT", "Unknown platform account operation")
@@ -247,6 +265,8 @@ func (c *Client) completeAccount() {
 	a.key = ""
 	a.view = c.savedAccountView()
 	a.view.State = "signedIn"
+	a.view.Revision = domain.NewID()
+	a.revoked.Store(false)
 }
 func accountRateLimit() error {
 	n := 3

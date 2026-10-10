@@ -52,7 +52,7 @@ func (p neteasePlaylist) summary() (Playlist, error) {
 
 // PublicRecommendations reads the single supported public page. The upstream
 // endpoint has no verified offset mechanism; there is deliberately no cursor.
-func (c *Client) PublicRecommendations(ctx context.Context, limit int) (RecommendationPage, error) {
+func (c *Client) publicRecommendations(ctx context.Context, limit int) (RecommendationPage, error) {
 	if err := c.requireNetease(ctx); err != nil {
 		return RecommendationPage{}, err
 	}
@@ -96,7 +96,7 @@ func (c *Client) PublicRecommendations(ctx context.Context, limit int) (Recommen
 
 // ObservePlaylist never calls track-detail or audio endpoints for its entries.
 // Completeness describes only this response, not a remotely fixed snapshot.
-func (c *Client) ObservePlaylist(ctx context.Context, externalID string) (PlaylistObservation, error) {
+func (c *Client) observePlaylist(ctx context.Context, externalID string) (PlaylistObservation, error) {
 	if err := c.requireNetease(ctx); err != nil {
 		return PlaylistObservation{}, err
 	}

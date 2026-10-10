@@ -67,7 +67,7 @@ func (s neteaseSong) track(detail bool) (Track, error) {
 	return t, nil
 }
 
-func (c *Client) Metadata(ctx context.Context, externalID string) (Track, error) {
+func (c *Client) metadata(ctx context.Context, externalID string) (Track, error) {
 	if err := c.requireNetease(ctx); err != nil {
 		return Track{}, err
 	}

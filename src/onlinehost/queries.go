@@ -57,7 +57,7 @@ func (s *Service) Resolve(ctx context.Context, owner, id, external string) error
 	if !externalID.MatchString(external) {
 		return domain.Fail("INVALID_ARGUMENT", "Invalid external track identity")
 	}
-	if _, err := s.Runtime(ctx, owner, id, ""); err != nil {
+	if _, err := call(ctx, s, owner, id, func(context.Context, Runtime) (struct{}, error) { return struct{}{}, nil }); err != nil {
 		return err
 	}
 	return domain.Fail("UNSUPPORTED", "No authorized complete audio resource has been verified")

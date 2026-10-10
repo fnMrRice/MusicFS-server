@@ -3,22 +3,34 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/online"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/provideronline"
+	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 
 type fixture struct{}
 
 func (fixture) RoundTrip(r *http.Request) (*http.Response, error) {
+	if strings.HasPrefix(r.URL.Path, "/eapi/") && !strings.Contains(r.URL.Path, "/login/") && r.URL.Path != "/eapi/nuser/account/get" {
+		var err error
+		r, err = testkit.DecodeNeteaseFixture(r)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	if r.URL.Query().Get("s") == "slow" {
 		<-r.Context().Done()
 		return nil, r.Context().Err()
@@ -75,12 +87,13 @@ func badWorker(mode string) {
 		if strings.Contains(mode, "scope") {
 			r.Context.UserID = "another-owner"
 		}
-		client, _ := online.New(online.Netease, online.Scope{UserID: "test", InstanceID: "test"}, online.Options{Transport: fixture{}})
-		defer client.Close()
-		page, err := client.Search(ctx, online.SearchRequest{Query: "fixture", Limit: 1})
-		if err != nil {
-			return nil, err
-		}
+
+		track := online.Track{ExternalID: "42", Title: "Fixture", Artists: []string{}, SourceURL: "https://music.163.com/song?id=42", PlaybackAvailability: "unknown"}
+		encoded, _ := json.Marshal(track)
+		sum := sha256.Sum256(encoded)
+		track.MetadataDigest = fmt.Sprintf("%x", sum)
+		page := online.SearchPage{Kind: "tracks", Tracks: []online.Track{track}, Albums: []online.Album{}, Artists: []online.Artist{}, Playlists: []online.Playlist{}, Consistency: online.Unversioned, ObservedAt: time.Now().UTC()}
+
 		if strings.Contains(mode, "url") {
 			page.Tracks[0].SourceURL = "http://127.0.0.1/private"
 		}

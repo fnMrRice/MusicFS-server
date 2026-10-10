@@ -50,16 +50,19 @@ func (onlineTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	return &http.Response{StatusCode: status, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(raw))}, nil
 }
 
-func TestOnlineHTTPPrivateAnonymousMetadataAndErrors(t *testing.T) {
+func TestOnlineHTTPPrivateAuthenticatedMetadataAndErrors(t *testing.T) {
 	server, store, _ := libraryHTTP(t)
 	cookie, session := login(t, server)
 	runtimes := []onlinehost.Runtime{}
 	for _, item := range []struct{ owner, id, platform string }{{"admin", "net", online.Netease}, {"admin", "net2", online.Netease}, {"admin", "qq", online.QQMusic}, {"admin", "apple", online.AppleMusic}, {"other", "private", online.Netease}} {
-		provider, err := online.New(item.platform, online.Scope{UserID: item.owner, InstanceID: item.id}, online.Options{Transport: onlineTransport{}})
+		provider, err := online.New(item.platform, online.Scope{UserID: item.owner, InstanceID: item.id}, online.Options{Transport: testkit.OnlineAccountTransport(onlineTransport{})})
 		if err != nil {
 			t.Fatal(err)
 		}
 		t.Cleanup(provider.Close)
+		if item.platform == online.Netease {
+			testkit.RestoreOnlineFixture(t, provider, item.platform, item.owner, item.id)
+		}
 		runtimes = append(runtimes, onlinehost.Runtime{Owner: item.owner, InstanceID: item.id, Name: item.id, Platform: item.platform, ConfigRevision: "private-config", Enabled: true, Provider: provider})
 	}
 	runtimes = append(runtimes, onlinehost.Runtime{Owner: "admin", InstanceID: "disabled", Name: "Disabled", Platform: online.Netease, ConfigRevision: "config"})
@@ -116,8 +119,8 @@ func TestOnlineHTTPPrivateAnonymousMetadataAndErrors(t *testing.T) {
 	}{
 		{"/online-instances/private/search?q=Synthetic", 404},
 		{"/online-instances/disabled/search?q=Synthetic", 503},
-		{"/online-instances/apple/search?q=Synthetic", 401},
-		{"/online-instances/qq/search?q=Synthetic", 503},
+		{"/online-instances/apple/search?q=Synthetic", 403},
+		{"/online-instances/qq/search?q=Synthetic", 403},
 		{"/online-instances/net/search?q=Synthetic&limit=1", 429},
 		{"/online-instances/net/search?q=Changed&limit=1&cursor=" + url.QueryEscape(*page.NextCursor), 400},
 		{"/online-instances/net2/search?q=Synthetic&limit=1&cursor=" + url.QueryEscape(*page.NextCursor), 400},

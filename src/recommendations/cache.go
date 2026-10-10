@@ -5,7 +5,27 @@ import (
 	"time"
 )
 
-func (s *Service) get(ctx context.Context, r Runtime, request Request) Source {
+func (s *Service) get(ctx context.Context, r Runtime, request Request) (result Source) {
+	if provider, ok := r.Provider.(interface {
+		AccountScope(context.Context) (string, string, error)
+	}); ok {
+		account, revision, err := provider.AccountScope(ctx)
+		if err != nil {
+			failure, _ := failureFor(err, s.config.FailureCooldown)
+			return failedSource(r, failure.Code, "Platform login is required")
+		}
+		r.AccountID = account
+		r.ConfigRevision += "\x00" + revision
+		defer func() {
+			current, generation, err := provider.AccountScope(ctx)
+			if err != nil {
+				failure, _ := failureFor(err, s.config.FailureCooldown)
+				result = failedSource(r, failure.Code, "Platform account is unavailable")
+			} else if current != account || generation != revision {
+				result = failedSource(r, "PLATFORM_AUTH_REQUIRED", "Platform account changed; sign in and refresh")
+			}
+		}()
+	}
 	key := cacheKey{r.Owner, r.InstanceID, r.AccountID, r.ConfigRevision, request.Limit}
 	for {
 		if ctx.Err() != nil {

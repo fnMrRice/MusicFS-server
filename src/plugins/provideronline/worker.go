@@ -63,6 +63,7 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 	if client == nil {
 		return nil, pluginproto.Failure("PROTOCOL_MISMATCH", "Online handshake is required")
 	}
+	priority := false
 	var scope pluginproto.Context
 	var run func(context.Context) (any, error)
 	switch method {
@@ -72,6 +73,7 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 			return nil, err
 		}
 		scope = r.Context
+		priority = r.Request.Action == "signalCancel" || r.Request.Action == "logout"
 		run = func(ctx context.Context) (any, error) { return client.Account(ctx, r.Request) }
 	case "provider.online.describe":
 		var r pluginproto.OnlineScope
@@ -160,11 +162,13 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 	if err = hello.ValidateScope(scope); err != nil {
 		return nil, err
 	}
-	select {
-	case w.slots <- struct{}{}:
-		defer func() { <-w.slots }()
-	default:
-		return nil, pluginproto.Failure("RATE_LIMITED", "Online worker is busy")
+	if !priority {
+		select {
+		case w.slots <- struct{}{}:
+			defer func() { <-w.slots }()
+		default:
+			return nil, pluginproto.Failure("RATE_LIMITED", "Online worker is busy")
+		}
 	}
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(scope.TimeoutMs)*time.Millisecond)
 	defer cancel()
