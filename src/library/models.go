@@ -40,8 +40,16 @@ type Provider struct {
 	Roots         []ProviderRoot             `json:"roots"`
 }
 type ProviderRoot struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID        string         `json:"id"`
+	Name      string         `json:"name"`
+	WriteBack *RootWriteBack `json:"writeBack,omitempty"`
+}
+type RootWriteBack struct {
+	Enabled     bool     `json:"enabled"`
+	Available   bool     `json:"available"`
+	Formats     []string `json:"formats"`
+	Fields      []string `json:"fields"`
+	Replacement string   `json:"replacement"`
 }
 type Page struct {
 	Items           []Track `json:"items"`

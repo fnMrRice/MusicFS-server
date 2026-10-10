@@ -140,6 +140,12 @@ func validateDocumentShape(root *yaml.Node) error {
 				"fields": sequenceShape(stringShape), "languages": sequenceShape(stringShape),
 			}),
 		}),
+		"writeBack": mappingShape(map[string]fieldShape{
+			"enabled": boolShape, "allowOverwrite": boolShape, "maxFileBytes": intShape,
+			"roots": sequenceShape(mappingShape(map[string]fieldShape{
+				"instanceId": stringShape, "rootId": stringShape, "fields": sequenceShape(stringShape),
+			}, "instanceId", "rootId", "fields")),
+		}),
 	}, "configVersion")
 	if err := validateShape(root, shape, "config"); err != nil {
 		return err

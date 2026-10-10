@@ -20,7 +20,12 @@ func (s *Service) scan(ctx context.Context, j jobs.Job) (int, error) {
 	}
 	ctx, cancel := context.WithTimeout(ctx, time.Hour)
 	defer cancel()
-	defer r.Worker.Access.Revoke(j.ID)
+	lease, err := s.HoldRead(ctx, j.Owner, j.ProviderInstanceID)
+	if err != nil {
+		return 0, err
+	}
+	defer lease.Close()
+	defer s.Revoke(j.ProviderInstanceID, j.ID)
 	all := []Observation{}
 	roots := j.Plan.Roots
 	seenTracks := map[string]bool{}

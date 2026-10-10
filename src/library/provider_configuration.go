@@ -27,7 +27,13 @@ func safeProviderConfiguration(r Runtime) *pluginproto.Configuration {
 func providerRoots(r Runtime) []ProviderRoot {
 	result := make([]ProviderRoot, 0, len(r.RootNames))
 	for id, name := range r.RootNames {
-		result = append(result, ProviderRoot{ID: id, Name: name})
+		root := ProviderRoot{ID: id, Name: name}
+		if c, ok := r.WriteBack[id]; ok {
+			c.Fields = append([]string{}, c.Fields...)
+			c.Formats = append([]string{}, c.Formats...)
+			root.WriteBack = &c
+		}
+		result = append(result, root)
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
 	return result

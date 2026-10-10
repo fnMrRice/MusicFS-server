@@ -71,6 +71,12 @@ hashing:
   auto: false
   maxConcurrent: 1
   bytesPerSecond: 4194304
+writeBack:
+  enabled: false
+  allowOverwrite: false
+  maxFileBytes: 8589934592
+  # Explicit instance/root/field grants are required before enabling.
+  roots: []
 fingerprinting:
   enabled: false
   # Configure a verified Chromaprint 1.6.1 fpcalc and enable the audio plugin first.

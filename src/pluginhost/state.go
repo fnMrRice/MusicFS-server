@@ -12,8 +12,9 @@ import (
 )
 
 type stateStore struct {
-	dir string
-	mu  sync.Mutex
+	dir         string
+	mu          sync.Mutex
+	rebindReady *bool
 }
 
 var stateKey = regexp.MustCompile(`^[a-z0-9_-]{1,80}$`)
@@ -39,11 +40,21 @@ func (s *stateStore) get(key string) (pluginproto.StateValue, error) {
 func (s *stateStore) load(key string) (pluginproto.StateValue, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if key != "root-identities" {
+		if err := s.readyLocked(); err != nil {
+			return pluginproto.StateValue{}, err
+		}
+	}
 	return s.get(key)
 }
 func (s *stateStore) save(r pluginproto.StateRequest) (pluginproto.StateValue, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if r.Key != "root-identities" {
+		if err := s.readyLocked(); err != nil {
+			return pluginproto.StateValue{}, err
+		}
+	}
 	if len(r.Value) > 512<<10 {
 		return pluginproto.StateValue{}, fmt.Errorf("RATE_LIMITED: state value too large")
 	}
@@ -55,16 +66,24 @@ func (s *stateStore) save(r pluginproto.StateRequest) (pluginproto.StateValue, e
 		return old, fmt.Errorf("RESOURCE_CHANGED: state revision mismatch")
 	}
 	v := pluginproto.StateValue{Revision: old.Revision + 1, Value: r.Value}
+	return v, s.put(r.Key, v)
+}
+
+// put requires s.mu, writes complete content, then durably publishes its name.
+func (s *stateStore) put(key string, v pluginproto.StateValue) error {
+	if key == rebindKey {
+		s.rebindReady = nil
+	}
 	b, err := json.Marshal(v)
 	if err != nil {
-		return v, err
+		return err
 	}
 	if err = os.MkdirAll(s.dir, 0700); err != nil {
-		return v, err
+		return err
 	}
 	tmp, err := os.CreateTemp(s.dir, "state-*")
 	if err != nil {
-		return v, err
+		return err
 	}
 	name := tmp.Name()
 	defer os.Remove(name)
@@ -76,8 +95,7 @@ func (s *stateStore) save(r pluginproto.StateRequest) (pluginproto.StateValue, e
 		err = closeErr
 	}
 	if err != nil {
-		return v, err
+		return err
 	}
-	err = os.Rename(name, filepath.Join(s.dir, r.Key+".json"))
-	return v, err
+	return publishState(name, filepath.Join(s.dir, key+".json"))
 }

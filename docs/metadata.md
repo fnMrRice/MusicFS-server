@@ -62,7 +62,7 @@ Content-Type: application/json
 
 `POST /api/v1/metadata-jobs/{jobId}/cancel` 接受 `{}`，自然幂等，不需要幂等键。已完成任务也可取消，从而撤销其候选的新选用资格；逐目标已完成结果仍供解释。取消不撤销已发布的选择和人工锁，不能用新键继续应用该任务候选；此前成功应用的原键仍可重放。人工解锁沿用[内容接口](media.md)。
 
-停用插件不会删除已经保存的内容、人工锁或历史任务。当前没有 Web 补全页面、远端 Scraper、原文件写回或自动合并录音。协议控制面与二进制通道边界见[插件契约](contracts/plugins/v1/README.md)，手动任务实测范围见[验收记录](validation/metadata-http.md)。
+停用插件不会删除已经保存的内容、人工锁或历史任务。当前没有 Web 补全页面、远端 Scraper 或自动合并录音。补全本身不改原件；另行启用并显式提交的[写回任务](writeback.md)使用当前选用内容。协议控制面与二进制通道边界见[插件契约](contracts/plugins/v1/README.md)，手动任务实测范围见[验收记录](validation/metadata-http.md)。
 
 ## 导入歌词与自动补缺
 

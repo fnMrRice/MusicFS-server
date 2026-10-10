@@ -99,6 +99,10 @@ func (s *Store) Current() Config {
 }
 
 func cloneConfig(c Config) Config {
+	c.WriteBack.Roots = append([]WriteBackRoot(nil), c.WriteBack.Roots...)
+	for i := range c.WriteBack.Roots {
+		c.WriteBack.Roots[i].Fields = append([]string(nil), c.WriteBack.Roots[i].Fields...)
+	}
 	c.Metadata.Automatic.InstancePriority = append([]string(nil), c.Metadata.Automatic.InstancePriority...)
 	c.Metadata.Automatic.Fields = append([]string(nil), c.Metadata.Automatic.Fields...)
 	c.Metadata.Automatic.Languages = append([]string(nil), c.Metadata.Automatic.Languages...)

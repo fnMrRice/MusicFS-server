@@ -59,4 +59,4 @@ NCM 插件已按以下 MIT 项目的容器布局和解密流程，用 Go 标准�
 
 核心、真实 Worker、Server 端到端和 Edge 三项 NCM 联调已通过；浏览器样本由独立 Node 生成器封装本项目 CC0 MP3/FLAC，另经 Go 核心逐字节校验。已执行 299,534 次模糊测试，Linux 真实 Worker 测试通过。升级依赖后的全量检查、竞争检查和四程序 Windows/Linux 构建均通过，详细证据见[实施记录](docs/validation/progress.md)。后续真实双根扫描发布 1,943 条来源，并通过 6 个真实文件（含 4 个 NCM）的 HTTP 播放、定位及原件不变校验，见[真实库验收](docs/validation/real-local-library.md)；结论不外推到所有网易云客户端下载版本。
 
-歌词/封面的独立上传、预览与人工锁见[内容接口](docs/media.md)；本地内嵌/旁置候选、批量任务、人工选用、导入歌词和可配置的自动补缺见[补全任务](docs/metadata.md)。这些流程目前使用API验收，最简Web仍保持列表与播放。
+歌词/封面的独立上传、预览与人工锁见[内容接口](docs/media.md)；本地内嵌/旁置候选、批量任务、人工选用、导入歌词和自动补缺见[补全任务](docs/metadata.md)。默认关闭的[显式原件写回](docs/writeback.md)只支持逐根授权的本地NTFS FLAC，当前通过API操作。最简Web仍保持列表与播放。

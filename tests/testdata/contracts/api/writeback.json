@@ -1,0 +1,10 @@
+[
+  {"name":"explicit-writeback","schema":"WriteBackRequest","valid":true,"value":{"sourceTrackId":"source-1","assetId":"asset-1","assetVersion":"version-1","expectedRevision":2,"fields":[{"name":"lyrics","language":"und"},{"name":"artwork","language":""}],"overwrite":false}},
+  {"name":"writeback-requires-overwrite-choice","schema":"WriteBackRequest","valid":false,"value":{"sourceTrackId":"source-1","assetId":"asset-1","assetVersion":"version-1","expectedRevision":2,"fields":[{"name":"lyrics","language":"und"}]}},
+  {"name":"writeback-one-language-per-field","schema":"WriteBackRequest","valid":false,"value":{"sourceTrackId":"source-1","assetId":"asset-1","assetVersion":"version-1","expectedRevision":2,"fields":[{"name":"lyrics","language":"und"},{"name":"lyrics","language":"en"}],"overwrite":false}},
+  {"name":"writeback-no-private-path","schema":"WriteBackRequest","valid":false,"value":{"sourceTrackId":"source-1","assetId":"asset-1","assetVersion":"version-1","expectedRevision":2,"fields":[{"name":"lyrics","language":"und"}],"overwrite":false,"path":"private/source.flac"}},
+  {"name":"writeback-local-capability","schema":"RootWriteBackCapability","valid":true,"value":{"enabled":true,"available":true,"formats":["flac"],"fields":["lyrics","artwork"],"replacement":"recoverableReplace"}},
+  {"name":"writeback-unavailable-root","schema":"RootWriteBackCapability","valid":true,"value":{"enabled":false,"available":false,"formats":[],"fields":[],"replacement":""}},
+  {"name":"writeback-cancel-empty","schema":"EmptyRequest","valid":true,"value":{}},
+  {"name":"writeback-recover-no-path","schema":"EmptyRequest","valid":false,"value":{"path":"private/source.flac"}}
+]

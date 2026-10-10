@@ -36,7 +36,7 @@ func (w *Worker) handle(ctx context.Context, method string, raw json.RawMessage)
 		if json.Unmarshal(raw, &r) != nil {
 			return nil, pluginproto.Failure("ACCESS_DENIED", "invalid request")
 		}
-		if r.Key == "root-identities" {
+		if r.Key == "root-identities" || strings.HasPrefix(r.Key, "host-rebind-") {
 			return nil, pluginproto.Failure("ACCESS_DENIED", "protected state key")
 		}
 		if method == "host.state.get" {
@@ -44,6 +44,9 @@ func (w *Worker) handle(ctx context.Context, method string, raw json.RawMessage)
 		}
 		return w.state.save(r)
 	case "host.resource":
+		if err := w.state.ready(); err != nil {
+			return nil, err
+		}
 		var r pluginproto.Resource
 		if json.Unmarshal(raw, &r) != nil {
 			return nil, pluginproto.Failure("ACCESS_DENIED", "invalid request")

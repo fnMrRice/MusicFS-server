@@ -73,7 +73,10 @@ func (c Config) Validate() error {
 	if err := c.validateFingerprinting(); err != nil {
 		return err
 	}
-	return c.validateMetadata()
+	if err := c.validateMetadata(); err != nil {
+		return err
+	}
+	return c.validateWriteBack()
 }
 
 func (c Config) validatePlugins(writable []string) error {

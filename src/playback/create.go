@@ -114,13 +114,25 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 	if t.Size <= 0 {
 		return Description{}, domain.Fail("UNSUPPORTED", "Source contains no audio data")
 	}
+	// A cached representation still counts as an active source playback until
+	// the session stops. Preparation's task grant is revoked separately.
+	sourceLease, err := s.library.HoldRead(ctx, who.User.ID, t.ProviderID)
+	if err != nil {
+		return Description{}, err
+	}
+	transferredLease := false
+	defer func() {
+		if !transferredLease {
+			sourceLease.Close()
+		}
+	}()
 	id := domain.NewID()
+	defer s.library.Revoke(t.ProviderID, id)
 	handle, err := s.library.Open(ctx, t, id)
 	if err != nil {
 		return Description{}, err
 	}
 	defer handle.Close()
-	defer s.library.Revoke(t.ProviderID, id)
 	input, size, decrypted, closeInput, err := s.prepareInput(ctx, id, handle, &t)
 	if err != nil {
 		return Description{}, err
@@ -177,7 +189,7 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 		return Description{}, domain.Fail("AUTH_REQUIRED", "Authentication session expired or was revoked")
 	}
 	lifetime, cancel := context.WithCancel(s.ctx)
-	a := &session{owner: who.ID, user: who.User.ID, path: path, etag: fmt.Sprintf("\"%x\"", hash.Sum(nil)), size: n, track: t, gain: r.Preferences.GainDB, ctx: lifetime, cancel: cancel, lastAccess: time.Now()}
+	a := &session{owner: who.ID, user: who.User.ID, path: path, etag: fmt.Sprintf("\"%x\"", hash.Sum(nil)), size: n, track: t, gain: r.Preferences.GainDB, ctx: lifetime, cancel: cancel, lastAccess: time.Now(), sourceLease: sourceLease}
 	expiry := time.Now().UTC().Add(30 * time.Minute)
 	if who.ExpiresAt.Before(expiry) {
 		expiry = who.ExpiresAt
@@ -207,6 +219,7 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 		return Description{}, err
 	}
 	s.sessions[id] = a
+	transferredLease = true
 	s.used += n
 	success = true
 	return a.description, nil

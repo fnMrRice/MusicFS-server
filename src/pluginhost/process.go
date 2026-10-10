@@ -124,6 +124,9 @@ func Start(ctx context.Context, cfg Config) (*Worker, error) {
 }
 
 func (w *Worker) Scan(ctx context.Context, r pluginproto.ScanRequest) (pluginproto.ScanPage, error) {
+	if err := w.state.ready(); err != nil {
+		return pluginproto.ScanPage{}, err
+	}
 	grant, err := w.authorizeScan(ctx, &r)
 	if err != nil {
 		return pluginproto.ScanPage{}, err
@@ -137,6 +140,9 @@ func (w *Worker) Scan(ctx context.Context, r pluginproto.ScanRequest) (pluginpro
 	return page, err
 }
 func (w *Worker) Resolve(ctx context.Context, r pluginproto.ResolveRequest) (pluginproto.Resource, error) {
+	if err := w.state.ready(); err != nil {
+		return pluginproto.Resource{}, err
+	}
 	var result pluginproto.Resource
 	err := w.peer.Call(ctx, "provider.resolve", r, &result)
 	return result, err

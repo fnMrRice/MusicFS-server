@@ -47,6 +47,10 @@ func (s *Store) beginContentMutation(ctx context.Context, owner, source, operati
 		}
 		return m, true, nil
 	}
+	if err = writebackFence(ctx, tx, owner, source, ""); err != nil {
+		tx.Rollback()
+		return nil, false, err
+	}
 	if m.result, err = readContentSelection(ctx, tx, owner, source); err != nil {
 		tx.Rollback()
 		return nil, false, err

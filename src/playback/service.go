@@ -46,6 +46,7 @@ type session struct {
 	lastAccess              time.Time
 	recoveryCount           int
 	recoveryStarted         time.Time
+	sourceLease             *library.ReadLease
 }
 type Service struct {
 	mu        sync.Mutex
@@ -157,6 +158,9 @@ func (s *Service) Stop(ctx context.Context, who auth.Session, id string) error {
 }
 func (s *Service) stopLocked(ctx context.Context, id string, a *session) {
 	a.cancel()
+	if a.sourceLease != nil {
+		a.sourceLease.Close()
+	}
 	delete(s.sessions, id)
 	s.library.Revoke(a.track.ProviderID, id)
 	s.garbage[a.path] = a.size

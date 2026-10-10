@@ -65,7 +65,21 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 		closeMedia()
 		store.Close()
 	}
-	lib := library.New(store, queue, runtimes, metadataProbe(ffprobe, decoder))
+	policy := writeBackPolicy(c, runtimes, ffprobe != "")
+	probe := metadataProbe(ffprobe, decoder)
+	lib := library.New(store, queue, runtimes, probe)
+	content := mediastore.NewContent(store, store, mediaFiles)
+	writeProbe := probe
+	if ffprobe == "" {
+		writeProbe = nil
+	}
+	writebacks, closeWritebacks, err := configureWriteBack(ctx, c, store, lib, content, runtimes, policy, writeProbe)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	closeBeforeWritebacks := cleanup
+	cleanup = func() { closeWritebacks(); closeBeforeWritebacks() }
 	hashes, err := hashworker.New(store, lib, hashworker.Config{Auto: c.Hashing.Auto, MaxConcurrent: c.Hashing.MaxConcurrent, BytesPerSecond: c.Hashing.BytesPerSecond})
 	if err != nil {
 		cleanup()
@@ -76,7 +90,6 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	fingerprints, closeFingerprints := configureFingerprinting(ctx, c, log, store, lib, processor, media)
 	closeBeforeFingerprints := cleanup
 	cleanup = func() { closeFingerprints(); closeBeforeFingerprints() }
-	content := mediastore.NewContent(store, store, mediaFiles)
 	metadata, err := configureEnrichment(ctx, c, log, store, lib, content)
 	if err != nil {
 		cleanup()
@@ -92,6 +105,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	handler.RegisterMedia(content)
 	handler.RegisterEnrichment(metadata)
 	handler.RegisterMetadataAutomation(metadata)
+	handler.RegisterWriteBack(writebacks)
 	var fingerprintDetails matching.FingerprintDetails
 	if fingerprints != nil {
 		fingerprintDetails = fingerprints

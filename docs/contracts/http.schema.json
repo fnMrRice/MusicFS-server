@@ -3,6 +3,13 @@
   "$id": "https://musicfs.invalid/contracts/http.schema.json",
   "title": "MusicFS HTTP v1 模型",
   "$defs": {
+    "EmptyRequest": {"type": "object", "additionalProperties": false},
+    "WriteBackField": {"type": "object", "additionalProperties": false, "required": ["name", "language"], "properties": {"name": {"enum": ["lyrics", "artwork"]}, "language": {"type": "string", "maxLength": 35, "pattern": "^(?:[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*)?$"}}, "if": {"properties": {"name": {"const": "artwork"}}}, "then": {"properties": {"language": {"const": ""}}}},
+    "WriteBackRequest": {"type": "object", "additionalProperties": false, "required": ["sourceTrackId", "assetId", "assetVersion", "expectedRevision", "fields", "overwrite"], "properties": {"sourceTrackId": {"type": "string", "minLength": 1, "maxLength": 256}, "assetId": {"type": "string", "minLength": 1, "maxLength": 256}, "assetVersion": {"type": "string", "minLength": 1, "maxLength": 256}, "expectedRevision": {"type": "integer", "minimum": 0}, "fields": {"type": "array", "minItems": 1, "maxItems": 2, "uniqueItems": true, "items": {"$ref": "#/$defs/WriteBackField"}, "allOf": [{"contains": {"properties": {"name": {"const": "lyrics"}}}, "minContains": 0, "maxContains": 1}, {"contains": {"properties": {"name": {"const": "artwork"}}}, "minContains": 0, "maxContains": 1}]}, "overwrite": {"type": "boolean"}}},
+    "WriteBackOutcome": {"type": "object", "additionalProperties": false, "required": ["changed", "previousAssetId", "assetId", "assetVersion", "fileSha512"], "properties": {"changed": {"type": "boolean"}, "previousAssetId": {"$ref": "#/$defs/ID"}, "assetId": {"$ref": "#/$defs/ID"}, "assetVersion": {"type": "string", "minLength": 1, "maxLength": 256}, "fileSha512": {"type": "string", "pattern": "^[0-9a-f]{128}$"}}},
+    "WriteBackAccepted": {"type": "object", "additionalProperties": false, "required": ["jobId", "merged"], "properties": {"jobId": {"$ref": "#/$defs/ID"}, "merged": {"type": "boolean"}}},
+    "WriteBackJob": {"type": "object", "additionalProperties": false, "required": ["jobId", "request", "status", "error", "result", "createdAt", "updatedAt"], "properties": {"jobId": {"$ref": "#/$defs/ID"}, "request": {"$ref": "#/$defs/WriteBackRequest"}, "status": {"enum": ["queued", "running", "recovery", "succeeded", "failed", "cancelled"]}, "error": {"anyOf": [{"$ref": "#/$defs/ErrorDetail"}, {"type": "null"}]}, "result": {"anyOf": [{"$ref": "#/$defs/WriteBackOutcome"}, {"type": "null"}]}, "createdAt": {"$ref": "#/$defs/Timestamp"}, "updatedAt": {"$ref": "#/$defs/Timestamp"}}},
+    "RootWriteBackCapability": {"type": "object", "additionalProperties": false, "required": ["enabled", "available", "formats", "fields", "replacement"], "properties": {"enabled": {"type": "boolean"}, "available": {"type": "boolean"}, "formats": {"type": "array", "maxItems": 1, "uniqueItems": true, "items": {"const": "flac"}}, "fields": {"type": "array", "maxItems": 2, "uniqueItems": true, "items": {"enum": ["lyrics", "artwork"]}}, "replacement": {"enum": ["", "recoverableReplace"]}}},
     "MetadataAutomationAction": {
       "type": "object", "additionalProperties": false,
       "required": ["field", "language", "status", "reason", "candidateId", "bindingId"],
@@ -475,6 +482,7 @@
               "name"
             ],
             "properties": {
+              "writeBack": {"$ref": "#/$defs/RootWriteBackCapability"},
               "id": {
                 "$ref": "#/$defs/ID"
               },

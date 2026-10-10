@@ -72,11 +72,13 @@ type Config struct {
 	Hashing           HashingConfig        `yaml:"hashing" json:"hashing"`
 	Fingerprinting    FingerprintingConfig `yaml:"fingerprinting,omitempty" json:"fingerprinting"`
 	Metadata          MetadataConfig       `yaml:"metadata" json:"metadata"`
+	WriteBack         WriteBackConfig      `yaml:"writeBack,omitempty" json:"writeBack"`
 }
 
 func defaults() Config {
 	return Config{Listen: "127.0.0.1:8080", DataRoot: "data", MediaRoot: "media", CacheRoot: "cache", MaxSessions: 8, MaxProcessing: 2, MaxCacheBytes: 1 << 30, SessionTTLSeconds: 3600,
 		Hashing:        HashingConfig{MaxConcurrent: 1, BytesPerSecond: 4 << 20},
 		Fingerprinting: FingerprintingConfig{MaxConcurrent: 1, TimeoutSeconds: 30},
-		Metadata:       MetadataConfig{Automatic: enrichment.AutomaticPolicy{Fields: []string{"lyrics", "artwork"}}}}
+		Metadata:       MetadataConfig{Automatic: enrichment.AutomaticPolicy{Fields: []string{"lyrics", "artwork"}}},
+		WriteBack:      WriteBackConfig{MaxFileBytes: 8 << 30, Roots: []WriteBackRoot{}}}
 }

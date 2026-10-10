@@ -1,9 +1,13 @@
 {
   "openapi": "3.1.0",
-  "info": {"title": "MusicFS 最小服务 API", "version": "1.0.0", "description": "P0–P4、当前资产证据与 S-P5-02 完整文件摘要与 S-P5-03 局部指纹与 S-P5-04 人工关联契约。接口是否可用以阶段验收记录为准。JSON 语法是 YAML 1.2 子集；模型单一来源为 http.schema.json。"},
+  "info": {"title": "MusicFS 最小服务 API", "version": "1.0.0", "description": "本地播放、资产证据、完整摘要、局部指纹、人工关联和歌词/封面补全及显式写回契约。接口是否可用以阶段验收记录为准。JSON 语法是 YAML 1.2 子集；模型单一来源为 http.schema.json。"},
   "servers": [{"url": "/api/v1"}],
   "security": [{"sessionCookie": []}],
   "paths": {
+    "/writeback-jobs": {"post": {"operationId": "createWriteBack", "description": "显式把当前选用的歌词/封面写入授权本地FLAC。只接受来源、资产与选择修订，不接收路径或正文；overwrite还需管理员授权。活动播放使任务保持queued。", "parameters": [{"$ref": "#/components/parameters/CSRF"}, {"$ref": "#/components/parameters/Idempotency"}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/WriteBackRequest"}}}}, "responses": {"202": {"description": "已排队或重放同一任务", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/WriteBackAccepted"}}}}, "default": {"$ref": "#/components/responses/Error"}}}},
+    "/writeback-jobs/{id}": {"parameters": [{"$ref": "#/components/parameters/ID"}], "get": {"operationId": "getWriteBack", "description": "所有者范围的任务与安全结果；停用写回后仍可读取。", "responses": {"200": {"description": "写回任务", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/WriteBackJob"}}}}, "default": {"$ref": "#/components/responses/Error"}}}},
+    "/writeback-jobs/{id}/cancel": {"parameters": [{"$ref": "#/components/parameters/ID"}], "post": {"operationId": "cancelWriteBack", "description": "仅取消queued任务；已cancelled自然幂等。running/recovery拒绝取消，不进行隐藏回滚。", "parameters": [{"$ref": "#/components/parameters/CSRF"}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/EmptyRequest"}}}}, "responses": {"200": {"description": "原任务状态", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/WriteBackJob"}}}}, "default": {"$ref": "#/components/responses/Error"}}}},
+    "/writeback-jobs/{id}/recover": {"parameters": [{"$ref": "#/components/parameters/ID"}], "post": {"operationId": "recoverWriteBack", "description": "复核授权后安排原任务在后台恢复，200仅返回当前状态，应继续GET轮询。仅recovery可安排；完整succeeded返回原任务。自然幂等，无新ID，不覆盖未知外部改动。", "parameters": [{"$ref": "#/components/parameters/CSRF"}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/EmptyRequest"}}}}, "responses": {"200": {"description": "原任务当前状态", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/WriteBackJob"}}}}, "default": {"$ref": "#/components/responses/Error"}}}},
     "/scan-jobs/{id}/metadata-results": {
       "parameters": [{"$ref": "#/components/parameters/ID"}],
       "get": {

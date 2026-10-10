@@ -20,6 +20,7 @@ type Runtime struct {
 	ConfigRevision  string
 	ImportDefaults  pluginproto.ImportOptions
 	RootNames       map[string]string
+	WriteBack       map[string]RootWriteBack
 	Configuration   *pluginproto.Configuration
 }
 type Probe func(context.Context, io.ReadSeeker, int64) (Observation, error)
@@ -28,12 +29,14 @@ type Service struct {
 	jobs     *jobs.Service
 	runtimes map[string]Runtime
 	probe    Probe
+	gates    map[string]*providerGate
 }
 
 func New(repo Repository, queue *jobs.Service, runtimes []Runtime, probe Probe) *Service {
-	s := &Service{repo: repo, jobs: queue, runtimes: map[string]Runtime{}, probe: probe}
+	s := &Service{repo: repo, jobs: queue, runtimes: map[string]Runtime{}, probe: probe, gates: map[string]*providerGate{}}
 	for _, r := range runtimes {
 		s.runtimes[r.ID] = r
+		s.gates[r.ID] = &providerGate{barriers: map[string]bool{}, tasks: map[string]*ReadLease{}, changed: make(chan struct{})}
 	}
 	queue.Register("scan-full", s.scan)
 	queue.Register("scan-incremental", s.scan)
@@ -61,6 +64,11 @@ func (s *Service) Providers(ctx context.Context, user string) []Provider {
 	return items
 }
 func (s *Service) Scan(ctx context.Context, user, provider string, input ScanInput, key string) (jobs.Job, bool, error) {
+	lease, err := s.HoldRead(ctx, user, provider)
+	if err != nil {
+		return jobs.Job{}, false, err
+	}
+	defer lease.Close()
 	plan, err := s.BuildScanPlan(ctx, user, provider, input)
 	if err != nil {
 		return jobs.Job{}, false, err
@@ -87,6 +95,9 @@ func (s *Service) Open(ctx context.Context, t Track, task string) (*sourceaccess
 	if !ok || r.Owner != t.Owner || r.Worker == nil {
 		return nil, domain.Fail("SOURCE_OFFLINE", "Provider is offline")
 	}
+	if err := s.holdTask(ctx, t.Owner, t.ProviderID, task); err != nil {
+		return nil, err
+	}
 	scope := sourceaccess.Scope{UserID: t.Owner, InstanceID: t.ProviderID, TaskID: task, AssetID: t.AssetID}
 	ref, err := r.Worker.Access.Register(scope, t.RootID, t.Path, t.Version, time.Hour)
 	if err != nil {
@@ -98,4 +109,5 @@ func (s *Service) Revoke(provider, task string) {
 	if r, ok := s.runtimes[provider]; ok && r.Worker != nil {
 		r.Worker.Access.Revoke(task)
 	}
+	s.revokeTask(provider, task)
 }

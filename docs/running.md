@@ -1,6 +1,6 @@
 # 本地最简 Web 运行
 
-此版本实现本地文件扫描、固定修订列表、授权原流、独立 Go DSP 处理播放和本地 NCM 解密。桌面 Client、在线 Provider、刮削、指纹与歌单尚未实现。实际验证范围见 [实施记录](validation/progress.md)及 Web 的兼容性记录。
+最简Web提供本地文件列表、授权原流、Go DSP处理播放和本地NCM解密。Server另提供本地指纹、人工关联及歌词/封面补全API；默认关闭的原件写回见[写回说明](writeback.md)。桌面Client、在线Provider和歌单尚未实现。实际验证范围见[实施记录](validation/progress.md)及Web兼容性记录。
 
 ## Windows
 

@@ -36,6 +36,10 @@
 | `fingerprinting.maxConcurrent` | 默认1，范围1—2；指纹任务并发上限；DSP 前规范化和 NCM 解密各有独立的后台1槽位，不占前台播放准入槽位 |
 | `fingerprinting.timeoutSeconds` | 默认30，范围1—120；指纹任务时间上限；已有规范化管线另有30秒保护，上层较长配置不会撤销内层限制 |
 | `plugins` | 显式插件列表，可为空；模型见下一节 |
+| `writeBack.enabled` | 默认false；显式原件写回开关，不由上传/选用/自动补缺开启 |
+| `writeBack.allowOverwrite` | 默认false；覆盖旧标签还要求本次请求显式overwrite |
+| `writeBack.maxFileBytes` | 默认8589934592（8 GiB），范围46—1099511627776（1 TiB） |
+| `writeBack.roots` | 默认空；最多256个不重复的`{instanceId,rootId,fields}`授权，字段限lyrics/artwork |
 
 优先级为内置默认值 → YAML → 支持的环境变量 → 显式CLI参数。支持 `MUSICFS_LISTEN`、`MUSICFS_DATA_ROOT`、`MUSICFS_MEDIA_ROOT`、`MUSICFS_CACHE_ROOT`、`MUSICFS_WEB_ROOT` 和 `MUSICFS_ADMIN_TOKEN`；当前CLI仅为普通配置提供 `--web-root` 覆盖，`--config`选择文件。插件及实例开关不接受环境或CLI覆盖。
 
@@ -93,6 +97,12 @@ metadata:
 `languages` 最多16项，空数组不筛选；语言归一、未知语言和封面规则与[手动任务](metadata.md)一致。显式 `importLyrics=true` 使用同一实例优先顺序，但只请求歌词且不继承全局语言过滤。策略在任务准备时持久化，重启后继续已有快照；配置修改重启后用于新准备的任务。自动选用只接受内嵌或同名旁置候选，同优先级存在内容歧义会跳过，目录通用封面不自动认定属于每首歌曲。人工锁始终保留；不会写回原音频或旁置文件。
 
 客户端先读取 Provider 的 `configuration` 与安全 `roots[{id,name}]`，再提交 `mode/schemaRevision/rootIds/options`；不返回磁盘路径或真实根身份。详见[共同契约](contracts/README.md)。扫描任务固定有效选项、根及插件/配置版本，范围外曲目保留；不能把一次浅层扫描当作完整音乐根的删除证明。
+
+### 原件写回
+
+`writeBack` 可省略或部分覆盖，null、未知字段、错误类型和越界值拒绝。根必须引用已配置的 Local Files 实例及其音乐根；关闭写回仍验证引用，开启时要求至少一个明确授权且插件和实例都启用。字段为1—2个不重复的 `lyrics/artwork`，不接受磁盘路径，不默认开放所有根。`Snapshot/Current` 深拷贝根和字段，外部修改返回值不能改变在用授权。
+
+配置不保证存储和工具可写：真实写回仅支持 Windows 固定本地 NTFS 的受支持 FLAC，Provider 逐根报告能力，任务再次复核文件及 ffprobe；Linux/NAS/其他存储明确不支持。修改后重启，没有动态授权管理入口。使用和恢复边界见[写回说明](writeback.md)。
 
 ## 4. 配置读写服务
 
