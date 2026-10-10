@@ -14,6 +14,9 @@ MusicFS的Go后端服务。已实现本地扫描/音乐库、鉴权与原流Rang
 
 文档入口：
 
+- [NFS/SMB NAS Provider](docs/nas-providers.md)、[Bilibili 音频 Provider](docs/bilibili-provider.md)：新增设计，均待实现；B 站匿名优先，收藏夹为主、音频区独立歌单为补充。
+- [NAS / Bilibili 增量实施](docs/implementation/nas-bilibili.md)与[开源参考](docs/provider-references.md)：依赖调查、受控远端资源、分阶段交付和验收。
+
 - [Server 分阶段实施](docs/implementation.md)：P0—P8 的文件职责、逐步任务、测试与完成门槛。
 - [YAML 配置](docs/configuration.md)：字段、插件与实例、覆盖顺序、配置读写及应用边界。
 - [扫描与文件通知](docs/scanning.md)：选根、递归深度、排除规则、默认关闭的监听与周期补漏，以及暂停任务的处理方式。

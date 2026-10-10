@@ -106,9 +106,11 @@ metadata.read/stream.resolve 按具体音质/版本给出可得的 codec、conta
 
 平台歌词/封面经明确注册的 Scraper 适配器进入候选流程，不让其他 Scraper 依赖在线 Provider；基础标签仍由 Provider 用于建档。
 
+新增 Provider 设计另见 [Bilibili 音频](bilibili-provider.md)：公开视频与收藏夹匿名优先，音频区曲目/独立歌单分别验证，账号仅为私有/受限功能的可选授权。收藏夹/音频歌单复用 RemotePlaylist，视频按分 P 保留来源与资产；音频通过 Server 受控资源交付。它与 NAS 直连均需扩展当前本地专用资源通道，不能仅添加 manifest 就视为支持。
+
 ### 3.3 官方 Local Files Provider
 
-首版支持 Server 本机及已挂载可访问 NAS，实例配置授权根、递归/排除、扫描策略及可选写回，无需在线账号。原生 SMB/NFS 直连属于后续独立验证，首版不依赖。
+首版支持 Server 本机及已挂载可访问 NAS，实例配置授权根、递归/排除、扫描策略及可选写回，无需在线账号。新增原生 SMB/NFS 直连设计由两个独立 Provider 承担，不改变 Local Files 挂载模式；具体见 [NAS 设计](nas-providers.md)及[增量计划](implementation/nas-bilibili.md)，尚未实现。
 
 | 能力 | 内部行为 |
 | --- | --- |

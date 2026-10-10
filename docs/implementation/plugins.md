@@ -8,6 +8,8 @@
 
 ## 1. 首版边界与交付顺序
 
+新增 [NAS / Bilibili 增量计划](nas-bilibili.md)，全部待实现。原生 SMB/NFS 从首版非前置项进入独立增量；B 站优先匿名视频音轨与公开收藏夹，补充音频区曲目/独立歌单，可选账号后置。设计见 [NAS](../nas-providers.md)、[Bilibili](../bilibili-provider.md)，复用候选及许可核查见[开源参考](../provider-references.md)。
+
 | 阶段 | 插件侧交付 | 对应用户可见结果 |
 | --- | --- | --- |
 | P0 | 明确进程协议、能力及资源引用；建立失败样例 | Server / Web 不用猜测插件行为 |

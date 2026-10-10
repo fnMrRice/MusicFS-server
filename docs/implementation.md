@@ -4,6 +4,8 @@
 
 ## 1. 范围与导航
 
+新增 [NAS / Bilibili 插件增量计划](implementation/nas-bilibili.md)，全部待实现：原生 NFS/SMB 只读来源、B 站匿名音轨、收藏夹与音频区独立歌单，后续可选账号。此次仅设计，不扩张上文已交付范围。
+
 当前交付范围是 Server、Server 插件和能显示文件列表并播放的 Web。桌面 Client 不在本轮实现计划内。跨端接口和联合验收见[实施总览](../../docs/implementation.md)，Server 的长期边界见[内部架构](architecture.md)与[音频设计](audio-processing.md)。
 
 | 阶段 | 详细文档 | 核心结果 |

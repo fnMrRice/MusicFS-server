@@ -1,0 +1,49 @@
+@startuml
+title NAS 与 Bilibili Provider 增量（设计，尚未实现）
+left to right direction
+skinparam componentStyle rectangle
+skinparam shadowing false
+
+actor "Web / Client" as UI
+package "Server" {
+  component "API / 音乐库 / 歌单\n身份、修订、出处与授权" as Core
+  component "插件宿主\n实例、任务租约与受控资源" as Host
+  component "流网关 / 音频处理\n固定资产、表示与播放尝试" as Stream
+  component "受保护凭据\n按用户与实例隔离" as Secrets
+}
+package "独立 Provider 进程（待实现）" {
+  component "SMB Provider\n授权共享、只读扫描与读取" as SMB
+  component "NFS Provider\n授权 export、只读扫描与读取" as NFS
+  component "Bilibili Provider\n匿名优先、视频分 P / au 音频\n收藏夹 / am 音频歌单" as Bili
+}
+cloud "NAS\nSMB 2/3 或 NFSv3 目标" as NAS
+cloud "B 站 API / 音频 CDN" as BSite
+
+UI --> Core : 配置 / 预览 / 导入或绑定
+UI --> Stream : 仅 Server 鉴权播放地址
+Core --> Host : 扫描 / 查询 / 解析
+Core --> Stream : 创建会话 / 定位 / 恢复
+Host --> Secrets : 必要的实例授权
+Host --> SMB : 版本化控制协议
+Host --> NFS : 版本化控制协议
+Host --> Bili : 版本化控制协议
+SMB --> NAS : 只读、目标与版本校验
+NFS --> NAS : 只读、目标与版本校验
+Bili --> BSite : 公开查询 / 必要时账号授权
+SMB ..> Host : 任务授权的二进制音频通道
+NFS ..> Host : 任务授权的二进制音频通道
+Bili ..> Host : 服务端私有资源描述
+Host --> Stream : 受控读取 / 版本与定位能力
+Stream --> BSite : 经校验的 CDN 读取
+
+note bottom of Host
+  控制面不传音频正文。
+  NAS 通道与在线网络读取均需扩展现有实现。
+  停用、取消和旧代次回收遵守宿主生命周期。
+end note
+note bottom of Core
+  NAS 不完整扫描、集合分页失败不清空旧库。
+  收藏夹与音频歌单保留独立类型和条目出处。
+  只有实测能力才对客户端声明支持。
+end note
+@enduml
