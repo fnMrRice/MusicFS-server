@@ -162,5 +162,8 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 		cleanup()
 		return nil, nil, err
 	}
+	closeWatch := configureWatch(ctx, c, lib, runtimes, log)
+	closeBeforeWatch := cleanup
+	cleanup = func() { closeWatch(); closeBeforeWatch() }
 	return handler, cleanup, nil
 }

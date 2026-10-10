@@ -18,6 +18,8 @@ S-P5-01 观测增加必需但可为 `null` 的 `bitrateMode` 与 `providerSha512
 
 JSON-RPC 数值码：-32700 解析错误、-32600 非法请求、-32601 未知方法、-32602 非法参数、-32603 内部协议错误；业务失败统一 -32000，并在 data 给出稳定 code/retryable/retryAfterMs。明确不支持的已识别能力返回 `UNSUPPORTED`。不能以空成功响应代替未实现功能。
 
+Local Files的文件通知由宿主按实例 `config.watch` 调度，不新增Worker自行遍历或提交任意路径的能力。通知只产生合并扫描提示，仍使用当前声明、已授权根、实例默认范围和新的受限任务授权。通知丢失/不可用以周期完整复核补漏；活动或重试等待中的任务不会被事件洪峰重复替换，paused停止自动提交。协议中的增量扫描仍须完整覆盖声明scope才可发布；不得把通知列表冒充完成观察。目录监听与资源上限见[扫描说明](../../../scanning.md)。
+
 Host 的 `host.entries` 返回固定根身份的 Entry 页；`host.state.get/compareAndSet` 使用实例隔离的 key/revision/value。value 是限额 512 KiB 的状态字节（Go `[]byte` 的 Base64 JSON 编码），仅保存身份等小型状态，不能承载音频正文。`host.resource` 由 Host 检查受限相对路径后分配不透明引用；Worker 不自行签发引用。
 
 音频 Worker 的 hello 额外接收已由 Host 探测的 capabilities。`audio.describe` 返回实际工具摘要、profile 和 PCM；`audio.prepare/start` 接收固定计划与 loopback input/output 任务通道。音频二进制由任务限定的 loopback HTTP 传输，不写入控制面。宿主注入的 FFmpeg 绝对路径和可执行文件摘要仅在受信任配置边界使用，不发送给 Web。取消仍使用统一取消通知；具体字段是插件内的 `gainDB`，HTTP 用户偏好是 `gainDb`，两者在边界显式转换。

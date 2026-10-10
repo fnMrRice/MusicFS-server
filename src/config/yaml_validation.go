@@ -163,7 +163,7 @@ func validateDocumentShape(root *yaml.Node) error {
 		var settings fieldShape
 		switch id.Value {
 		case "musicfs.localfiles":
-			settings = mappingShape(map[string]fieldShape{"musicRoots": sequenceShape(musicRoot)})
+			settings = mappingShape(map[string]fieldShape{"musicRoots": sequenceShape(musicRoot), "watch": watchShape()})
 		case "musicfs.audio.ffmpeg":
 			settings = mappingShape(map[string]fieldShape{"ffmpegPath": stringShape, "ffprobePath": stringShape})
 		case "musicfs.ncm", "musicfs.scraper.local", "musicfs.netease", "musicfs.qqmusic", "musicfs.applemusic":

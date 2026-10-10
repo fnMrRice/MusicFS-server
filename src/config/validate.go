@@ -82,6 +82,7 @@ func (c Config) Validate() error {
 func (c Config) validatePlugins(writable []string) error {
 	plugins, instances := map[string]bool{}, map[string]bool{}
 	onlineInstances := 0
+	watchedInstances := 0
 	for _, plugin := range c.Plugins {
 		role := "audio"
 		switch plugin.PluginID {
@@ -129,6 +130,12 @@ func (c Config) validatePlugins(writable []string) error {
 				return errors.New("instance role does not match pluginId")
 			}
 			enabled := plugin.Enabled && instance.Enabled
+			if enabled && instance.Config.Watch != nil && instance.Config.Watch.Enabled {
+				watchedInstances++
+				if watchedInstances > MaxWatchedInstances {
+					return errors.New("at most 8 enabled watch instances are supported")
+				}
+			}
 			if enabled {
 				active++
 				if plugin.Executable == "" {
@@ -159,6 +166,14 @@ func validConfigID(id string) bool {
 }
 
 func validateSettings(plugin string, settings InstanceConfig, enabled bool, writable []string) error {
+	if settings.Watch != nil {
+		if plugin != "musicfs.localfiles" {
+			return errors.New("watch is available only for local files")
+		}
+		if err := settings.Watch.Validate(); err != nil {
+			return err
+		}
+	}
 	if len(settings.MusicRoots) > 256 {
 		return errors.New("musicRoots cannot exceed 256 authorized roots per instance")
 	}

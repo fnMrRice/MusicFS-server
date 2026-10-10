@@ -24,6 +24,11 @@ plugins:
           importLyrics: false
           excludePatterns: []
         config:
+          watch:
+            enabled: false
+            debounceMs: 1000
+            maxDelayMs: 10000
+            fullRescanSeconds: 3600
           musicRoots:
             # Replace with your music directory; this sample uses project fixtures.
             - id: 'local'

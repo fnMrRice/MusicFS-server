@@ -29,9 +29,10 @@ type Instance struct {
 }
 
 type InstanceConfig struct {
-	MusicRoots  []MusicRoot `yaml:"musicRoots,omitempty" json:"musicRoots,omitempty"`
-	FFmpegPath  string      `yaml:"ffmpegPath,omitempty" json:"ffmpegPath,omitempty"`
-	FFprobePath string      `yaml:"ffprobePath,omitempty" json:"ffprobePath,omitempty"`
+	Watch       *WatchConfig `yaml:"watch,omitempty" json:"watch,omitempty"`
+	MusicRoots  []MusicRoot  `yaml:"musicRoots,omitempty" json:"musicRoots,omitempty"`
+	FFmpegPath  string       `yaml:"ffmpegPath,omitempty" json:"ffmpegPath,omitempty"`
+	FFprobePath string       `yaml:"ffprobePath,omitempty" json:"ffprobePath,omitempty"`
 }
 
 type HashingConfig struct {

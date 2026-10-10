@@ -57,7 +57,7 @@
 
 | `pluginId` | 角色与实例参数 |
 | --- | --- |
-| `musicfs.localfiles` | `provider`；`config.musicRoots`包含`id/name/path`。有效启用时至少一个音乐根；根ID在该实例内唯一 |
+| `musicfs.localfiles` | `provider`；`config.musicRoots`包含`id/name/path`。有效启用时至少一个音乐根；根ID在该实例内唯一；可选`config.watch`配置宿主文件通知与周期复核，默认关闭 |
 | `musicfs.audio.ffmpeg` | `audio`；`config.ffmpegPath`与`config.ffprobePath`。有效启用时两者均必填 |
 | `musicfs.ncm` | `audio`；`config: {}`，具体功能见[NCM说明](ncm.md) |
 | `musicfs.scraper.local` | `scraper`；`config: {}`，最多16个配置实例，只读取目标Provider授权的内嵌/旁置内容；见[补全任务](metadata.md) |
@@ -70,6 +70,8 @@
 ### 导入选项
 
 Local Files 实例可在 `config` 同级声明 `importDefaults`。这些字段的标题、说明、默认值与校验规则由官方插件的 `Manifest.configuration` 提供；宿主加载器共用该声明，实际遍历还受宿主的根授权和深度上限约束。每个实例最多授权 256 个根，客户端只能选择已授权根编号。
+
+文件通知是独立宿主调度配置：`config.watch`默认`enabled:false/debounceMs:1000/maxDelayMs:10000/fullRescanSeconds:3600`；省略字段补默认，显式0/null拒绝。去抖范围100—30000ms，最大等待100—60000ms且不小于去抖；完整复核周期30—86400s。最多8个双层启用的监听实例，每实例256目录。超限或通知不可用退为周期复核，paused实例停止自动提交至重启。它不改变导入默认值或授权根，不是动态启停接口；完整语义及日志见[扫描与文件通知](scanning.md#文件通知与周期补漏)。
 
 ```yaml
 importDefaults:

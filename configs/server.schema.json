@@ -302,7 +302,17 @@
     },
     "LocalSettings": {
       "type": "object", "additionalProperties": false,
-      "properties": {"musicRoots": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/MusicRoot"}}}
+      "properties": {"musicRoots": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/MusicRoot"}}, "watch": {"$ref": "#/$defs/Watch"}}
+    },
+    "Watch": {
+      "type": "object", "additionalProperties": false,
+      "description": "宿主通知提示与周期复核，默认关闭。每实例最多256目录、合并一个待处理提示；最多8个双层启用的监听实例。maxDelayMs须不小于debounceMs，通知失败退化周期复核，paused任务停止自动提交直至重启。",
+      "properties": {
+        "enabled": {"type": "boolean", "default": false},
+        "debounceMs": {"type": "integer", "minimum": 100, "maximum": 30000, "default": 1000},
+        "maxDelayMs": {"type": "integer", "minimum": 100, "maximum": 60000, "default": 10000},
+        "fullRescanSeconds": {"type": "integer", "minimum": 30, "maximum": 86400, "default": 3600}
+      }
     },
     "FFmpegSettings": {
       "type": "object", "additionalProperties": false,
