@@ -140,7 +140,7 @@ func (s *Store) FindTrack(ctx context.Context, user, id string) (library.Track, 
 }
 func (s *Store) ProviderScanState(ctx context.Context, user, id string) string {
 	var state string
-	if s.DB.QueryRowContext(ctx, "SELECT state FROM jobs WHERE owner=? AND target=? ORDER BY CASE state WHEN 'running' THEN 0 WHEN 'queued' THEN 1 ELSE 2 END,created_at DESC,id DESC LIMIT 1", user, id).Scan(&state) != nil {
+	if s.DB.QueryRowContext(ctx, "SELECT state FROM jobs WHERE owner=? AND target=? ORDER BY CASE state WHEN 'running' THEN 0 WHEN 'queued' THEN 1 WHEN 'retry_wait' THEN 2 ELSE 3 END,created_at DESC,id DESC LIMIT 1", user, id).Scan(&state) != nil {
 		return "idle"
 	}
 	return state

@@ -18,9 +18,15 @@ func (s *Store) Claim(ctx context.Context) (jobs.Job, error) {
 		return jobs.Job{}, err
 	}
 	defer tx.Rollback()
-	j, err := readJob(tx.QueryRowContext(ctx, "SELECT "+jobColumns+" FROM jobs WHERE state='queued' AND NOT EXISTS(SELECT 1 FROM provider_scan_leases l WHERE l.owner=jobs.owner AND l.provider=jobs.target AND l.active_job_id IS NOT NULL) ORDER BY created_at,id LIMIT 1"))
+	now := time.Now().UTC()
+	j, err := readJob(tx.QueryRowContext(ctx, "SELECT "+jobColumns+" FROM jobs WHERE (state='queued' OR (state='retry_wait' AND julianday(next_attempt_at)<=julianday(?))) AND attempt_count<max_attempts AND NOT EXISTS(SELECT 1 FROM provider_scan_leases l WHERE l.owner=jobs.owner AND l.provider=jobs.target AND l.active_job_id IS NOT NULL) ORDER BY created_at,id LIMIT 1", now.Format(time.RFC3339Nano)))
 	if err != nil {
 		return j, err
+	}
+	// SQLite date comparison is rounded; never execute before the exact stored
+	// deadline even when the coarse query includes the next fraction of a ms.
+	if j.NextAttemptAt != nil && now.Before(*j.NextAttemptAt) {
+		return jobs.Job{}, sql.ErrNoRows
 	}
 	_, err = tx.ExecContext(ctx, "INSERT INTO provider_scan_leases(owner,provider,last_generation,active_job_id) VALUES(?,?,1,?) ON CONFLICT(owner,provider) DO UPDATE SET last_generation=last_generation+1,active_job_id=excluded.active_job_id WHERE active_job_id IS NULL", j.Owner, j.ProviderInstanceID, j.ID)
 	if err != nil {
@@ -29,11 +35,15 @@ func (s *Store) Claim(ctx context.Context) (jobs.Job, error) {
 	if err = tx.QueryRowContext(ctx, "SELECT last_generation FROM provider_scan_leases WHERE owner=? AND provider=? AND active_job_id=?", j.Owner, j.ProviderInstanceID, j.ID).Scan(&j.Generation); err != nil {
 		return j, err
 	}
-	_, err = tx.ExecContext(ctx, "UPDATE jobs SET state='running',generation=?,updated_at=? WHERE id=? AND owner=? AND state='queued'", j.Generation, time.Now().UTC().Format(time.RFC3339Nano), j.ID, j.Owner)
+	_, err = tx.ExecContext(ctx, "UPDATE jobs SET state='running',generation=?,attempt_count=attempt_count+1,next_attempt_at=NULL,last_attempt_at=?,observed=0,updated_at=? WHERE id=? AND owner=? AND state IN ('queued','retry_wait')", j.Generation, now.Format(time.RFC3339Nano), now.Format(time.RFC3339Nano), j.ID, j.Owner)
 	if err != nil {
 		return j, err
 	}
 	j.Status = "running"
+	j.AttemptCount++
+	j.RetryCount = j.AttemptCount - 1
+	j.NextAttemptAt, j.LastAttemptAt, j.UpdatedAt = nil, &now, now
+	j.Progress.Observed = 0
 	return j, tx.Commit()
 }
 
@@ -72,49 +82,27 @@ func (s *Store) Finish(ctx context.Context, given jobs.Job, n int, failure error
 	if err != nil {
 		return err
 	}
-	state := "succeeded"
-	var message, last any
+	var message, last, next any
 	complete := failure == nil
-	now := time.Now().UTC().Format(time.RFC3339Nano)
-	if failure != nil {
-		state = "failed"
-		detail := domain.Error{Code: "TEMPORARY_FAILURE", Message: "Scan failed; previous library retained"}
-		var known *domain.Error
-		if errors.As(failure, &known) {
-			detail = *known
-		}
-		if errors.Is(failure, context.Canceled) {
-			state = "cancelled"
-			detail.Code, detail.Message = "CANCELED", "Scan cancelled; previous library retained"
-		}
-		encoded, err := json.Marshal(detail)
+	now := time.Now().UTC()
+	decision := jobs.DecideRetry(failure, j.AttemptCount, now)
+	if decision.Error != nil {
+		encoded, err := json.Marshal(decision.Error)
 		if err != nil {
 			return err
 		}
 		message = string(encoded)
 	} else {
-		last = now
+		last = now.Format(time.RFC3339Nano)
 	}
-	_, err = tx.ExecContext(ctx, "UPDATE jobs SET state=?,observed=?,complete=?,error=?,last_success_at=COALESCE(?,last_success_at),updated_at=? WHERE id=? AND owner=?", state, n, complete, message, last, now, j.ID, j.Owner)
+	if decision.NextAttemptAt != nil {
+		next = decision.NextAttemptAt.Format(time.RFC3339Nano)
+	}
+	_, err = tx.ExecContext(ctx, "UPDATE jobs SET state=?,observed=?,complete=?,error=?,next_attempt_at=?,last_success_at=COALESCE(?,last_success_at),updated_at=? WHERE id=? AND owner=?", decision.Status, n, complete, message, next, last, now.Format(time.RFC3339Nano), j.ID, j.Owner)
 	if err != nil {
 		return err
 	}
 	if _, err = tx.ExecContext(ctx, "UPDATE provider_scan_leases SET active_job_id=NULL WHERE owner=? AND provider=? AND active_job_id=? AND last_generation=?", j.Owner, j.ProviderInstanceID, j.ID, j.Generation); err != nil {
-		return err
-	}
-	return tx.Commit()
-}
-
-func (s *Store) RecoverJobs(ctx context.Context) error {
-	tx, err := s.DB.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	if _, err = tx.ExecContext(ctx, "UPDATE provider_scan_leases SET active_job_id=NULL"); err != nil {
-		return err
-	}
-	if _, err = tx.ExecContext(ctx, "UPDATE jobs SET state='queued',generation=0 WHERE state='running'"); err != nil {
 		return err
 	}
 	return tx.Commit()

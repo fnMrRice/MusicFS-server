@@ -1,0 +1,314 @@
+[
+  {
+    "name": "scan-retry-wait",
+    "schema": "ScanJob",
+    "valid": true,
+    "value": {
+      "jobId": "job-1",
+      "providerInstanceId": "local",
+      "status": "retry_wait",
+      "progress": {
+        "observed": 3,
+        "total": null
+      },
+      "complete": false,
+      "error": {
+        "code": "TEMPORARY_FAILURE",
+        "message": "Provider temporarily unavailable",
+        "requestId": "request",
+        "retryAfter": null
+      },
+      "lastSuccessAt": null,
+      "schemaRevision": "local-import-v3",
+      "rootIds": [
+        "music"
+      ],
+      "effectiveOptions": {
+        "recursive": true,
+        "maxDepth": 64,
+        "importLyrics": false,
+        "excludePatterns": []
+      },
+      "attemptCount": 1,
+      "retryCount": 0,
+      "maxAttempts": 3,
+      "nextAttemptAt": "2026-10-10T00:00:02Z",
+      "lastAttemptAt": "2026-10-10T00:00:01Z",
+      "createdAt": "2026-10-10T00:00:00Z",
+      "updatedAt": "2026-10-10T00:00:01Z"
+    }
+  },
+  {
+    "name": "scan-retry-requires-deadline",
+    "schema": "ScanJob",
+    "valid": false,
+    "value": {
+      "jobId": "job-1",
+      "providerInstanceId": "local",
+      "status": "retry_wait",
+      "progress": {
+        "observed": 3,
+        "total": null
+      },
+      "complete": false,
+      "error": {
+        "code": "TEMPORARY_FAILURE",
+        "message": "Provider temporarily unavailable",
+        "requestId": "request",
+        "retryAfter": null
+      },
+      "lastSuccessAt": null,
+      "schemaRevision": "local-import-v3",
+      "rootIds": [
+        "music"
+      ],
+      "effectiveOptions": {
+        "recursive": true,
+        "maxDepth": 64,
+        "importLyrics": false,
+        "excludePatterns": []
+      },
+      "attemptCount": 1,
+      "retryCount": 0,
+      "maxAttempts": 3,
+      "nextAttemptAt": null,
+      "lastAttemptAt": "2026-10-10T00:00:01Z",
+      "createdAt": "2026-10-10T00:00:00Z",
+      "updatedAt": "2026-10-10T00:00:01Z"
+    }
+  },
+  {
+    "name": "scan-retry-exhausted-budget",
+    "schema": "ScanJob",
+    "valid": false,
+    "value": {
+      "jobId": "job-1",
+      "providerInstanceId": "local",
+      "status": "retry_wait",
+      "progress": {
+        "observed": 3,
+        "total": null
+      },
+      "complete": false,
+      "error": {
+        "code": "TEMPORARY_FAILURE",
+        "message": "Provider temporarily unavailable",
+        "requestId": "request",
+        "retryAfter": null
+      },
+      "lastSuccessAt": null,
+      "schemaRevision": "local-import-v3",
+      "rootIds": [
+        "music"
+      ],
+      "effectiveOptions": {
+        "recursive": true,
+        "maxDepth": 64,
+        "importLyrics": false,
+        "excludePatterns": []
+      },
+      "attemptCount": 3,
+      "retryCount": 2,
+      "maxAttempts": 3,
+      "nextAttemptAt": "2026-10-10T00:00:02Z",
+      "lastAttemptAt": "2026-10-10T00:00:01Z",
+      "createdAt": "2026-10-10T00:00:00Z",
+      "updatedAt": "2026-10-10T00:00:01Z"
+    }
+  },
+  {
+    "name": "scan-retry-count-must-match",
+    "schema": "ScanJob",
+    "valid": false,
+    "value": {
+      "jobId": "job-1",
+      "providerInstanceId": "local",
+      "status": "retry_wait",
+      "progress": {
+        "observed": 3,
+        "total": null
+      },
+      "complete": false,
+      "error": {
+        "code": "TEMPORARY_FAILURE",
+        "message": "Provider temporarily unavailable",
+        "requestId": "request",
+        "retryAfter": null
+      },
+      "lastSuccessAt": null,
+      "schemaRevision": "local-import-v3",
+      "rootIds": [
+        "music"
+      ],
+      "effectiveOptions": {
+        "recursive": true,
+        "maxDepth": 64,
+        "importLyrics": false,
+        "excludePatterns": []
+      },
+      "attemptCount": 1,
+      "retryCount": 2,
+      "maxAttempts": 3,
+      "nextAttemptAt": "2026-10-10T00:00:02Z",
+      "lastAttemptAt": "2026-10-10T00:00:01Z",
+      "createdAt": "2026-10-10T00:00:00Z",
+      "updatedAt": "2026-10-10T00:00:01Z"
+    }
+  },
+  {
+    "name": "scan-paused",
+    "schema": "ScanJob",
+    "valid": true,
+    "value": {
+      "jobId": "job-1",
+      "providerInstanceId": "local",
+      "status": "paused",
+      "progress": {
+        "observed": 3,
+        "total": null
+      },
+      "complete": false,
+      "error": {
+        "code": "AUTH_REQUIRED",
+        "message": "Provider temporarily unavailable",
+        "requestId": "request",
+        "retryAfter": null
+      },
+      "lastSuccessAt": null,
+      "schemaRevision": "local-import-v3",
+      "rootIds": [
+        "music"
+      ],
+      "effectiveOptions": {
+        "recursive": true,
+        "maxDepth": 64,
+        "importLyrics": false,
+        "excludePatterns": []
+      },
+      "attemptCount": 1,
+      "retryCount": 0,
+      "maxAttempts": 3,
+      "nextAttemptAt": null,
+      "lastAttemptAt": "2026-10-10T00:00:01Z",
+      "createdAt": "2026-10-10T00:00:00Z",
+      "updatedAt": "2026-10-10T00:00:01Z"
+    }
+  },
+  {
+    "name": "scan-paused-cannot-auto-restart",
+    "schema": "ScanJob",
+    "valid": false,
+    "value": {
+      "jobId": "job-1",
+      "providerInstanceId": "local",
+      "status": "paused",
+      "progress": {
+        "observed": 3,
+        "total": null
+      },
+      "complete": false,
+      "error": {
+        "code": "AUTH_REQUIRED",
+        "message": "Provider temporarily unavailable",
+        "requestId": "request",
+        "retryAfter": null
+      },
+      "lastSuccessAt": null,
+      "schemaRevision": "local-import-v3",
+      "rootIds": [
+        "music"
+      ],
+      "effectiveOptions": {
+        "recursive": true,
+        "maxDepth": 64,
+        "importLyrics": false,
+        "excludePatterns": []
+      },
+      "attemptCount": 1,
+      "retryCount": 0,
+      "maxAttempts": 3,
+      "nextAttemptAt": "2026-10-10T00:00:02Z",
+      "lastAttemptAt": "2026-10-10T00:00:01Z",
+      "createdAt": "2026-10-10T00:00:00Z",
+      "updatedAt": "2026-10-10T00:00:01Z"
+    }
+  },
+  {
+    "name": "scan-retry-deadline-must-be-utc",
+    "schema": "ScanJob",
+    "valid": false,
+    "value": {
+      "jobId": "job-1",
+      "providerInstanceId": "local",
+      "status": "retry_wait",
+      "progress": {
+        "observed": 3,
+        "total": null
+      },
+      "complete": false,
+      "error": {
+        "code": "TEMPORARY_FAILURE",
+        "message": "Provider temporarily unavailable",
+        "requestId": "request",
+        "retryAfter": null
+      },
+      "lastSuccessAt": null,
+      "schemaRevision": "local-import-v3",
+      "rootIds": [
+        "music"
+      ],
+      "effectiveOptions": {
+        "recursive": true,
+        "maxDepth": 64,
+        "importLyrics": false,
+        "excludePatterns": []
+      },
+      "attemptCount": 1,
+      "retryCount": 0,
+      "maxAttempts": 3,
+      "nextAttemptAt": "2026-10-10T08:00:02+08:00",
+      "lastAttemptAt": "2026-10-10T00:00:01Z",
+      "createdAt": "2026-10-10T00:00:00Z",
+      "updatedAt": "2026-10-10T00:00:01Z"
+    }
+  },
+  {
+    "name": "scan-running-retains-last-error",
+    "schema": "ScanJob",
+    "valid": true,
+    "value": {
+      "jobId": "job-1",
+      "providerInstanceId": "local",
+      "status": "running",
+      "progress": {
+        "observed": 3,
+        "total": null
+      },
+      "complete": false,
+      "error": {
+        "code": "TEMPORARY_FAILURE",
+        "message": "Provider temporarily unavailable",
+        "requestId": "request",
+        "retryAfter": null
+      },
+      "lastSuccessAt": null,
+      "schemaRevision": "local-import-v3",
+      "rootIds": [
+        "music"
+      ],
+      "effectiveOptions": {
+        "recursive": true,
+        "maxDepth": 64,
+        "importLyrics": false,
+        "excludePatterns": []
+      },
+      "attemptCount": 2,
+      "retryCount": 1,
+      "maxAttempts": 3,
+      "nextAttemptAt": null,
+      "lastAttemptAt": "2026-10-10T00:00:01Z",
+      "createdAt": "2026-10-10T00:00:00Z",
+      "updatedAt": "2026-10-10T00:00:01Z"
+    }
+  }
+]

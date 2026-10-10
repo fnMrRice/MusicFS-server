@@ -700,9 +700,11 @@
             "idle",
             "queued",
             "running",
+            "retry_wait",
             "succeeded",
             "failed",
-            "cancelled"
+            "cancelled",
+            "paused"
           ]
         },
         "configuration": {
@@ -726,7 +728,9 @@
               "name"
             ],
             "properties": {
-              "writeBack": {"$ref": "#/$defs/RootWriteBackCapability"},
+              "writeBack": {
+                "$ref": "#/$defs/RootWriteBackCapability"
+              },
               "id": {
                 "$ref": "#/$defs/ID"
               },
@@ -788,7 +792,14 @@
         "lastSuccessAt",
         "rootIds",
         "effectiveOptions",
-        "schemaRevision"
+        "schemaRevision",
+        "attemptCount",
+        "retryCount",
+        "maxAttempts",
+        "nextAttemptAt",
+        "lastAttemptAt",
+        "createdAt",
+        "updatedAt"
       ],
       "properties": {
         "jobId": {
@@ -801,9 +812,11 @@
           "enum": [
             "queued",
             "running",
+            "retry_wait",
             "succeeded",
             "failed",
-            "cancelled"
+            "cancelled",
+            "paused"
           ]
         },
         "progress": {
@@ -853,9 +866,190 @@
         "schemaRevision": {
           "type": "string",
           "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+        },
+        "attemptCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "retryCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "maxAttempts": {
+          "const": 3
+        },
+        "nextAttemptAt": {
+          "$ref": "#/$defs/NullableTimestamp"
+        },
+        "lastAttemptAt": {
+          "$ref": "#/$defs/NullableTimestamp"
+        },
+        "createdAt": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/Timestamp"
         }
       },
-      "description": "complete 仅表示请求选中的目录与深度范围已完成；其他范围保留。内部计划、真实根身份和配置摘要不公开。"
+      "description": "complete 仅表示请求选中的目录与深度范围已完成；其他范围保留。内部计划、真实根身份和配置摘要不公开。 同一任务最多执行3次，仅显式可重试的临时/限流错误进入retry_wait；持久UTC期限、计划与预算不会被重复请求或重启刷新。retryCount是已开始的额外执行次数。paused需处理原因后显式提交新操作，原幂等键不恢复任务。running可保留上次错误，成功才清空。",
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "attemptCount": {
+                  "const": 0
+                },
+                "retryCount": {
+                  "const": 0
+                }
+              }
+            },
+            {
+              "properties": {
+                "attemptCount": {
+                  "const": 1
+                },
+                "retryCount": {
+                  "const": 0
+                }
+              }
+            },
+            {
+              "properties": {
+                "attemptCount": {
+                  "const": 2
+                },
+                "retryCount": {
+                  "const": 1
+                }
+              }
+            },
+            {
+              "properties": {
+                "attemptCount": {
+                  "const": 3
+                },
+                "retryCount": {
+                  "const": 2
+                }
+              }
+            }
+          ]
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "queued"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "attemptCount": {
+                "const": 0
+              },
+              "lastAttemptAt": {
+                "type": "null"
+              },
+              "error": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "attemptCount": {
+                "minimum": 1
+              },
+              "lastAttemptAt": {
+                "$ref": "#/$defs/Timestamp"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "retry_wait"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "attemptCount": {
+                "maximum": 2
+              },
+              "nextAttemptAt": {
+                "$ref": "#/$defs/Timestamp"
+              },
+              "error": {
+                "$ref": "#/$defs/ErrorDetail"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "nextAttemptAt": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "failed",
+                  "cancelled",
+                  "paused"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "error": {
+                "$ref": "#/$defs/ErrorDetail"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "succeeded"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "complete": {
+                "const": true
+              },
+              "error": {
+                "type": "null"
+              },
+              "lastSuccessAt": {
+                "$ref": "#/$defs/Timestamp"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "complete": {
+                "const": false
+              }
+            }
+          }
+        }
+      ]
     },
     "SourceTrack": {
       "type": "object",

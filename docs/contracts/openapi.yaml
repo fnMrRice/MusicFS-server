@@ -79,7 +79,7 @@
     },
     "/scan-jobs/{id}": {
       "parameters": [{"$ref": "#/components/parameters/ID"}],
-      "get": {"operationId": "getScan", "responses": {"200": {"$ref": "#/components/responses/ScanJob"}, "default": {"$ref": "#/components/responses/Error"}}}
+      "get": {"operationId": "getScan", "description": "持久扫描任务；retry_wait保留最后错误并公布下一UTC执行时间，最多3次总执行。paused停止自动执行，解决原因后需新幂等键。重复提交不会重置原任务预算。", "responses": {"200": {"$ref": "#/components/responses/ScanJob"}, "default": {"$ref": "#/components/responses/Error"}}}
     },
     "/source-tracks": {
       "get": {"operationId": "listSourceTracks", "parameters": [

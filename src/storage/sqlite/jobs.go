@@ -12,15 +12,19 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
-const jobColumns = "id,owner,target,kind,generation,state,observed,complete,error,COALESCE(last_success_at,(SELECT history.last_success_at FROM jobs history WHERE history.owner=jobs.owner AND history.target=jobs.target AND history.plan_digest=jobs.plan_digest AND history.state='succeeded' AND history.last_success_at IS NOT NULL ORDER BY julianday(history.last_success_at) DESC LIMIT 1)),plan,plan_digest"
+const jobColumns = "id,owner,target,kind,generation,state,observed,complete,error,COALESCE(last_success_at,(SELECT history.last_success_at FROM jobs history WHERE history.owner=jobs.owner AND history.target=jobs.target AND history.plan_digest=jobs.plan_digest AND history.state='succeeded' AND history.last_success_at IS NOT NULL ORDER BY julianday(history.last_success_at) DESC LIMIT 1)),plan,plan_digest,attempt_count,max_attempts,next_attempt_at,last_attempt_at,created_at,updated_at"
 
 type rowScanner interface{ Scan(...any) error }
 
 func readJob(row rowScanner) (jobs.Job, error) {
 	var j jobs.Job
-	var failure, last sql.NullString
+	var failure, last, nextAttempt, lastAttempt sql.NullString
+	var created, updated string
 	var raw []byte
-	if err := row.Scan(&j.ID, &j.Owner, &j.ProviderInstanceID, &j.Kind, &j.Generation, &j.Status, &j.Progress.Observed, &j.Complete, &failure, &last, &raw, &j.PlanDigest); err != nil {
+	if err := row.Scan(&j.ID, &j.Owner, &j.ProviderInstanceID, &j.Kind, &j.Generation, &j.Status, &j.Progress.Observed, &j.Complete, &failure, &last, &raw, &j.PlanDigest, &j.AttemptCount, &j.MaxAttempts, &nextAttempt, &lastAttempt, &created, &updated); err != nil {
+		return j, err
+	}
+	if err := readJobTimes(&j, created, updated, nextAttempt, lastAttempt); err != nil {
 		return j, err
 	}
 	if err := json.Unmarshal(raw, &j.Plan); err != nil {
@@ -96,11 +100,11 @@ func (s *Store) Enqueue(ctx context.Context, owner, target string, plan pluginpr
 	if !errors.Is(err, sql.ErrNoRows) {
 		return j, false, err
 	}
-	j, err = readJob(tx.QueryRowContext(ctx, "SELECT "+jobColumns+" FROM jobs WHERE owner=? AND target=? AND plan_digest=? AND state IN ('queued','running') LIMIT 1", owner, target, digest))
+	j, err = readJob(tx.QueryRowContext(ctx, "SELECT "+jobColumns+" FROM jobs WHERE owner=? AND target=? AND plan_digest=? AND state IN ('queued','running','retry_wait') LIMIT 1", owner, target, digest))
 	merged := err == nil
 	if errors.Is(err, sql.ErrNoRows) {
 		var count int
-		if err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM jobs WHERE state IN ('queued','running')").Scan(&count); err != nil {
+		if err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM jobs WHERE state IN ('queued','running','retry_wait')").Scan(&count); err != nil {
 			return j, false, err
 		}
 		if count >= 1024 {

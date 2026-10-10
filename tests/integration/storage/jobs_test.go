@@ -38,10 +38,7 @@ func TestPersistentClaimsAndIdempotency(t *testing.T) {
 	if err = s.RecoverJobs(ctx); err != nil {
 		t.Fatal(err)
 	}
-	current, err := s.Claim(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	current := claimScanWhenDue(t, s)
 	if err = s.Finish(ctx, claimed, 99, nil); err == nil {
 		t.Fatal("stale generation accepted")
 	}

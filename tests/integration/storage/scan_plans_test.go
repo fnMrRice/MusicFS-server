@@ -109,9 +109,9 @@ func TestScanPlansPersistAndRecoveryRevokesOldPublication(t *testing.T) {
 	if err = s.Publish(ctx, old, testkit.ScanPublication(old, nil)); err == nil {
 		t.Fatal("recovered old worker published")
 	}
-	current, err := s.Claim(ctx)
-	if err != nil || current.Generation <= old.Generation {
-		t.Fatal("recovery reused generation", err)
+	current := claimScanWhenDue(t, s)
+	if current.Generation <= old.Generation {
+		t.Fatal("recovery reused generation")
 	}
 	if err = s.Finish(ctx, old, 1, nil); err == nil {
 		t.Fatal("recovered old worker finished new execution")

@@ -53,7 +53,7 @@ func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID st
 			if ctx.Err() != nil {
 				return all, ctx.Err()
 			}
-			return all, domain.Fail(pluginproto.ErrorCode(err), "Provider scan failed; previous library retained")
+			return all, scanFailure(err)
 		}
 		if page.ScanID != j.ID || page.Generation != j.Generation || page.PlanDigest != j.PlanDigest || page.Page != expectedPage || len(page.Items) > pluginproto.MaxPageItems || len(page.Issues) > 0 || page.RootIdentity == "" {
 			return all, domain.Fail("TEMPORARY_FAILURE", "Scan is incomplete")

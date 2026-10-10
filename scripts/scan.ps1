@@ -47,7 +47,7 @@ try {
     $deadline = [datetime]::UtcNow.AddHours(1)
     do {
         $job = Invoke-RestMethod "$BaseURL/api/v1/scan-jobs/$($accepted.jobId)" -Headers $headers -WebSession $session -TimeoutSec 15
-        if ($job.status -notin @('queued', 'running')) { break }
+        if ($job.status -notin @('queued', 'running', 'retry_wait')) { break }
         if ([datetime]::UtcNow -ge $deadline) { throw "Scan wait timed out for job $($accepted.jobId); query the job before retrying" }
         Start-Sleep -Milliseconds 200
     } while ($true)

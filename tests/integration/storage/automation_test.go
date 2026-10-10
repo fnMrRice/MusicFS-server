@@ -49,10 +49,7 @@ func TestAutomationOutboxWaitsForSuccessfulScanAndRejectsRecoveredGeneration(t *
 	if _, err = s.NextAutomation(ctx); !errors.Is(err, sql.ErrNoRows) {
 		t.Fatal("recovered publication consumed", err)
 	}
-	j, err = s.Claim(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	j = claimScanWhenDue(t, s)
 	if err = s.Publish(ctx, j, testkit.ScanPublication(j, items)); err != nil {
 		t.Fatal(err)
 	}

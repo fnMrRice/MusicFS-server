@@ -41,7 +41,7 @@ func readAutomation(row rowScanner) (enrichment.AutomationWork, error) {
 func (s *Store) NextAutomation(ctx context.Context) (enrichment.AutomationWork, error) {
 	// A published library transaction is not a successful scan until Finish.
 	// A recovered generation cannot consume an earlier publication's trigger.
-	_, err := s.DB.ExecContext(ctx, `UPDATE metadata_automation SET state='failed',failure_code='RESOURCE_CHANGED' WHERE state IN ('queued','preparing') AND EXISTS(SELECT 1 FROM jobs j WHERE j.id=scan_job_id AND (j.generation!=scan_generation OR j.plan_digest!=metadata_automation.plan_digest OR j.state IN ('failed','cancelled')))`)
+	_, err := s.DB.ExecContext(ctx, `UPDATE metadata_automation SET state='failed',failure_code='RESOURCE_CHANGED' WHERE state IN ('queued','preparing') AND EXISTS(SELECT 1 FROM jobs j WHERE j.id=scan_job_id AND (j.generation!=scan_generation OR j.plan_digest!=metadata_automation.plan_digest OR j.state IN ('failed','cancelled','paused')))`)
 	if err != nil {
 		return enrichment.AutomationWork{}, err
 	}
