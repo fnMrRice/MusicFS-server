@@ -36,10 +36,10 @@ func TestOnlineGateDrainsExistingLeaseAndForceCancelsOnlyTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 	a.SetAccepting(false, false)
-	if _, err = s.Runtime(leaseCtx, "owner", "a", ""); err != nil {
+	if _, err = s.Runtime(leaseCtx, "owner", "a", "fixture-account"); err != nil {
 		t.Fatal("draining rejected admitted nested work", err)
 	}
-	_, err = s.Runtime(ctx, "owner", "a", "")
+	_, err = s.Runtime(ctx, "owner", "a", "fixture-account")
 	var failure *domain.Error
 	if !errors.As(err, &failure) || failure.Code != "PLUGIN_DISABLED" {
 		t.Fatal("new work admitted while draining", err)
@@ -82,5 +82,36 @@ func TestOnlineGateDrainsExistingLeaseAndForceCancelsOnlyTarget(t *testing.T) {
 	r, err := s.Runtime(ctx, "owner", "a", "")
 	if err != nil || r.ConfigRevision != "new" {
 		t.Fatal("runtime replacement failed", r, err)
+	}
+}
+
+func TestOnlineRuntimeAvailabilityPrecedesBoundAccountCheck(t *testing.T) {
+	gate := plugincontrol.NewGate(false)
+	r := onlinehost.Runtime{Owner: "owner", InstanceID: "a", Platform: online.Netease, ConfigRevision: "revision", Enabled: true, Gate: gate}
+	s, err := onlinehost.New([]onlinehost.Runtime{r})
+	if err != nil {
+		t.Fatal(err)
+	}
+	check := func(owner, account, expected string) {
+		t.Helper()
+		_, err := s.Runtime(context.Background(), owner, "a", account)
+		var failure *domain.Error
+		if !errors.As(err, &failure) || failure.Code != expected {
+			t.Fatalf("expected %s, got %v", expected, err)
+		}
+	}
+	check("other", "fixture-account", "NOT_FOUND")
+	check("owner", "fixture-account", "PLUGIN_DISABLED")
+	gate.SetUnavailable("SOURCE_OFFLINE", false)
+	check("owner", "fixture-account", "SOURCE_OFFLINE")
+	gate.SetAccepting(true, false)
+	check("owner", "fixture-account", "SOURCE_OFFLINE")
+	r.Provider = authenticatedBlocked{&blocked{}}
+	if err := s.UpdateRuntime(r); err != nil {
+		t.Fatal(err)
+	}
+	check("owner", "another-account", "ACCESS_DENIED")
+	if _, err := s.Runtime(context.Background(), "owner", "a", "fixture-account"); err != nil {
+		t.Fatal("enabled authenticated runtime was rejected", err)
 	}
 }

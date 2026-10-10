@@ -102,6 +102,12 @@ func (s *Service) runtime(ctx context.Context, owner, id, account string) (Runti
 		if r.Owner != owner || r.InstanceID != id {
 			continue
 		}
+		if err := r.Gate.Check(ctx); err != nil {
+			return Runtime{}, err
+		}
+		if !ready(r) {
+			return Runtime{}, domain.Fail("SOURCE_OFFLINE", "Online instance is unavailable")
+		}
 		if account != "" {
 			view, err := platformSession(ctx, r)
 			if err != nil {
@@ -110,12 +116,6 @@ func (s *Service) runtime(ctx context.Context, owner, id, account string) (Runti
 			if view.AccountID != account {
 				return Runtime{}, domain.Fail("ACCESS_DENIED", "Platform account does not match the binding")
 			}
-		}
-		if err := r.Gate.Check(ctx); err != nil {
-			return Runtime{}, err
-		}
-		if !ready(r) {
-			return Runtime{}, domain.Fail("SOURCE_OFFLINE", "Online instance is unavailable")
 		}
 		return r, nil
 	}

@@ -49,6 +49,7 @@ func TestPlaylistsActualServerLocalRemoteHiddenMatchingAndRestart(t *testing.T) 
 	t.Run("compose-and-confirm-hidden-intent", func(t *testing.T) {
 		startNCMServer(t, cfg, base)
 		c := login(t, base, cfg.AdminToken)
+		accountID := authenticatePlaylistFixture(t, c)
 		tracks := scanNCM(t, c)
 		for _, name := range []string{"a.wav", "b.wav", "c.wav"} {
 			sourceIDs = append(sourceIDs, tracks[name].ID)
@@ -60,7 +61,7 @@ func TestPlaylistsActualServerLocalRemoteHiddenMatchingAndRestart(t *testing.T) 
 			}
 			return b
 		}
-		remote := albumRequest[remoteImported](t, c, "POST", "/remote-playlists", playlists.RemoteRef{InstanceID: "net", ExternalID: "91"}, "aggregate-import", 201, "RemotePlaylistImported").Playlist
+		remote := albumRequest[remoteImported](t, c, "POST", "/remote-playlists", playlists.RemoteRef{InstanceID: "net", AccountID: accountID, ExternalID: "91"}, "aggregate-import", 201, "RemotePlaylistImported").Playlist
 		accepted := albumRequest[remoteAccepted](t, c, "POST", "/remote-playlists/"+remote.ID+"/sync-jobs", map[string]int{"expectedBindingRevision": 1}, "aggregate-remote-sync", 202, "HashAccepted")
 		deadline := time.Now().Add(8 * time.Second)
 		for {

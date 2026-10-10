@@ -11,11 +11,27 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/src/online"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/provideronline"
+	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 
 type fixture struct{ observations atomic.Int32 }
 
 func (f *fixture) RoundTrip(r *http.Request) (*http.Response, error) {
+	if strings.HasPrefix(r.URL.Path, "/eapi/") && !strings.Contains(r.URL.Path, "/login/") && r.URL.Path != "/eapi/nuser/account/get" {
+		var err error
+		r, err = testkit.DecodeNeteaseFixture(r)
+		if err != nil {
+			return nil, err
+		}
+	}
+	switch r.URL.Path {
+	case "/eapi/login/qrcode/unikey":
+		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"code":200,"unikey":"playlist-fixture-challenge"}`))}, nil
+	case "/eapi/login/qrcode/client/login":
+		return &http.Response{StatusCode: 200, Header: http.Header{"Set-Cookie": []string{"MUSIC_U=playlist-fixture-token; Secure"}}, Body: io.NopCloser(strings.NewReader(`{"code":803}`))}, nil
+	case "/eapi/nuser/account/get":
+		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"code":200,"profile":{"userId":12345,"nickname":"Playlist listener"}}`))}, nil
+	}
 	if r.URL.Path != "/api/v6/playlist/detail" {
 		return &http.Response{StatusCode: 500, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("unexpected endpoint"))}, nil
 	}
