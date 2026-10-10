@@ -1,5 +1,7 @@
 # 共同契约
 
+Web 页面后续能力需求见[Web 接口缺口交接](../web-ui-api-gaps.md)。该文档只记录需求，由 Server 设计接口；不作为新增协议定义。
+
 `openapi.yaml` 使用 YAML 1.2 兼容的 JSON 语法。HTTP 模型只定义在 `http.schema.json`，不从手写 DTO 自动反向生成规范。控制请求拒绝未知字段；响应允许添加可忽略字段。OpenAPI 3.1 与插件 Schema 均使用 JSON Schema 2020-12。
 
 本目录以 P0–P4 共同边界为基础，记录后续兼容增量。文件存在不代表每个长期能力已经实现；当前本地播放、处理、定位及 NCM 解密的实际验收范围见[实施记录](../validation/progress.md)，未提供的能力仍返回 `UNSUPPORTED`。
