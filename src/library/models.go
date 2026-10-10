@@ -49,11 +49,13 @@ type ProviderRoot struct {
 	WriteBack *RootWriteBack `json:"writeBack,omitempty"`
 }
 type RootWriteBack struct {
-	Enabled     bool     `json:"enabled"`
-	Available   bool     `json:"available"`
-	Formats     []string `json:"formats"`
-	Fields      []string `json:"fields"`
-	Replacement string   `json:"replacement"`
+	BoundPath     string   `json:"-"`
+	BoundIdentity string   `json:"-"`
+	Enabled       bool     `json:"enabled"`
+	Available     bool     `json:"available"`
+	Formats       []string `json:"formats"`
+	Fields        []string `json:"fields"`
+	Replacement   string   `json:"replacement"`
 }
 type Page struct {
 	Items           []Track `json:"items"`

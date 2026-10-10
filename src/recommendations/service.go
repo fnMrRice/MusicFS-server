@@ -51,6 +51,8 @@ func New(runtimes []Runtime, config Config) (*Service, error) {
 	}
 	s := &Service{config: config, runtimes: map[runtimeKey]Runtime{}, entries: map[cacheKey]*entry{}, slots: make(chan struct{}, config.MaxConcurrent), stopped: make(chan struct{})}
 	for _, r := range runtimes {
+		r.generation = 1
+		r.epoch = r.Gate.Epoch()
 		if r.AccountID != "" {
 			return nil, domain.Fail("UNSUPPORTED", "Recommendation account access is not implemented")
 		}
@@ -86,13 +88,18 @@ func (s *Service) List(ctx context.Context, owner string, request Request) (Resp
 	}
 	s.mu.Lock()
 	closed := s.closed
+	ordered := append([]Runtime{}, s.ordered...)
+	configured := make(map[runtimeKey]Runtime, len(s.runtimes))
+	for key, r := range s.runtimes {
+		configured[key] = r
+	}
 	s.mu.Unlock()
 	if closed {
 		return Response{}, domain.Fail("SOURCE_OFFLINE", "Recommendation service is draining")
 	}
 	runtimes := []Runtime{}
 	if len(request.InstanceIDs) == 0 {
-		for _, r := range s.ordered {
+		for _, r := range ordered {
 			if r.Owner == owner {
 				runtimes = append(runtimes, r)
 			}
@@ -104,7 +111,7 @@ func (s *Service) List(ctx context.Context, owner string, request Request) (Resp
 				return Response{}, domain.Fail("INVALID_ARGUMENT", "Invalid recommendation instance selection")
 			}
 			seen[id] = true
-			r, ok := s.runtimes[runtimeKey{owner, id}]
+			r, ok := configured[runtimeKey{owner, id}]
 			if !ok {
 				return Response{}, domain.Fail("NOT_FOUND", "Recommendation instance was not found")
 			}

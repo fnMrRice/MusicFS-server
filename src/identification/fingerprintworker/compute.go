@@ -55,7 +55,19 @@ func (s *Service) execute(parent context.Context, j identification.FingerprintJo
 }
 
 func (s *Service) extractAndPublish(ctx context.Context, j identification.FingerprintJob) error {
-	if j.ExtractorIdentity != s.extractor.Identity() {
+	extractor, decoder, gate, epoch := s.runtime()
+	if extractor == nil {
+		return domain.Fail("PLUGIN_DISABLED", "Fingerprint audio dependency is unavailable")
+	}
+	lease, err := gate.AcquireEpoch(ctx, epoch)
+	if err != nil {
+		return err
+	}
+	defer lease.Close()
+	if lease != nil {
+		ctx = lease.Context()
+	}
+	if j.ExtractorIdentity != extractor.Identity() {
 		return domain.Fail("RESOURCE_CHANGED", "Fingerprint extractor configuration changed")
 	}
 	in, err := s.source.OpenStableHash(ctx, j.Owner, j.ID, j.HashTarget)
@@ -74,17 +86,17 @@ func (s *Service) extractAndPublish(ctx context.Context, j identification.Finger
 		return readErr
 	}
 	if n == len(header) && string(header[:]) == "CTENFDAM" {
-		if s.config.NCMDecoder == nil {
+		if decoder == nil {
 			return domain.Fail("UNSUPPORTED", "NCM decryption plugin is unavailable")
 		}
-		decoded, err := s.config.NCMDecoder.Open(ctx, j.ID, j.AssetID, in, size)
+		decoded, err := decoder.Open(ctx, j.ID, j.AssetID, in, size)
 		if err != nil {
 			return err
 		}
 		defer decoded.Close()
 		input, size = decoded, decoded.Size()
 	}
-	detail, err := s.extractor.Extract(ctx, fingerprint.Request{TaskID: j.ID, AssetID: j.AssetID, StartMs: j.StartMs, DurationMs: j.DurationMs}, input, size)
+	detail, err := extractor.Extract(ctx, fingerprint.Request{TaskID: j.ID, AssetID: j.AssetID, StartMs: j.StartMs, DurationMs: j.DurationMs}, input, size)
 	if err != nil {
 		return err
 	}

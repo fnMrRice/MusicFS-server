@@ -12,6 +12,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/identification"
 	"github.com/fnMrRice/MusicFS-server/src/identification/fingerprint"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
 )
 
@@ -27,6 +28,9 @@ type Config struct {
 }
 
 type Service struct {
+	runtimeMu sync.RWMutex
+	gate      *plugincontrol.Gate
+	epoch     uint64
 	repo      identification.FingerprintRepository
 	source    identification.FingerprintSource
 	extractor Extractor
@@ -50,6 +54,18 @@ func New(repo identification.FingerprintRepository, source identification.Finger
 }
 
 func (s *Service) Submit(ctx context.Context, owner, track, key string, startMs, durationMs int64) (identification.FingerprintJob, bool, error) {
+	extractor, _, gate, epoch := s.runtime()
+	if extractor == nil {
+		return identification.FingerprintJob{}, false, domain.Fail("PLUGIN_DISABLED", "Fingerprint audio dependency is unavailable")
+	}
+	lease, err := gate.AcquireEpoch(ctx, epoch)
+	if err != nil {
+		return identification.FingerprintJob{}, false, err
+	}
+	defer lease.Close()
+	if lease != nil {
+		ctx = lease.Context()
+	}
 	if _, _, err := (fingerprint.Request{TaskID: "request", AssetID: "request", StartMs: startMs, DurationMs: durationMs}).Samples(); err != nil {
 		return identification.FingerprintJob{}, false, domain.Fail("INVALID_ARGUMENT", "Invalid fingerprint range")
 	}
@@ -57,7 +73,7 @@ func (s *Service) Submit(ctx context.Context, owner, track, key string, startMs,
 	if err != nil {
 		return identification.FingerprintJob{}, false, err
 	}
-	request := identification.FingerprintRequest{StartMs: startMs, DurationMs: durationMs, ExtractorIdentity: s.extractor.Identity()}
+	request := identification.FingerprintRequest{StartMs: startMs, DurationMs: durationMs, ExtractorIdentity: extractor.Identity()}
 	return s.repo.QueueFingerprint(ctx, owner, identification.FingerprintTarget{HashTarget: target, FingerprintRequest: request}, key, false)
 }
 

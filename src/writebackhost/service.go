@@ -14,7 +14,6 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore/content"
-	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
 	"github.com/fnMrRice/MusicFS-server/src/writeback"
 )
 
@@ -22,6 +21,7 @@ type Config struct {
 	Policy         writeback.Policy
 	AllowOverwrite bool
 	Probe          library.Probe
+	ProbeSession   library.ProbeSession
 }
 
 type Service struct {
@@ -31,7 +31,6 @@ type Service struct {
 	journal    writeback.Journal
 	editor     *writeback.Service
 	cfg        Config
-	workers    map[string]*pluginhost.Worker
 	ctx        context.Context
 	cancel     context.CancelFunc
 	wg         sync.WaitGroup
@@ -43,13 +42,8 @@ type Service struct {
 
 var errBusy = errors.New("writeback source is in use")
 
-func New(repo Repository, lib *library.Service, media *mediastore.ContentService, journal writeback.Journal, runtimes []library.Runtime, cfg Config) (*Service, error) {
-	s := &Service{repo: repo, lib: lib, content: media, journal: journal, cfg: cfg, workers: map[string]*pluginhost.Worker{}, retries: map[string]string{}}
-	for _, r := range runtimes {
-		if r.Worker != nil {
-			s.workers[r.ID] = r.Worker
-		}
-	}
+func New(repo Repository, lib *library.Service, media *mediastore.ContentService, journal writeback.Journal, _ []library.Runtime, cfg Config) (*Service, error) {
+	s := &Service{repo: repo, lib: lib, content: media, journal: journal, cfg: cfg, retries: map[string]string{}}
 	var err error
 	s.editor, err = writeback.New(cfg.Policy, journal, coordinator{s})
 	return s, err
@@ -127,9 +121,22 @@ func (s *Service) Submit(ctx context.Context, owner string, request Request, key
 		return Job{}, false, err
 	}
 	defer read.Close()
-	w := s.workers[t.ProviderID]
+	ctx = read.Context()
+	if s.cfg.ProbeSession != nil {
+		var release func()
+		ctx, _, release, err = s.cfg.ProbeSession(ctx)
+		if err != nil {
+			return Job{}, false, err
+		}
+		defer release()
+	}
+	runtime, _ := s.lib.Runtime(t.ProviderID)
+	w := runtime.Worker
 	if w == nil {
 		return Job{}, false, domain.Fail("SOURCE_OFFLINE", "Writeback provider is offline")
+	}
+	if _, err = s.boundRoot(owner, t.ProviderID, t.RootID, w.Access); err != nil {
+		return Job{}, false, err
 	}
 	entry, err := w.Access.Inspect(t.RootID, t.Path)
 	if err != nil {

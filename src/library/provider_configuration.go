@@ -1,6 +1,7 @@
 package library
 
 import (
+	"context"
 	"encoding/json"
 	"sort"
 
@@ -25,11 +26,26 @@ func safeProviderConfiguration(r Runtime) *pluginproto.Configuration {
 	return &declaration
 }
 
-func providerRoots(r Runtime) []ProviderRoot {
+func (s *Service) providerRoots(ctx context.Context, r Runtime) []ProviderRoot {
+	s.mu.RLock()
+	ready, hasProbe := s.writeBackProbeReady, s.probe != nil
+	s.mu.RUnlock()
+	if ready != nil {
+		hasProbe = ready()
+	}
+	workerReady := r.Worker != nil && r.Gate.Check(ctx) == nil
+	if workerReady {
+		select {
+		case <-r.Worker.Done():
+			workerReady = false
+		default:
+		}
+	}
 	result := make([]ProviderRoot, 0, len(r.RootNames))
 	for id, name := range r.RootNames {
 		root := ProviderRoot{ID: id, Name: name}
 		if c, ok := r.WriteBack[id]; ok {
+			c.Available = c.Available && hasProbe && workerReady
 			c.Fields = append([]string{}, c.Fields...)
 			c.Formats = append([]string{}, c.Formats...)
 			root.WriteBack = &c

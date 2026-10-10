@@ -12,7 +12,7 @@ func (s *Service) AuthorizeProvider(ctx context.Context, owner, id string) error
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	provider, ok := s.runtimes[id]
+	provider, ok := s.Runtime(id)
 	if !ok || provider.Owner != owner {
 		return domain.Fail("NOT_FOUND", "Provider not found")
 	}

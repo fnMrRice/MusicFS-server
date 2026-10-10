@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/online"
+	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
 )
 
 const MaxSources = 8
@@ -21,6 +22,9 @@ type Provider interface {
 type Runtime struct {
 	Owner, InstanceID, Name, Platform, AccountID, ConfigRevision string
 	Provider                                                     Provider
+	Gate                                                         *plugincontrol.Gate
+	generation                                                   uint64
+	epoch                                                        uint64
 }
 
 type Config struct {
@@ -83,6 +87,7 @@ type flight struct {
 	finished  bool
 	abandoned bool
 	result    Source
+	lease     *plugincontrol.Lease
 }
 
 func sourceFor(r Runtime) Source {
@@ -94,6 +99,14 @@ func cloneSource(s Source) Source {
 	copy(items, s.Items)
 	s.Items = items
 	for i := range s.Items {
+		if p := s.Items[i].Playlist.Creator; p != nil {
+			v := *p
+			s.Items[i].Playlist.Creator = &v
+		}
+		if p := s.Items[i].Playlist.CoverURL; p != nil {
+			v := *p
+			s.Items[i].Playlist.CoverURL = &v
+		}
 		if p := s.Items[i].Playlist.TrackCount; p != nil {
 			v := *p
 			s.Items[i].Playlist.TrackCount = &v

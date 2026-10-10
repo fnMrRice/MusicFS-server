@@ -24,6 +24,7 @@ func TestOnlyExplicitTransientErrorsRetryWithFiniteBudget(t *testing.T) {
 		{"credentials", jobs.Retryable(domain.Fail("AUTH_REQUIRED", "Credentials expired")), "paused"},
 		{"permission", domain.Fail("ACCESS_DENIED", "Access revoked"), "paused"},
 		{"offline", domain.Fail("SOURCE_OFFLINE", "Provider unavailable"), "paused"},
+		{"disabled", domain.Fail("PLUGIN_DISABLED", "Provider disabled"), "paused"},
 		{"unsupported", jobs.Retryable(domain.Fail("UNSUPPORTED", "Unsupported media")), "failed"},
 		{"changed", jobs.Retryable(domain.Fail("RESOURCE_CHANGED", "Source changed")), "failed"},
 		{"cancel", jobs.Retryable(context.Canceled), "cancelled"},

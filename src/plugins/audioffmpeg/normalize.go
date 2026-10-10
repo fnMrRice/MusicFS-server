@@ -22,6 +22,14 @@ type NormalizeRequest struct {
 
 func (p *Processor) Normalize(ctx context.Context, plan audio.NormalizeRequest, input io.ReaderAt, size int64, output io.Writer) (audio.PCMInfo, error) {
 	var info audio.PCMInfo
+	lease, err := p.AcquireLease(ctx)
+	if err != nil {
+		return info, err
+	}
+	defer lease.Close()
+	if lease != nil {
+		ctx = lease.Context()
+	}
 	if err := ctx.Err(); err != nil {
 		return info, err
 	}

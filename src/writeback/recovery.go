@@ -44,6 +44,9 @@ func (s *Service) recover(ctx context.Context, record Record) (result Result, er
 		return result, err
 	}
 	defer func() { err = errors.Join(err, lease.Close()) }()
+	if lifetime, ok := lease.(interface{ Context() context.Context }); ok {
+		ctx = lifetime.Context()
+	}
 	if err = lease.Check(ctx); err != nil {
 		return result, err
 	}

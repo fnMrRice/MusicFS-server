@@ -123,6 +123,9 @@ func (s *Service) RecoverSource(ctx context.Context, who auth.Session, id string
 		if target(prepared.track) != check.To || prepared.track.DurationMs == nil || position >= *prepared.track.DurationMs {
 			return empty, domain.Fail("RESOURCE_CHANGED", "Recovery target changed during preparation")
 		}
+		if prepared.processor == nil || prepared.processor.Capabilities.FFmpegSHA256 != profile.DecoderSHA256 {
+			return empty, domain.Fail("RESOURCE_CHANGED", "Recovery processor changed during preparation")
+		}
 		result.Decision, result.Reason = "continue", "MANUAL_ALIGNMENT"
 	}
 	s.mu.Lock()
@@ -136,6 +139,11 @@ func (s *Service) RecoverSource(ctx context.Context, who auth.Session, id string
 	}
 	if err = ctx.Err(); err != nil {
 		return empty, err
+	}
+	if prepared != nil {
+		if err = prepared.checkLeases(); err != nil {
+			return empty, err
+		}
 	}
 	commit := timeline.Commit{SessionID: id, AuthID: who.ID, Owner: who.User.ID, PreviousAttemptID: r.AttemptID, Check: check, Continue: prepared != nil, ExpiresAt: a.description.ExpiresAt, Route: "playback/" + id + "/recover-source", Key: key, Digest: requestDigest(r)}
 	if prepared != nil {
@@ -201,8 +209,11 @@ func (s *Service) beginRecovery(ctx context.Context, who auth.Session, id string
 }
 func (s *Service) installRecovery(a *session, p *preparedInput, d Description) {
 	a.cancelAttempt()
+	a.cancel()
+	a.releasePluginLeases()
 	a.cachePin.Close()
 	a.cachePin = nil
+	s.installPluginLeases(a, p)
 	a.attemptCtx, a.cancelAttempt = context.WithCancel(a.ctx)
 	if a.sourceLease != nil {
 		a.sourceLease.Close()

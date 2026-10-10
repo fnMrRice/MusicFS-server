@@ -11,6 +11,9 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
 	"github.com/fnMrRice/MusicFS-server/src/timeline"
 )
 
@@ -25,9 +28,14 @@ type preparedInput struct {
 	reserved             int64
 	lease                *library.ReadLease
 	processed, decrypted bool
+	processor            *audioffmpeg.Processor
+	decoder              *ncmdecoder.Processor
+	processing, decoding *plugincontrol.Lease
 }
 
 func (p *preparedInput) discard() {
+	p.processing.Close()
+	p.decoding.Close()
 	if p.lease != nil {
 		p.lease.Close()
 		p.lease = nil
@@ -60,11 +68,15 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 	if t.Size <= 0 {
 		return nil, domain.Fail("UNSUPPORTED", "Source contains no audio data")
 	}
-	lease, err := s.library.HoldRead(ctx, owner, t.ProviderID)
+	lease, err := s.library.HoldReadLifetime(ctx, s.ctx, owner, t.ProviderID)
 	if err != nil {
 		return nil, err
 	}
 	p := &preparedInput{service: s, track: t, lease: lease}
+	p.processor, p.decoder = s.audioSnapshot()
+	ctx, cancelPreparation := context.WithCancel(lease.WithContext(ctx))
+	unlink := context.AfterFunc(lease.Context(), cancelPreparation)
+	defer func() { unlink(); cancelPreparation() }()
 	ok := false
 	defer func() {
 		if !ok {
@@ -77,7 +89,7 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 		return nil, err
 	}
 	defer handle.Close()
-	input, size, decrypted, closeInput, err := s.prepareInput(ctx, task, handle, &t)
+	input, size, decrypted, closeInput, err := p.prepareInput(ctx, task, handle, &t)
 	if err != nil {
 		return nil, err
 	}
@@ -90,8 +102,18 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 	}
 	p.reserved = size
 	processed := r.Preferences.ForceProcessing || r.Preferences.GainDB != 0 || !originalCandidate(t) || !supports(r.Capabilities, t.MIME)
-	if processed && (s.processor == nil || !supports(r.Capabilities, "audio/mpeg")) {
+	if processed && (p.processor == nil || !supports(r.Capabilities, "audio/mpeg")) {
 		return nil, domain.Fail("UNSUPPORTED", "No compatible audio processing profile is available")
+	}
+	if processed {
+		ctx, err = p.processingLease(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p.processing != nil {
+			stop := context.AfterFunc(p.processing.Context(), cancelPreparation)
+			defer stop()
+		}
 	}
 	path := filepath.Join(s.config.CacheRoot, task+".bin")
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
@@ -107,6 +129,9 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
+		if leaseErr := p.checkLeases(); leaseErr != nil {
+			return nil, leaseErr
+		}
 		return nil, domain.Fail("RESOURCE_CHANGED", "Source changed while preparing playback")
 	}
 	if err = handle.Validate(); err != nil {
@@ -116,6 +141,9 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 		return nil, err
 	}
 	if err = ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err = p.checkLeases(); err != nil {
 		return nil, err
 	}
 	if !processed && t.MIME == "audio/wav" {

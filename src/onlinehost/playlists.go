@@ -17,6 +17,27 @@ var playlistExternalID = regexp.MustCompile(`^[1-9][0-9]{0,19}$`)
 // platform credentials, transport settings, or a configuration revision.
 func (s *Service) PlaylistRemote() playlists.Remote { return &playlistRemote{s} }
 
+func (p *playlistRemote) Acquire(ctx context.Context, owner string, binding playlists.Binding) (context.Context, func(), error) {
+	ctx, runtime, release, err := p.host.AcquireRuntime(ctx, owner, binding.InstanceID)
+	if err != nil {
+		return ctx, nil, err
+	}
+	if runtime.ConfigRevision != binding.ConfigRevision || runtime.Platform != binding.Platform {
+		release()
+		return ctx, nil, domain.Fail("RESOURCE_CHANGED", "Remote playlist binding changed")
+	}
+	view, err := platformSession(ctx, runtime)
+	if err != nil {
+		release()
+		return ctx, nil, err
+	}
+	if binding.AccountID != view.AccountID {
+		release()
+		return ctx, nil, domain.Fail("RESOURCE_CHANGED", "Remote playlist account changed; import again")
+	}
+	return ctx, release, nil
+}
+
 func (p *playlistRemote) Authorize(ctx context.Context, owner string, ref playlists.RemoteRef) (playlists.Binding, error) {
 	if err := ref.Validate(); err != nil || !externalID.MatchString(ref.ExternalID) {
 		return playlists.Binding{}, playlists.Invalid()

@@ -5,10 +5,12 @@ package onlinehost
 import (
 	"context"
 	"reflect"
+	"sync"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/online"
+	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
@@ -23,6 +25,7 @@ type Runtime struct {
 	Owner, InstanceID, Name, Platform, ConfigRevision string
 	Enabled                                           bool
 	Provider                                          Provider
+	Gate                                              *plugincontrol.Gate
 }
 
 type Instance struct {
@@ -35,6 +38,7 @@ type Instance struct {
 }
 
 type Service struct {
+	mu       sync.RWMutex
 	runtimes []Runtime
 	slots    chan struct{}
 }
@@ -59,12 +63,14 @@ func (s *Service) Instances(ctx context.Context, owner string) ([]Instance, erro
 		return nil, err
 	}
 	out := []Instance{}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	for _, r := range s.runtimes {
 		if r.Owner != owner {
 			continue
 		}
 		availability := "offline"
-		if ready(r) {
+		if ready(r) && r.Gate.Check(ctx) == nil {
 			availability = "available"
 		}
 		accountID := ""
@@ -83,6 +89,12 @@ func (s *Service) Instances(ctx context.Context, owner string) ([]Instance, erro
 // Runtime is an internal owner/account check for later explicit imports. It
 // never changes a binding or substitutes another user's available instance.
 func (s *Service) Runtime(ctx context.Context, owner, id, account string) (Runtime, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.runtime(ctx, owner, id, account)
+}
+
+func (s *Service) runtime(ctx context.Context, owner, id, account string) (Runtime, error) {
 	if err := ctx.Err(); err != nil {
 		return Runtime{}, err
 	}
@@ -98,6 +110,9 @@ func (s *Service) Runtime(ctx context.Context, owner, id, account string) (Runti
 			if view.AccountID != account {
 				return Runtime{}, domain.Fail("ACCESS_DENIED", "Platform account does not match the binding")
 			}
+		}
+		if err := r.Gate.Check(ctx); err != nil {
+			return Runtime{}, err
 		}
 		if !ready(r) {
 			return Runtime{}, domain.Fail("SOURCE_OFFLINE", "Online instance is unavailable")
@@ -123,10 +138,11 @@ func ready(r Runtime) bool {
 
 func callControl[T any](ctx context.Context, s *Service, owner, id string, f func(context.Context, Runtime) (T, error)) (T, error) {
 	var empty T
-	r, err := s.Runtime(ctx, owner, id, "")
+	ctx, r, release, err := s.AcquireRuntime(ctx, owner, id)
 	if err != nil {
 		return empty, err
 	}
+	defer release()
 	select {
 	case s.slots <- struct{}{}:
 		defer func() { <-s.slots }()

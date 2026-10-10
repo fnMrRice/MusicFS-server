@@ -14,6 +14,7 @@ import (
 func (s *Service) fetch(ctx context.Context, key cacheKey, r Runtime, e *entry, f *flight) {
 	defer s.wg.Done()
 	defer f.cancel()
+	defer f.lease.Close()
 	var page online.RecommendationPage
 	var err error
 	select {
@@ -54,6 +55,10 @@ func (s *Service) fetch(ctx context.Context, key cacheKey, r Runtime, e *entry, 
 	defer close(f.done)
 	if s.closed {
 		f.result = failedSource(r, "SOURCE_OFFLINE", "Recommendation service is draining")
+		return
+	}
+	if s.entries[key] != e || s.runtimes[runtimeKey{r.Owner, r.InstanceID}].generation != r.generation {
+		f.result = failedSource(r, "RESOURCE_CHANGED", "Recommendation instance changed; refresh sources")
 		return
 	}
 	if f.abandoned {
@@ -119,7 +124,7 @@ func failureFor(err error, cooldown time.Duration) (*Failure, time.Duration) {
 		}
 	}
 	switch code {
-	case "AUTH_REQUIRED", "PLATFORM_AUTH_REQUIRED", "ACCESS_DENIED", "NOT_FOUND", "UNSUPPORTED", "SOURCE_OFFLINE", "RATE_LIMITED", "TEMPORARY_FAILURE", "PROTOCOL_MISMATCH", "CANCELED":
+	case "AUTH_REQUIRED", "PLATFORM_AUTH_REQUIRED", "ACCESS_DENIED", "NOT_FOUND", "UNSUPPORTED", "SOURCE_OFFLINE", "PLUGIN_DISABLED", "RESOURCE_CHANGED", "RATE_LIMITED", "TEMPORARY_FAILURE", "PROTOCOL_MISMATCH", "CANCELED":
 	default:
 		code = "TEMPORARY_FAILURE"
 	}

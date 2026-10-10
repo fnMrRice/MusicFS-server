@@ -53,7 +53,7 @@ func (s *Service) resolvedPolicy(w enrichment.AutomationWork) (enrichment.Automa
 		p.Languages = []string{}
 	}
 	if p.Enabled && len(p.InstancePriority) == 0 {
-		for _, r := range s.ordered {
+		for _, r := range s.runtimeSnapshot() {
 			if r.Owner == w.Owner && (r.Host != nil || r.Enabled) {
 				p.InstancePriority = append(p.InstancePriority, r.ID)
 			}

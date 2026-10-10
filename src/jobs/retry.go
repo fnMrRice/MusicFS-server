@@ -66,7 +66,7 @@ func DecideRetry(failure error, attempts int, now time.Time) RetryDecision {
 		return d
 	}
 	switch detail.Code {
-	case "AUTH_REQUIRED", "ACCESS_DENIED", "SOURCE_OFFLINE":
+	case "AUTH_REQUIRED", "ACCESS_DENIED", "SOURCE_OFFLINE", "PLUGIN_DISABLED":
 		d.Status = "paused"
 		return d
 	}

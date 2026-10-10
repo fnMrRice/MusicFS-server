@@ -12,6 +12,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/scraperlocal"
 )
@@ -22,6 +23,8 @@ type Runtime struct {
 	// Enabled distinguishes configured dependencies that failed to start from
 	// intentionally disabled instances when resolving the default priority.
 	Enabled bool
+	Gate    *plugincontrol.Gate
+	Epoch   uint64
 }
 type Config struct {
 	MaxConcurrent int
@@ -33,17 +36,18 @@ type runningTask struct {
 	cancel context.CancelFunc
 }
 type Service struct {
-	repo     enrichment.Repository
-	library  *library.Service
-	content  *mediastore.ContentService
-	runtimes map[string]Runtime
-	ordered  []Runtime
-	config   Config
-	mu       sync.Mutex
-	running  map[string]runningTask
-	cancel   context.CancelFunc
-	started  bool
-	wg       sync.WaitGroup
+	runtimeMu sync.RWMutex
+	repo      enrichment.Repository
+	library   *library.Service
+	content   *mediastore.ContentService
+	runtimes  map[string]Runtime
+	ordered   []Runtime
+	config    Config
+	mu        sync.Mutex
+	running   map[string]runningTask
+	cancel    context.CancelFunc
+	started   bool
+	wg        sync.WaitGroup
 }
 
 func New(repo enrichment.Repository, lib *library.Service, content *mediastore.ContentService, runtimes []Runtime, config Config) (*Service, error) {
@@ -77,12 +81,12 @@ func New(repo enrichment.Repository, lib *library.Service, content *mediastore.C
 
 func (s *Service) Instances(_ context.Context, owner string) []enrichment.Instance {
 	result := []enrichment.Instance{}
-	for _, r := range s.runtimes {
+	for _, r := range s.runtimeSnapshot() {
 		if r.Owner != owner {
 			continue
 		}
 		state := "offline"
-		if r.Host != nil {
+		if r.Host != nil && r.Gate.Check(context.Background()) == nil {
 			state = "available"
 		}
 		result = append(result, enrichment.Instance{InstanceID: r.ID, Name: r.Name, PluginID: scraperlocal.PluginID, Availability: state, Fields: []string{"lyrics", "artwork"}, QueryCorrectionsSupported: false})
@@ -111,15 +115,15 @@ func (s *Service) Submit(ctx context.Context, owner string, request enrichment.J
 		request.Query = nil
 	}
 	for _, id := range append(append([]string{}, request.InstanceIDs...), request.ExcludeInstanceIDs...) {
-		r, ok := s.runtimes[id]
+		r, ok := s.Runtime(id)
 		if !ok || r.Owner != owner {
 			return enrichment.Job{}, false, domain.Fail("NOT_FOUND", "Scraper instance not found")
 		}
 	}
 	if len(request.InstanceIDs) == 0 {
-		for id, r := range s.runtimes {
-			if r.Owner == owner && r.Host != nil && !slices.Contains(request.ExcludeInstanceIDs, id) {
-				request.InstanceIDs = append(request.InstanceIDs, id)
+		for _, r := range s.runtimeSnapshot() {
+			if r.Owner == owner && r.Host != nil && r.Gate.Check(ctx) == nil && !slices.Contains(request.ExcludeInstanceIDs, r.ID) {
+				request.InstanceIDs = append(request.InstanceIDs, r.ID)
 			}
 		}
 	}
@@ -127,8 +131,17 @@ func (s *Service) Submit(ctx context.Context, owner string, request enrichment.J
 		return enrichment.Job{}, false, domain.Fail("UNSUPPORTED", "No available scraper instances")
 	}
 	for _, id := range request.InstanceIDs {
-		if s.runtimes[id].Host == nil {
+		r, _ := s.Runtime(id)
+		if r.Host == nil {
 			return enrichment.Job{}, false, domain.Fail("SOURCE_OFFLINE", "Selected scraper instance is offline")
+		}
+		lease, err := r.Gate.AcquireEpoch(ctx, r.Epoch)
+		if err != nil {
+			return enrichment.Job{}, false, err
+		}
+		defer lease.Close()
+		if lease != nil {
+			ctx = lease.Context()
 		}
 	}
 	return s.repo.QueueEnrichment(ctx, owner, request, key)

@@ -14,6 +14,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/albums"
 	"github.com/fnMrRice/MusicFS-server/src/api"
 	"github.com/fnMrRice/MusicFS-server/src/auth"
+	"github.com/fnMrRice/MusicFS-server/src/catalog"
 	"github.com/fnMrRice/MusicFS-server/src/config"
 	"github.com/fnMrRice/MusicFS-server/src/identification/hashworker"
 	"github.com/fnMrRice/MusicFS-server/src/jobs"
@@ -21,8 +22,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/lifecycle"
 	"github.com/fnMrRice/MusicFS-server/src/matching"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/personal"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
 	"github.com/fnMrRice/MusicFS-server/src/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/src/sourcedisplay"
 	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 )
 
@@ -51,15 +55,37 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	if err != nil {
 		return nil, nil, err
 	}
+	var configuration *config.Store
+	if c.SourcePath != "" {
+		configuration, err = config.OpenStore(ctx, c.SourcePath, c.SourceOverrides, store)
+		if err != nil {
+			store.Close()
+			return nil, nil, err
+		}
+	}
+	if configuration != nil {
+		c = configuration.Current()
+	}
+	pluginManager, err := plugincontrol.New(ctx, c, configuration, store)
+	if err != nil {
+		store.Close()
+		return nil, nil, err
+	}
 	mediaFiles, media, closeMedia, err := configureMedia(ctx, c, store)
 	if err != nil {
+		pluginManager.Close()
 		store.Close()
 		return nil, nil, err
 	}
 	queue := jobs.New(store)
 	runtimes, processor, decoder, ffprobe := configurePlugins(ctx, c, log)
+	closeManagedLibrary := func() {}
+	closeManagedOnline := func() {}
 	cleanup := func() {
+		pluginManager.Close()
 		queue.Close()
+		closeManagedLibrary()
+		closeManagedOnline()
 		for _, r := range runtimes {
 			if r.Worker != nil {
 				r.Worker.Close()
@@ -69,14 +95,15 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 		store.Close()
 	}
 	policy := writeBackPolicy(c, runtimes, ffprobe != "")
-	probe := metadataProbe(ffprobe, decoder)
+	probeState := &managedProbe{}
+	probeState.update(ffprobe, decoder, audioGate(pluginManager, "musicfs.audio.ffmpeg"), audioGate(pluginManager, "musicfs.ncm"))
+	probe := library.Probe(probeState.probe)
 	lib := library.New(store, queue, runtimes, probe)
+	lib.SetProbeSession(probeState.session)
+	lib.SetWriteBackProbeReady(probeState.ready)
 	content := mediastore.NewContent(store, store, mediaFiles)
-	writeProbe := probe
-	if ffprobe == "" {
-		writeProbe = nil
-	}
-	writebacks, closeWritebacks, err := configureWriteBack(ctx, c, store, lib, content, runtimes, policy, writeProbe)
+	writeProbe := library.Probe(probeState.writeProbe)
+	writebacks, closeWritebacks, err := configureWriteBack(ctx, c, store, lib, content, runtimes, policy, writeProbe, probeState.writeSession)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
@@ -124,6 +151,10 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	sessions := auth.New(store, c.AdminToken, c.AllowedOrigins, time.Duration(c.SessionTTLSeconds)*time.Second)
 	handler := api.New(api.Options{Auth: sessions, InstanceID: instance, Ready: ready, SecureCookie: c.TLSCert != "", Logger: log})
 	handler.RegisterLibrary(lib)
+	handler.RegisterCatalog(catalog.New(store))
+	handler.RegisterPersonal(personal.New(store))
+	handler.RegisterSourceDisplay(sourcedisplay.New(store, online))
+	handler.RegisterPluginManagement(pluginManager)
 	handler.RegisterOnline(online)
 	handler.RegisterRecommendations(recommendations)
 	handler.RegisterRemotePlaylists(remotePlaylists)
@@ -154,6 +185,36 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	handler.RegisterPlayback(player)
 	previousCleanup := cleanup
 	cleanup = func() { player.Close(); previousCleanup() }
+	closeManagedOnline, err = registerOnlineManagement(ctx, c, pluginManager, online, onlineRuntimes, recommendations)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	if err = registerScraperManagement(pluginManager, c, metadata); err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	updateBackground := backgroundAudioUpdate(pluginManager, probeState, metadata, fingerprints, log)
+	if err = configureAudioManagement(c, pluginManager, player, processor, decoder, updateBackground); err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	if err = updateBackground(ctx, processor, decoder, ffprobe); err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	closeManagedLibrary, err = configureLibraryManagement(ctx, c, lib, pluginManager, log)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	pluginManager.Start()
+	beforeManager := cleanup
+	cleanup = func() { pluginManager.Close(); beforeManager() }
+	if err = writebacks.Start(ctx); err != nil {
+		cleanup()
+		return nil, nil, err
+	}
 	if err = queue.Start(ctx); err != nil {
 		cleanup()
 		return nil, nil, err
@@ -162,8 +223,21 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 		cleanup()
 		return nil, nil, err
 	}
-	closeWatch := configureWatch(ctx, c, lib, runtimes, log)
-	closeBeforeWatch := cleanup
-	cleanup = func() { closeWatch(); closeBeforeWatch() }
+	// Recovery workers may claim persisted tasks immediately. Attach every
+	// runtime gate and dependency before allowing that first claim.
+	if fingerprints != nil {
+		if err = fingerprints.Start(ctx); err != nil {
+			cleanup()
+			return nil, nil, err
+		}
+	}
+	if err = metadata.Start(ctx); err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	if err = remotePlaylists.Start(ctx); err != nil {
+		cleanup()
+		return nil, nil, err
+	}
 	return handler, cleanup, nil
 }

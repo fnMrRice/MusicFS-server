@@ -128,10 +128,13 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 	if err != nil || fresh.User.ID != who.User.ID || !time.Now().Before(fresh.ExpiresAt) {
 		return Description{}, domain.Fail("AUTH_REQUIRED", "Authentication session expired or was revoked")
 	}
-	lifetime, cancel := context.WithCancel(s.ctx)
+	if err := prepared.checkLeases(); err != nil {
+		return Description{}, err
+	}
 	capabilities := r.Capabilities
 	capabilities.Formats = append([]Format(nil), r.Capabilities.Formats...)
-	a := &session{owner: who.ID, user: who.User.ID, path: prepared.path, etag: prepared.etag, size: prepared.size, track: prepared.track, gain: r.Preferences.GainDB, capabilities: capabilities, ctx: lifetime, cancel: cancel, lastAccess: time.Now(), sourceLease: prepared.lease}
+	a := &session{owner: who.ID, user: who.User.ID, path: prepared.path, etag: prepared.etag, size: prepared.size, track: prepared.track, gain: r.Preferences.GainDB, capabilities: capabilities, lastAccess: time.Now(), sourceLease: prepared.lease}
+	s.installPluginLeases(a, prepared)
 	expiry := time.Now().UTC().Add(30 * time.Minute)
 	if who.ExpiresAt.Before(expiry) {
 		expiry = who.ExpiresAt
@@ -141,7 +144,8 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 	s.nextAttempt(a, 0)
 	raw, _ := json.Marshal(a.description)
 	if err = s.repo.CommitPlayback(ctx, id, who.ID, who.User.ID, raw, expiry, "playback/create", key, digest); err != nil {
-		cancel()
+		a.cancel()
+		a.releasePluginLeases()
 		return Description{}, err
 	}
 	s.sessions[id] = a

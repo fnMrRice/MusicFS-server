@@ -19,6 +19,7 @@ import (
 )
 
 type OnlineConfig struct {
+	Args                                                       []string
 	Executable, SHA256, StateDir, Platform, UserID, InstanceID string
 	Disabled                                                   bool
 	Timeout                                                    time.Duration
@@ -34,6 +35,7 @@ type OnlineWorker struct {
 }
 
 func StartOnline(parent context.Context, config OnlineConfig) (*OnlineWorker, error) {
+	config.Args = slices.Clone(config.Args)
 	if err := parent.Err(); err != nil {
 		return nil, err
 	}
@@ -61,7 +63,7 @@ func StartOnline(parent context.Context, config OnlineConfig) (*OnlineWorker, er
 		}
 	}()
 	ctx, cancel := context.WithCancel(parent)
-	cmd := exec.CommandContext(ctx, config.Executable)
+	cmd := exec.CommandContext(ctx, config.Executable, config.Args...)
 	onlineConfigureProcess(cmd)
 	cmd.Dir, cmd.Stderr, cmd.WaitDelay = privateDir, io.Discard, time.Second
 	cmd.Env = []string{}

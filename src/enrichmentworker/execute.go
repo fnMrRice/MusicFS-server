@@ -73,7 +73,7 @@ func (s *Service) collect(ctx context.Context, w enrichment.Work, out *enrichmen
 		return domain.Fail("RESOURCE_CHANGED", "Metadata source changed while queued")
 	}
 	input.Target = w.Target
-	if err = input.DecodeNCM(ctx, s.config.NCMDecoder); err != nil {
+	if err = input.DecodeNCM(ctx, s.decoder()); err != nil {
 		return err
 	}
 	trace.source(input)
@@ -86,7 +86,7 @@ func (s *Service) collect(ctx context.Context, w enrichment.Work, out *enrichmen
 		if err = ctx.Err(); err != nil {
 			return err
 		}
-		r, ok := s.runtimes[id]
+		r, ok := s.Runtime(id)
 		attempt := trace.attempt(id)
 		if !ok || r.Owner != w.Owner || r.Host == nil {
 			addIssue(out, id, "SOURCE_OFFLINE")
@@ -129,6 +129,14 @@ func addIssue(out *enrichment.Outcome, instance, code string) {
 }
 
 func (s *Service) scrape(ctx context.Context, w enrichment.Work, task string, r Runtime, input *library.ScrapeInput, out *enrichment.Outcome, trace *documentTrace, attempt *enrichment.ScraperAttempt) error {
+	lease, err := r.Gate.AcquireEpoch(ctx, r.Epoch)
+	if err != nil {
+		return err
+	}
+	defer lease.Close()
+	if lease != nil {
+		ctx = lease.Context()
+	}
 	scope := pluginproto.Context{UserID: w.Owner, InstanceID: r.ID, TaskID: task, TimeoutMs: 30000}
 	session, err := r.Host.Open(ctx, scope, w.Target, input.Inputs)
 	for err != nil && failureCode(err) == "RATE_LIMITED" {

@@ -19,7 +19,7 @@ type cacheScope struct {
 // cacheScope is captured under the playback mutex; no subsequent attempt can
 // mutate the immutable processing identity held by an active stream.
 func (s *Service) cacheScope(a *session) cacheScope {
-	tool := s.processor.ProcessingIdentity()
+	tool := a.processor.ProcessingIdentity()
 	return cacheScope{
 		auth:  processedcache.Authorization{Owner: a.user, AuthID: a.owner, SessionID: a.description.SessionID, AttemptID: a.description.AttemptID},
 		track: a.track,

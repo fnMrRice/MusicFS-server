@@ -66,7 +66,7 @@ func (s *Service) OpenStream(ctx context.Context, who auth.Session, id, attempt 
 		a.consumers[attempt]++
 	}
 	a.lastAccess = time.Now()
-	stream := &Stream{Description: a.description, File: f, Size: a.size, ETag: a.etag, Context: streamCtx, processor: s.processor, gain: a.gain}
+	stream := &Stream{Description: a.description, File: f, Size: a.size, ETag: a.etag, Context: streamCtx, processor: a.processor, gain: a.gain}
 	if s.cache != nil && a.description.DeliveryMode == "processed" {
 		scope := s.cacheScope(a)
 		stream.process = func(output io.Writer) error { return s.processCached(stream, scope, output) }

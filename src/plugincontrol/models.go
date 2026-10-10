@@ -1,0 +1,65 @@
+package plugincontrol
+
+import (
+	"context"
+	"time"
+
+	"github.com/fnMrRice/MusicFS-server/src/config"
+)
+
+type Hooks struct {
+	Start        func(context.Context, config.Plugin, config.Instance) error
+	Stop         func(context.Context, bool) error
+	Ready        func() bool
+	Capabilities func() []string
+}
+
+type Instance struct {
+	PluginID          string   `json:"pluginId"`
+	InstanceID        string   `json:"instanceId"`
+	Name              string   `json:"name"`
+	Role              string   `json:"role"`
+	Capabilities      []string `json:"capabilities"`
+	ConfiguredEnabled bool     `json:"configuredEnabled"`
+	EffectiveEnabled  bool     `json:"effectiveEnabled"`
+	AcceptingNewWork  bool     `json:"acceptingNewWork"`
+	RuntimeState      string   `json:"runtimeState"`
+	Generation        int64    `json:"generation"`
+	ActiveLeases      int      `json:"activeLeases"`
+	Reason            *string  `json:"reason"`
+}
+type Plugin struct {
+	PluginID          string     `json:"pluginId"`
+	ConfiguredEnabled bool       `json:"configuredEnabled"`
+	Instances         []Instance `json:"instances"`
+}
+type Snapshot struct {
+	Revision        string   `json:"revision"`
+	AppliedRevision string   `json:"appliedRevision"`
+	Writable        bool     `json:"writable"`
+	DiskChanged     bool     `json:"diskChanged"`
+	Items           []Plugin `json:"items"`
+}
+type Operation struct {
+	ID         string           `json:"operationId"`
+	Owner      string           `json:"-"`
+	Revision   string           `json:"revision"`
+	PluginID   string           `json:"pluginId"`
+	InstanceID string           `json:"instanceId"`
+	Mode       string           `json:"mode"`
+	Status     string           `json:"status"`
+	ErrorCode  *string          `json:"errorCode"`
+	CreatedAt  time.Time        `json:"createdAt"`
+	UpdatedAt  time.Time        `json:"updatedAt"`
+	Targets    map[string]int64 `json:"-"`
+}
+type Repository interface {
+	SavePluginOperation(context.Context, Operation) error
+	GetPluginOperation(context.Context, string, string) (Operation, error)
+	RecoverPluginOperations(context.Context) error
+}
+
+type Event struct {
+	Revision string `json:"revision"`
+	Sequence int64  `json:"sequence"`
+}

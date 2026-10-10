@@ -2,6 +2,7 @@ package library
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/domain"
@@ -11,13 +12,6 @@ import (
 )
 
 func (s *Service) scan(ctx context.Context, j jobs.Job) (int, error) {
-	r, ok := s.runtimes[j.ProviderInstanceID]
-	if !ok || r.Owner != j.Owner || r.Worker == nil {
-		return 0, domain.Fail("SOURCE_OFFLINE", "Provider is offline")
-	}
-	if err := validateRuntimePlan(r, j.Plan); err != nil {
-		return 0, err
-	}
 	ctx, cancel := context.WithTimeout(ctx, time.Hour)
 	defer cancel()
 	lease, err := s.HoldRead(ctx, j.Owner, j.ProviderInstanceID)
@@ -25,13 +19,26 @@ func (s *Service) scan(ctx context.Context, j jobs.Job) (int, error) {
 		return 0, err
 	}
 	defer lease.Close()
+	ctx = lease.Context()
+	r := lease.runtime
+	if r.Worker == nil {
+		return 0, domain.Fail("SOURCE_OFFLINE", "Provider is offline")
+	}
+	if err := validateRuntimePlan(r, j.Plan); err != nil {
+		return 0, err
+	}
+	ctx, probe, closeProbe, err := s.beginProbeSession(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer closeProbe()
 	defer s.Revoke(j.ProviderInstanceID, j.ID)
 	all := []Observation{}
 	roots := j.Plan.Roots
 	seenTracks := map[string]bool{}
 	for _, root := range roots {
 		var err error
-		all, err = s.scanRoot(ctx, j, r, root.RootID, all, seenTracks)
+		all, err = s.scanRoot(ctx, j, r, root.RootID, all, seenTracks, probe)
 		if err != nil {
 			return len(all), err
 		}
@@ -39,7 +46,7 @@ func (s *Service) scan(ctx context.Context, j jobs.Job) (int, error) {
 	return len(all), s.repo.Publish(ctx, j, ScanPublication{PlanDigest: j.PlanDigest, CompletedRoots: roots, Observations: all})
 }
 
-func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID string, all []Observation, seenTracks map[string]bool) ([]Observation, error) {
+func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID string, all []Observation, seenTracks map[string]bool, probe Probe) ([]Observation, error) {
 	cursor := ""
 	scope, err := j.Plan.Scope(rootID)
 	if err != nil {
@@ -71,7 +78,7 @@ func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID st
 				return all, err
 			}
 			item := Observation{Observation: o, Artists: []string{}, ProviderObservation: &o}
-			if s.probe != nil {
+			if probe != nil {
 				item.ProbeStatus = "failed"
 				scope := sourceaccess.Scope{UserID: j.Owner, InstanceID: r.ID, TaskID: j.ID, AssetID: o.ObservedVersion}
 				ref, e := r.Worker.Access.Register(scope, o.RootID, o.RelativePath, o.ObservedVersion, time.Minute)
@@ -82,9 +89,13 @@ func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID st
 				if e != nil {
 					return all, domain.Fail("RESOURCE_CHANGED", "Scanned source could not be reopened; retry scan")
 				}
-				meta, e := s.probe(ctx, h, o.SizeBytes)
+				meta, e := probe(ctx, h, o.SizeBytes)
 				valid := h.Validate()
 				h.Close()
+				var disabled *domain.Error
+				if errors.Is(e, context.Canceled) || errors.Is(e, context.DeadlineExceeded) || (errors.As(e, &disabled) && disabled.Code == "PLUGIN_DISABLED") {
+					return all, e
+				}
 				if valid != nil {
 					return all, domain.Fail("RESOURCE_CHANGED", "Scanned source changed while reading")
 				}

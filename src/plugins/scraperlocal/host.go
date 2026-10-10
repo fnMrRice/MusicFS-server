@@ -18,6 +18,7 @@ import (
 )
 
 type Config struct {
+	WorkerArgs                                    []string
 	WorkerPath, WorkerSHA256, WorkDir, InstanceID string
 	MaxConcurrent                                 int
 }
@@ -45,6 +46,7 @@ type Session struct {
 }
 
 func NewHost(config Config) (*Host, error) {
+	config.WorkerArgs = slices.Clone(config.WorkerArgs)
 	if config.MaxConcurrent == 0 {
 		config.MaxConcurrent = 2
 	}
@@ -118,7 +120,7 @@ func (h *Host) Open(parent context.Context, scope pluginproto.Context, target en
 	if err = channel.Validate(); err != nil {
 		return nil, err
 	}
-	cmd := exec.CommandContext(ctx, h.config.WorkerPath)
+	cmd := exec.CommandContext(ctx, h.config.WorkerPath, h.config.WorkerArgs...)
 	configureProcess(cmd)
 	cmd.Dir, cmd.Stderr, cmd.WaitDelay = h.config.WorkDir, io.Discard, time.Second
 	cmd.Env = []string{}

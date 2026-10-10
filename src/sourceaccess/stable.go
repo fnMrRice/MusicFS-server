@@ -39,7 +39,9 @@ func (h *Handle) Stable(ctx context.Context) (*StableReader, error) {
 	if h.checkPath == nil {
 		return nil, fmt.Errorf("UNSUPPORTED: stable source binding is unavailable")
 	}
+	h.metadataMu.Lock()
 	p, err := protectStableFile(h.File)
+	h.metadataMu.Unlock()
 	if err != nil {
 		return nil, err
 	}

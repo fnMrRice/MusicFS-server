@@ -1,0 +1,368 @@
+package plugincontrol_test
+
+import (
+	"bufio"
+	"context"
+	"encoding/json"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/fnMrRice/MusicFS-server/src/api"
+	"github.com/fnMrRice/MusicFS-server/src/auth"
+	"github.com/fnMrRice/MusicFS-server/src/config"
+	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
+	"github.com/fnMrRice/MusicFS-server/tests/testkit"
+)
+
+const httpOrigin = "http://127.0.0.1:8080"
+
+type httpAuth struct {
+	mu       sync.Mutex
+	sessions map[string]auth.Session
+}
+
+func (s *httpAuth) SaveAuth(_ context.Context, v auth.Session) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sessions[v.ID] = v
+	return nil
+}
+func (s *httpAuth) FindAuth(_ context.Context, id string) (auth.Session, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if v, ok := s.sessions[id]; ok {
+		return v, nil
+	}
+	return auth.Session{}, domain.Fail("NOT_FOUND", "Session not found")
+}
+func (s *httpAuth) DeleteAuth(_ context.Context, id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.sessions, id)
+	return nil
+}
+
+func managementHTTP(t *testing.T, manager *plugincontrol.Manager) (*api.Server, map[string]*http.Cookie) {
+	t.Helper()
+	repo := &httpAuth{sessions: map[string]auth.Session{}}
+	cookies := map[string]*http.Cookie{}
+	for _, role := range []string{"admin", "user", "other-admin"} {
+		value := domain.NewID()
+		kind := role
+		if role == "other-admin" {
+			kind = "admin"
+		}
+		err := repo.SaveAuth(context.Background(), auth.Session{ID: auth.Digest(value), User: auth.User{ID: role, Role: kind}, CSRFToken: "test-csrf", ExpiresAt: time.Now().Add(time.Hour)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		cookies[role] = &http.Cookie{Name: api.CookieName, Value: value}
+	}
+	server := api.New(api.Options{Auth: auth.New(repo, "test-admin-token", []string{httpOrigin}, time.Hour), Ready: func() bool { return true }, Logger: slog.New(slog.NewTextHandler(io.Discard, nil))})
+	server.RegisterPluginManagement(manager)
+	return server, cookies
+}
+
+func managementRequest(server http.Handler, cookie *http.Cookie, method, path, body, revision, key string) *httptest.ResponseRecorder {
+	r := httptest.NewRequest(method, "/api/v1"+path, strings.NewReader(body))
+	if cookie != nil {
+		r.AddCookie(cookie)
+	}
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("Origin", httpOrigin)
+	r.Header.Set("X-CSRF-Token", "test-csrf")
+	r.Header.Set("If-Match", revision)
+	r.Header.Set("Idempotency-Key", key)
+	w := httptest.NewRecorder()
+	server.ServeHTTP(w, r)
+	return w
+}
+
+func requireHTTP(t *testing.T, w *httptest.ResponseRecorder, status int, failure string) {
+	t.Helper()
+	if w.Code != status {
+		t.Fatalf("HTTP status %d, want %d: %s", w.Code, status, w.Body.String())
+	}
+	if failure != "" {
+		var body struct{ Error domain.Error }
+		if json.Unmarshal(w.Body.Bytes(), &body) != nil || body.Error.Code != failure {
+			t.Fatalf("HTTP error wanted %s: %s", failure, w.Body.String())
+		}
+	}
+}
+
+func TestPluginManagementHTTPAuthorizationCSRFRevisionAndIdempotency(t *testing.T) {
+	h := setup(t)
+	server, cookies := managementHTTP(t, h.manager)
+	for _, route := range []string{"/admin/plugins", "/admin/plugins/musicfs.ncm/instances", "/admin/plugin-instances/ncm/configuration", "/admin/plugin-operations/missing"} {
+		requireHTTP(t, managementRequest(server, nil, "GET", route, "", "", ""), 401, "AUTH_REQUIRED")
+		requireHTTP(t, managementRequest(server, cookies["user"], "GET", route, "", "", ""), 403, "ACCESS_DENIED")
+	}
+	w := managementRequest(server, cookies["admin"], "GET", "/admin/plugins", "", "", "")
+	requireHTTP(t, w, 200, "")
+	testkit.ValidateHTTP(t, "PluginManagementSnapshot", w.Body.Bytes())
+	revision := w.Header().Get("ETag")
+	if revision != `"`+h.manager.Snapshot().Revision+`"` || strings.Contains(w.Body.String(), "installed-worker") || strings.Contains(w.Body.String(), "executable") {
+		t.Fatal("missing ETag or private executable leaked", w.Body.String())
+	}
+	state := "/admin/plugin-instances/ncm/state"
+	body := `{"enabled":false,"mode":"drain"}`
+	requireHTTP(t, managementRequest(server, cookies["user"], "PUT", state, body, revision, "user-state"), 403, "ACCESS_DENIED")
+	r := httptest.NewRequest("PUT", "/api/v1"+state, strings.NewReader(body))
+	r.AddCookie(cookies["admin"])
+	r.Header.Set("Content-Type", "application/json")
+	w = httptest.NewRecorder()
+	server.ServeHTTP(w, r)
+	requireHTTP(t, w, 403, "ACCESS_DENIED")
+	requireHTTP(t, managementRequest(server, cookies["admin"], "PUT", state, body, "", "missing-revision"), 400, "INVALID_ARGUMENT")
+	requireHTTP(t, managementRequest(server, cookies["admin"], "PUT", state, body, revision, ""), 400, "INVALID_ARGUMENT")
+	requireHTTP(t, managementRequest(server, cookies["admin"], "PUT", state, body, `"`+strings.Repeat("0", 64)+`"`, "stale-revision"), 412, "PRECONDITION_FAILED")
+	requireHTTP(t, managementRequest(server, cookies["admin"], "PUT", state, `{"enabled":false,"executable":"private-path"}`, revision, "extra-field"), 400, "INVALID_ARGUMENT")
+	w = managementRequest(server, cookies["admin"], "PUT", state, body, revision, "disable-http")
+	requireHTTP(t, w, 202, "")
+	testkit.ValidateHTTP(t, "PluginOperation", w.Body.Bytes())
+	var operation plugincontrol.Operation
+	if json.Unmarshal(w.Body.Bytes(), &operation) != nil || operation.ID == "" {
+		t.Fatal("missing operation", w.Body.String())
+	}
+	waitStatus(t, h, operation, "succeeded")
+	w = managementRequest(server, cookies["admin"], "PUT", state, body, revision, "disable-http")
+	requireHTTP(t, w, 202, "")
+	testkit.ValidateHTTP(t, "PluginOperation", w.Body.Bytes())
+	var replay plugincontrol.Operation
+	if json.Unmarshal(w.Body.Bytes(), &replay) != nil || replay.ID != operation.ID {
+		t.Fatal("idempotent HTTP request created another operation")
+	}
+	requireHTTP(t, managementRequest(server, cookies["admin"], "PUT", state, `{"enabled":true}`, revision, "disable-http"), 409, "CONFLICT")
+	requireHTTP(t, managementRequest(server, cookies["other-admin"], "GET", "/admin/plugin-operations/"+operation.ID, "", "", ""), 404, "NOT_FOUND")
+	w = managementRequest(server, cookies["admin"], "GET", "/admin/plugin-operations/"+operation.ID, "", "", "")
+	requireHTTP(t, w, 200, "")
+	testkit.ValidateHTTP(t, "PluginOperation", w.Body.Bytes())
+	w = managementRequest(server, cookies["admin"], "GET", "/admin/plugins/musicfs.ncm/instances", "", "", "")
+	requireHTTP(t, w, 200, "")
+	testkit.ValidateHTTP(t, "ManagedPluginInstances", w.Body.Bytes())
+	if !strings.Contains(w.Body.String(), `"configuredEnabled":false`) || !strings.Contains(w.Body.String(), `"runtimeState":"disabled"`) {
+		t.Fatal("instance state did not reflect completed disable", w.Body.String())
+	}
+}
+
+func configurationManager(t *testing.T) (*plugincontrol.Manager, string) {
+	t.Helper()
+	t.Setenv("MUSICFS_ADMIN_TOKEN", "test-only-long-administrator-token")
+	dir := t.TempDir()
+	private := filepath.Join(dir, "private-music-root")
+	doc := `configVersion: 1
+listen: '127.0.0.1:8080'
+allowLoopbackHttp: true
+allowedOrigins: ['http://127.0.0.1:8080']
+plugins:
+  - pluginId: musicfs.localfiles
+    executable: './private-provider-worker'
+    enabled: false
+    instances:
+      - instanceId: local
+        name: Local
+        role: provider
+        enabled: false
+        config:
+          musicRoots:
+            - id: music
+              name: Music
+              path: ` + strconv.Quote(private) + `
+  - pluginId: musicfs.audio.ffmpeg
+    executable: './private-audio-worker'
+    enabled: false
+    instances:
+      - instanceId: audio
+        role: audio
+        enabled: false
+        config:
+          ffmpegPath: './private-ffmpeg'
+          ffprobePath: './private-ffprobe'
+  - pluginId: musicfs.ncm
+    executable: './private-ncm-worker'
+    enabled: false
+    instances:
+      - instanceId: ncm
+        name: Decoder
+        role: audio
+        enabled: false
+        config: {}
+`
+	path := filepath.Join(dir, "server.yaml")
+	if err := os.WriteFile(path, []byte(doc), 0600); err != nil {
+		t.Fatal(err)
+	}
+	repo, err := sqlite.Open(context.Background(), filepath.Join(dir, "state.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { repo.Close() })
+	store, err := config.OpenStore(context.Background(), path, nil, repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manager, err := plugincontrol.New(context.Background(), store.Current(), store, repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manager.Start()
+	t.Cleanup(manager.Close)
+	return manager, private
+}
+
+func TestPluginManagementHTTPConfigurationSchemaAndWriteOnlyPaths(t *testing.T) {
+	manager, private := configurationManager(t)
+	server, cookies := managementHTTP(t, manager)
+	w := managementRequest(server, cookies["admin"], "GET", "/admin/plugins", "", "", "")
+	requireHTTP(t, w, 200, "")
+	testkit.ValidateHTTP(t, "PluginManagementSnapshot", w.Body.Bytes())
+	for _, id := range []string{"local", "audio", "ncm"} {
+		w := managementRequest(server, cookies["admin"], "GET", "/admin/plugin-instances/"+id+"/configuration", "", "", "")
+		requireHTTP(t, w, 200, "")
+		testkit.ValidateHTTP(t, "ManagedPluginConfiguration", w.Body.Bytes())
+		for _, forbidden := range []string{private, filepath.Base(private), "private-ffmpeg", "private-ffprobe", "private-provider-worker", "private-audio-worker", "private-ncm-worker"} {
+			if strings.Contains(w.Body.String(), forbidden) {
+				t.Fatalf("configuration leaked %s", forbidden)
+			}
+		}
+		var view plugincontrol.Configuration
+		if json.Unmarshal(w.Body.Bytes(), &view) != nil || view.Schema["additionalProperties"] != false {
+			t.Fatal("configuration lacks strict writable schema", w.Body.String())
+		}
+		if id == "local" && (len(view.Roots) != 1 || !view.Roots[0].PathConfigured || view.ImportOptions == nil || view.Watch == nil) {
+			t.Fatal("local configuration summary incomplete", view)
+		}
+		if id == "audio" && (!view.FFmpegConfigured || !view.FFprobeConfigured) {
+			t.Fatal("audio path presence missing", view)
+		}
+		if id != "ncm" && !strings.Contains(w.Body.String(), `"writeOnly":true`) {
+			t.Fatal("path input schema is not write-only")
+		}
+	}
+	path := "/admin/plugin-instances/local/configuration"
+	revision := `"` + manager.Snapshot().Revision + `"`
+	for index, body := range []string{`{}`, `{"role":"audio"}`, `{"executable":"private"}`, `{"ffmpegPath":"private"}`, `{"importDefaults":{"recursive":true,"maxDepth":-1}}`, `{"musicRoots":[{"id":"music","name":"Music","path":null}]}`} {
+		w := managementRequest(server, cookies["admin"], "PUT", path, body, revision, "bad-settings-"+strconv.Itoa(index))
+		requireHTTP(t, w, 400, "INVALID_ARGUMENT")
+		if strings.Contains(w.Body.String(), "private") {
+			t.Fatal("schema validation echoed a private input value")
+		}
+	}
+	w = managementRequest(server, cookies["admin"], "PUT", path, `{"name":"Renamed local","musicRoots":[{"id":"music","name":"Renamed root"}]}`, revision, "save-http-settings")
+	requireHTTP(t, w, 202, "")
+	testkit.ValidateHTTP(t, "PluginOperation", w.Body.Bytes())
+	w = managementRequest(server, cookies["admin"], "GET", path, "", "", "")
+	requireHTTP(t, w, 200, "")
+	testkit.ValidateHTTP(t, "ManagedPluginConfiguration", w.Body.Bytes())
+	var view plugincontrol.Configuration
+	if json.Unmarshal(w.Body.Bytes(), &view) != nil || view.Name != "Renamed local" || view.Roots[0].Name != "Renamed root" || !view.Roots[0].PathConfigured {
+		t.Fatal("partial root update lost its preserved private path", w.Body.String())
+	}
+	path = "/admin/plugin-instances/ncm/configuration"
+	revision = `"` + manager.Snapshot().Revision + `"`
+	w = managementRequest(server, cookies["admin"], "PUT", path, `{"name":"Renamed decoder"}`, revision, "save-http-ncm-settings")
+	requireHTTP(t, w, 202, "")
+	testkit.ValidateHTTP(t, "PluginOperation", w.Body.Bytes())
+	w = managementRequest(server, cookies["admin"], "GET", path, "", "", "")
+	requireHTTP(t, w, 200, "")
+	testkit.ValidateHTTP(t, "ManagedPluginConfiguration", w.Body.Bytes())
+	if json.Unmarshal(w.Body.Bytes(), &view) != nil || view.Name != "Renamed decoder" || view.ImportOptions != nil || view.Watch != nil || len(view.Roots) != 0 {
+		t.Fatal("decoder configuration has invalid provider fields", w.Body.String())
+	}
+	w = managementRequest(server, cookies["admin"], "GET", "/admin/plugins", "", "", "")
+	requireHTTP(t, w, 200, "")
+	testkit.ValidateHTTP(t, "PluginManagementSnapshot", w.Body.Bytes())
+}
+
+func openEvents(t *testing.T, client *http.Client, endpoint string, cookie *http.Cookie) (*http.Response, *bufio.Reader, context.CancelFunc) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	r, _ := http.NewRequestWithContext(ctx, "GET", endpoint+"/api/v1/events", nil)
+	if cookie != nil {
+		r.AddCookie(cookie)
+	}
+	response, err := client.Do(r)
+	if err != nil {
+		cancel()
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { cancel(); response.Body.Close() })
+	return response, bufio.NewReader(response.Body), cancel
+}
+
+func readCapabilityEvent(t *testing.T, reader *bufio.Reader) plugincontrol.Event {
+	t.Helper()
+	name, err := reader.ReadString('\n')
+	if err != nil || name != "event: capabilities.changed\n" {
+		t.Fatal("missing capability event", name, err)
+	}
+	data, err := reader.ReadString('\n')
+	if err != nil || !strings.HasPrefix(data, "data: ") {
+		t.Fatal("missing event data", data, err)
+	}
+	blank, err := reader.ReadString('\n')
+	if err != nil || blank != "\n" {
+		t.Fatal("invalid event frame", blank, err)
+	}
+	var event plugincontrol.Event
+	var fields map[string]any
+	raw := []byte(strings.TrimPrefix(data, "data: "))
+	testkit.ValidateHTTP(t, "CapabilitiesChangedEvent", raw)
+	if json.Unmarshal(raw, &event) != nil || json.Unmarshal(raw, &fields) != nil || len(fields) != 2 || event.Revision == "" {
+		t.Fatal("event must expose only revision and sequence", data)
+	}
+	return event
+}
+
+func TestPluginCapabilitySSEAuthenticationInitialUpdateAndReconnect(t *testing.T) {
+	h := setup(t)
+	server, cookies := managementHTTP(t, h.manager)
+	httpServer := httptest.NewServer(server)
+	defer httpServer.Close()
+	unauthorized, _, cancelUnauthorized := openEvents(t, httpServer.Client(), httpServer.URL, nil)
+	if unauthorized.StatusCode != 401 {
+		t.Fatal("anonymous event stream accepted")
+	}
+	cancelUnauthorized()
+	response, reader, cancel := openEvents(t, httpServer.Client(), httpServer.URL, cookies["user"])
+	defer cancel()
+	if response.StatusCode != 200 || response.Header.Get("Content-Type") != "text/event-stream" || response.Header.Get("Cache-Control") != "no-store" {
+		t.Fatal("invalid event stream response", response.StatusCode, response.Header)
+	}
+	initial := readCapabilityEvent(t, reader)
+	if initial.Revision != h.manager.Snapshot().Revision {
+		t.Fatal("initial snapshot revision is stale")
+	}
+	op := change(t, h, "sse-state-change", false, "drain")
+	updated := readCapabilityEvent(t, reader)
+	for updated.Revision != op.Revision {
+		if updated.Sequence <= initial.Sequence {
+			t.Fatal("capability event sequence did not advance", initial, updated)
+		}
+		initial = updated
+		updated = readCapabilityEvent(t, reader)
+	}
+	if updated.Sequence <= initial.Sequence || updated.Revision == initial.Revision {
+		t.Fatal("configuration change was not emitted", initial, updated)
+	}
+	waitStatus(t, h, op, "succeeded")
+	cancel()
+	_, reconnected, closeReconnect := openEvents(t, httpServer.Client(), httpServer.URL, cookies["user"])
+	defer closeReconnect()
+	latest := readCapabilityEvent(t, reconnected)
+	if latest.Revision != h.manager.Snapshot().Revision || latest.Sequence < updated.Sequence {
+		t.Fatal("reconnect did not receive current capability state", latest)
+	}
+}

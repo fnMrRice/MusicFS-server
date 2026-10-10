@@ -2,10 +2,39 @@ package recommendations
 
 import (
 	"context"
+	"errors"
+	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"time"
 )
 
 func (s *Service) get(ctx context.Context, r Runtime, request Request) (result Source) {
+	lease, err := r.Gate.AcquireEpoch(ctx, r.epoch)
+	if err != nil {
+		failure, _ := failureFor(err, s.config.FailureCooldown)
+		return failedSource(r, failure.Code, "Recommendation runtime changed or stopped")
+	}
+	if lease != nil {
+		defer lease.Close()
+		ctx = lease.Context()
+	}
+	if provider, ok := r.Provider.(interface{ CheckAvailability(context.Context) error }); ok {
+		if err := provider.CheckAvailability(ctx); err != nil {
+			code := "SOURCE_OFFLINE"
+			var failure *domain.Error
+			if errors.As(err, &failure) {
+				code = failure.Code
+			}
+			return failedSource(r, code, "Recommendation instance is unavailable")
+		}
+	}
+	if err := r.Gate.Check(ctx); err != nil {
+		code := "CANCELED"
+		var failure *domain.Error
+		if errors.As(err, &failure) {
+			code = failure.Code
+		}
+		return failedSource(r, code, "Recommendation instance is not accepting new work")
+	}
 	if provider, ok := r.Provider.(interface {
 		AccountScope(context.Context) (string, string, error)
 	}); ok {
@@ -32,6 +61,10 @@ func (s *Service) get(ctx context.Context, r Runtime, request Request) (result S
 			return failedSource(r, "CANCELED", "Recommendation request was canceled")
 		}
 		s.mu.Lock()
+		if current, ok := s.runtimes[runtimeKey{r.Owner, r.InstanceID}]; !ok || current.generation != r.generation {
+			s.mu.Unlock()
+			return failedSource(r, "RESOURCE_CHANGED", "Recommendation instance changed; refresh sources")
+		}
 		if s.closed {
 			s.mu.Unlock()
 			return failedSource(r, "SOURCE_OFFLINE", "Recommendation service is draining")
@@ -67,7 +100,17 @@ func (s *Service) get(ctx context.Context, r Runtime, request Request) (result S
 		}
 		if f == nil {
 			fetch, cancel := context.WithTimeout(s.ctx, 2*s.config.Timeout)
-			f = &flight{done: make(chan struct{}), cancel: cancel}
+			lease, err := r.Gate.AcquireEpoch(fetch, r.epoch)
+			if err != nil {
+				cancel()
+				s.mu.Unlock()
+				failure, _ := failureFor(err, s.config.FailureCooldown)
+				return failedSource(r, failure.Code, "Recommendation runtime changed or stopped")
+			}
+			if lease != nil {
+				fetch = lease.Context()
+			}
+			f = &flight{done: make(chan struct{}), cancel: cancel, lease: lease}
 			e.flight = f
 			s.wg.Add(1)
 			go s.fetch(fetch, key, r, e, f)

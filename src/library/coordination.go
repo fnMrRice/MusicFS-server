@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
@@ -20,18 +21,28 @@ type providerGate struct {
 }
 
 type ReadLease struct {
-	gate *providerGate
-	once sync.Once
+	gate     *providerGate
+	once     sync.Once
+	ctx      context.Context
+	lifetime *plugincontrol.Lease
+	runtime  Runtime
+}
+
+type readLeaseKey struct{}
+
+func (r *ReadLease) Context() context.Context { return r.WithContext(r.ctx) }
+func (r *ReadLease) WithContext(ctx context.Context) context.Context {
+	return context.WithValue(plugincontrol.WithLease(ctx, r.lifetime), readLeaseKey{}, r)
 }
 
 func (r *ReadLease) Close() error {
-	r.once.Do(func() { r.gate.mu.Lock(); r.gate.readers--; r.gate.notify(); r.gate.mu.Unlock() })
+	r.once.Do(func() { r.gate.mu.Lock(); r.gate.readers--; r.gate.notify(); r.gate.mu.Unlock(); r.lifetime.Close() })
 	return nil
 }
 func (g *providerGate) notify() { close(g.changed); g.changed = make(chan struct{}) }
 
 func (s *Service) providerGate(owner, provider string) (*providerGate, error) {
-	r, ok := s.runtimes[provider]
+	r, ok := s.Runtime(provider)
 	if !ok || r.Owner != owner {
 		return nil, domain.Fail("NOT_FOUND", "Provider not found")
 	}
@@ -42,13 +53,41 @@ func (s *Service) providerGate(owner, provider string) (*providerGate, error) {
 // Once acquired, Close is mandatory: canceling an operation is not proof that
 // its file handles and publication callbacks have finished using the source.
 func (s *Service) HoldRead(ctx context.Context, owner, provider string) (*ReadLease, error) {
+	return s.HoldReadLifetime(ctx, ctx, owner, provider)
+}
+
+// HoldReadLifetime keeps admission alive for lifetime while writer waits still
+// obey the originating request. Sessions use their own bounded lifetime here.
+func (s *Service) HoldReadLifetime(ctx, lifetime context.Context, owner, provider string) (*ReadLease, error) {
 	g, err := s.providerGate(owner, provider)
 	if err != nil {
 		return nil, err
 	}
+	runtime, _ := s.Runtime(provider)
+	if previous, _ := ctx.Value(readLeaseKey{}).(*ReadLease); previous != nil && previous.runtime.ID == provider {
+		lifetime = previous.WithContext(lifetime)
+	}
+	admission, err := runtime.Gate.Acquire(lifetime)
+	if err != nil {
+		return nil, err
+	}
+	run := lifetime
+	if admission != nil {
+		run = admission.Context()
+	}
+	acquired := false
+	defer func() {
+		if !acquired {
+			admission.Close()
+		}
+	}()
 	for {
 		g.mu.Lock()
 		if err = ctx.Err(); err != nil {
+			g.mu.Unlock()
+			return nil, err
+		}
+		if err = run.Err(); err != nil {
 			g.mu.Unlock()
 			return nil, err
 		}
@@ -59,13 +98,17 @@ func (s *Service) HoldRead(ctx context.Context, owner, provider string) (*ReadLe
 		if g.exclusive == nil {
 			g.readers++
 			g.mu.Unlock()
-			return &ReadLease{gate: g}, nil
+			current, _ := s.Runtime(provider)
+			acquired = true
+			return &ReadLease{gate: g, ctx: run, lifetime: admission, runtime: current}, nil
 		}
 		wait := g.changed
 		g.mu.Unlock()
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
+		case <-run.Done():
+			return nil, run.Err()
 		case <-wait:
 		}
 	}
@@ -73,23 +116,51 @@ func (s *Service) HoldRead(ctx context.Context, owner, provider string) (*ReadLe
 
 // holdTask deliberately retains a read even if opening a resource fails. Every
 // caller must Revoke the task on all exits, including canceled/failed opens.
-func (s *Service) holdTask(ctx context.Context, owner, provider, task string) error {
+func (s *Service) holdTask(ctx context.Context, owner, provider, task string) (*ReadLease, error) {
 	if task == "" || len(task) > 128 {
-		return domain.Fail("INVALID_ARGUMENT", "Invalid source task")
+		return nil, domain.Fail("INVALID_ARGUMENT", "Invalid source task")
+	}
+	g, err := s.providerGate(owner, provider)
+	if err != nil {
+		return nil, err
+	}
+	g.mu.Lock()
+	existing := g.tasks[task]
+	g.mu.Unlock()
+	if existing != nil {
+		if err := existing.ctx.Err(); err != nil {
+			return nil, err
+		}
+		return existing, nil
 	}
 	r, err := s.HoldRead(ctx, owner, provider)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	g := r.gate
+	g = r.gate
 	g.mu.Lock()
 	if g.tasks[task] != nil {
+		existing = g.tasks[task]
 		g.mu.Unlock()
-		return r.Close()
+		r.Close()
+		return existing, nil
 	}
 	g.tasks[task] = r
 	g.mu.Unlock()
-	return nil
+	return r, nil
+}
+
+func (s *Service) taskContext(provider, task string, ctx context.Context) context.Context {
+	g := s.gates[provider]
+	if g == nil {
+		return ctx
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if lease := g.tasks[task]; lease != nil {
+		return lease.Context()
+	}
+	return ctx
 }
 func (s *Service) revokeTask(provider, task string) {
 	g := s.gates[provider]
@@ -140,7 +211,12 @@ type ExclusiveLease struct {
 	service         *Service
 	provider, jobID string
 	closed          bool
+	lifetime        *plugincontrol.Lease
+	ctx             context.Context
+	runtime         Runtime
 }
+
+func (e *ExclusiveLease) Context() context.Context { return e.ctx }
 
 // TryExclusive never waits. Only the owner of the sole recovery barrier may
 // enter a blocked provider to finish that exact operation.
@@ -152,6 +228,21 @@ func (s *Service) TryExclusive(ctx context.Context, owner, provider, jobID strin
 	if err != nil {
 		return nil, err
 	}
+	runtime, _ := s.Runtime(provider)
+	admission, err := runtime.Gate.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	run := ctx
+	if admission != nil {
+		run = admission.Context()
+	}
+	acquired := false
+	defer func() {
+		if !acquired {
+			admission.Close()
+		}
+	}()
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if err = ctx.Err(); err != nil {
@@ -160,14 +251,19 @@ func (s *Service) TryExclusive(ctx context.Context, owner, provider, jobID strin
 	if g.readers != 0 || g.exclusive != nil || len(g.barriers) > 1 || (len(g.barriers) == 1 && !g.barriers[jobID]) {
 		return nil, domain.Fail("CONFLICT", "Provider is in use or requires writeback recovery")
 	}
-	e := &ExclusiveLease{gate: g, service: s, provider: provider, jobID: jobID}
+	current, _ := s.Runtime(provider)
+	e := &ExclusiveLease{gate: g, service: s, provider: provider, jobID: jobID, lifetime: admission, ctx: run, runtime: current}
 	g.exclusive = e
+	acquired = true
 	return e, nil
 }
 func (e *ExclusiveLease) Check(ctx context.Context) error {
 	e.gate.mu.Lock()
 	defer e.gate.mu.Unlock()
 	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := e.ctx.Err(); err != nil {
 		return err
 	}
 	if e.closed || e.gate.exclusive != e {
@@ -204,6 +300,7 @@ func (e *ExclusiveLease) Close() error {
 			e.gate.exclusive = nil
 		}
 		e.gate.notify()
+		e.lifetime.Close()
 	}
 	return nil
 }
@@ -211,7 +308,7 @@ func (e *ExclusiveLease) Access() (*sourceaccess.Access, error) {
 	if err := e.Check(context.Background()); err != nil {
 		return nil, err
 	}
-	w := e.service.runtimes[e.provider].Worker
+	w := e.runtime.Worker
 	if w == nil || w.Access == nil {
 		return nil, domain.Fail("SOURCE_OFFLINE", "Provider is offline")
 	}
@@ -225,10 +322,13 @@ func (e *ExclusiveLease) RebindLocalTrack(ctx context.Context, r pluginhost.Loca
 	if err := ctx.Err(); err != nil {
 		return pluginproto.Observation{}, err
 	}
+	if err := e.ctx.Err(); err != nil {
+		return pluginproto.Observation{}, err
+	}
 	if e.closed || e.gate.exclusive != e || r.JobID != e.jobID {
 		return pluginproto.Observation{}, domain.Fail("CONFLICT", "Invalid writeback coordination lease")
 	}
-	w := e.service.runtimes[e.provider].Worker
+	w := e.runtime.Worker
 	if w == nil {
 		return pluginproto.Observation{}, domain.Fail("SOURCE_OFFLINE", "Provider is offline")
 	}

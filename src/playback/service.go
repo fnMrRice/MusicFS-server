@@ -12,6 +12,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/auth"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
 	"github.com/fnMrRice/MusicFS-server/src/processedcache"
@@ -50,12 +51,16 @@ type session struct {
 	recovery                timeline.Budget
 	sourceLease             *library.ReadLease
 	cachePin                *processedcache.Pin
+	processor               *audioffmpeg.Processor
+	processing, decoding    *plugincontrol.Lease
+	unlinkPlugins           []func() bool
 }
 type Service struct {
 	mu        sync.Mutex
 	repo      Repository
 	library   *library.Service
 	processor *audioffmpeg.Processor
+	decoder   *ncmdecoder.Processor
 	config    Config
 	sessions  map[string]*session
 	garbage   map[string]int64
@@ -91,6 +96,7 @@ func New(ctx context.Context, repo Repository, lib *library.Service, processor *
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	s := &Service{repo: repo, library: lib, processor: processor, config: c, sessions: map[string]*session{}, garbage: map[string]int64{}, ctx: ctx, cancel: cancel, done: make(chan struct{}), creation: make(chan struct{}, 1), preparing: map[string]context.CancelFunc{}}
+	s.decoder = c.NCMDecoder
 	s.readers = map[string]int{}
 	s.budget, err = processedcache.NewBudget(c.MaxCacheBytes)
 	if err != nil {
@@ -119,7 +125,7 @@ func (s *Service) reap() {
 		}
 		s.mu.Lock()
 		for id, a := range s.sessions {
-			if time.Now().After(a.description.ExpiresAt) || (a.active == 0 && time.Since(a.lastAccess) > 90*time.Second) {
+			if a.ctx.Err() != nil || time.Now().After(a.description.ExpiresAt) || (a.active == 0 && time.Since(a.lastAccess) > 90*time.Second) {
 				s.stopLocked(context.Background(), id, a)
 			}
 		}
@@ -182,6 +188,7 @@ func (s *Service) Stop(ctx context.Context, who auth.Session, id string) error {
 }
 func (s *Service) stopLocked(ctx context.Context, id string, a *session) {
 	a.cancel()
+	a.releasePluginLeases()
 	a.cachePin.Close()
 	a.cachePin = nil
 	if a.sourceLease != nil {
@@ -199,7 +206,7 @@ func (s *Service) find(who auth.Session, id string) (*session, error) {
 	if a == nil || a.owner != who.ID {
 		return nil, domain.Fail("NOT_FOUND", "Playback session not found")
 	}
-	if time.Now().After(a.description.ExpiresAt) {
+	if a.ctx.Err() != nil || time.Now().After(a.description.ExpiresAt) {
 		return nil, domain.Fail("SESSION_EXPIRED", "Playback session expired")
 	}
 	return a, nil

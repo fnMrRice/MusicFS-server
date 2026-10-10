@@ -15,12 +15,17 @@ import (
 
 type coordinator struct{ s *Service }
 type lease struct {
-	s         *Service
-	gate      *library.ExclusiveLease
-	owner, id string
-	target    writeback.Target
-	revision  int64
+	s            *Service
+	gate         *library.ExclusiveLease
+	owner, id    string
+	target       writeback.Target
+	revision     int64
+	ctx          context.Context
+	probeFn      library.Probe
+	releaseProbe func()
 }
+
+func (l *lease) Context() context.Context { return l.ctx }
 
 func (c coordinator) Acquire(ctx context.Context, owner string, target writeback.Target, revision int64, id string) (writeback.Lease, error) {
 	return c.s.acquire(ctx, owner, target, revision, id, false)
@@ -38,17 +43,35 @@ func (s *Service) acquire(ctx context.Context, owner string, target writeback.Ta
 		}
 		return nil, err
 	}
-	l := &lease{s: s, gate: g, owner: owner, id: id, target: target, revision: revision}
+	access, err := g.Access()
+	if err == nil {
+		_, err = s.boundRoot(owner, target.InstanceID, target.RootID, access)
+	}
+	if err != nil {
+		g.Close()
+		return nil, err
+	}
+	ctx, probe, release := g.Context(), s.cfg.Probe, func() {}
+	if s.cfg.ProbeSession != nil {
+		ctx, probe, release, err = s.cfg.ProbeSession(ctx)
+		if err != nil {
+			g.Close()
+			return nil, err
+		}
+	}
+	l := &lease{s: s, gate: g, owner: owner, id: id, target: target, revision: revision, ctx: ctx, probeFn: probe, releaseProbe: release}
 	if recovering {
 		_, err = s.repo.CheckWriteback(ctx, owner, id, target, revision)
 	} else {
 		err = s.repo.BeginWriteback(ctx, owner, id, target, revision)
 	}
 	if err != nil {
+		release()
 		g.Close()
 		return nil, err
 	}
 	if err = g.Block(); err != nil {
+		release()
 		g.Close()
 		return nil, err
 	}
@@ -56,6 +79,9 @@ func (s *Service) acquire(ctx context.Context, owner string, target writeback.Ta
 }
 
 func (l *lease) Check(ctx context.Context) error {
+	if err := l.ctx.Err(); err != nil {
+		return err
+	}
 	if err := l.gate.Check(ctx); err != nil {
 		return err
 	}
@@ -94,7 +120,7 @@ func (l *lease) Commit(ctx context.Context, result writeback.Result) error {
 		if err != nil {
 			return err
 		}
-		observed = library.Observation{Observation: pluginproto.Observation{ExternalID: w.ExternalID, RootID: t.RootID, RelativePath: t.Path, ObservedVersion: t.Version, DisplayName: t.DisplayName, SizeBytes: t.Size, MIME: t.MIME, Codec: t.Codec, DurationMs: t.DurationMs}, Container: t.Container, Title: t.Title, Artists: t.Artists}
+		observed = library.Observation{Observation: pluginproto.Observation{ExternalID: w.ExternalID, RootID: t.RootID, RelativePath: t.Path, ObservedVersion: t.Version, DisplayName: t.DisplayName, SizeBytes: t.Size, MIME: t.MIME, Codec: t.Codec, DurationMs: t.DurationMs}, Container: t.Container, Title: t.Title, Artists: t.Artists, Album: t.Album, Genre: t.Genre, Year: t.Year, SampleRateHz: t.SampleRateHz}
 	}
 	_, err = l.s.repo.CommitWriteback(ctx, l.owner, l.id, result, observed)
 	return err
@@ -102,7 +128,7 @@ func (l *lease) Commit(ctx context.Context, result writeback.Result) error {
 
 func (l *lease) probe(ctx context.Context, provider pluginproto.Observation) (library.Observation, error) {
 	var result library.Observation
-	if l.s.cfg.Probe == nil {
+	if l.probeFn == nil {
 		return result, domain.Fail("UNSUPPORTED", "Source writeback requires a metadata probe")
 	}
 	access, err := l.gate.Access()
@@ -120,7 +146,7 @@ func (l *lease) probe(ctx context.Context, provider pluginproto.Observation) (li
 		return result, err
 	}
 	defer input.Close()
-	result, err = l.s.cfg.Probe(ctx, input, provider.SizeBytes)
+	result, err = l.probeFn(ctx, input, provider.SizeBytes)
 	if err != nil {
 		return result, err
 	}
@@ -142,6 +168,7 @@ func (l *lease) probe(ctx context.Context, provider pluginproto.Observation) (li
 }
 
 func (l *lease) Close() error {
+	defer l.releaseProbe()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	r, err := l.s.journal.Load(ctx, l.id)

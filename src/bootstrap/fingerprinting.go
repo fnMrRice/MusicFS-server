@@ -21,19 +21,14 @@ func configureFingerprinting(ctx context.Context, c config.Config, log *slog.Log
 	if !c.Fingerprinting.Enabled {
 		return nil, noop
 	}
-	if audio == nil || !audio.Capabilities.Normalization {
-		log.Warn("fingerprinting unavailable", "errorCode", "UNSUPPORTED")
-		return nil, noop
-	}
 	f := c.Fingerprinting
-	extractor, err := fingerprint.New(ctx, fingerprint.Config{FpcalcPath: f.FpcalcPath, FpcalcSHA256: f.FpcalcSHA256, FFmpegSHA256: audio.Capabilities.FFmpegSHA256, FFmpegVersion: audio.Capabilities.Version, MaxConcurrent: f.MaxConcurrent, Timeout: time.Duration(f.TimeoutSeconds) * time.Second}, audio)
+	extractor, err := createFingerprintExtractor(ctx, c, audio)
 	if err != nil {
 		log.Warn("fingerprinting unavailable", "errorCode", pluginproto.ErrorCode(err))
-		return nil, noop
 	}
-	worker, err := fingerprintworker.New(store, lib, extractor, media, fingerprintworker.Config{MaxConcurrent: f.MaxConcurrent, Timeout: time.Duration(f.TimeoutSeconds) * time.Second, NCMDecoder: fingerprintNCMDecoder(c, log)})
+	worker, err := fingerprintworker.NewDormant(store, lib, media, fingerprintworker.Config{MaxConcurrent: f.MaxConcurrent, Timeout: time.Duration(f.TimeoutSeconds) * time.Second})
 	if err == nil {
-		err = worker.Start(ctx)
+		worker.UpdateRuntime(extractor, fingerprintNCMDecoder(c, log), nil)
 	}
 	if err != nil {
 		if worker != nil {
@@ -43,6 +38,18 @@ func configureFingerprinting(ctx context.Context, c config.Config, log *slog.Log
 		return nil, noop
 	}
 	return worker, worker.Close
+}
+
+func createFingerprintExtractor(ctx context.Context, c config.Config, audio *audioffmpeg.Processor) (fingerprintworker.Extractor, error) {
+	if audio == nil || !audio.Capabilities.Normalization {
+		return nil, nil
+	}
+	f := c.Fingerprinting
+	extractor, err := fingerprint.New(ctx, fingerprint.Config{FpcalcPath: f.FpcalcPath, FpcalcSHA256: f.FpcalcSHA256, FFmpegSHA256: audio.Capabilities.FFmpegSHA256, FFmpegVersion: audio.Capabilities.Version, MaxConcurrent: f.MaxConcurrent, Timeout: time.Duration(f.TimeoutSeconds) * time.Second}, audio)
+	if err != nil {
+		return nil, err
+	}
+	return extractor, nil
 }
 
 // Background decryption has a separate bounded lane so fingerprint jobs cannot
@@ -56,7 +63,7 @@ func fingerprintNCMDecoder(c config.Config, log *slog.Logger) *ncmdecoder.Proces
 			if !instance.Enabled || instance.Role != "audio" {
 				continue
 			}
-			decoder, err := ncmdecoder.NewProcessor(ncmdecoder.Config{WorkerPath: plugin.Executable, WorkerSHA256: expectedChecksum(plugin.SHA256, plugin.Executable), WorkDir: c.DataRoot, MaxConcurrent: 1})
+			decoder, err := ncmdecoder.NewProcessor(ncmdecoder.Config{WorkerPath: plugin.Executable, WorkerArgs: plugin.Args, WorkerSHA256: expectedChecksum(plugin.SHA256, plugin.Executable), WorkDir: c.DataRoot, MaxConcurrent: 1})
 			if err != nil {
 				log.Warn("fingerprint NCM decoding unavailable", "errorCode", pluginproto.ErrorCode(err))
 				return nil

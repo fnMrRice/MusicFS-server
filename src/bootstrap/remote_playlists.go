@@ -12,8 +12,5 @@ func configureRemotePlaylists(ctx context.Context, repository playlists.Reposito
 	if err != nil {
 		return nil, err
 	}
-	if err := service.Start(ctx); err != nil {
-		return nil, err
-	}
 	return service, nil
 }

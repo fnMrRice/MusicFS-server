@@ -11,17 +11,20 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"sync/atomic"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
 type Config struct {
+	WorkerArgs                        []string
 	WorkerPath, WorkerSHA256, WorkDir string
 	MaxConcurrent                     int
 }
 
 type Processor struct {
+	gate   atomic.Pointer[lifecycleBinding]
 	config Config
 	slots  chan struct{}
 }
@@ -35,6 +38,7 @@ type Decoded struct {
 }
 
 func NewProcessor(cfg Config) (*Processor, error) {
+	cfg.WorkerArgs = slices.Clone(cfg.WorkerArgs)
 	if cfg.MaxConcurrent == 0 {
 		cfg.MaxConcurrent = 2
 	}
@@ -54,6 +58,19 @@ func NewProcessor(cfg Config) (*Processor, error) {
 }
 
 func (p *Processor) Open(ctx context.Context, taskID, assetID string, input io.ReaderAt, size int64) (*Decoded, error) {
+	lease, err := p.AcquireLease(ctx)
+	if err != nil {
+		return nil, err
+	}
+	leaseTransferred := false
+	defer func() {
+		if !leaseTransferred {
+			lease.Close()
+		}
+	}()
+	if lease != nil {
+		ctx = lease.Context()
+	}
 	if !validID(taskID) || len(taskID) > 196 || !validID(assetID) || input == nil || size <= 0 {
 		return nil, fmt.Errorf("ACCESS_DENIED: invalid NCM task input")
 	}
@@ -89,7 +106,7 @@ func (p *Processor) Open(ctx context.Context, taskID, assetID string, input io.R
 	if err != nil {
 		return nil, err
 	}
-	cmd := exec.CommandContext(ctx, p.config.WorkerPath)
+	cmd := exec.CommandContext(ctx, p.config.WorkerPath, p.config.WorkerArgs...)
 	cmd.Dir, cmd.Stderr, cmd.WaitDelay = p.config.WorkDir, io.Discard, time.Second
 	cmd.Env = []string{}
 	for _, key := range []string{"SystemRoot", "WINDIR", "TEMP", "TMP"} {
@@ -121,8 +138,10 @@ func (p *Processor) Open(ctx context.Context, taskID, assetID string, input io.R
 	var remote *channelReader
 	// Cleanup ownership moves to this goroutine before any fallible RPC calls.
 	release = false
+	leaseTransferred = true
 	readyToClean := make(chan struct{})
 	go func() {
+		defer lease.Close()
 		<-ctx.Done()
 		_ = peer.Close()
 		channel.Close()

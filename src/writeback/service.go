@@ -149,6 +149,9 @@ func (s *Service) Apply(ctx context.Context, owner string, request Request) (res
 		return result, err
 	}
 	defer func() { err = errors.Join(err, lease.Close()) }()
+	if lifetime, ok := lease.(interface{ Context() context.Context }); ok {
+		ctx = lifetime.Context()
+	}
 	if err = lease.Check(ctx); err != nil {
 		return result, err
 	}

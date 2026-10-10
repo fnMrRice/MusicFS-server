@@ -15,9 +15,12 @@ func (s *Service) ResolveHashTarget(ctx context.Context, owner, id string) (iden
 	if err != nil {
 		return identification.HashTarget{}, err
 	}
-	r, ok := s.runtimes[t.ProviderID]
+	r, ok := s.Runtime(t.ProviderID)
 	if !ok || r.Owner != owner {
 		return identification.HashTarget{}, domain.Fail("NOT_FOUND", "Source track not found")
+	}
+	if err := s.checkProviderWork(ctx, r); err != nil {
+		return identification.HashTarget{}, err
 	}
 	if !r.StableHash {
 		return identification.HashTarget{}, domain.Fail("UNSUPPORTED", "Provider does not permit complete stable original-file hashing")
@@ -38,7 +41,10 @@ func (s *Service) ResolveHashTarget(ctx context.Context, owner, id string) (iden
 
 func (s *Service) AutoHashScopes() []identification.HashScope {
 	scopes := []identification.HashScope{}
-	for _, r := range s.runtimes {
+	for _, r := range s.Runtimes() {
+		if r.Gate.Check(context.Background()) != nil {
+			continue
+		}
 		if r.StableHash && r.Worker != nil {
 			select {
 			case <-r.Worker.Done():
@@ -117,6 +123,7 @@ func (s *Service) OpenStableHash(ctx context.Context, owner, task string, target
 		s.Revoke(t.ProviderID, task)
 		return nil, err
 	}
+	ctx = s.taskContext(t.ProviderID, task, ctx)
 	guard, err := h.Stable(ctx)
 	if err != nil {
 		h.Close()

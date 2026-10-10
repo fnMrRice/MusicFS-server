@@ -13,7 +13,7 @@ import (
 )
 
 // prepareInput keeps the source asset identity while selecting a separate output representation.
-func (s *Service) prepareInput(ctx context.Context, task string, input *sourceaccess.Handle, track *library.Track) (io.Reader, int64, bool, func(), error) {
+func (p *preparedInput) prepareInput(ctx context.Context, task string, input *sourceaccess.Handle, track *library.Track) (io.Reader, int64, bool, func(), error) {
 	noop := func() {}
 	if err := ctx.Err(); err != nil {
 		return nil, 0, false, noop, err
@@ -24,16 +24,20 @@ func (s *Service) prepareInput(ctx context.Context, task string, input *sourceac
 	if !encrypted && track.MIME != "audio/x-ncm" && !strings.EqualFold(filepath.Ext(track.Path), ".ncm") {
 		return input, track.Size, false, noop, nil
 	}
-	if s.config.NCMDecoder == nil {
+	if p.decoder == nil {
 		return nil, 0, false, noop, domain.Fail("UNSUPPORTED", "NCM decryption plugin is unavailable")
 	}
-	decoded, err := s.config.NCMDecoder.Open(ctx, task, track.AssetID, input, track.Size)
+	ctx, err := p.decoderLease(ctx)
+	if err != nil {
+		return nil, 0, false, noop, err
+	}
+	decoded, err := p.decoder.Open(ctx, task, track.AssetID, input, track.Size)
 	if err != nil {
 		if canceled := ctx.Err(); canceled != nil {
 			return nil, 0, false, noop, canceled
 		}
 		code := pluginproto.ErrorCode(err)
-		if code != "RATE_LIMITED" && code != "ACCESS_DENIED" {
+		if code != "RATE_LIMITED" && code != "ACCESS_DENIED" && code != "PLUGIN_DISABLED" {
 			code = "UNSUPPORTED"
 		}
 		return nil, 0, false, noop, domain.Fail(code, "NCM source could not be decrypted")

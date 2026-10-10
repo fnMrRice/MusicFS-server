@@ -79,6 +79,8 @@ func (s *Service) OpenScrape(ctx context.Context, owner, task, trackID string, f
 	if err != nil {
 		return nil, err
 	}
+	ctx = s.taskContext(t.ProviderID, task, ctx)
+	h.ctx = ctx
 	guard, err := audio.Stable(ctx)
 	audio.Close()
 	if err != nil {
@@ -94,7 +96,11 @@ func (s *Service) OpenScrape(ctx context.Context, owner, task, trackID string, f
 	n, _ := guard.ReadAt(header[:], 0)
 	h.Encrypted = n == 8 && string(header[:]) == "CTENFDAM" || t.MIME == "audio/x-ncm" || strings.EqualFold(filepath.Ext(t.Path), ".ncm")
 	scope := sourceaccess.Scope{UserID: owner, InstanceID: t.ProviderID, TaskID: task, AssetID: t.AssetID}
-	access := s.runtimes[t.ProviderID].Worker.Access
+	runtime, ok := s.Runtime(t.ProviderID)
+	if !ok || runtime.Worker == nil {
+		return nil, domain.Fail("SOURCE_OFFLINE", "Provider is offline")
+	}
+	access := runtime.Worker.Access
 	sidecars, err := access.AuthorizeSidecars(ctx, scope, t.RootID, t.Path, t.Version, fields)
 	if err != nil {
 		return nil, err
@@ -136,9 +142,12 @@ func (s *Service) scrapeTrack(ctx context.Context, owner, id string) (Track, err
 	if err != nil {
 		return Track{}, err
 	}
-	r, ok := s.runtimes[t.ProviderID]
+	r, ok := s.Runtime(t.ProviderID)
 	if !ok || r.Owner != owner || t.Owner != owner {
 		return Track{}, domain.Fail("NOT_FOUND", "Source track not found")
+	}
+	if err := s.checkProviderWork(ctx, r); err != nil {
+		return Track{}, err
 	}
 	if r.Worker == nil || r.Worker.Access == nil {
 		return Track{}, domain.Fail("SOURCE_OFFLINE", "Provider is offline")

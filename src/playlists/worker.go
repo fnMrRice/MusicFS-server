@@ -43,6 +43,17 @@ func (s *Service) execute(parent context.Context, job SyncJob) {
 	if err == nil && (current.State != "running" || current.Generation != job.Generation) {
 		return
 	}
+	if err == nil {
+		if remote, ok := s.remote.(interface {
+			Acquire(context.Context, string, Binding) (context.Context, func(), error)
+		}); ok {
+			var release func()
+			ctx, release, err = remote.Acquire(ctx, job.Owner, job.Binding)
+			if err == nil {
+				defer release()
+			}
+		}
+	}
 	var binding Binding
 	if err == nil {
 		binding, err = s.authorize(ctx, job.Owner, job.Binding.RemoteRef)

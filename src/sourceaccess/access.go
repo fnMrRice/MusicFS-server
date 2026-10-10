@@ -179,7 +179,7 @@ func (a *Access) Open(ctx context.Context, scope Scope, ref string) (*Handle, er
 	if err != nil {
 		return nil, err
 	}
-	f.stop = context.AfterFunc(ctx, func() { f.File.Close() })
+	f.stop = context.AfterFunc(ctx, func() { f.closeFile() })
 	return f, nil
 }
 
@@ -195,6 +195,7 @@ func (a *Access) Revoke(taskID string) {
 
 type Handle struct {
 	*os.File
+	metadataMu   sync.Mutex
 	Entry        pluginproto.Entry
 	rootID, path string
 	stop         func() bool
@@ -205,9 +206,24 @@ func (h *Handle) Close() error {
 	if h.stop != nil {
 		h.stop()
 	}
+	return h.closeFile()
+}
+func (h *Handle) closeFile() error {
+	h.metadataMu.Lock()
+	defer h.metadataMu.Unlock()
 	return h.File.Close()
 }
+
+// Windows File.Stat reads the native handle without the I/O lock used by Read.
+// Serialize metadata access with asynchronous cancellation/Close.
+func (h *Handle) Stat() (os.FileInfo, error) {
+	h.metadataMu.Lock()
+	defer h.metadataMu.Unlock()
+	return h.File.Stat()
+}
 func (h *Handle) Validate() error {
+	h.metadataMu.Lock()
+	defer h.metadataMu.Unlock()
 	entry, err := describe(h.File, h.rootID, h.path)
 	if err != nil {
 		return err

@@ -22,10 +22,10 @@ func configureEnrichment(ctx context.Context, c config.Config, log *slog.Logger,
 			continue
 		}
 		for _, instance := range plugin.Instances {
-			runtime := enrichmentworker.Runtime{ID: instance.InstanceID, Name: instance.Name, Owner: "admin", Enabled: plugin.Enabled && instance.Enabled}
-			if plugin.Enabled && instance.Enabled {
+			runtime := enrichmentworker.Runtime{ID: instance.InstanceID, Name: instance.Name, Owner: "admin", Enabled: plugin.CanStart(instance)}
+			if plugin.CanStart(instance) {
 				var err error
-				runtime.Host, err = scraperlocal.NewHost(scraperlocal.Config{WorkerPath: plugin.Executable, WorkerSHA256: expectedChecksum(plugin.SHA256, plugin.Executable), WorkDir: c.DataRoot, InstanceID: instance.InstanceID, MaxConcurrent: 1})
+				runtime.Host, err = scraperlocal.NewHost(scraperlocal.Config{WorkerPath: plugin.Executable, WorkerArgs: plugin.Args, WorkerSHA256: expectedChecksum(plugin.SHA256, plugin.Executable), WorkDir: c.DataRoot, InstanceID: instance.InstanceID, MaxConcurrent: 1})
 				if err != nil {
 					log.Warn("scraper instance unavailable", "pluginId", plugin.PluginID, "instanceId", instance.InstanceID, "errorCode", pluginproto.ErrorCode(err))
 				}
@@ -42,10 +42,6 @@ func configureEnrichment(ctx context.Context, c config.Config, log *slog.Logger,
 	}
 	service, err := enrichmentworker.New(store, lib, content, runtimes, enrichmentworker.Config{MaxConcurrent: 1, NCMDecoder: decoder, Automatic: c.Metadata.Automatic})
 	if err != nil {
-		return nil, err
-	}
-	if err := service.Start(ctx); err != nil {
-		service.Close()
 		return nil, err
 	}
 	return service, nil

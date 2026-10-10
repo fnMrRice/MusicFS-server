@@ -24,7 +24,7 @@ func configurePlugins(ctx context.Context, c config.Config, log *slog.Logger) ([
 	ffprobe := ""
 	for _, plugin := range c.Plugins {
 		for _, instance := range plugin.Instances {
-			enabled := plugin.Enabled && instance.Enabled
+			enabled := plugin.CanStart(instance)
 			var err error
 			switch plugin.PluginID {
 			case "musicfs.localfiles":
@@ -51,7 +51,7 @@ func configurePlugins(ctx context.Context, c config.Config, log *slog.Logger) ([
 					for _, root := range instance.Config.MusicRoots {
 						roots = append(roots, sourceaccess.RootConfig{ID: root.ID, Path: root.Path})
 					}
-					r.Worker, err = pluginhost.Start(ctx, pluginhost.Config{Executable: plugin.Executable, SHA256: binaryHash, InstanceID: instance.InstanceID, UserID: "admin", Roots: roots, StateDir: filepath.Join(c.DataRoot, "providers", instance.InstanceID)})
+					r.Worker, err = pluginhost.Start(ctx, pluginhost.Config{Executable: plugin.Executable, Args: plugin.Args, SHA256: binaryHash, InstanceID: instance.InstanceID, UserID: "admin", Roots: roots, StateDir: filepath.Join(c.DataRoot, "providers", instance.InstanceID)})
 					if err == nil {
 						// The verified worker must describe the same official options used by YAML.
 						workerConfig := r.Worker.Manifest.Configuration
@@ -67,14 +67,14 @@ func configurePlugins(ctx context.Context, c config.Config, log *slog.Logger) ([
 				runtimes = append(runtimes, r)
 			case "musicfs.audio.ffmpeg":
 				if enabled {
-					processor, err = audioffmpeg.NewProcessor(ctx, audioffmpeg.Config{FFmpegPath: instance.Config.FFmpegPath, FFprobePath: instance.Config.FFprobePath, WorkerPath: plugin.Executable, WorkerSHA256: expectedChecksum(plugin.SHA256, plugin.Executable), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing})
+					processor, err = audioffmpeg.NewProcessor(ctx, audioffmpeg.Config{FFmpegPath: instance.Config.FFmpegPath, FFprobePath: instance.Config.FFprobePath, WorkerPath: plugin.Executable, WorkerArgs: plugin.Args, WorkerSHA256: expectedChecksum(plugin.SHA256, plugin.Executable), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing})
 					if err == nil {
 						ffprobe = instance.Config.FFprobePath
 					}
 				}
 			case "musicfs.ncm":
 				if enabled {
-					decoder, err = ncmdecoder.NewProcessor(ncmdecoder.Config{WorkerPath: plugin.Executable, WorkerSHA256: expectedChecksum(plugin.SHA256, plugin.Executable), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing})
+					decoder, err = ncmdecoder.NewProcessor(ncmdecoder.Config{WorkerPath: plugin.Executable, WorkerArgs: plugin.Args, WorkerSHA256: expectedChecksum(plugin.SHA256, plugin.Executable), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing})
 				}
 			}
 			if err != nil {

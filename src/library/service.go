@@ -4,10 +4,12 @@ import (
 	"context"
 	"io"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
@@ -22,14 +24,19 @@ type Runtime struct {
 	RootNames       map[string]string
 	WriteBack       map[string]RootWriteBack
 	Configuration   *pluginproto.Configuration
+	Gate            *plugincontrol.Gate
 }
 type Probe func(context.Context, io.ReadSeeker, int64) (Observation, error)
+type ProbeSession func(context.Context) (context.Context, Probe, func(), error)
 type Service struct {
-	repo     Repository
-	jobs     *jobs.Service
-	runtimes map[string]Runtime
-	probe    Probe
-	gates    map[string]*providerGate
+	mu                  sync.RWMutex
+	repo                Repository
+	jobs                *jobs.Service
+	runtimes            map[string]Runtime
+	probe               Probe
+	probeSession        ProbeSession
+	writeBackProbeReady func() bool
+	gates               map[string]*providerGate
 }
 
 func New(repo Repository, queue *jobs.Service, runtimes []Runtime, probe Probe) *Service {
@@ -44,7 +51,7 @@ func New(repo Repository, queue *jobs.Service, runtimes []Runtime, probe Probe) 
 }
 func (s *Service) Providers(ctx context.Context, user string) []Provider {
 	items := []Provider{}
-	for _, r := range s.runtimes {
+	for _, r := range s.Runtimes() {
 		if r.Owner != user {
 			continue
 		}
@@ -58,7 +65,7 @@ func (s *Service) Providers(ctx context.Context, user string) []Provider {
 				capabilities = []string{"library.scan", "metadata.read", "stream.resolve"}
 			}
 		}
-		items = append(items, Provider{ID: r.ID, Name: r.Name, Capabilities: capabilities, Availability: availability, AccountState: "notRequired", ScanState: s.repo.ProviderScanState(ctx, user, r.ID), Configuration: safeProviderConfiguration(r), Roots: providerRoots(r)})
+		items = append(items, Provider{ID: r.ID, Name: r.Name, Capabilities: capabilities, Availability: availability, AccountState: "notRequired", ScanState: s.repo.ProviderScanState(ctx, user, r.ID), Configuration: safeProviderConfiguration(r), Roots: s.providerRoots(ctx, r)})
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
 	return items
@@ -69,6 +76,7 @@ func (s *Service) Scan(ctx context.Context, user, provider string, input ScanInp
 		return jobs.Job{}, false, err
 	}
 	defer lease.Close()
+	ctx = lease.Context()
 	plan, err := s.BuildScanPlan(ctx, user, provider, input)
 	if err != nil {
 		return jobs.Job{}, false, err
@@ -80,7 +88,7 @@ func (s *Service) Job(ctx context.Context, user, id string) (jobs.Job, error) {
 }
 func (s *Service) List(ctx context.Context, user, provider, cursor string, limit int) (Page, error) {
 	if provider != "" {
-		r, ok := s.runtimes[provider]
+		r, ok := s.Runtime(provider)
 		if !ok || r.Owner != user {
 			return Page{}, domain.Fail("NOT_FOUND", "Provider not found")
 		}
@@ -91,13 +99,15 @@ func (s *Service) Track(ctx context.Context, user, id string) (Track, error) {
 	return s.repo.FindTrack(ctx, user, id)
 }
 func (s *Service) Open(ctx context.Context, t Track, task string) (*sourceaccess.Handle, error) {
-	r, ok := s.runtimes[t.ProviderID]
-	if !ok || r.Owner != t.Owner || r.Worker == nil {
-		return nil, domain.Fail("SOURCE_OFFLINE", "Provider is offline")
-	}
-	if err := s.holdTask(ctx, t.Owner, t.ProviderID, task); err != nil {
+	lease, err := s.holdTask(ctx, t.Owner, t.ProviderID, task)
+	if err != nil {
 		return nil, err
 	}
+	r := lease.runtime
+	if r.Worker == nil {
+		return nil, domain.Fail("SOURCE_OFFLINE", "Provider is offline")
+	}
+	ctx = lease.Context()
 	scope := sourceaccess.Scope{UserID: t.Owner, InstanceID: t.ProviderID, TaskID: task, AssetID: t.AssetID}
 	ref, err := r.Worker.Access.Register(scope, t.RootID, t.Path, t.Version, time.Hour)
 	if err != nil {
@@ -106,7 +116,7 @@ func (s *Service) Open(ctx context.Context, t Track, task string) (*sourceaccess
 	return r.Worker.Access.Open(ctx, scope, ref.ResourceRef)
 }
 func (s *Service) Revoke(provider, task string) {
-	if r, ok := s.runtimes[provider]; ok && r.Worker != nil {
+	if r, ok := s.Runtime(provider); ok && r.Worker != nil {
 		r.Worker.Access.Revoke(task)
 	}
 	s.revokeTask(provider, task)

@@ -19,6 +19,8 @@ func classifyError(err error) (string, int) {
 			return failure.Code, http.StatusUnauthorized
 		case "ACCESS_DENIED", "PLATFORM_AUTH_REQUIRED":
 			return failure.Code, http.StatusForbidden
+		case "PRECONDITION_FAILED":
+			return failure.Code, http.StatusPreconditionFailed
 		case "NOT_FOUND":
 			return failure.Code, http.StatusNotFound
 		case "CONFLICT", "STALE_ATTEMPT", "RESOURCE_CHANGED", "SESSION_STOPPED", "RESTART_REQUIRED", "RECOVERY_EXHAUSTED":
@@ -29,7 +31,7 @@ func classifyError(err error) (string, int) {
 			return failure.Code, http.StatusUnsupportedMediaType
 		case "RATE_LIMITED":
 			return failure.Code, http.StatusTooManyRequests
-		case "SOURCE_OFFLINE", "TEMPORARY_FAILURE":
+		case "SOURCE_OFFLINE", "TEMPORARY_FAILURE", "PLUGIN_DISABLED", "CONFIG_READ_ONLY", "CONFIG_NOT_APPLIED":
 			return failure.Code, http.StatusServiceUnavailable
 		}
 	}

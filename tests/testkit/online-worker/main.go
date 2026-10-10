@@ -43,6 +43,23 @@ func (fixture) RoundTrip(r *http.Request) (*http.Response, error) {
 		return &http.Response{StatusCode: 200, Header: http.Header{"Set-Cookie": []string{"MUSIC_U=fixture-account-token; Secure"}}, Body: io.NopCloser(strings.NewReader(`{"code":803}`))}, nil
 	case "/eapi/nuser/account/get":
 		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"code":200,"profile":{"userId":12345,"nickname":"Fixture listener"}}`))}, nil
+	case "/api/search/get":
+		switch r.URL.Query().Get("type") {
+		case "10":
+			body = `{"code":200,"result":{"albums":[{"id":91,"name":"Album","size":2}],"albumCount":1}}`
+		case "100":
+			body = `{"code":200,"result":{"artists":[{"id":92,"name":"Artist","albumSize":1,"musicSize":2}],"artistCount":1}}`
+		case "1000":
+			body = `{"code":200,"result":{"playlists":[{"id":91,"name":"Playlist","trackCount":3}],"playlistCount":1}}`
+		}
+	case "/api/v1/album/91":
+		body = `{"code":200,"album":{"id":91,"name":"Album","size":1},"songs":[{"id":42,"name":"Track","ar":[],"al":{},"dt":123}]}`
+	case "/api/artist/92":
+		body = `{"code":200,"artist":{"id":92,"name":"Artist","albumSize":1,"musicSize":2}}`
+	case "/api/artist/albums/92":
+		body = `{"code":200,"artist":{"id":92,"name":"Artist"},"hotAlbums":[{"id":91,"name":"Album","size":1}],"more":false}`
+	case "/api/v1/artist/songs":
+		body = `{"code":200,"songs":[{"id":42,"name":"Track","artists":[],"album":{},"duration":123}],"more":false,"total":1}`
 	case "/api/v3/song/detail":
 		body = `{"code":200,"songs":[{"id":42,"name":"Synthetic","ar":[],"al":{"name":"Album"},"dt":120000}]}`
 	case "/api/personalized/playlist":

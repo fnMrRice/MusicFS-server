@@ -32,6 +32,9 @@ func (s *Service) Control(ctx context.Context, who auth.Session, id, operation s
 	if err != nil {
 		return Description{}, err
 	}
+	if a.sourceLease != nil {
+		ctx = a.sourceLease.WithContext(ctx)
+	}
 	route := "playback/" + id + "/" + operation
 	digest := requestDigest(r)
 	prior, err := s.repo.Result(ctx, who.ID, route, key, digest)

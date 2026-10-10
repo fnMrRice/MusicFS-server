@@ -21,6 +21,8 @@ func (s *Service) timelineRepo() (timeline.Repository, error) {
 	return repo, nil
 }
 func (s *Service) RecoveryProfile() (timeline.Profile, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	p := timeline.Profile{OutputProfile: "mp3-128", ProcessingRevision: "gain-v1"}
 	if s.processor != nil {
 		p.DecoderSHA256 = s.processor.Capabilities.FFmpegSHA256

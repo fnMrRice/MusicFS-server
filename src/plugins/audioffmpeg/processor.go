@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"slices"
 	"sync/atomic"
 	"time"
 
@@ -17,10 +18,12 @@ import (
 )
 
 type Config struct {
+	WorkerArgs                                                 []string
 	FFmpegPath, FFprobePath, WorkerPath, WorkerSHA256, WorkDir string
 	MaxConcurrent                                              int
 }
 type Processor struct {
+	gate          atomic.Pointer[lifecycleBinding]
 	config        Config
 	Capabilities  Capabilities
 	slots         chan struct{}
@@ -29,6 +32,7 @@ type Processor struct {
 }
 
 func NewProcessor(ctx context.Context, cfg Config) (*Processor, error) {
+	cfg.WorkerArgs = slices.Clone(cfg.WorkerArgs)
 	if cfg.MaxConcurrent == 0 {
 		cfg.MaxConcurrent = 2
 	}
@@ -55,6 +59,14 @@ type bootstrap struct {
 }
 
 func (p *Processor) Process(ctx context.Context, plan Plan, input io.ReadSeeker, size int64, output io.Writer) error {
+	lease, err := p.AcquireLease(ctx)
+	if err != nil {
+		return err
+	}
+	defer lease.Close()
+	if lease != nil {
+		ctx = lease.Context()
+	}
 	if plan.TaskID == "" || plan.AssetID == "" || size <= 0 {
 		return fmt.Errorf("ACCESS_DENIED: invalid task input")
 	}
@@ -133,7 +145,7 @@ func (p *Processor) run(ctx context.Context, taskID string, readerAt io.ReaderAt
 	server := &http.Server{Handler: mux, ReadHeaderTimeout: 3 * time.Second, IdleTimeout: 5 * time.Second, MaxHeaderBytes: 8192, BaseContext: func(net.Listener) context.Context { return ctx }}
 	go server.Serve(listener)
 	defer server.Close()
-	cmd := exec.CommandContext(ctx, p.config.WorkerPath)
+	cmd := exec.CommandContext(ctx, p.config.WorkerPath, p.config.WorkerArgs...)
 	configureProcess(cmd)
 	cmd.Dir = p.config.WorkDir
 	cmd.Stderr = io.Discard

@@ -99,7 +99,7 @@ func readCatalogData(ctx context.Context, tx *sql.Tx, owner, provider string) (c
 	if err != nil {
 		return data, err
 	}
-	rows, err = tx.QueryContext(ctx, `SELECT a.id,a.provider_id,a.name,a.revision,(SELECT b.object_id FROM album_cover_heads h JOIN album_cover_bindings b ON b.id=h.binding_id JOIN media_content_objects o ON o.id=b.object_id WHERE h.owner=a.owner AND h.target_kind='sourceAlbum' AND h.target_id=a.id AND b.target_revision=a.revision AND o.state='available') FROM source_albums a WHERE a.owner=? AND (?='' OR a.provider_id=?) ORDER BY a.id LIMIT ?`, owner, provider, provider, catalog.MaxItems+1)
+	rows, err = tx.QueryContext(ctx, `SELECT a.id,a.provider_id,a.name,a.revision,(SELECT b.object_id FROM album_cover_heads h JOIN album_cover_bindings b ON b.id=h.binding_id JOIN media_content_objects o ON o.id=b.object_id JOIN tracks t ON t.id=b.source_id AND t.owner=b.owner AND t.asset_id=b.asset_id AND t.version=b.asset_version JOIN source_assets v ON v.id=b.asset_id AND v.owner=b.owner AND v.current=1 WHERE h.owner=a.owner AND h.target_kind='sourceAlbum' AND h.target_id=a.id AND b.target_revision=a.revision AND o.state='available') FROM source_albums a WHERE a.owner=? AND (?='' OR a.provider_id=?) ORDER BY a.id LIMIT ?`, owner, provider, provider, catalog.MaxItems+1)
 	if err != nil {
 		return data, err
 	}
@@ -125,6 +125,7 @@ func readCatalogData(ctx context.Context, tx *sql.Tx, owner, provider string) (c
 	if err != nil {
 		return data, err
 	}
+	membershipCount := 0
 	for rows.Next() {
 		var album, track string
 		if err = rows.Scan(&album, &track); err != nil {
@@ -132,6 +133,11 @@ func readCatalogData(ctx context.Context, tx *sql.Tx, owner, provider string) (c
 			return data, err
 		}
 		data.members[album] = append(data.members[album], track)
+		membershipCount++
+		if membershipCount > catalog.MaxItems*4 {
+			rows.Close()
+			return data, domain.Fail("RATE_LIMITED", "Catalog membership budget exceeded")
+		}
 	}
 	err = rows.Err()
 	rows.Close()

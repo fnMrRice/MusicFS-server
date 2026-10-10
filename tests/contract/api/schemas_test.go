@@ -138,7 +138,7 @@ func TestOpenAPIReferencesAndOperations(t *testing.T) {
 				if !strings.Contains(string(encoded), "/CSRF") {
 					t.Errorf("missing CSRF contract: %s %s", method, path)
 				}
-				if (method == "post" || method == "put") && path != "/online-instances/{id}/account" && path != "/lifecycle/leases/{id}/renew" && path != "/lifecycle/leases/{id}/release" && path != "/remote-playlist-sync-jobs/{id}/cancel" && path != "/online-instances/{id}/tracks/{externalId}/resolve" && path != "/media/{id}/thumbnail" && path != "/writeback-jobs/{id}/cancel" && path != "/writeback-jobs/{id}/recover" && path != "/metadata-jobs/{id}/cancel" && path != "/hash-jobs/{id}/cancel" && path != "/fingerprint-jobs/{id}/cancel" && path != "/source-tracks/{id}/match-candidates/refresh" && !strings.Contains(string(encoded), "/Idempotency") {
+				if (method == "post" || method == "put") && op["x-idempotency"] != "natural" && op["x-idempotency"] != "read-only" && path != "/online-instances/{id}/account" && path != "/lifecycle/leases/{id}/renew" && path != "/lifecycle/leases/{id}/release" && path != "/remote-playlist-sync-jobs/{id}/cancel" && path != "/online-instances/{id}/tracks/{externalId}/resolve" && path != "/media/{id}/thumbnail" && path != "/writeback-jobs/{id}/cancel" && path != "/writeback-jobs/{id}/recover" && path != "/metadata-jobs/{id}/cancel" && path != "/hash-jobs/{id}/cancel" && path != "/fingerprint-jobs/{id}/cancel" && path != "/source-tracks/{id}/match-candidates/refresh" && !strings.Contains(string(encoded), "/Idempotency") {
 					t.Errorf("missing idempotency contract: %s %s", method, path)
 				}
 			}

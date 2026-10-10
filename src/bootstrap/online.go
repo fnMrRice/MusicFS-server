@@ -28,7 +28,7 @@ func configureOnline(ctx context.Context, c config.Config, log *slog.Logger) (*o
 			continue
 		}
 		for _, instance := range plugin.Instances {
-			enabled := plugin.Enabled && instance.Enabled
+			enabled := plugin.CanStart(instance)
 			name := instance.Name
 			if name == "" {
 				name = instance.InstanceID
@@ -40,7 +40,7 @@ func configureOnline(ctx context.Context, c config.Config, log *slog.Logger) (*o
 			binding, _ := json.Marshal(struct{ Plugin, Instance, Binary, Schema string }{plugin.PluginID, instance.InstanceID, hash, pluginproto.OnlineRevision})
 			r := onlinehost.Runtime{Owner: "admin", InstanceID: instance.InstanceID, Name: name, Platform: platform, ConfigRevision: fmt.Sprintf("%x", sha256.Sum256(binding)), Enabled: enabled}
 			if enabled {
-				worker, err := pluginhost.StartOnline(ctx, pluginhost.OnlineConfig{Executable: plugin.Executable, SHA256: hash, StateDir: filepath.Join(c.DataRoot, "online", instance.InstanceID), Platform: platform, UserID: "admin", InstanceID: instance.InstanceID})
+				worker, err := pluginhost.StartOnline(ctx, pluginhost.OnlineConfig{Executable: plugin.Executable, Args: plugin.Args, SHA256: hash, StateDir: filepath.Join(c.DataRoot, "online", instance.InstanceID), Platform: platform, UserID: "admin", InstanceID: instance.InstanceID})
 				if err != nil {
 					log.Warn("online plugin instance unavailable", "pluginId", plugin.PluginID, "instanceId", instance.InstanceID, "errorCode", pluginproto.ErrorCode(err))
 				} else {

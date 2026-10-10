@@ -26,9 +26,12 @@ func (s *Service) BuildScanPlan(ctx context.Context, owner, provider string, inp
 	if err := ctx.Err(); err != nil {
 		return pluginproto.ScanPlan{}, err
 	}
-	r, ok := s.runtimes[provider]
+	r, ok := s.Runtime(provider)
 	if !ok || r.Owner != owner {
 		return pluginproto.ScanPlan{}, domain.Fail("NOT_FOUND", "Provider not found")
+	}
+	if err := s.checkProviderWork(ctx, r); err != nil {
+		return pluginproto.ScanPlan{}, err
 	}
 	if r.Worker == nil {
 		return pluginproto.ScanPlan{}, domain.Fail("SOURCE_OFFLINE", "Provider is offline")
