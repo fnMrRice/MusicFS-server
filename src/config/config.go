@@ -29,6 +29,9 @@ type Instance struct {
 	Enabled              bool                         `yaml:"enabled" json:"enabled"`
 	Config               InstanceConfig               `yaml:"config" json:"config"`
 	ImportDefaults       *pluginproto.ImportOverrides `yaml:"importDefaults,omitempty" json:"importDefaults,omitempty"`
+
+	defaultReadDirectories   bool
+	defaultDirectoryRevision int64
 }
 
 type Permissions struct {

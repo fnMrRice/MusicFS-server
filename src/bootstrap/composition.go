@@ -51,6 +51,10 @@ func expectedChecksum(configured, path string) string {
 }
 
 func compose(ctx context.Context, c config.Config, log *slog.Logger, instance string, ready func() bool, lifecycleManagers ...*lifecycle.Manager) (*api.Server, func(), error) {
+	c, err := config.InitializeLocalDirectories(ctx, c)
+	if err != nil {
+		return nil, nil, err
+	}
 	store, err := sqlite.Open(ctx, filepath.Join(c.DataRoot, "musicfs.sqlite"))
 	if err != nil {
 		return nil, nil, err

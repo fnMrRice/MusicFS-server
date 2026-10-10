@@ -1,6 +1,6 @@
 # Server YAML 配置
 
-状态：2026-10-10。部署配置使用 YAML；Local Files 的目录、名称、扫描默认值和监听设置通过管理接口保存到 Server 数据库，YAML 提供目录授权上限，详见[插件配置数据库与目录管理](plugin-configuration.md)。动态启停、排空与设置应用已提供管理 API；管理 CLI 和 Web 目录编辑表单尚未实现。
+状态：2026-10-10。部署配置使用 YAML；Local Files 的目录、名称、扫描默认值和监听设置通过管理接口保存到 Server 数据库。YAML 可显式提供目录授权上限；未配置权限时使用 Server 用户 Music 目录和首次启动探测的默认授权，详见[插件配置数据库与目录管理](plugin-configuration.md)。动态启停、排空与设置应用已提供管理 API；管理 CLI 和 Web 目录编辑表单尚未实现。
 
 启动见[运行说明](running.md)；正式[示例配置](../configs/server.example.yaml)和[编辑器 Schema](../configs/server.schema.json)随代码维护，实际验证见[配置验收](validation/configuration.md)。HTTP JSON、JSON-RPC、JSON Schema 和媒体清单继续使用各自格式。
 
@@ -68,6 +68,10 @@
 
 随包内置插件默认启用；缺少音乐目录或音频工具路径时保留为待配置，不阻止服务启动。设置任意一层 `enabled: false` 可禁用；旧配置中的 false 保持有效。Linux将`executable`改为对应Linux构建路径，程序无`.exe`后缀。可选`sha256`用于钉住管理员审核的程序；省略时采用现有显式本机路径信任与本次启动摘要检查，不代表跨重启钉住版本。
 
+Local Files 实例未声明 `permissions` 时，默认允许 Server 运行用户的 Music 目录（Windows `%USERPROFILE%/Music`，其他平台 `~/Music`），并保留旧 YAML `musicRoots` 的兼容授权。Windows 首次启用启动时仅检查各逻辑磁盘根目录下的 `Music`、`NeteaseMusic`、`CloudMusic`、`QQMusic`、`Kugou`、`KuwoMusic`，将存在且可读、与存储/缓存可写根不重叠的目录加入默认允许范围。结果（包括空结果）保存在插件配置数据库的 `host-default-read-directories`，以后读取配置或重启不再探测；不递归扫盘，不自动写回 YAML，不添加 `musicRoots` 或扫描音乐。
+
+显式 `permissions.readDirectories` 完整覆盖默认授权，`[]` 禁止读取；实际音乐目录仍由管理接口选择。收紧授权后保留数据库设置，越界实例进入 `pending_configuration`，管理员通过接口移除越界目录。默认授权不改变目录字段、参数字段或管理 API，详见[部署授权](plugin-configuration.md#部署授权)。
+
 ### 导入选项
 
 Local Files 实例可在 `config` 同级声明 `importDefaults`。这些字段的标题、说明、默认值与校验规则由官方插件的 `Manifest.configuration` 提供；宿主加载器共用该声明，实际遍历还受宿主的根授权和深度上限约束。每个实例最多授权 256 个根，客户端只能选择已授权根编号。
@@ -127,7 +131,7 @@ metadata:
 | `Reload` | 完整验证磁盘文件后更新已加载的期望修订，失败保留原配置；不自动应用到运行进程 |
 | `MarkApplied` | 仅供生命周期所有者在确实应用该修订后确认；读取或保存成功不自动调用它 |
 
-没有数据库配置时修订为原始YAML字节的SHA-256；存在本地插件数据库设置时再纳入各实例修订，注释变化也改变修订。写入需要持久日志、匹配的预期修订和8—128字符幂等键；同键同参数返回已有结果，换参数返回冲突。预期修订过期返回`PRECONDITION_FAILED`；磁盘已被外部修改则返回`CONFIG_NOT_APPLIED`，必须先重载或重启，不能把运行旧参数和磁盘新开关拼接执行。无日志、文件/目录只读或不能安全替换时拒绝写入。
+没有数据库配置或默认授权快照时修订为原始YAML字节的SHA-256；存在本地插件数据库设置或生效的默认授权快照时再纳入相应修订，注释变化也改变修订。客户端须将修订视为不透明值。写入需要持久日志、匹配的预期修订和8—128字符幂等键；同键同参数返回已有结果，换参数返回冲突。预期修订过期返回`PRECONDITION_FAILED`；磁盘已被外部修改则返回`CONFIG_NOT_APPLIED`，必须先重载或重启，不能把运行旧参数和磁盘新开关拼接执行。无日志、文件/目录只读或不能安全替换时拒绝写入。
 
 修改基于 YAML 语法树，仅变更目标开关或设置节点；保留其他字段语义及注释，不承诺原排版逐字节不变，不把有效默认值整体回写。保存后 `Revision` 改变，全部实例实际收敛后 Manager 才推进 `AppliedRevision`。管理接口支持动态启停和实例设置应用；外部编辑配置文件仍须停服并重启，没有自动文件热重载。
 
@@ -153,9 +157,9 @@ plugins:
     enabled: false
 ```
 
-缺少可访问音乐目录或 FFmpeg/ffprobe 文件时，实例保持启用意图，但 `effectiveEnabled=false`、`runtimeState=pending_configuration`、`reason=CONFIGURATION_REQUIRED`；不创建工作进程，也不阻止服务启动。设置页显示待配置原因。在部署授权范围内，通过已有实例设置接口补齐配置后自动进入启动流程；没有目录授权时先在服务端 YAML 设置 permissions.readDirectories。手工编辑 YAML 后重启。运行中安装新的程序需重启发现，当前不是目录热监控。
+缺少已选择且可访问的音乐目录或 FFmpeg/ffprobe 文件时，实例保持启用意图，但 `effectiveEnabled=false`、`runtimeState=pending_configuration`、`reason=CONFIGURATION_REQUIRED`；不创建工作进程，也不阻止服务启动。设置页显示待配置原因。通过已有实例设置接口，在默认或显式授权范围内选择实际音乐目录后自动进入启动流程；默认授权和目录探测本身不会使实例就绪。所需目录不在授权范围内时，在服务端 YAML 设置完整的 `permissions.readDirectories` 列表并重启。运行中安装新的程序需重启发现，当前不是目录热监控。
 
-发现只展开内存配置，不因读取而修改 YAML；通过管理接口保存启停开关时，将展开后的角色及开关一同持久化，重启仍保留显式禁用。业务设置使用各插件的配置存储机制；本地目录设置存于插件数据库，不扩大 YAML 中的部署授权。没有找到统一程序时不凭空注册插件。设置 `pluginBundle: ''` 可关闭自动发现，显式配置仍有效。
+内置程序发现只展开内存配置，不因读取而修改 YAML；首次默认音乐目录探测则将结果保存在插件数据库。通过管理接口保存启停开关时，将展开后的角色及开关一同持久化，重启仍保留显式禁用。业务设置使用各插件的配置存储机制；本地目录设置存于插件数据库，不能扩大生效的目录授权。没有找到统一程序时不凭空注册插件。设置 `pluginBundle: ''` 可关闭自动发现，显式配置仍有效。
 
 多个插件共用文件，但仍按实例或任务分别启动独立进程，保留原来的协议、工作目录、用户绑定和取消回收；公共文件的升级需先停机。此改动减少磁盘重复代码，不把进程内存或权限合并。旧安装配置的 `musicfs-plugin-*.exe` 路径不会自动改写：升级时改为统一程序并补充对应 args；旧 `enabled: false` 不会被覆盖。第三方入口沿用已有受支持的协议与身份校验，不表示任意第三方插件 ID 已开放。
 

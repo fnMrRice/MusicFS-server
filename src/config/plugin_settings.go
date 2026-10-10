@@ -31,7 +31,9 @@ func localSettings(i Instance) LocalSettings {
 }
 
 // AllowedDirectories returns the deployment ceiling. Legacy roots provide a
-// restricted compatibility ceiling; absence of both means no file access.
+// restricted compatibility ceiling for configurations not loaded from YAML.
+// The loader supplies home Music and saved discovery defaults when permissions
+// are omitted; explicit permissions always replace those defaults.
 func AllowedDirectories(i Instance) []string {
 	if i.Permissions != nil {
 		return append([]string{}, i.Permissions.ReadDirectories...)

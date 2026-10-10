@@ -92,6 +92,9 @@ func ParseDocument(raw []byte, path string, overrides map[string]string) (*Docum
 		return nil, err
 	}
 	resolvePaths(&c, filepath.Dir(abs))
+	if err := loadLocalDirectoryDefaults(context.Background(), &c); err != nil {
+		return nil, err
+	}
 	markPendingConfiguration(&c, bundlePath(root, filepath.Dir(abs)))
 	for pi := range c.Plugins {
 		if c.Plugins[pi].PluginID != "musicfs.localfiles" {
@@ -107,6 +110,7 @@ func ParseDocument(raw []byte, path string, overrides map[string]string) (*Docum
 	c.SourcePath, c.SourceOverrides = abs, maps.Clone(overrides)
 	hash := sha256.Sum256(raw)
 	doc := &Document{Config: c, Root: &document, Raw: bytes.Clone(raw), Revision: hex.EncodeToString(hash[:]), Path: abs}
+	doc.Revision = localDirectoryRevision(c, doc.Revision)
 	// Validate cross-feature references against effective settings, including
 	// writeback grants for roots created through the API rather than YAML.
 	if err := loadPluginSettings(context.Background(), doc); err != nil {
