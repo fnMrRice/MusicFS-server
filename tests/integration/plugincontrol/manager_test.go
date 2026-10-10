@@ -34,16 +34,23 @@ plugins:
 type harness struct {
 	manager       *plugincontrol.Manager
 	store         *config.Store
+	repo          plugincontrol.Repository
+	path          string
 	ready         atomic.Bool
 	starts, stops atomic.Int32
 }
 
 func setup(t *testing.T, wrap ...func(plugincontrol.Repository) plugincontrol.Repository) *harness {
 	t.Helper()
+	return setupDocument(t, document, wrap...)
+}
+
+func setupDocument(t *testing.T, raw string, wrap ...func(plugincontrol.Repository) plugincontrol.Repository) *harness {
+	t.Helper()
 	t.Setenv("MUSICFS_ADMIN_TOKEN", "test-only-long-administrator-token")
 	dir := t.TempDir()
 	path := filepath.Join(dir, "server.yaml")
-	if err := os.WriteFile(path, []byte(document), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(raw), 0600); err != nil {
 		t.Fatal(err)
 	}
 	repo, err := sqlite.Open(context.Background(), filepath.Join(dir, "state.sqlite"))
@@ -63,8 +70,10 @@ func setup(t *testing.T, wrap ...func(plugincontrol.Repository) plugincontrol.Re
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := &harness{manager: manager, store: store}
-	h.ready.Store(true)
+	h := &harness{manager: manager, store: store, repo: operationRepo, path: path}
+	initial := store.Current().Plugins[0]
+	enabled := initial.CanStart(initial.Instances[0])
+	h.ready.Store(enabled)
 	if err = manager.Register("ncm", plugincontrol.Hooks{
 		Ready: h.ready.Load,
 		Start: func(context.Context, config.Plugin, config.Instance) error {
@@ -72,7 +81,7 @@ func setup(t *testing.T, wrap ...func(plugincontrol.Repository) plugincontrol.Re
 			h.ready.Store(true)
 			return nil
 		},
-		Stop: func(ctx context.Context, force bool) error {
+		Stop: func(ctx context.Context) error {
 			for manager.Gate("ncm").Active() > 0 {
 				select {
 				case <-ctx.Done():
@@ -84,7 +93,7 @@ func setup(t *testing.T, wrap ...func(plugincontrol.Repository) plugincontrol.Re
 			h.ready.Store(false)
 			return nil
 		},
-	}, true); err != nil {
+	}, enabled); err != nil {
 		t.Fatal(err)
 	}
 	manager.Start()
@@ -117,54 +126,6 @@ func code(t *testing.T, err error, want string) {
 	var d *domain.Error
 	if !errors.As(err, &d) || d.Code != want {
 		t.Fatalf("wanted %s, got %v", want, err)
-	}
-}
-
-func TestPluginManagerDrainReuseForceGenerationAndPersistentIntent(t *testing.T) {
-	h := setup(t)
-	gate := h.manager.Gate("ncm")
-	lease, err := gate.Acquire(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	op := change(t, h, "drain-key", false, "drain")
-	code(t, gate.Check(context.Background()), "PLUGIN_DISABLED")
-	child, err := gate.Acquire(lease.Context())
-	if err != nil {
-		t.Fatal("admitted work cannot continue", err)
-	}
-	child.Close()
-	waitStatus(t, h, op, "draining")
-	if h.stops.Load() != 0 || lease.Context().Err() != nil {
-		t.Fatal("drain canceled active work")
-	}
-	resume := change(t, h, "resume-key", true, "drain")
-	waitStatus(t, h, resume, "succeeded")
-	waitStatus(t, h, op, "superseded")
-	if h.starts.Load() != 0 || h.stops.Load() != 0 {
-		t.Fatal("healthy drain reversal rebuilt worker")
-	}
-	epoch := gate.Epoch()
-	force := change(t, h, "force-key", false, "force")
-	select {
-	case <-lease.Context().Done():
-	case <-time.After(time.Second):
-		t.Fatal("force did not cancel admitted work")
-	}
-	lease.Close()
-	waitStatus(t, h, force, "succeeded")
-	if h.store.Current().Plugins[0].Enabled {
-		t.Fatal("disabled intent not persisted")
-	}
-	enable := change(t, h, "enable-key", true, "drain")
-	waitStatus(t, h, enable, "succeeded")
-	if h.starts.Load() != 1 || h.stops.Load() != 1 {
-		t.Fatal("worker replacement not executed")
-	}
-	_, err = gate.AcquireEpoch(context.Background(), epoch)
-	code(t, err, "RESOURCE_CHANGED")
-	if _, err = h.manager.Operation(context.Background(), "other", force.ID); err == nil {
-		t.Fatal("operation owner leaked")
 	}
 }
 

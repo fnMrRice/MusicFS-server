@@ -21,7 +21,7 @@
 | P8 | [交付与验收](implementation/08-release.md) | 构建制品、部署、恢复、兼容矩阵与验收记录 |
 | 插件专题 | [插件实现步骤](implementation/plugins.md) | 各阶段插件协议、进程、适配器、测试及参考来源 |
 | 配置增量 | [YAML 配置](configuration.md) | 严格校验、显式插件/实例、修订与原子写入已实现；保存后仍需应用/重启，见[配置验收](validation/configuration.md) |
-| 管理补充 | [插件管理](implementation/plugin-management.md) | HTTP状态／配置、平滑停用、强制停止、恢复与SSE能力通知已实现；管理CLI仍待实施 |
+| 管理补充 | [插件管理](implementation/plugin-management.md) | HTTP 状态/配置、动态启用、配置重建与 SSE 已实现；停用保存后重启生效；管理 CLI 仍待实施 |
 
 ## 2. 实施规则与完成记录
 

@@ -103,7 +103,7 @@ func configureAudioManagement(c config.Config, manager *plugincontrol.Manager, p
 					mu.Unlock()
 					return nil
 				},
-				Stop: func(ctx context.Context, _ bool) error {
+				Stop: func(ctx context.Context) error {
 					changeMu.Lock()
 					defer changeMu.Unlock()
 					for gate.Active() != 0 {

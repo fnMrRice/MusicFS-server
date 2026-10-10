@@ -24,7 +24,7 @@ SourceTrack 使用稳定内部 ID，并保存 providerInstanceId + externalId �
 3. 配置按实例传入，允许根目录和排除规则与用户归属一同持久化。首版只加载明确列出的官方受信任 worker。
 4. 控制通道保持 JSON-RPC 边界与 stdout 纯协议；日志走 stderr 并受宿主限长/脱敏。
 5. 真实测试 worker 启动失败、版本不兼容、超时、取消、进程崩溃和重启；不能仅用同进程函数替身验收插件化。
-6. 接入[插件管理](plugin-management.md)的插件/实例双层开关、准入与播放租约；禁用后不接受新扫描或新播放，已有任务按平滑停用规则收尾。来源禁用保留库、稳定身份与历史，不将其当成一次空扫描成功。
+6. 接入[插件管理](plugin-management.md)的插件/实例双层开关、准入与播放租约；停用只保存配置，当前扫描、播放和新工作准入保持，重启 Server 后才不再接受新扫描或新播放。来源禁用保留库、稳定身份与历史，不将其当成一次空扫描成功。
 
 ### S-P2-02：来源读取边界
 
@@ -82,6 +82,6 @@ SourceTrack 使用稳定内部 ID，并保存 providerInstanceId + externalId �
 - [x] S-P2-03排除规则、通知合并、最大等待和周期完整复核；通知仅作提示，实际任务仍受选根/递归/深度/排除约束。Windows真实宿主流程与Windows/Linux原生通知分别记录，不以原生通知单测代替整个Linux宿主验收。
 - [ ] 实体NAS失挂/重挂及对应文件系统竞争实机验收；根身份替换测试不替代此项。
 
-证据见[导入选项](../validation/plugin-import-options.md)、[排除与范围保护](../validation/scan-exclusions.md)、[文件通知](../validation/scan-watch.md)、[扫描期限](../validation/scan-snapshot-lifetime.md)、[真实双根库](../validation/real-local-library.md)及[核对表](../validation/documentation-audit.md#p2扫描与音乐库)。S-P2-01所述运行时平滑停用属于后置的[插件管理](plugin-management.md)，当前仅启动时双层开关。
+证据见[导入选项](../validation/plugin-import-options.md)、[排除与范围保护](../validation/scan-exclusions.md)、[文件通知](../validation/scan-watch.md)、[扫描期限](../validation/scan-snapshot-lifetime.md)、[真实双根库](../validation/real-local-library.md)及[核对表](../validation/documentation-audit.md#p2扫描与音乐库)。S-P2-01 的后续[插件管理](plugin-management.md)已接入双层开关；当前停用保存后重启生效，动态启用和配置重建保留。
 
 技术依据：[Go 受限文件访问](https://go.dev/blog/osroot)。具体 OS 和文件系统行为需在目标机器测试，不能将路径校验等同于完整内容快照保证。

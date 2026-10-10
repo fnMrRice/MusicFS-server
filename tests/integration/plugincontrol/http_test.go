@@ -137,6 +137,9 @@ func TestPluginManagementHTTPAuthorizationCSRFRevisionAndIdempotency(t *testing.
 		t.Fatal("missing operation", w.Body.String())
 	}
 	waitStatus(t, h, operation, "succeeded")
+	if !operation.RestartRequired {
+		t.Fatal("saved disable omitted restart requirement")
+	}
 	w = managementRequest(server, cookies["admin"], "PUT", state, body, revision, "disable-http")
 	requireHTTP(t, w, 202, "")
 	testkit.ValidateHTTP(t, "PluginOperation", w.Body.Bytes())
@@ -152,8 +155,8 @@ func TestPluginManagementHTTPAuthorizationCSRFRevisionAndIdempotency(t *testing.
 	w = managementRequest(server, cookies["admin"], "GET", "/admin/plugins/musicfs.ncm/instances", "", "", "")
 	requireHTTP(t, w, 200, "")
 	testkit.ValidateHTTP(t, "ManagedPluginInstances", w.Body.Bytes())
-	if !strings.Contains(w.Body.String(), `"configuredEnabled":false`) || !strings.Contains(w.Body.String(), `"runtimeState":"disabled"`) {
-		t.Fatal("instance state did not reflect completed disable", w.Body.String())
+	if !strings.Contains(w.Body.String(), `"configuredEnabled":false`) || !strings.Contains(w.Body.String(), `"effectiveEnabled":true`) || !strings.Contains(w.Body.String(), `"runtimeState":"ready"`) || !strings.Contains(w.Body.String(), `"reason":"RESTART_REQUIRED"`) {
+		t.Fatal("instance state did not distinguish saved disable from current runtime", w.Body.String())
 	}
 }
 

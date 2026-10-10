@@ -9,12 +9,12 @@ import (
 )
 
 type action struct {
-	id           string
-	generation   int64
-	start, force bool
-	hooks        Hooks
-	plugin       config.Plugin
-	instance     config.Instance
+	id         string
+	generation int64
+	start      bool
+	hooks      Hooks
+	plugin     config.Plugin
+	instance   config.Instance
 }
 
 func (m *Manager) reconcile() {
@@ -68,7 +68,7 @@ func (m *Manager) reconcile() {
 				}
 				continue
 			}
-			actions = append(actions, action{id: id, generation: r.generation, force: r.force, hooks: r.hooks})
+			actions = append(actions, action{id: id, generation: r.generation, hooks: r.hooks})
 			continue
 		}
 		if want && !r.attempted {
@@ -100,7 +100,7 @@ func (m *Manager) reconcile() {
 				err = a.hooks.Start(ctx, a.plugin, a.instance)
 			}
 		} else if a.hooks.Stop != nil {
-			err = a.hooks.Stop(ctx, a.force)
+			err = a.hooks.Stop(ctx)
 		}
 		cancel()
 		m.mu.Lock()
@@ -194,7 +194,7 @@ func (m *Manager) finishOperations() {
 			m.publishLocked()
 		}
 	}
-	allApplied := true
+	allApplied := !m.restartRequiredLocked()
 	for _, r := range m.runtimes {
 		want := r.plugin.CanStart(r.instance)
 		if want && r.state != "ready" || !want && r.state != "disabled" && r.state != "pending_configuration" {

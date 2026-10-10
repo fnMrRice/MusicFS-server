@@ -24,6 +24,10 @@ Web 页面需求与本轮交付对照见[Web 接口对照](../web-ui-api-gaps.md
 
 ## 兼容与验证
 
+### 插件停用与重启提示
+
+插件/实例状态 PUT 仍返回 202 操作收据；停用仅保存开关，重启 Server 后生效，当前工作、新工作准入及运行代次保持。`PluginManagementSnapshot` 和 `PluginOperation` 增加必需布尔字段 `restartRequired`；停用收据 `status=succeeded` 仅表示保存完成；收据中的重启标志记录该次保存后全局待重启开关，不随撤销或重启改写，当前状态须读取管理快照。快照也在检测到 `diskChanged` 时提示重启。实例 `reason=RESTART_REQUIRED` 表示保存开关与运行开关不一致，`configuredEnabled` 为保存值，`effectiveEnabled` 为当前运行值。待重启时 `appliedRevision` 不推进至新修订。`mode=drain/force` 已废弃但兼容接受，两者均不取消、排空或停止当前 Worker；新客户端可省略。启用和配置重建仍可动态应用。旧客户端须避免将“保存停用”显示成“已停止”，SSE 通知只要求重读当前状态，详见[插件管理](../implementation/plugin-management.md)。
+
 ### 管理员本地目录浏览
 
 `GET /admin/plugin-instances/{id}/directories` 使用 `ManagedPluginDirectories`，让管理员在部署允许路径中浏览并选择子目录，待配置实例也可调用；其绝对路径仅在此管理员接口公开。省略 `path` 列允许根，提供 `path` 列直接子目录，文件不返回。`available` 表示当前可读取，失效根保留为不可选项。最多检查 100 个条目，使用 `nextCursor` 判断结束；本接口游标失效返回 `CURSOR_EXPIRED` 并重新打开当前目录。保存选中路径复用 configuration PUT、修订及幂等流程，详见[目录管理](../plugin-configuration.md#管理接口)。

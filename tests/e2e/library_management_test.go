@@ -91,7 +91,7 @@ func waitManagedLibraryTracks(t *testing.T, c *client, count int) map[string]lib
 	}
 }
 
-func TestManagedLocalWorkerDrainRestartScanAndWatchRebuild(t *testing.T) {
+func TestManagedLocalDisableRequiresRestartAndSettingsRebuildWatch(t *testing.T) {
 	provider := build(t, "musicfs-plugin-local")
 	payload, err := os.ReadFile(filepath.Join("..", "testdata", "audio", "markers.wav"))
 	if err != nil {
@@ -106,6 +106,7 @@ func TestManagedLocalWorkerDrainRestartScanAndWatchRebuild(t *testing.T) {
 	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.localfiles", Enabled: true, Executable: provider, Instances: []config.Instance{{InstanceID: "local", Name: "Music", Role: "provider", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "music", Name: "Music", Path: music}}, Watch: watch}}}}}
 	path := writeYAMLConfiguration(t, cfg)
 	stop := startAudioYAMLServer(t, path, cfg, base)
+	defer func() { stop() }()
 	c := login(t, base, cfg.AdminToken)
 	tracks := waitManagedLibraryTracks(t, c, 1)
 	first := tracks["first.wav"]
@@ -113,12 +114,17 @@ func TestManagedLocalWorkerDrainRestartScanAndWatchRebuild(t *testing.T) {
 	code, raw, _ := c.request(t, "POST", "/api/v1/playback/sessions", request, "managed-old-session")
 	var playing playback.Description
 	if code != 201 || json.Unmarshal(raw, &playing) != nil {
-		t.Fatalf("playback before drain: %d %s", code, raw)
+		t.Fatalf("playback before saved disable: %d %s", code, raw)
 	}
 	operation := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/local/state", map[string]any{"enabled": false, "mode": "drain"})
+	waitLibraryOperation(t, c, operation.ID)
+	if !operation.RestartRequired {
+		t.Fatal("saved instance disable omitted restart requirement")
+	}
 	code, raw, _ = c.request(t, "POST", "/api/v1/playback/sessions", request, "managed-new-session")
-	if code != 503 || !bytes.Contains(raw, []byte("PLUGIN_DISABLED")) {
-		t.Fatalf("new work entered draining provider: %d %s", code, raw)
+	var additional playback.Description
+	if code != 201 || json.Unmarshal(raw, &additional) != nil {
+		t.Fatalf("pending disable blocked new playback: %d %s", code, raw)
 	}
 	rangeRequest, _ := http.NewRequest("GET", c.base+playing.StreamURL, nil)
 	rangeRequest.Header.Set("Range", "bytes=0-31")
@@ -129,7 +135,7 @@ func TestManagedLocalWorkerDrainRestartScanAndWatchRebuild(t *testing.T) {
 	ranged, err := io.ReadAll(response.Body)
 	response.Body.Close()
 	if err != nil || response.StatusCode != 206 || !bytes.Equal(ranged, payload[:32]) {
-		t.Fatalf("old Range failed during drain: %d %v", response.StatusCode, err)
+		t.Fatalf("old Range failed with pending disable: %d %v", response.StatusCode, err)
 	}
 	// Original WAV seeks on its byte-range timeline rather than POST timeRestart.
 	rangeRequest, _ = http.NewRequest("GET", c.base+playing.StreamURL, nil)
@@ -141,28 +147,34 @@ func TestManagedLocalWorkerDrainRestartScanAndWatchRebuild(t *testing.T) {
 	ranged, err = io.ReadAll(response.Body)
 	response.Body.Close()
 	if err != nil || response.StatusCode != 206 || !bytes.Equal(ranged, payload[44:76]) {
-		t.Fatalf("old byte seek failed during drain: %d %v", response.StatusCode, err)
+		t.Fatalf("old byte seek failed with pending disable: %d %v", response.StatusCode, err)
 	}
 	code, raw, _ = c.request(t, "DELETE", "/api/v1/playback/sessions/"+playing.SessionID, nil, "")
 	if code != 204 {
 		t.Fatalf("session cleanup: %d %s", code, raw)
 	}
-	waitLibraryOperation(t, c, operation.ID)
+	code, raw, _ = c.request(t, "DELETE", "/api/v1/playback/sessions/"+additional.SessionID, nil, "")
+	if code != 204 {
+		t.Fatalf("new session cleanup: %d %s", code, raw)
+	}
 	code, raw, _ = c.request(t, "GET", "/api/v1/provider-instances", nil, "")
-	if code != 200 || !bytes.Contains(raw, []byte(`"availability":"offline"`)) {
-		t.Fatalf("worker did not stop: %d %s", code, raw)
+	if code != 200 || !bytes.Contains(raw, []byte(`"availability":"available"`)) {
+		t.Fatalf("pending disable changed provider availability: %d %s", code, raw)
 	}
 	if err = os.WriteFile(filepath.Join(music, "second.wav"), payload, 0600); err != nil {
 		t.Fatal(err)
 	}
+	tracks = waitManagedLibraryTracks(t, c, 2)
 	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/local/state", map[string]any{"enabled": true, "mode": "drain"})
 	waitLibraryOperation(t, c, operation.ID)
-	tracks = waitManagedLibraryTracks(t, c, 2)
+	if operation.RestartRequired {
+		t.Fatal("undoing pending disable still required restart")
+	}
 	if tracks["first.wav"].ID != first.ID {
-		t.Fatal("provider restart changed source identity")
+		t.Fatal("pending disable changed source identity")
 	}
 	if tracks = scanProvider(t, c, "local", "managed-explicit-rescan"); len(tracks) != 2 {
-		t.Fatal("explicit scan after restart lost tracks", tracks)
+		t.Fatal("explicit scan after undoing disable lost tracks", tracks)
 	}
 	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/local/configuration", map[string]any{"name": "Updated music", "watch": watch})
 	waitLibraryOperation(t, c, operation.ID)
@@ -183,14 +195,21 @@ func TestManagedLocalWorkerDrainRestartScanAndWatchRebuild(t *testing.T) {
 	if err != nil || strings.Contains(string(stored), "Updated music") {
 		t.Fatal("runtime settings changed deployment YAML", err)
 	}
+	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/local/state", map[string]any{"enabled": false, "mode": "force"})
+	waitLibraryOperation(t, c, operation.ID)
 	stop()
 	stop = startAudioYAMLServer(t, path, cfg, base)
-	defer stop()
 	c = login(t, base, cfg.AdminToken)
 	code, raw, _ = c.request(t, "GET", "/api/v1/admin/plugin-instances/local/configuration", nil, "")
 	if code != 200 || !bytes.Contains(raw, []byte("Updated music")) {
 		t.Fatalf("database configuration was not restored: %d %s", code, raw)
 	}
+	code, raw, _ = c.request(t, "POST", "/api/v1/playback/sessions", request, "managed-disabled-after-restart")
+	if code != 503 || !bytes.Contains(raw, []byte("PLUGIN_DISABLED")) {
+		t.Fatalf("server restart did not apply saved disable: %d %s", code, raw)
+	}
+	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/local/state", map[string]any{"enabled": true})
+	waitLibraryOperation(t, c, operation.ID)
 	tracks = scanProvider(t, c, "local", "database-restart-rescan")
 	if len(tracks) != 3 || tracks["first.wav"].ID != first.ID {
 		t.Fatal("restart lost configured roots or stable identity")

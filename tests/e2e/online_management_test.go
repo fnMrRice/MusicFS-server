@@ -1,12 +1,13 @@
 package e2e_test
 
 import (
+	"context"
 	"encoding/json"
 	"io"
+	"net/http"
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 	"time"
 
@@ -102,7 +103,7 @@ func managedOnlineInstance(t *testing.T, c *client, id string) plugincontrol.Ins
 	return plugincontrol.Instance{}
 }
 
-func TestManagedOnlineWorkerRestartCacheIsolationAndForcedDrain(t *testing.T) {
+func TestManagedOnlineWorkerConfigurationAndRestartRequiredDisable(t *testing.T) {
 	provider := managedOnlineFixture(t)
 	cfg, base := yamlServiceConfig(t)
 	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.netease", Executable: provider, Enabled: true, Instances: []config.Instance{
@@ -111,7 +112,7 @@ func TestManagedOnlineWorkerRestartCacheIsolationAndForcedDrain(t *testing.T) {
 	}}}
 	path := writeYAMLConfiguration(t, cfg)
 	stop := startAudioYAMLServer(t, path, cfg, base)
-	defer stop()
+	defer func() { stop() }()
 	c := login(t, base, cfg.AdminToken)
 	authenticateManagedOnline(t, c, "online-a", "online-b")
 	before := managedRecommendations(t, c)
@@ -122,20 +123,28 @@ func TestManagedOnlineWorkerRestartCacheIsolationAndForcedDrain(t *testing.T) {
 	}
 	operation := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/online-a/state", map[string]any{"enabled": false, "mode": "drain"})
 	waitLibraryOperation(t, c, operation.ID)
-	disabled := managedRecommendations(t, c)
-	if disabled.Sources[0].Error == nil || disabled.Sources[0].Error.Code != "PLUGIN_DISABLED" || len(disabled.Sources[0].Items) != 0 || !disabled.Sources[1].LastSuccessAt.Equal(*before.Sources[1].LastSuccessAt) {
-		t.Fatal("disabled instance reused stale cache or changed another instance", disabled)
+	pending := managedRecommendations(t, c)
+	if pending.Sources[0].Error != nil || len(pending.Sources[0].Items) != 1 || !pending.Sources[0].LastSuccessAt.Equal(*before.Sources[0].LastSuccessAt) || !pending.Sources[1].LastSuccessAt.Equal(*before.Sources[1].LastSuccessAt) {
+		t.Fatal("pending disable changed recommendation caches", pending)
 	}
 	state := managedOnlineInstance(t, c, "online-a")
-	if state.RuntimeState != "disabled" || state.ActiveLeases != 0 || state.AcceptingNewWork {
-		t.Fatal("online worker did not finish stopping", state)
+	if state.RuntimeState != "ready" || !state.EffectiveEnabled || !state.AcceptingNewWork || state.Reason == nil || *state.Reason != "RESTART_REQUIRED" {
+		t.Fatal("pending disable changed the online runtime", state)
 	}
+	time.Sleep(1050 * time.Millisecond)
+	code, raw, _ := c.request(t, "GET", "/api/v1/online-instances/online-a/search?q=Fixture", nil, "")
+	if code != 200 {
+		t.Fatalf("pending disable rejected a new online query: %d %s", code, raw)
+	}
+	generation := state.Generation
 	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/online-a/state", map[string]any{"enabled": true, "mode": "drain"})
 	waitLibraryOperation(t, c, operation.ID)
-	authenticateManagedOnline(t, c, "online-a")
 	after := managedRecommendations(t, c)
-	if after.Sources[0].Error != nil || !after.Sources[0].LastSuccessAt.After(*before.Sources[0].LastSuccessAt) || !after.Sources[1].LastSuccessAt.Equal(*before.Sources[1].LastSuccessAt) {
-		t.Fatal("replacement did not refresh only its own recommendation cache", after)
+	if after.Sources[0].Error != nil || !after.Sources[0].LastSuccessAt.Equal(*before.Sources[0].LastSuccessAt) || !after.Sources[1].LastSuccessAt.Equal(*before.Sources[1].LastSuccessAt) {
+		t.Fatal("reversing a pending disable changed recommendation caches", after)
+	}
+	if state = managedOnlineInstance(t, c, "online-a"); state.Generation != generation || state.Reason != nil {
+		t.Fatal("reversing a pending disable replaced the online worker", state)
 	}
 	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/online-a/configuration", map[string]any{"name": "Renamed online"})
 	waitLibraryOperation(t, c, operation.ID)
@@ -151,8 +160,15 @@ func TestManagedOnlineWorkerRestartCacheIsolationAndForcedDrain(t *testing.T) {
 		err  error
 	}
 	finished := make(chan result, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	go func() {
-		response, err := c.http.Get(base + "/api/v1/online-instances/online-a/search?q=slow&limit=1")
+		request, err := http.NewRequestWithContext(ctx, "GET", base+"/api/v1/online-instances/online-a/search?q=slow&limit=1", nil)
+		if err != nil {
+			finished <- result{err: err}
+			return
+		}
+		response, err := c.http.Do(request)
 		if err != nil {
 			finished <- result{err: err}
 			return
@@ -171,29 +187,43 @@ func TestManagedOnlineWorkerRestartCacheIsolationAndForcedDrain(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/online-a/state", map[string]any{"enabled": false, "mode": "drain"})
+	waitLibraryOperation(t, c, operation.ID)
 	state = managedOnlineInstance(t, c, "online-a")
-	if state.ActiveLeases == 0 || state.AcceptingNewWork {
-		t.Fatal("drain lost admitted work or kept new admission open", state)
-	}
-	code, raw, _ := c.request(t, "GET", "/api/v1/online-instances/online-a/search?q=Fixture", nil, "")
-	if code != 503 || !strings.Contains(string(raw), "PLUGIN_DISABLED") {
-		t.Fatalf("new online query entered drain: %d %s", code, raw)
+	if state.ActiveLeases == 0 || !state.AcceptingNewWork || state.RuntimeState != "ready" {
+		t.Fatal("pending disable affected admitted work or new admission", state)
 	}
 	force := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/online-a/state", map[string]any{"enabled": false, "mode": "force"})
 	waitLibraryOperation(t, c, force.ID)
 	select {
 	case done := <-finished:
-		if done.err != nil || done.code != 503 {
-			t.Fatal("forced query did not terminate", done)
-		}
-	case <-time.After(3 * time.Second):
-		t.Fatal("forced query did not release its worker")
+		t.Fatal("legacy force mode canceled admitted work", done)
+	case <-time.After(150 * time.Millisecond):
 	}
-	if state = managedOnlineInstance(t, c, "online-a"); state.RuntimeState != "disabled" || state.ActiveLeases != 0 {
-		t.Fatal("force completed before online cleanup", state)
+	if state = managedOnlineInstance(t, c, "online-a"); state.RuntimeState != "ready" || state.ActiveLeases == 0 || !state.AcceptingNewWork {
+		t.Fatal("legacy force mode changed the online runtime", state)
 	}
 	after = managedRecommendations(t, c)
 	if after.Sources[1].Error != nil || !after.Sources[1].LastSuccessAt.Equal(*before.Sources[1].LastSuccessAt) {
-		t.Fatal("force affected another online instance", after.Sources[1])
+		t.Fatal("pending disable affected another online instance", after.Sources[1])
+	}
+	cancel()
+	select {
+	case <-finished:
+	case <-time.After(3 * time.Second):
+		t.Fatal("canceled client request did not finish")
+	}
+	stop()
+	stop = startAudioYAMLServer(t, path, cfg, base)
+	c = login(t, base, cfg.AdminToken)
+	if state = managedOnlineInstance(t, c, "online-a"); state.RuntimeState != "disabled" || state.EffectiveEnabled || state.AcceptingNewWork || state.ActiveLeases != 0 {
+		t.Fatal("server restart did not apply persisted disable", state)
+	}
+	code, raw, _ = c.request(t, "GET", "/api/v1/online-instances/online-a/search?q=Fixture", nil, "")
+	var failure struct{ Error domain.Error }
+	if code != 503 || json.Unmarshal(raw, &failure) != nil || failure.Error.Code != "PLUGIN_DISABLED" {
+		t.Fatalf("disabled online worker accepted work after server restart: %d %s", code, raw)
+	}
+	if state = managedOnlineInstance(t, c, "online-b"); state.RuntimeState != "ready" || !state.EffectiveEnabled || !state.AcceptingNewWork {
+		t.Fatal("server restart disabled another online instance", state)
 	}
 }

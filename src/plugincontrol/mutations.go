@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/config"
@@ -32,33 +31,19 @@ func (m *Manager) Change(ctx context.Context, owner string, change config.Change
 		kind = "configuration"
 	}
 	change.IdempotencyKey = fmt.Sprintf("%x", sha256.Sum256([]byte(owner+"\x00"+change.PluginID+"\x00"+change.InstanceID+"\x00"+kind+"\x00"+change.IdempotencyKey)))
-	targets := []string{}
-	for id, r := range m.runtimes {
-		if r.plugin.PluginID == change.PluginID && (change.InstanceID == "" || change.InstanceID == id) {
-			targets = append(targets, id)
-		}
-	}
-	foundPlugin := false
+	found := false
 	for _, p := range m.desired.Plugins {
 		if p.PluginID == change.PluginID {
-			foundPlugin = true
+			found = change.InstanceID == ""
+			for _, i := range p.Instances {
+				found = found || i.InstanceID == change.InstanceID
+			}
 			break
 		}
 	}
-	if len(targets) == 0 && (!foundPlugin || change.InstanceID != "") {
+	if !found {
 		return Operation{}, domain.Fail("NOT_FOUND", "Configured plugin or instance not found")
 	}
-	sort.Strings(targets)
-	// Serialize durable desired-state publication with admission. A request
-	// either acquires before the save or observes the new closed gate.
-	for _, id := range targets {
-		m.runtimes[id].gate.mu.Lock()
-	}
-	defer func() {
-		for _, id := range targets {
-			m.runtimes[id].gate.mu.Unlock()
-		}
-	}()
 	saved, err := m.store.SetEnabled(ctx, change)
 	if err != nil {
 		return Operation{}, err
@@ -83,42 +68,14 @@ func (m *Manager) Change(ctx context.Context, owner string, change config.Change
 	}
 	m.desired = m.store.Current()
 	m.revision = current.Revision
-	for _, p := range m.desired.Plugins {
-		for _, i := range p.Instances {
-			r := m.runtimes[i.InstanceID]
-			if r == nil {
-				continue // Newly installed roles require startup registration.
-			}
-			if (p.PluginID != change.PluginID || change.InstanceID != "" && i.InstanceID != change.InstanceID) && r.instance.PendingConfiguration == i.PendingConfiguration {
-				continue
-			}
-			r.plugin = p
-			r.instance = i
-			r.generation++
-			r.reason = nil
-			r.attempted = false
-			r.stopFailed = false
-			// Once force has canceled a generation, a later enable must finish
-			// reclaiming it. Only an ordinary healthy drain can be reversed.
-			r.force = r.force || change.Mode == "force"
-			r.reconfigure = r.reconfigure || change.Settings != nil
-			r.gate.accepting = false
-			r.gate.unavailableCode = "PLUGIN_DISABLED"
-			if r.force {
-				for l := range r.gate.leases {
-					l.cancel()
-				}
-			}
-			if r.running {
-				r.state = "draining"
-			} else if p.CanStart(i) {
-				r.state = "starting"
-			} else {
-				r.state = "disabled"
-			}
-			op.Targets[i.InstanceID] = r.generation
-		}
+	if change.Settings == nil && !change.Enabled {
+		// Both legacy modes now only save intent. Do not drain or cancel work,
+		// and do not supersede a configuration application already in progress.
+		op.Status = "succeeded"
+	} else {
+		m.applyChangeLocked(change, &op)
 	}
+	op.RestartRequired = m.restartRequiredLocked()
 	pending := &pendingOperation{Operation: op, dirty: true}
 	m.pending[op.ID] = pending
 	m.publishLocked()
@@ -127,6 +84,50 @@ func (m *Manager) Change(ctx context.Context, owner string, change config.Change
 	}
 	pending.dirty = false
 	return op, nil
+}
+
+func (m *Manager) applyChangeLocked(change config.Change, op *Operation) {
+	for _, p := range m.desired.Plugins {
+		if p.PluginID != change.PluginID {
+			continue
+		}
+		for _, i := range p.Instances {
+			r := m.runtimes[i.InstanceID]
+			if r == nil || change.InstanceID != "" && i.InstanceID != change.InstanceID {
+				continue // Newly installed roles require startup registration.
+			}
+			// Settings and enable requests must never apply a pending disable
+			// on either level, including a disable on the other level.
+			activePlugin, activeInstance := p, i
+			activePlugin.Enabled, activeInstance.Enabled = r.plugin.Enabled, r.instance.Enabled
+			if change.Settings == nil {
+				if change.InstanceID == "" {
+					activePlugin.Enabled = true
+				} else {
+					activeInstance.Enabled = true
+				}
+			}
+			r.plugin, r.instance = activePlugin, activeInstance
+			if change.Settings == nil && r.state == "ready" {
+				op.Targets[i.InstanceID] = r.generation
+				continue
+			}
+			r.generation++
+			r.reason = nil
+			r.attempted = false
+			r.stopFailed = false
+			r.reconfigure = r.reconfigure || change.Settings != nil
+			r.gate.SetAccepting(false, false)
+			if r.running {
+				r.state = "draining"
+			} else if r.plugin.CanStart(r.instance) {
+				r.state = "starting"
+			} else {
+				r.state = "disabled"
+			}
+			op.Targets[i.InstanceID] = r.generation
+		}
+	}
 }
 
 func (m *Manager) InstanceConfig(id string) (config.Plugin, config.Instance, error) {

@@ -52,7 +52,10 @@ func TestPluginManagerWorkerExitRemainsOfflineUntilExplicitStateChange(t *testin
 	code(t, gate.Check(context.Background()), "SOURCE_OFFLINE")
 	disabled := change(t, h, "disable-failed-worker", false, "drain")
 	waitStatus(t, h, disabled, "succeeded")
-	code(t, gate.Check(context.Background()), "PLUGIN_DISABLED")
+	code(t, gate.Check(context.Background()), "SOURCE_OFFLINE")
+	if !disabled.RestartRequired {
+		t.Fatal("saved disable omitted restart requirement")
+	}
 	enabled := change(t, h, "restart-failed-worker", true, "drain")
 	waitStatus(t, h, enabled, "succeeded")
 	if err := gate.Check(context.Background()); err != nil {

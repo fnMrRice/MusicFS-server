@@ -33,7 +33,7 @@ func registerScraperManagement(manager *plugincontrol.Manager, c config.Config, 
 						}
 						return service.UpdateRuntime(enrichmentworker.Runtime{ID: id, Name: i.Name, Owner: "admin", Enabled: p.CanStart(i), Host: host, Gate: manager.Gate(id)})
 					},
-					Stop: func(ctx context.Context, force bool) error {
+					Stop: func(ctx context.Context) error {
 						gate := manager.Gate(id)
 						for gate.Active() > 0 {
 							timer := time.NewTimer(10 * time.Millisecond)

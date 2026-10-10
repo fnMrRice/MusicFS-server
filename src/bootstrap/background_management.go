@@ -12,7 +12,7 @@ import (
 )
 
 func audioGate(manager *plugincontrol.Manager, pluginID string) *plugincontrol.Gate {
-	c := manager.DesiredConfig()
+	c := manager.RuntimeConfig()
 	for _, p := range c.Plugins {
 		if p.PluginID == pluginID {
 			for _, i := range p.Instances {
@@ -27,7 +27,7 @@ func audioGate(manager *plugincontrol.Manager, pluginID string) *plugincontrol.G
 
 func backgroundAudioUpdate(manager *plugincontrol.Manager, probe *managedProbe, metadata *enrichmentworker.Service, fingerprints *fingerprintworker.Service, log *slog.Logger) func(context.Context, *audioffmpeg.Processor, *ncmdecoder.Processor, string) error {
 	return func(ctx context.Context, audio *audioffmpeg.Processor, ncm *ncmdecoder.Processor, ffprobe string) error {
-		c := manager.DesiredConfig()
+		c := manager.RuntimeConfig()
 		var metadataDecoder, fingerprintDecoder *ncmdecoder.Processor
 		if ncm != nil {
 			metadataDecoder = fingerprintNCMDecoder(c, log)

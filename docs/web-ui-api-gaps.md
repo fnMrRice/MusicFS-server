@@ -1,6 +1,6 @@
 # Web 页面接口交付与接入边界
 
-核对日期：2026-10-10。本轮完成下列 Server 接口与插件动态启停能力，Web 新增能力变更订阅。本页记录最终功能范围和待接入边界；精确字段以 [OpenAPI](contracts/openapi.yaml) 和 [HTTP Schema](contracts/http.schema.json) 为准，验证状态见[实施记录](validation/progress.md)。
+核对日期：2026-10-10。本轮完成下列 Server 接口与插件管理能力；2026-10-11 停用调整为重启生效，Web 新增能力变更订阅。本页记录最终功能范围和待接入边界；精确字段以 [OpenAPI](contracts/openapi.yaml) 和 [HTTP Schema](contracts/http.schema.json) 为准，验证状态见[实施记录](validation/progress.md)。
 
 依据：[Web 开发方案](../../web/docs/react-development.md)、[搜索设计](../../docs/ui-search.md)、[曲目列表设计](../../docs/ui-tracks.md)、当前 `docs/contracts/openapi.yaml` 与 `http.schema.json`。
 
@@ -16,7 +16,7 @@
 | 在线歌单曲目展示 | `/online-instances/{id}/playlists/{externalId}/tracks` |
 | 批量展示来源引用 | `/source-refs/lookup`、`/online-instances/{id}/tracks/lookup`；顺序及重复引用保留，逐项失败 |
 | 个人资料、收藏、最近播放 | `/me/profile`、`/me/favorites`、`/me/recently-played`；[权限、去重与期限](personal-library.md) |
-| 插件管理、配置与动态启停 | `/admin/plugins`、实例状态／配置、操作查询；见[插件管理](implementation/plugin-management.md) |
+| 插件管理、配置、动态启用与重启停用 | `/admin/plugins`、实例状态／配置、操作查询；见[插件管理](implementation/plugin-management.md) |
 | 插件能力变更通知 | `/events` 的 `capabilities.changed` SSE；前端重新读取本人可见的来源与能力 |
 
 ## 2. 保留的能力边界

@@ -9,7 +9,7 @@ import (
 
 type Hooks struct {
 	Start        func(context.Context, config.Plugin, config.Instance) error
-	Stop         func(context.Context, bool) error
+	Stop         func(context.Context) error
 	Ready        func() bool
 	Capabilities func() []string
 }
@@ -38,20 +38,22 @@ type Snapshot struct {
 	AppliedRevision string   `json:"appliedRevision"`
 	Writable        bool     `json:"writable"`
 	DiskChanged     bool     `json:"diskChanged"`
+	RestartRequired bool     `json:"restartRequired"`
 	Items           []Plugin `json:"items"`
 }
 type Operation struct {
-	ID         string           `json:"operationId"`
-	Owner      string           `json:"-"`
-	Revision   string           `json:"revision"`
-	PluginID   string           `json:"pluginId"`
-	InstanceID string           `json:"instanceId"`
-	Mode       string           `json:"mode"`
-	Status     string           `json:"status"`
-	ErrorCode  *string          `json:"errorCode"`
-	CreatedAt  time.Time        `json:"createdAt"`
-	UpdatedAt  time.Time        `json:"updatedAt"`
-	Targets    map[string]int64 `json:"-"`
+	ID              string           `json:"operationId"`
+	Owner           string           `json:"-"`
+	Revision        string           `json:"revision"`
+	PluginID        string           `json:"pluginId"`
+	InstanceID      string           `json:"instanceId"`
+	Mode            string           `json:"mode"`
+	Status          string           `json:"status"`
+	RestartRequired bool             `json:"restartRequired"`
+	ErrorCode       *string          `json:"errorCode"`
+	CreatedAt       time.Time        `json:"createdAt"`
+	UpdatedAt       time.Time        `json:"updatedAt"`
+	Targets         map[string]int64 `json:"-"`
 }
 type Repository interface {
 	SavePluginOperation(context.Context, Operation) error

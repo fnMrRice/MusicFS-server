@@ -15,7 +15,7 @@ func TestBundledPluginsAutostartPendingAndPersistedDisable(t *testing.T) {
 	path := writeYAMLConfiguration(t, cfg)
 	stop := startAudioYAMLServer(t, path, cfg, base)
 	c := login(t, base, cfg.AdminToken)
-	check := func(ncmState string) {
+	check := func(ncmState string, restartRequired bool) {
 		t.Helper()
 		for deadline := time.Now().Add(10 * time.Second); ; {
 			code, raw, _ := c.request(t, "GET", "/api/v1/admin/plugins", nil, "")
@@ -24,7 +24,7 @@ func TestBundledPluginsAutostartPendingAndPersistedDisable(t *testing.T) {
 				t.Fatalf("plugins: %d %s", code, raw)
 			}
 			testkit.ValidateHTTP(t, "PluginManagementSnapshot", raw)
-			valid := len(snapshot.Items) == 7
+			valid := len(snapshot.Items) == 7 && snapshot.RestartRequired == restartRequired
 			for _, p := range snapshot.Items {
 				want := "ready"
 				if p.PluginID == "musicfs.localfiles" || p.PluginID == "musicfs.audio.ffmpeg" {
@@ -32,6 +32,10 @@ func TestBundledPluginsAutostartPendingAndPersistedDisable(t *testing.T) {
 				}
 				if p.PluginID == "musicfs.ncm" {
 					want = ncmState
+					if restartRequired && len(p.Instances) == 1 {
+						i := p.Instances[0]
+						valid = valid && !p.ConfiguredEnabled && i.EffectiveEnabled && i.AcceptingNewWork && i.Reason != nil && *i.Reason == "RESTART_REQUIRED"
+					}
 				}
 				valid = valid && len(p.Instances) == 1 && p.Instances[0].RuntimeState == want
 				if len(p.Instances) == 1 && want == "pending_configuration" {
@@ -48,13 +52,16 @@ func TestBundledPluginsAutostartPendingAndPersistedDisable(t *testing.T) {
 			time.Sleep(20 * time.Millisecond)
 		}
 	}
-	check("ready")
+	check("ready", false)
 	op := libraryManagementChange(t, c, "/api/v1/admin/plugins/musicfs.ncm/state", map[string]any{"enabled": false, "mode": "drain"})
 	waitLibraryOperation(t, c, op.ID)
-	check("disabled")
+	if !op.RestartRequired {
+		t.Fatal("saved plugin disable omitted restart requirement")
+	}
+	check("ready", true)
 	stop()
 	stop = startAudioYAMLServer(t, path, cfg, base)
 	defer stop()
 	c = login(t, base, cfg.AdminToken)
-	check("disabled")
+	check("disabled", false)
 }

@@ -39,7 +39,8 @@ func TestPluginOperationPersistsChangesAndRetriesFailedWritesOnly(t *testing.T) 
 				t.Fatal(err)
 			}
 			defer lease.Close()
-			op, err := h.manager.Change(context.Background(), "admin", config.Change{ExpectedRevision: h.manager.Snapshot().Revision, IdempotencyKey: "persist-operation", PluginID: "musicfs.ncm", Enabled: false})
+			name := "Persisted decoder name"
+			op, err := h.manager.Change(context.Background(), "admin", config.Change{ExpectedRevision: h.manager.Snapshot().Revision, IdempotencyKey: "persist-operation", PluginID: "musicfs.ncm", InstanceID: "ncm", Settings: &config.InstanceSettings{Name: &name}})
 			if failFirstWrites == 0 && err != nil {
 				t.Fatal(err)
 			}
@@ -65,5 +66,30 @@ func TestPluginOperationPersistsChangesAndRetriesFailedWritesOnly(t *testing.T) 
 				t.Fatalf("terminal transition was not persisted exactly once: %d attempts", got)
 			}
 		})
+	}
+}
+
+func TestSavedDisableRetriesItsOperationRecordWithoutRuntimeChanges(t *testing.T) {
+	var repo *countedOperations
+	h := setup(t, func(base plugincontrol.Repository) plugincontrol.Repository {
+		repo = &countedOperations{Repository: base}
+		repo.failures.Store(1)
+		return repo
+	})
+	op, err := h.manager.Change(context.Background(), "admin", config.Change{
+		ExpectedRevision: h.manager.Snapshot().Revision, IdempotencyKey: "persist-saved-disable",
+		PluginID: "musicfs.ncm", Enabled: false, Mode: "force",
+	})
+	code(t, err, "TEMPORARY_FAILURE")
+	if op.Status != "succeeded" || !op.RestartRequired || h.store.Current().Plugins[0].Enabled {
+		t.Fatal("failed operation confirmation lost the saved disable", op)
+	}
+	waitStatus(t, h, op, "succeeded")
+	persisted, err := h.manager.Operation(context.Background(), "admin", op.ID)
+	if err != nil || !persisted.RestartRequired || repo.attempts.Load() != 2 {
+		t.Fatal("terminal operation was not retried with its restart requirement", persisted, err)
+	}
+	if !h.manager.Gate("ncm").Accepting() || h.starts.Load() != 0 || h.stops.Load() != 0 {
+		t.Fatal("retrying a saved disable changed the current runtime")
 	}
 }

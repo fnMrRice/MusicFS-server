@@ -1,8 +1,32 @@
-# 插件动态管理与配置接口验收
+# 插件管理与配置接口验收
+
+## 2026-10-11：停用改为重启生效
+
+当前契约取消停用热排空和强制停止；插件/实例停用仅保存配置，本次进程的 Worker、任务、播放、新工作准入与 generation 保持，重启后生效。启用和配置重建保留动态应用。新增快照/操作 `restartRequired` 及实例原因 `RESTART_REQUIRED`，兼容接收但废弃 drain/force 参数，待重启时不推进 appliedRevision。
+
+本次覆盖插件及实例两层开关、drain/force 同义、保存成功与待重启提示、重启前恢复启用不重建 Worker、保存停用后新旧任务和播放均可工作、配置重建不提前应用停用、多个实例与修订隔离，以及真实重启后关闭目标且保留历史数据。当前 Windows 本机执行结果如下；后面的 2026-10-10 章节仅为旧实现历史证据。
+
+| 检查 | 本次结果 |
+| --- | --- |
+| 插件管理集成与并发 | 全包通过（17.719 秒）；最终 `-race` 全包通过（105.184 秒），包含运行配置与保存开关分离、终态操作记录写入失败重试 |
+| HTTP / 插件契约 | `tests/contract/api`（60.097 秒）、`tests/contract/plugins`（2.016 秒）通过；管理 HTTP 实际响应同时验证新增字段 |
+| 配置、播放与在线宿主 | `tests/integration/config`（11.160 秒）、`tests/integration/playback`（20.580 秒）、`tests/unit/onlinehost`（1.877 秒）通过；`src/...` 测试通过 |
+| 本地 Worker 与发现 | 本地新旧播放、扫描/监听、配置重建及重启停用通过（4.98 秒）；随包发现与持久停用通过（4.00 秒） |
+| 在线 Worker、缓存与恢复任务 | 双实例缓存/代次保持、新查询准入、慢请求不被 force 取消及重启停用通过（22.531 秒）；恢复任务保持通过（3.96 秒），推荐缓存与故障区分通过（13.00 秒） |
+| 实际 FFmpeg / NCM | `TestManagedAudioPendingDisableSeekAndServerRestart` 通过（11.542 秒）：FLAC 的 6 秒 PCM、4 秒定位后的 2 秒输出、NCM Range、保存停用后新会话、真正重启停用及动态启用恢复；待停用 NCM 在 FFmpeg 配置重建后仍可播放和后台提取歌词 |
+| 实际 NTFS 写回 | `TestManagedWritebackDisabledStartAndChangedRootFence` 通过（6.467 秒），验证动态启用、停用待重启时能力保持、重启后关闭及原根授权边界；独立 `TestNTFSWritebackAndBackup` 通过（0.078 秒） |
+| Web 状态页 | 类型检查与生产构建通过；插件状态两项 Playwright 通过，保存停用时仍显示当前可用状态，重启提示在刷新后消退 |
+| 静态检查 | `go vet ./src/... ./tests/integration/plugincontrol ./tests/e2e` 通过；修改文件格式化及差异检查通过 |
+
+音频使用本机 MSYS2 UCRT64 的 FFmpeg/ffprobe 实际进程；在线测试使用合成平台 Worker，不表示真实平台账号或在线音频已经验收。未扩大为 Linux/macOS 或完整仓库全套回归。
+
+Windows 配置写入需允许测试保留文件 ACL，沙箱阻止该操作时使用获准的本机执行环境。写回初次在 E: 工作区临时目录失败：目录带特殊属性 `0x180010`，新文件继承 `0x180020`，触发既有普通 NTFS 文件检查；将 TMP/TEMP 指向普通本地 NTFS 目录后通过，未放宽生产文件保护。
+
+## 2026-10-10：原热停用实现历史记录
 
 验证日期：2026-10-10，Windows 本机。本轮接口补齐、插件动态管理与 Web SSE 接入已完成。最终源码提交为 `aeab8a2`，796 个 Go 源码、测试、依赖、迁移与契约夹具文件已与 `runtime-validation` 验证副本逐一核对一致。HTTP 契约与运行说明见[插件管理](../implementation/plugin-management.md)。
 
-## 1. 验证范围
+### 1. 验证范围
 
 | 验证 | 实际覆盖 |
 | --- | --- |
@@ -18,7 +42,7 @@
 
 测试包括 `tests/integration/plugincontrol`、`tests/e2e/{library,audio,online,writeback}_management_test.go`、`tests/e2e/online_recovery_test.go`、`tests/integration/playback/plugin_lifecycle_test.go`、`tests/unit/library/lifecycle_test.go`、在线／推荐生命周期与远程同步生命周期测试。实际音频用例需要配置 FFmpeg/ffprobe；本轮使用本机 6.1.1 工具，未配置工具时的跳过不算音频验证通过。持久任务恢复用例检查后台领取任务在准入控制挂接后启动，并持有租约直到取消结果落库。
 
-## 2. 已确认执行记录
+### 2. 已确认执行记录
 
 | 检查 | 已有结果与依据 |
 | --- | --- |
@@ -31,7 +55,7 @@
 | Web 自动检查 | Web `12acdb9`：生产构建、类型检查与 43 项单测通过；新增 6 项单测覆盖订阅、重复通知、重连、注销及非法事件 |
 | Web 真实 SSE 联调 | 真实 Edge 开发模式、真实 Server 和转发代理；单连接、插件停启后刷新、事件连接中断后原 EventSource 重连并重读、注销关闭全部通过，1 项 E2E，测试主体 6.6 秒 |
 
-## 3. 修正与验证结论
+### 3. 修正与验证结论
 
 首次检查发现的管理配置模型重名和幂等断言问题已修正；`ManagedPluginConfiguration` 与表示导入声明的 `PluginConfiguration` 保持独立。合并账号约束后，`aeab8a2` 修复了已绑定账号的插件停用状态优先级，并使旧歌单测试通过正常登录流程取得平台会话。
 

@@ -86,11 +86,13 @@ func TestRecoveredOnlineTaskAcquiresGatesBeforeFirstObservation(t *testing.T) {
 	}
 	operation := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/net/state", map[string]any{"enabled": false, "mode": "force"})
 	waitLibraryOperation(t, c, operation.ID)
+	time.Sleep(150 * time.Millisecond)
+	generation := recovered.Generation
 	code, raw, _ := c.request(t, "GET", "/api/v1/remote-playlist-sync-jobs/"+queued.ID, nil, "")
-	if code != 200 || json.Unmarshal(raw, &recovered) != nil || recovered.State != "failed" || recovered.Error == nil || recovered.Error.Code != "CANCELED" {
-		t.Fatalf("forced recovered task was not durably canceled: %d %s", code, raw)
+	if code != 200 || json.Unmarshal(raw, &recovered) != nil || recovered.State != "running" || recovered.Generation != generation {
+		t.Fatalf("pending disable interrupted the recovered task: %d %s", code, raw)
 	}
-	if state = managedOnlineInstance(t, c, "net"); state.ActiveLeases != 0 || state.RuntimeState != "disabled" {
-		t.Fatal("force completed before recovered task cleanup", state)
+	if state = managedOnlineInstance(t, c, "net"); state.ActiveLeases < 2 || state.RuntimeState != "ready" || !state.AcceptingNewWork || state.Reason == nil || *state.Reason != "RESTART_REQUIRED" {
+		t.Fatal("pending disable changed recovered task admission", state)
 	}
 }

@@ -33,7 +33,7 @@ func registerOnlineManagement(ctx context.Context, c config.Config, manager *plu
 		for _, s := range states {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			s.runtime.Gate.SetAccepting(false, true)
-			_ = s.stop(ctx, true)
+			_ = s.stop(ctx)
 			cancel()
 		}
 	}
@@ -122,7 +122,7 @@ func (s *managedOnline) start(ctx context.Context, p config.Plugin, i config.Ins
 	return nil
 }
 
-func (s *managedOnline) stop(ctx context.Context, force bool) error {
+func (s *managedOnline) stop(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := ctx.Err(); err != nil {

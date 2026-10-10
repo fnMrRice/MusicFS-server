@@ -15,7 +15,7 @@ import (
 )
 
 // configureLibraryManagement replaces configureWatch: every configured local
-// instance owns its watcher and actual worker across disable/enable cycles.
+// instance owns its watcher and worker across configuration applications.
 func configureLibraryManagement(runCtx context.Context, c config.Config, lib *library.Service, manager *plugincontrol.Manager, log *slog.Logger) (func(), error) {
 	cleanups := []func(){}
 	cleanup := func() {
@@ -72,7 +72,7 @@ func configureLibraryManagement(runCtx context.Context, c config.Config, lib *li
 					return true
 				}
 			}
-			stop := func(ctx context.Context, force bool) error {
+			stop := func(ctx context.Context) error {
 				stopWatch()
 				// Force cancellation originates at the gate. Wait for read handles
 				// and exclusive writeback safe points before terminating the worker.

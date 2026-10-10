@@ -1,102 +1,72 @@
 # Server 插件管理
 
-状态：动态管理及 HTTP 配置接口已实现；2026-10-10。统一 Manager、工作租约、平滑／强制停用、持久操作状态与 SSE 能力变更已接入本地 Provider、在线 Provider、Scraper、FFmpeg 和 NCM。管理 CLI、插件安装发现和管理页面不在本轮接口交付范围。返回[实施入口](../implementation.md)；配置基础见[YAML配置](../configuration.md)，本轮证据见[管理验收](../validation/plugin-management.md)。
+状态：2026-10-11。插件及实例停用改为保存配置、重启 Server 后生效；启用和实例设置仍可动态应用。统一 Manager、工作租约、持久操作状态与 SSE 通知覆盖本地 Provider、在线 Provider、Scraper、FFmpeg 和 NCM。管理 CLI、任意插件安装和升级流程仍待实施。返回[实施入口](../implementation.md)；配置基础见[YAML 配置](../configuration.md)，当前验证范围见[管理验收](../validation/plugin-management.md)。
 
-## 1. 范围与已确认行为
+## 1. 生效边界
 
-Server 负责列出已配置插件、查看运行状态、启用和禁用，覆盖 Music Provider、Scraper 与 Audio Processor。管理员通过管理命令/API 操作；最小 Web 仍以列表/播放为范围，无需同时建设插件市场或管理界面。安装、下载、升级及卸载有独立流程，启停接口不承担任意程序安装。
+Server 提供插件/实例状态查询、开关与设置管理，要求管理员。停用只保存 `enabled: false`，当前 Server 进程继续使用运行开关；不会停止 Worker、关闭新工作准入、取消播放或任务，也不会改变运行代次。已有及新发起的工作继续按当前能力、权限和超时规则执行。正常停止并重启 Server 后，启动阶段读取保存开关，不再启动已停用对象。
 
-默认使用用户确认的平滑停用：立即拒绝新任务及新播放，当前播放结束和执行中任务收尾后停止；另外提供显式强制停止。禁用不删除音乐库、歌单关联、账号引用、人工结果、媒体文件或匹配证据。账号撤销、卸载及删除数据不是同一操作。
+停用不删除音乐库、歌单、账号引用、人工结果、媒体或匹配证据。账号撤销、卸载和数据删除仍是独立操作。需要立即终止工作时，使用对应任务/播放取消或停止 Server；插件停用接口没有强制停止语义。
 
 ## 2. 层级与状态
 
 | 对象/字段 | 规则 |
 | --- | --- |
-| pluginId | 插件注册身份，包含版本、角色及可执行程序；总开关作用于全部实例 |
-| instanceId | 一个插件下的独立角色/配置/账号上下文，有自己的开关；保留现有稳定 ID |
-| configuredEnabled | 对象自身在 YAML 中保存的开关；管理读取同时返回修订 |
-| effectiveEnabled | 插件总开关与实例开关均为 true，且必需配置齐全；不等于已运行就绪 |
-| acceptingNewWork | 有效启用且依赖/权限/运行状态满足准入；draining 必为 false |
-| runtimeState | disabled、pending_configuration、starting、ready、draining、failed；与期望开关分开 |
-| generation | 每次状态变更/Worker 重建的代次，防止旧启动或排空结果覆盖新操作 |
-| operationId | 已保存管理操作的跟踪 ID；用于等待应用、排空、完成或失败 |
+| pluginId / instanceId | 插件总开关作用于全部实例；各实例仍有独立保存开关和稳定 ID |
+| configuredEnabled | 对象自身已保存的开关，插件与实例分别报告 |
+| effectiveEnabled | 按当前进程运行开关及必需配置计算，不按尚待重启的保存开关计算；不等于已就绪 |
+| acceptingNewWork | 当前运行开关、依赖、权限与运行状态满足准入；配置重建的 draining 期间为 false |
+| runtimeState | disabled、pending_configuration、starting、ready、draining、failed；停用保存本身不改变状态 |
+| generation | Worker 生命周期及配置重建的代次；停用保存不推进代次 |
+| reason | 保存开关与当前运行开关不一致时为 `RESTART_REQUIRED`；其他原因包括配置不足和依赖不可用 |
+| restartRequired | 快照报告当前待重启开关或 diskChanged；操作收据记录该次保存后全局是否仍有待重启开关，历史标志不随撤销/重启改写 |
+| revision / appliedRevision | 已保存修订 / 已完整应用修订；存在待重启开关时不能将 appliedRevision 推进到新修订 |
+| operationId | 已保存操作的跟踪 ID；停用保存完成即可 succeeded，不表示 Worker 已停止 |
 
-禁用插件关闭所有实例的新工作准入，但不改写各实例开关；重新启用只恢复本来启用的实例。禁用一个实例不影响兄弟实例。父插件仍禁用时可保存实例启用意图，但响应必须显示仍不可用及父开关原因，不能报告实例已运行。
+停用插件不改写实例自己的保存开关，停用一个实例不改写兄弟实例。重启后只有插件和实例都启用才可启动。父插件在当前进程已停用时，可保存子实例启用意图，但子实例不能越过父开关运行。运行故障不自动改写保存开关；重启后已停用对象不因自动扫描或恢复旧任务自行启动。
 
-运行失败不自动把 YAML 的 true 改为 false。重新启动只对有效启用对象生效，并使用有限预算；被禁用对象不因故障恢复、自动扫描或 Server 重启自行启动。
+## 3. 操作与修订
 
-## 3. 平滑停用与强制停止
+1. 停用通过现有修订检查、幂等记录及持久化流程保存，不调用运行时排空或强制取消。HTTP 保留 202 操作收据；`status=succeeded` 表示保存完成，`restartRequired=true` 记录保存时全局仍有待重启开关，不能显示为已经停止；当前是否需要重启应重新读取管理快照。
+2. 状态请求为兼容旧客户端仍接受 `mode=drain/force`，省略时保留默认 drain。该参数已废弃；两者在停用时行为相同，均不排空、取消或停止 Worker。新客户端应只提交 `enabled`，并读取重启提示。
+3. 重启前重新启用可撤销待重启停用意图。若 Worker 和配置未变，不重建 Worker 或改变代次；若对象原已停用，则按启用流程启动。重新读取快照以确认是否仍有其他待重启变更。
+4. 启用和实例设置继续动态应用；设置变更仍关闭目标实例的新工作准入，等待旧租约结束后重建。待重启停用不能被后续设置应用顺带应用，也不能因另一个实例完成应用而错误推进 `appliedRevision`。
+5. Server 重启将旧未完成操作记为 superseded，再按当前保存配置初始化；当前状态以新快照为准。配置只读、修订冲突及保存失败仍明确报错，不以数据库开关悄悄替换损坏配置。
 
-### 平滑停用
+工作租约和运行代次继续用于配置重建、故障、资源回收及 Server 退出，防止晚到结果覆盖新配置；不再用于插件停用后的热排空或强制停止。
 
-1. 在统一管理锁下保存禁用意图并关闭准入，与取得工作租约串行化；明确线性化点，使同时到达的请求要么已经拿到旧租约，要么被拒绝，不能在“禁用成功”后偷开新任务。
-2. 标记 draining，列出活动播放、任务数和操作状态。未开始的排队任务不再取得租约，标记因禁用暂停/取消；不能提交空扫描结果或把未抓取条目当已删除。
-3. 已开始的扫描/刮削/其他有限任务可凭原租约完成既定范围；新的子任务/重试不能无限扩展该范围，用户仍可取消。写回必须进入可恢复安全边界，不能因停用留下半写原文件。
-4. 已有播放保留其绑定的插件/实例/资产/处理配置租约。同一会话当前歌曲的 Range、暂停后恢复，以及原租约内的同资产定位可继续；新歌曲、新来源、新处理配置或重新创建会话需要新准入，应被拒绝。
-5. 原有会话/租约绝对截止时间、处理超时和取消规则继续生效，禁用不能延长绝对截止时间。真实流活动仍按原规则更新空闲时间，不能把空闲计时冻结后误杀持续播放；暂停、断网或页面关闭也不能靠伪造活动无限续命。界面可查看仍在排空的原因。
-6. 全部活动租约释放后撤销资源、停止 Worker 及其子进程，最终进入 disabled。若重启前仍在 draining，启动以 YAML 的禁用意图为准，不为继续旧播放而重启该插件。
+## 4. 管理入口与客户端兼容
 
-默认不会因为短暂的“等待停用”超时就擅自强杀正常播放；管理员可继续等待或使用强制停止。现有播放本身的有效期仍按原规则执行。
-
-### 强制停止
-
-管理员显式选择 force 后，保持/保存 disabled 意图，立即取消关联的播放和任务、撤销 Broker/流访问，再按有界宽限期停止进程树。文件发布/写回依靠既有恢复日志收敛，不删除已有库与内容。
-
-若请求的是整个插件，全部实例都受影响；只对单个实例操作不能关闭其他实例共用的无关资源。返回操作状态及受影响计数，不把“已发停止信号”当“所有进程已退出”。必要音频插件停止时明确报告不可用，不静默绕过 DSP；其他不依赖它的原流仍可工作。
-
-### 并发与重新启用
-
-排空期间重新启用会产生新修订和新代次：若 Worker 尚健康则按同一配置恢复准入，否则重新握手；旧排空回调必须核对代次，不能关闭重新启用后的实例。新操作可使旧操作变为 superseded，不能让旧轮询结果回写旧意图。强制停止中的旧 Worker 不复用，新一代在回收完成后启动。
-
-## 4. 已实现管理入口
-
-以下业务前缀为 `/api/v1`，均已纳入 OpenAPI；管理端点要求管理员。当前 Web 仅订阅能力变更，不提供管理表单。
+以下路由均以 `/api/v1` 为前缀，管理端点要求管理员。
 
 | 路由 | 作用 |
 | --- | --- |
-| GET /admin/plugins | 已配置插件、实例角色、能力、开关、状态、有效修订和脱敏原因 |
-| GET /admin/plugins/{pluginId}/instances | 各实例配置开关、有效开关、状态和活动租约数 |
-| PUT /admin/plugins/{pluginId}/state | 设置插件总开关；正文 enabled，禁用时 mode=drain/force |
-| PUT /admin/plugin-instances/{instanceId}/state | 设置实例开关，复用同一状态机和持久化逻辑 |
-| GET /admin/plugin-operations/{id} | applying/draining/succeeded/failed/superseded 及脱敏错误码 |
-| GET/PUT /admin/plugin-instances/{id}/configuration | 可编辑声明与安全配置读取，按声明校验写入并排空重建 |
-| GET /admin/plugin-instances/{id}/directories | 管理员浏览 Local Files 允许根及直接子目录，待配置时也可使用；返回路径、可读取状态及已配置根 ID |
-| GET /events | 登录用户的 SSE 能力失效通知，不包含管理员配置 |
+| GET /admin/plugins | 保存/应用修订、restartRequired、插件与实例开关及运行状态 |
+| GET /admin/plugins/{pluginId}/instances | 实例保存开关、当前有效开关、状态、活动租约和重启原因 |
+| PUT /admin/plugins/{pluginId}/state | 保存总开关；停用需重启，启用可动态应用 |
+| PUT /admin/plugin-instances/{instanceId}/state | 保存实例开关，采用相同生效规则 |
+| GET /admin/plugin-operations/{id} | applying/draining/succeeded/failed/superseded、restartRequired 及脱敏错误码 |
+| GET/PUT /admin/plugin-instances/{id}/configuration | 配置声明与安全投影；按声明校验写入并排空重建 |
+| GET /admin/plugin-instances/{id}/directories | 管理员浏览 Local Files 允许根及直接子目录，待配置时也可使用 |
+| GET /events | 登录用户的 SSE 失效通知，不包含管理员配置 |
 
-修改带 `If-Match` 配置修订及 `Idempotency-Key`，重复请求返回同一操作结果，换参数复用键报冲突。保存成功、尚在处理返回 202 与 operationId；到达目标状态才算 succeeded。配置修订不符返回 412；父开关、依赖/故障、配置只读等分别明确表达，不能统一伪装成成功。
+修改要求 `If-Match` 配置修订及 `Idempotency-Key`。同键同参数返回原操作，换参数复用键报冲突；修订不符返回 412。所有修改继续校验 Cookie、允许的 Origin 与 CSRF，不把令牌放入 URL。管理 CLI `musicfs plugins list/status/enable/disable` 仍为后续计划。
 
-管理 CLI `musicfs plugins list/status/enable/disable` 仍为后续计划；当前通过 HTTP 操作。所有修改继续要求 Cookie、允许的 Origin 与 CSRF，不把令牌放入 URL。
+普通来源和播放按当前运行状态准入。停用已保存、尚未重启时不返回 `PLUGIN_DISABLED`；重启后实际停用，或设置变更正在排空时，才按原准入规则拒绝新工作。缺必需配置的实例保持 `pending_configuration`，有效开关和准入为 false；没有待重启开关时原因为 `CONFIGURATION_REQUIRED`。来源列表保留条目并明确可用性。
 
-普通来源/播放接口对已禁用或正在排空的实例返回 `PLUGIN_DISABLED`，实际故障与未授权／不支持分开。开关开启但必需配置不足时，状态为 `pending_configuration`，`effectiveEnabled` 与 `acceptingNewWork` 均为 false，状态原因 `reason` 为 `CONFIGURATION_REQUIRED`，不接收工作。来源列表保留条目并标记不可用。配置读取不返回音乐根路径、工具路径、程序路径或凭据；写入路径为 write-only，省略已有根的路径时保留原绑定。已有根 ID 不能改绑到另一目录；新增目录必须使用新的根 ID。`musicRoots/watch/importDefaults` 整组替换，`importDefaults` 要求完整有效选项；未提供的顶层设置保持不变。改配置使用 drain，重建成功前不开放新任务。
+配置投影不返回音乐根路径、工具路径、程序路径或凭据；路径为 write-only。省略已有根路径保留原绑定，已有根 ID 不能改绑目录；新增目录使用新 ID。`musicRoots/watch/importDefaults` 整组替换，未提供的顶层字段保持不变；改配置的排空与停用保存是不同操作。
 
-插件以配置中的固定身份启动，握手报告自身能力和配置声明，由宿主校验后登记；不扫描任意目录自动安装程序。运行时启动、停用、故障和应用修订触发 `capabilities.changed`，数据仅为 `{revision,sequence}`。每次 SSE 首连／重连先发当前状态，前端重新读取授权列表；通知不是状态事实来源。每个登录会话最多8条连接，15秒心跳复核登录，30分钟重连。账号登录变化使用独立账号接口，不由该事件承诺。
+保存修订及运行状态变化可触发 `capabilities.changed`，数据仍仅为 `{revision,sequence}`。每次 SSE 首连/重连发送当前通知，客户端重新读取授权列表；通知不意味着能力已经停用。每个登录会话最多 8 条连接，15 秒心跳复核登录，30 分钟重连。
 
-## 5. 分阶段落地任务
+`PluginManagementSnapshot` 和 `PluginOperation` 新增 `restartRequired` 布尔字段，实例原因增加 `RESTART_REQUIRED`，路由和已有枚举保持兼容。客户端须区分保存开关、运行状态和重启提示；仅凭 `configuredEnabled=false` 或操作 succeeded 显示“已停用”会误报。实例列表用 `reason`、全局管理页用快照标志提示重启；操作中的标志是保存当时的历史值，不能替代快照。客户端可忽略新增字段，但不能再依赖旧 drain/force 的即时效果。
 
-| 编号 | 内容 | 主要位置与验收 |
-| --- | --- | --- |
-| PM-P1-01 | 插件/实例身份、双层开关与配置Schema基础已完成；后续扩展运行状态和管理模型 | src/config、src/pluginhost；保持现有ID与状态目录 |
-| PM-P2-01 | 统一 Registry/Manager 与代次，区分期望状态、实际状态和依赖失败 | src/pluginhost；启动失败可查询，禁用对象不启动 |
-| PM-P2-02 | 配置写入、幂等日志及保存崩溃恢复基础已完成；后续接入运行应用与排空状态 | src/config、src/storage/sqlite；saved与applied分离，不把保存成功当成插件退出 |
-| PM-P2-03 | 接入 Library/Scheduler 的准入与任务租约 | src/library、src/jobs；禁用不启动新扫描、未完成扫描不删除库 |
-| PM-P3-01 | 将会话固定到插件依赖租约，原流重请求遵守该租约 | src/playback、src/sourceaccess、src/stream；当前歌可继续，新播放受拒绝 |
-| PM-P4-01 | 音频Worker/DSP动态管理；启动已使用显式开关，后续补运行准入与租约 | src/plugins/audioffmpeg、src/audio；处理链平滑收尾与force有区别 |
-| PM-P2-04 | 管理 API/命令、权限和操作查询 | src/api、src/app/musicfs；共用服务逻辑，异步状态可查询 |
-| PM-P6-01 | Scraper 与写回接入同一管理规则 | src/enrichment、src/writeback；安全发布、人工内容和独立实例保留 |
-| PM-P8-01 | 重启/升级/只读部署、原流与处理播放回归 | tests/integration、tests/e2e；记录实际平台证据 |
+## 5. 验证范围
 
-表中运行管理、租约、HTTP 和配置应用部分已完成，统一管理代码位于 `src/plugincontrol`。PM-P2-04 的 CLI 仍待实施；跨平台完整冻结验收与升级场景不随当前 Windows 增量验证自动完成。运行故障保持 YAML 意图，显式重试才重新启动；Server 重启将旧未完成操作记为 superseded，再按当前 YAML 初始化。
+- 双层停用持久化；当前 Worker、generation、活动租约、旧播放与新工作准入保持，重启后才实际停用。
+- drain/force 兼容，停用操作 succeeded 和 restartRequired 同时返回；幂等、修订冲突与保存失败保持原约束。
+- 重启前重新启用不更换健康 Worker；父插件、兄弟实例及多个待重启变更相互独立。
+- 停用待重启时继续改设置或动态启用其他对象，不顺带应用停用，也不错误推进 appliedRevision。
+- 重启读取保存状态，保留库、历史内容、人工结果、稳定 ID 和账号引用；旧操作与后台任务正常恢复。
+- 配置重建、Worker 故障、任务取消和 Server 退出继续正确释放租约、流及子进程。
 
-源码继续放 `src/<模块>/`，入口仅在 `src/app/`，测试放根 `tests/`。按状态转换、租约、配置存储、HTTP 和命令解析拆分文件，遵守源文件约 400 行的约定，不增加万能管理器。
-
-## 6. 必须通过的验证
-
-- 插件/实例双层开关、父禁用时启用子实例、重启保留状态、无实例或未配置插件、启动失败及有限重试。
-- 管理员权限、Cookie CSRF、修订冲突、同键重试、修改参数冲突、只读配置与持久化失败。
-- 禁用与新任务/会话并发；排空中旧租约的 Range/定位可工作，新请求与排队项不能越过准入。
-- 原流/处理后播放自然结束再停；暂停/断网/页面关闭受原超时回收；force 取消对应会话与子进程。
-- 禁用后重新启用、force 后重新启用、旧退出回调晚到，不关闭新代次或兄弟实例。
-- 保存前后/应用期间崩溃，重启按 YAML 收敛；损坏或无法写入文件不被悄悄替换为 DB 开关。
-- 已入库曲目、歌单、稳定根/曲目 ID、凭据引用、已发布媒体及人工结果均保留；禁用不伪造成功空扫描。
-
-启停行为使用真实 Worker 和真实流验证，不能只测试布尔字段变更。完成后在实施记录中列出配置迁移、插件管理与流式平滑停用各自证据；缺项继续明确标注。
+执行结果单独写入[管理验收](../validation/plugin-management.md)。2026-10-10 热停用验收属于历史实现，不能证明本次语义已通过。

@@ -39,6 +39,7 @@ func TestManagedWritebackDisabledStartAndChangedRootFence(t *testing.T) {
 	cfg.WriteBack = config.WriteBackConfig{Enabled: true, MaxFileBytes: 8 << 30, Roots: []config.WriteBackRoot{{InstanceID: "local", RootID: "local", Fields: []string{"lyrics"}}}}
 	path := writeYAMLConfiguration(t, cfg)
 	stop := startAudioYAMLServer(t, path, cfg, base)
+	defer func() { stop() }()
 	c := login(t, base, cfg.AdminToken)
 	if cap := writeBackCapability(t, c); !cap.Enabled || cap.Available {
 		t.Fatalf("disabled source advertised available writeback: %+v", cap)
@@ -75,6 +76,12 @@ func TestManagedWritebackDisabledStartAndChangedRootFence(t *testing.T) {
 	request.AssetID, request.AssetVersion = track.AssetID, track.Asset.Version
 	paused := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/audio-default/state", map[string]any{"enabled": false, "mode": "drain"})
 	waitLibraryOperation(t, c, paused.ID)
+	if cap := writeBackCapability(t, c); !paused.RestartRequired || !cap.Available {
+		t.Fatal("pending probe disable removed current writeback availability")
+	}
+	stop()
+	stop = startAudioYAMLServer(t, path, cfg, base)
+	c = login(t, base, cfg.AdminToken)
 	if cap := writeBackCapability(t, c); cap.Available {
 		t.Fatal("disabled probe advertised writeback availability")
 	}
@@ -116,7 +123,6 @@ func TestManagedWritebackDisabledStartAndChangedRootFence(t *testing.T) {
 			t.Fatal("rejected write changed source", err)
 		}
 	}
-	stop()
 }
 
 func selectManagedWritebackLyrics(t *testing.T, c *client, track library.Track, key string) writebackhost.Request {

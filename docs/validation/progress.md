@@ -177,3 +177,7 @@ P5—P7本期生产实现已按表交付；在线平台仅宣告已验收的公�
 | 最终 Server 联合回归 | `build/runtime-integrated-final.log` 中除两项修复前的旧歌单 E2E 外，其余包通过；修正后 `build/runtime-integrated-confirmed.log` 的完整 E2E 143.132 秒、HTTP 契约 57.589 秒、在线宿主单测 0.046 秒全部通过。全量检查的失败已修复，最终所有 E2E 及相关包补跑通过；不是单次全量运行全部通过 |
 
 本次完成范围不扩展其他任务的强制平台登录、打包发布或 NAS 功能。`availableOnly` 表示扫描观测可用，`playableOnly`、头像上传、跨设备搜索记录和在线固定全部查询仍保留明确边界；接口已存在不表示对应 Web 页面已经接入。
+
+## 8. 插件停用简化：重启生效
+
+2026-10-11，插件及实例停用改为只保存开关，当前进程继续工作，重启 Server 后应用；动态启用、实例配置重建与工作租约保留。管理快照/操作增加 restartRequired，实例原因增加 RESTART_REQUIRED；旧 drain/force 仅兼容接受。第 7 节保留旧热停用实施证据，新行为及本次验证记录见[插件管理验收](plugin-management.md)。

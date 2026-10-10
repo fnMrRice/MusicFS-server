@@ -2,11 +2,11 @@
 
 MusicFS的Go后端服务。已实现本地扫描/音乐库、鉴权与原流Range、Go DSP与NCM播放、资产摘要/指纹及人工关联、歌词/封面/专辑、受限写回、匿名在线资料、推荐和歌单。独立Web仍为最简列表播放器，新增管理能力通过API使用。启动见[运行说明](docs/running.md)，安装与数据恢复见[部署](docs/deployment.md)、[备份](docs/backup.md)，每步证据及未验范围见[实施记录](docs/validation/progress.md)和[文档核对](docs/validation/documentation-audit.md)。
 
-配置已统一为 `configVersion: 1` 的 YAML，插件与实例显式登记和启用；严格解析、修订写入与崩溃恢复见[配置说明](docs/configuration.md)和[配置验收](docs/validation/configuration.md)。旧 JSON 配置不兼容。读写服务只保存期望状态，当前仍需重启应用，尚未提供动态启停管理 API/命令。
+配置已统一为 `configVersion: 1` 的 YAML，插件与实例显式登记和启用；严格解析、修订写入与崩溃恢复见[配置说明](docs/configuration.md)和[配置验收](docs/validation/configuration.md)。旧 JSON 配置不兼容。开关和配置应用 HTTP API 已实现：停用保存后重启 Server 生效，启用可动态应用，实例设置由 Manager 排空/重建后报告操作结果；管理 CLI、通用安装和第三方 SDK 尚未交付，见[管理验收](docs/validation/plugin-management.md)。
 
 实现范围与后续边界：
 
-- 插件管理：已实现启动时插件与实例双层显式开关；运行时平滑停用、排空与强制停止按用户要求后置，见[插件管理计划](docs/implementation/plugin-management.md)。
+- 插件管理：已实现插件与实例双层开关、工作租约、动态启用、配置应用与能力失效通知；停用只保存配置，重启 Server 后生效，见[插件管理](docs/implementation/plugin-management.md)。
 - Music Provider：本地文件与受限在线资料已实现；实体NAS仍需实机验收。当前只有网易公开资料能力实测可用，QQ旧搜索近期失败、Apple目录缺授权。[平台登录增量](docs/platform-login.md)已接入客户端请求及 Web 入口，网易/QQ 二维码创建实测通过；三个在线源统一要求平台登录，网易云业务迁至会话 EAPI、QQ 搜索迁至桌面 RPC，真实用户查询仍待验收；没有在线完整音频。
 - 独立本地Scraper已实现内嵌/旁置候选、预览、人工选用和保守自动补缺；查询修正与远程Scraper未实现。内容在独立文件目录，数据库保存引用；默认不改原件，显式写回仅支持逐根授权的Windows本地NTFS FLAC。
 - 插件化音频处理：解复用、解码、DSP、编码及封装，向 Web 等客户端交付兼容输出；适用时保留直接播放或代理路径。

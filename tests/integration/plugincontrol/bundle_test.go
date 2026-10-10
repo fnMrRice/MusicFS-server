@@ -57,7 +57,7 @@ func TestDiscoveredPluginPendingConfigureAndDisableSurviveReload(t *testing.T) {
 			ready.Store(true)
 			return nil
 		},
-		Stop: func(context.Context, bool) error { ready.Store(false); return nil },
+		Stop: func(context.Context) error { ready.Store(false); return nil },
 	}, false); err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,10 @@ func TestDiscoveredPluginPendingConfigureAndDisableSurviveReload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertState("disabled")
+	assertState("ready")
+	if !m.Snapshot().RestartRequired || !m.Gate("local").Accepting() {
+		t.Fatal("saved disable changed the current runtime")
+	}
 	loaded, err := config.Load(path, nil)
 	if err != nil {
 		t.Fatal(err)

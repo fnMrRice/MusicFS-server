@@ -72,15 +72,27 @@ func (m *Manager) Gate(id string) *Gate {
 	return nil
 }
 
-// DesiredConfig is restricted to trusted composition code; never serialize it
-// directly through HTTP because it includes deployment paths.
-func (m *Manager) DesiredConfig() config.Config {
+// RuntimeConfig supplies composition code with the current process switches.
+// Never serialize it through HTTP because it includes deployment paths.
+func (m *Manager) RuntimeConfig() config.Config {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	c := m.desired
 	if m.store != nil {
-		return m.store.Current()
+		c = m.store.Current()
 	}
-	return m.desired
+	c.Plugins = append([]config.Plugin(nil), c.Plugins...)
+	for pi := range c.Plugins {
+		p := &c.Plugins[pi]
+		p.Instances = append([]config.Instance(nil), p.Instances...)
+		for ii := range p.Instances {
+			i := &p.Instances[ii]
+			if r := m.runtimes[i.InstanceID]; r != nil {
+				p.Enabled, i.Enabled = r.plugin.Enabled, r.instance.Enabled
+			}
+		}
+	}
+	return c
 }
 
 // Register binds an already initialized official runtime before Start.
@@ -140,11 +152,12 @@ func (m *Manager) Close() {
 func (m *Manager) Snapshot() Snapshot {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	s := Snapshot{Revision: m.revision, AppliedRevision: m.applied, Items: []Plugin{}}
+	s := Snapshot{Revision: m.revision, AppliedRevision: m.applied, RestartRequired: m.restartRequiredLocked(), Items: []Plugin{}}
 	if m.store != nil {
 		v := m.store.Snapshot()
 		s.Writable = v.Writable
 		s.DiskChanged = v.DiskChanged
+		s.RestartRequired = s.RestartRequired || v.DiskChanged
 	}
 	for _, p := range m.desired.Plugins {
 		v := Plugin{PluginID: p.PluginID, ConfiguredEnabled: p.Enabled, Instances: []Instance{}}
@@ -160,15 +173,31 @@ func (m *Manager) Snapshot() Snapshot {
 				capabilities = append(capabilities, r.hooks.Capabilities()...)
 			}
 			reason := r.reason
-			if !p.Enabled && i.Enabled {
+			if r.plugin.Enabled != p.Enabled || r.instance.Enabled != i.Enabled {
+				code := "RESTART_REQUIRED"
+				reason = &code
+			} else if !r.plugin.Enabled && r.instance.Enabled {
 				code := "PARENT_DISABLED"
 				reason = &code
 			}
-			v.Instances = append(v.Instances, Instance{PluginID: p.PluginID, InstanceID: i.InstanceID, Name: i.Name, Role: i.Role, Capabilities: capabilities, ConfiguredEnabled: i.Enabled, EffectiveEnabled: p.CanStart(i), AcceptingNewWork: r.gate.Accepting(), RuntimeState: r.state, Generation: r.generation, ActiveLeases: r.gate.Active(), Reason: reason})
+			v.Instances = append(v.Instances, Instance{PluginID: p.PluginID, InstanceID: i.InstanceID, Name: i.Name, Role: i.Role, Capabilities: capabilities, ConfiguredEnabled: i.Enabled, EffectiveEnabled: r.plugin.CanStart(r.instance), AcceptingNewWork: r.gate.Accepting(), RuntimeState: r.state, Generation: r.generation, ActiveLeases: r.gate.Active(), Reason: reason})
 		}
 		s.Items = append(s.Items, v)
 	}
 	return s
+}
+
+// Saved disable switches are applied only when the server starts again.
+func (m *Manager) restartRequiredLocked() bool {
+	for _, p := range m.desired.Plugins {
+		for _, i := range p.Instances {
+			r := m.runtimes[i.InstanceID]
+			if r == nil || r.plugin.Enabled != p.Enabled || r.instance.Enabled != i.Enabled {
+				return true
+			}
+		}
+	}
+	return false
 }
 func (m *Manager) Operation(ctx context.Context, owner, id string) (Operation, error) {
 	if m.repo == nil {

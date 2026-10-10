@@ -12,7 +12,7 @@ S-P7-04 将远程歌单引用、同步任务和本地修订持久保存。读取
 4. `GET /remote-playlist-sync-jobs/{id}` 读取 `queued/running/succeeded/failed/cancelled`。成功的resultRevision指向新本地快照；失败error为安全错误与本次HTTP requestId，没有上游原始正文。generation从入队0开始，领取或恢复时更新，用于拒绝旧任务结果，不是远端版本。
 5. `POST /remote-playlist-sync-jobs/{id}/cancel {}` 自然幂等，不需要幂等键，仍校验Origin和CSRF。queued/running转cancelled并取消活动请求；已终态返回原结果。取消不删除上次成功快照。
 
-宿主组合使用一个后台同步工作者，最多1024个queued/running任务。任务总期限30秒，在线调用另受宿主10秒期限、准入和Worker速率约束。重启恢复未完成任务时更换代次，执行前重新核对owner/实例/匿名账号/平台/实际程序配置修订，发布事务再次验证任务状态、代次和绑定。禁用或改配不能授权旧任务继续发布。
+宿主组合使用一个后台同步工作者，最多1024个queued/running任务。任务总期限30秒，在线调用另受宿主10秒期限、准入和Worker速率约束。重启恢复未完成任务时更换代次，执行前重新核对owner/实例/匿名账号/平台/实际程序配置修订，发布事务再次验证任务状态、代次和绑定。保存停用不改变当前任务租约；重启后已禁用或实际配置已变化时，旧任务不能凭旧绑定继续发布。
 
 ## 阅读当前与历史
 
@@ -32,6 +32,6 @@ S-P7-04 将远程歌单引用、同步任务和本地修订持久保存。读取
 
 ## 边界与配置
 
-不增加新的YAML开关，复用现有已启用的[在线Provider配置](online.md#配置和实例状态)，不动态启停。读取历史不要求来源在线；新导入与同步必须重新授权可用实例，非空账号明确不支持，不换用其他来源。当前没有平台写回、账号登录、音频解析或Web歌单管理页；[个人歌单聚合与隐藏](playlists.md)使用独立规则，不由同步隐式处理。
+不增加新的YAML开关，复用现有已启用的[在线Provider配置](online.md#配置和实例状态)，停用保存后重启 Server 生效。读取历史不要求来源在线；新导入与同步必须重新授权可用实例，非空账号明确不支持，不换用其他来源。当前没有平台写回、账号登录、音频解析或Web歌单管理页；[个人歌单聚合与隐藏](playlists.md)使用独立规则，不由同步隐式处理。
 
 公开模型见[OpenAPI](contracts/openapi.yaml)和[HTTP Schema](contracts/http.schema.json)。真实Server、持久化、并发和平台验证的不同范围见[远程歌单接口验收](validation/remote-playlists-http.md)。

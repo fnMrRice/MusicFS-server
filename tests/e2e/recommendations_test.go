@@ -96,7 +96,10 @@ func TestRecommendationsActualServerPartialFailuresCacheAndRestart(t *testing.T)
 		check("SOURCE_OFFLINE")
 		disabled := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/net/state", map[string]any{"enabled": false})
 		waitLibraryOperation(t, c, disabled.ID)
-		check("PLUGIN_DISABLED")
+		if !disabled.RestartRequired {
+			t.Fatal("saved disable omitted restart requirement")
+		}
+		check("SOURCE_OFFLINE")
 		enabled := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/net/state", map[string]any{"enabled": true})
 		for deadline := time.Now().Add(3 * time.Second); ; {
 			code, raw, _ := c.request(t, "GET", "/api/v1/admin/plugin-operations/"+enabled.ID, nil, "")
