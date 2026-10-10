@@ -45,7 +45,7 @@ func (r JobRequest) Normalize() (JobRequest, error) {
 		if len(language) > 35 || !jobLanguage.MatchString(language) {
 			return r, domain.Fail("INVALID_ARGUMENT", "Invalid metadata language")
 		}
-		r.Languages[i] = strings.ToLower(language)
+		r.Languages[i] = mediastore.CanonicalLanguage("lyrics", language)
 	}
 	slices.Sort(r.Languages)
 	if len(slices.Compact(append([]string{}, r.Languages...))) != len(r.Languages) {

@@ -33,6 +33,7 @@ func TestScanPlanCanonicalDigestBindsEveryInput(t *testing.T) {
 		func(p *pluginproto.ScanPlan) { p.Roots[0].RootIdentity = "replacement" },
 		func(p *pluginproto.ScanPlan) { p.Roots = p.Roots[:1] },
 		func(p *pluginproto.ScanPlan) { p.Options.MaxDepth = 1 },
+		func(p *pluginproto.ScanPlan) { p.Options.ImportLyrics = true },
 		func(p *pluginproto.ScanPlan) { p.Options = pluginproto.ImportOptions{} },
 	}
 	for i, change := range changes {
@@ -50,8 +51,8 @@ func TestScanPlanCanonicalDigestBindsEveryInput(t *testing.T) {
 	}
 	lyrics := testkit.ScanPlan("a")
 	lyrics.Options.ImportLyrics = true
-	if _, err := lyrics.Digest(); pluginproto.ErrorCode(err) != "UNSUPPORTED" {
-		t.Fatal("unimplemented lyrics accepted", err)
+	if _, err := lyrics.Digest(); err != nil {
+		t.Fatal("lyrics import plan rejected", err)
 	}
 }
 

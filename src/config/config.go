@@ -1,6 +1,9 @@
 package config
 
-import "github.com/fnMrRice/MusicFS-server/src/pluginproto"
+import (
+	"github.com/fnMrRice/MusicFS-server/src/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
+)
 
 type MusicRoot struct {
 	ID   string `yaml:"id" json:"id"`
@@ -45,6 +48,10 @@ type FingerprintingConfig struct {
 	TimeoutSeconds int    `yaml:"timeoutSeconds" json:"timeoutSeconds"`
 }
 
+type MetadataConfig struct {
+	Automatic enrichment.AutomaticPolicy `yaml:"automatic" json:"automatic"`
+}
+
 type Config struct {
 	ConfigVersion     int                  `yaml:"configVersion" json:"configVersion"`
 	Listen            string               `yaml:"listen" json:"listen"`
@@ -64,10 +71,12 @@ type Config struct {
 	SessionTTLSeconds int                  `yaml:"sessionTtlSeconds" json:"sessionTtlSeconds"`
 	Hashing           HashingConfig        `yaml:"hashing" json:"hashing"`
 	Fingerprinting    FingerprintingConfig `yaml:"fingerprinting,omitempty" json:"fingerprinting"`
+	Metadata          MetadataConfig       `yaml:"metadata" json:"metadata"`
 }
 
 func defaults() Config {
 	return Config{Listen: "127.0.0.1:8080", DataRoot: "data", MediaRoot: "media", CacheRoot: "cache", MaxSessions: 8, MaxProcessing: 2, MaxCacheBytes: 1 << 30, SessionTTLSeconds: 3600,
 		Hashing:        HashingConfig{MaxConcurrent: 1, BytesPerSecond: 4 << 20},
-		Fingerprinting: FingerprintingConfig{MaxConcurrent: 1, TimeoutSeconds: 30}}
+		Fingerprinting: FingerprintingConfig{MaxConcurrent: 1, TimeoutSeconds: 30},
+		Metadata:       MetadataConfig{Automatic: enrichment.AutomaticPolicy{Fields: []string{"lyrics", "artwork"}}}}
 }

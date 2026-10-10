@@ -99,6 +99,9 @@ func (s *Store) Current() Config {
 }
 
 func cloneConfig(c Config) Config {
+	c.Metadata.Automatic.InstancePriority = append([]string(nil), c.Metadata.Automatic.InstancePriority...)
+	c.Metadata.Automatic.Fields = append([]string(nil), c.Metadata.Automatic.Fields...)
+	c.Metadata.Automatic.Languages = append([]string(nil), c.Metadata.Automatic.Languages...)
 	c.AllowedOrigins = append([]string(nil), c.AllowedOrigins...)
 	c.Plugins = append([]Plugin(nil), c.Plugins...)
 	for i := range c.Plugins {

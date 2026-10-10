@@ -1,6 +1,6 @@
 # 本地歌词与封面补全任务
 
-S-P6-03 的独立 `musicfs.scraper.local` 插件读取当前来源的内嵌内容及宿主授权的同目录旁置文件。任务先保存候选预览，用户选用后才改变当前内容并加人工锁。该流程可在没有在线 Music Provider、FFmpeg 或指纹工具时工作；NCM 内嵌内容需要启用独立 NCM 解密插件。
+独立 `musicfs.scraper.local` 插件读取当前来源的内嵌内容及宿主授权的同目录旁置文件。S-P6-03 手动任务先保存候选预览，用户选用后才改变当前内容并加人工锁；S-P6-04 另提供显式导入歌词和可配置的自动补缺。两者可在没有在线 Music Provider、FFmpeg 或指纹工具时工作；NCM 内嵌内容需要启用独立 NCM 解密插件。
 
 ## 配置和能力
 
@@ -62,4 +62,18 @@ Content-Type: application/json
 
 `POST /api/v1/metadata-jobs/{jobId}/cancel` 接受 `{}`，自然幂等，不需要幂等键。已完成任务也可取消，从而撤销其候选的新选用资格；逐目标已完成结果仍供解释。取消不撤销已发布的选择和人工锁，不能用新键继续应用该任务候选；此前成功应用的原键仍可重放。人工解锁沿用[内容接口](media.md)。
 
-停用插件不会删除已经保存的内容、人工锁或历史任务。当前没有自动导入补全、Web 补全页面、远端 Scraper、原文件写回或自动合并录音。协议控制面与二进制通道边界见[插件契约](contracts/plugins/v1/README.md)，实测范围见[验收记录](validation/metadata-http.md)。
+停用插件不会删除已经保存的内容、人工锁或历史任务。当前没有 Web 补全页面、远端 Scraper、原文件写回或自动合并录音。协议控制面与二进制通道边界见[插件契约](contracts/plugins/v1/README.md)，手动任务实测范围见[验收记录](validation/metadata-http.md)。
+
+## 导入歌词与自动补缺
+
+Local Files 的 `local-import-v2` 声明允许 `importLyrics=true`。可设在实例的 `importDefaults`，也可在本次扫描的 `options` 覆盖。扫描只对已授权根和实际递归深度内成功观察的来源创建持久触发记录；未扫描的子目录不顺带导入。触发绑定扫描代次、来源和资产版本，失败/取消的扫描不能冒充成功导入。
+
+显式导入只补歌词，全局 `metadata.automatic.enabled=false` 也会执行；全局自动策略可另行选择歌词、封面、语言和实例顺序。具体配置见[配置说明](configuration.md#自动补齐策略)。两种原因分别记录为 `importLyrics` 和 `automatic`；全局关闭对应记录为 skipped，没有隐藏的自动选用。
+
+`GET /api/v1/scan-jobs/{id}/metadata-results?limit=50&cursor=...` 返回 `{items,nextCursor}`，只限当前用户；limit 为1—200，默认50。游标只可用于原扫描，错误或跨扫描游标为410，别人的扫描为404。扫描状态 succeeded 只表示曲库扫描完成，应继续查看此接口各项的 `state`（queued/preparing/running/completed/skipped/failed）、`jobId`、`failureCode` 和 `actions`；`jobId` 可进一步读取原候选任务与问题。没有可用Scraper时，显式导入明确 failed，不报告空的成功。
+
+每项 action 说明字段/语言、applied/skipped/failed 等状态及原因，成功时给出 bindingId；不泄漏源路径、内部策略、资源票据或内部修订。completed 仍可能包含跳过或失败的 action，不能仅看总状态。常见跳过原因：manualLocked（人工锁）、existingContent（已有可用内容）、ambiguous（同优先实例的同槽候选摘要冲突）、noEligibleCandidate（没有明确属于当前来源的候选）。
+
+自动选用仅接受本地内嵌内容或同名旁置内容，不自动选目录通用封面；按实例顺序选候选，不靠文件顺序打破内容歧义。只补空或不可用且未锁定的字段/语言，不覆盖现有可用内容，也不自动加人工锁。人工选用后再扫描，即使旁置文件变化，也保留已选对象和人工锁。任务发布复核资产、候选与文件状态，重启不会把已成功选用重复执行成新修订。源音频和旁置文件始终只读。
+
+自动流程的真实服务验证见[自动补全验收](validation/metadata-automatic.md)。停用Scraper后仍能读取已有内容和结果；新导入任务按不可用失败，普通播放保持独立。

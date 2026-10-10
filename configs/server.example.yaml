@@ -49,7 +49,7 @@ plugins:
         config: {}
   - pluginId: 'musicfs.scraper.local'
     executable: '../build/windows/musicfs-plugin-scraper-local.exe'
-    # Manual local metadata jobs only; this does not enable automatic import.
+    # Automatic import still requires importLyrics or metadata.automatic below.
     enabled: true
     instances:
       - instanceId: 'scraper-local'
@@ -61,6 +61,12 @@ maxSessions: 8
 maxProcessing: 2
 maxCacheBytes: 1073741824
 sessionTtlSeconds: 3600
+metadata:
+  automatic:
+    enabled: false
+    instancePriority: ['scraper-local']
+    fields: ['lyrics', 'artwork']
+    languages: []
 hashing:
   auto: false
   maxConcurrent: 1

@@ -4,6 +4,15 @@
   "servers": [{"url": "/api/v1"}],
   "security": [{"sessionCookie": []}],
   "paths": {
+    "/scan-jobs/{id}/metadata-results": {
+      "parameters": [{"$ref": "#/components/parameters/ID"}],
+      "get": {
+        "operationId": "getScanMetadataResults",
+        "description": "逐来源查看成功扫描所触发的歌词导入或自动补齐，保留各项状态及人工锁/歧义等跳过原因。扫描结束不代表歌词补齐已结束。只返回当前用户的扫描结果。",
+        "parameters": [{"name": "cursor", "in": "query", "schema": {"type": "string", "maxLength": 256}}, {"name": "limit", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50}}],
+        "responses": {"200": {"description": "有界自动补齐结果页", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/MetadataAutomationPage"}}}}, "default": {"$ref": "#/components/responses/Error"}}
+      }
+    },
     "/scraper-instances": {"get": {"operationId": "listScraperInstances", "description": "仅返回当前所有者的安全实例声明；available表示已启用且程序校验通过，不保证每个源都可提取。", "responses": {"200": {"description": "成功", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/ScraperInstances"}}}}, "default": {"$ref": "#/components/responses/Error"}}}},
     "/metadata-jobs": {"post": {"operationId": "createMetadataJob", "description": "显式来源批量（单曲为1项），最多64项和4个实例。查询修正不被本地插件支持，非空修正返回UNSUPPORTED；语言只按声明值过滤，不推断正文。搜索有界预取预览，不改变当前选择。", "responses": {"202": {"$ref": "#/components/responses/HashAccepted"}, "default": {"$ref": "#/components/responses/Error"}}, "parameters": [{"$ref": "#/components/parameters/CSRF"}, {"$ref": "#/components/parameters/Idempotency"}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/CreateMetadataRequest"}}}}}},
     "/metadata-jobs/{id}": {"parameters": [{"$ref": "#/components/parameters/ID"}], "get": {"operationId": "getMetadataJob", "description": "逐目标状态、问题和安全候选；没有正文、私有路径或资源票据。预览由previewObjectId通过media接口授权读取。", "responses": {"200": {"description": "成功", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/MetadataJob"}}}}, "default": {"$ref": "#/components/responses/Error"}}}},

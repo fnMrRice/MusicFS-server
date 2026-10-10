@@ -5,8 +5,8 @@ New-Item -ItemType Directory -Force build | Out-Null
 New-Item -ItemType Directory -Force build/test-tmp | Out-Null
 $env:TMP = Join-Path (Get-Location) 'build/test-tmp'
 $env:TEMP = $env:TMP
-$files = Get-ChildItem src,tests -Filter *.go -Recurse | ForEach-Object FullName
-$unformatted = & gofmt -l @files
+$unformatted = & gofmt -l src tests
+if ($LASTEXITCODE) { throw 'gofmt check failed' }
 if ($unformatted) { throw "Unformatted Go files: $unformatted" }
 go vet -mod=readonly ./src/... ./tests/...
 if ($LASTEXITCODE) { throw 'go vet failed' }

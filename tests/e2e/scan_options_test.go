@@ -101,7 +101,7 @@ func TestYAMLPluginImportOptionsHTTPAndScopedLibrary(t *testing.T) {
 		Items []library.Provider `json:"items"`
 	}
 	_ = json.Unmarshal(raw, &descriptor)
-	if descriptor.Items[0].Configuration.ImportDefaults.Recursive || descriptor.Items[0].Configuration.ImportDefaults.MaxDepth != 0 || descriptor.Items[0].Configuration.UnavailableOptions["importLyrics"].Code != "UNSUPPORTED" {
+	if descriptor.Items[0].Configuration.ImportDefaults.Recursive || descriptor.Items[0].Configuration.ImportDefaults.MaxDepth != 0 || descriptor.Items[0].Configuration.SchemaRevision != "local-import-v2" || len(descriptor.Items[0].Configuration.UnavailableOptions) != 0 {
 		t.Fatalf("wrong loaded defaults: %s", raw)
 	}
 	sequence := 0
@@ -170,7 +170,6 @@ func TestYAMLPluginImportOptionsHTTPAndScopedLibrary(t *testing.T) {
 		{map[string]any{"rootIds": []string{"one", "one"}}, 400, "INVALID_ARGUMENT"},
 		{map[string]any{"options": map[string]any{"recursive": false, "maxDepth": 2}}, 400, "INVALID_ARGUMENT"},
 		{map[string]any{"options": map[string]any{"recursive": true, "maxDepth": 0}}, 400, "INVALID_ARGUMENT"},
-		{map[string]any{"options": map[string]any{"importLyrics": true}}, 415, "UNSUPPORTED"},
 		{map[string]any{"options": map[string]any{"recursive": nil}}, 400, "INVALID_ARGUMENT"},
 		{map[string]any{"options": map[string]any{"privatePath": "private"}}, 400, "INVALID_ARGUMENT"},
 		{map[string]any{"options": nil}, 400, "INVALID_ARGUMENT"},
@@ -204,5 +203,5 @@ func TestYAMLPluginImportOptionsHTTPAndScopedLibrary(t *testing.T) {
 	if status != 409 {
 		t.Fatalf("changed plan reused key: %d %s", status, raw)
 	}
-	t.Log("Real YAML, plugin-owned declaration, instance and request normalization, safe roots, scoped missing reconciliation, unavailable lyrics and plan idempotency verified")
+	t.Log("Real YAML, plugin-owned declaration, instance and request normalization, safe roots, scoped missing reconciliation, versioned lyrics capability and plan idempotency verified")
 }

@@ -3,6 +3,41 @@
   "$id": "https://musicfs.invalid/contracts/http.schema.json",
   "title": "MusicFS HTTP v1 模型",
   "$defs": {
+    "MetadataAutomationAction": {
+      "type": "object", "additionalProperties": false,
+      "required": ["field", "language", "status", "reason", "candidateId", "bindingId"],
+      "properties": {
+        "field": {"enum": ["lyrics", "artwork"]},
+        "language": {"type": "string", "maxLength": 35},
+        "status": {"enum": ["pending", "applied", "skipped", "failed"]},
+        "reason": {"type": "string", "maxLength": 128},
+        "candidateId": {"anyOf": [{"type": "string", "pattern": "^[0-9a-f]{48}$"}, {"type": "null"}]},
+        "bindingId": {"anyOf": [{"type": "string", "pattern": "^[0-9a-f]{48}$"}, {"type": "null"}]}
+      }
+    },
+    "MetadataAutomationResult": {
+      "type": "object", "additionalProperties": false,
+      "required": ["triggerId", "scanJobId", "sourceTrackId", "assetId", "assetVersion", "reason", "state", "jobId", "failureCode", "actions"],
+      "properties": {
+        "triggerId": {"type": "string", "pattern": "^[0-9a-f]{48}$"},
+        "scanJobId": {"type": "string", "minLength": 1, "maxLength": 128},
+        "sourceTrackId": {"type": "string", "minLength": 1, "maxLength": 128},
+        "assetId": {"type": "string", "minLength": 1, "maxLength": 128},
+        "assetVersion": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "reason": {"enum": ["importLyrics", "automatic"]},
+        "state": {"enum": ["queued", "preparing", "running", "completed", "skipped", "failed"]},
+        "jobId": {"anyOf": [{"type": "string", "minLength": 1, "maxLength": 128}, {"type": "null"}]},
+        "failureCode": {"anyOf": [{"type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,63}$"}, {"type": "null"}]},
+        "actions": {"type": "array", "maxItems": 66, "items": {"$ref": "#/$defs/MetadataAutomationAction"}}
+      }
+    },
+    "MetadataAutomationPage": {
+      "type": "object", "additionalProperties": false, "required": ["items", "nextCursor"],
+      "properties": {
+        "items": {"type": "array", "maxItems": 200, "items": {"$ref": "#/$defs/MetadataAutomationResult"}},
+        "nextCursor": {"anyOf": [{"type": "string", "minLength": 1, "maxLength": 256}, {"type": "null"}]}
+      }
+    },
     "MetadataTarget": {"type": "object", "additionalProperties": false, "required": ["sourceTrackId", "assetId", "assetVersion", "revision"], "properties": {"sourceTrackId": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000\\r\\n/\\\\]+$"}, "assetId": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000\\r\\n/\\\\]+$"}, "assetVersion": {"type": "string", "minLength": 1, "maxLength": 1024}, "revision": {"type": "integer", "minimum": 0}}},
     "MetadataQuery": {"type": "object", "additionalProperties": false, "required": [], "properties": {"title": {"type": "string", "minLength": 0, "maxLength": 4096}, "artists": {"type": "array", "minItems": 0, "maxItems": 32, "items": {"type": "string", "minLength": 0, "maxLength": 1024}}}},
     "CreateMetadataRequest": {"type": "object", "additionalProperties": false, "required": ["sourceTrackIds", "fields"], "properties": {"sourceTrackIds": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000\\r\\n/\\\\]+$"}, "uniqueItems": true}, "fields": {"type": "array", "minItems": 1, "maxItems": 2, "items": {"enum": ["lyrics", "artwork"]}, "uniqueItems": true}, "languages": {"type": "array", "minItems": 0, "maxItems": 16, "items": {"type": "string", "minLength": 2, "maxLength": 35, "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"}, "uniqueItems": true}, "instanceIds": {"type": "array", "minItems": 0, "maxItems": 4, "items": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000\\r\\n/\\\\]+$"}, "uniqueItems": true}, "excludeInstanceIds": {"type": "array", "minItems": 0, "maxItems": 16, "items": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000\\r\\n/\\\\]+$"}, "uniqueItems": true}, "query": {"anyOf": [{"$ref": "#/$defs/MetadataQuery"}, {"type": "null"}]}}},
@@ -219,7 +254,7 @@
           }
         }
       },
-      "description": "部分覆盖；关闭且未给深度规范为 0；从关闭切换开启且未给深度恢复 64。null 与未知字段拒绝。importLyrics=true 在语义校验返回 UNSUPPORTED。"
+      "description": "部分覆盖；关闭且未给深度规范为 0；从关闭切换开启且未给深度恢复 64。null 与未知字段拒绝。importLyrics=true 在成功扫描后独立补齐歌词；结果按来源和资产版本查询 metadata-results。"
     },
     "ImportOptions": {
       "type": "object",

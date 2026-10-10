@@ -75,7 +75,22 @@ importDefaults:
 
 插件默认值是 `true/64/false`，然后依次叠加实例默认与单次扫描请求的部分覆盖。根目录中的文件深度为 0：关闭递归且未给深度时规范为 0；显式 `recursive: false` 搭配非 0 深度拒绝。从关闭切到开启且本层未给深度时恢复 64；开启递归的有效深度只能为 1—64。只覆盖深度会保留继承的递归开关，矛盾时拒绝；null、未知选项、数值字符串均拒绝。
 
-`importLyrics` 目前不可用。插件声明公开该限制，请求或 YAML 将其设为 true 均明确返回 `UNSUPPORTED`，没有空的成功开关。音频/NCM 实例不接受 `importDefaults`。实例修改须重启；本步骤没有动态启停，也没有导入表单界面。
+Local Files 当前声明 `schemaRevision=local-import-v2`，`importLyrics=true` 在成功扫描后创建独立歌词补齐任务，只处理该扫描实际观察到的来源及资产版本；全局自动补齐关闭也可显式导入歌词。实例默认开启导入歌词时，配置必须有已启用的本地 Scraper；单次请求遇到 Scraper 不可用会在逐来源结果中明确失败。扫描成功不等于歌词任务成功，结果查询见[补全说明](metadata.md#导入歌词与自动补缺)。音频/NCM/Scraper 实例不接受 `importDefaults`。实例修改须重启；没有动态启停或导入表单界面。
+
+### 自动补齐策略
+
+```yaml
+metadata:
+  automatic:
+    enabled: false
+    instancePriority: ['scraper-local']
+    fields: ['lyrics', 'artwork']
+    languages: []
+```
+
+`enabled` 默认false；开启后成功扫描可补齐缺失或不可用且未人工锁定的内容。`fields` 默认歌词和封面，开启时不可为空。`instancePriority` 最多4个不重复的本地Scraper实例，按声明顺序优先；空数组按已启用实例的配置顺序解析；已启用但启动校验失败的实例仍作为失败依赖报告，不静默跳过。全局自动补齐或实例默认导入歌词开启时，显式优先实例必须同时启用，且至少有一个启用的Scraper；没有显式顺序时最多4个启用实例。程序路径校验失败仍按运行时不可用处理，不伪造任务成功。
+
+`languages` 最多16项，空数组不筛选；语言归一、未知语言和封面规则与[手动任务](metadata.md)一致。显式 `importLyrics=true` 使用同一实例优先顺序，但只请求歌词且不继承全局语言过滤。策略在任务准备时持久化，重启后继续已有快照；配置修改重启后用于新准备的任务。自动选用只接受内嵌或同名旁置候选，同优先级存在内容歧义会跳过，目录通用封面不自动认定属于每首歌曲。人工锁始终保留；不会写回原音频或旁置文件。
 
 客户端先读取 Provider 的 `configuration` 与安全 `roots[{id,name}]`，再提交 `mode/schemaRevision/rootIds/options`；不返回磁盘路径或真实根身份。详见[共同契约](contracts/README.md)。扫描任务固定有效选项、根及插件/配置版本，范围外曲目保留；不能把一次浅层扫描当作完整音乐根的删除证明。
 

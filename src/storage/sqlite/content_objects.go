@@ -112,10 +112,7 @@ func (s *Store) PrepareContent(ctx context.Context, owner string, input mediasto
 }
 
 func contentLanguage(field, language string) string {
-	if field == "lyrics" && language == "" {
-		return "und"
-	}
-	return strings.ToLower(language)
+	return mediastore.CanonicalLanguage(field, language)
 }
 
 func readContentObject(ctx context.Context, tx *sql.Tx, owner, id string) (mediastore.ContentObject, error) {

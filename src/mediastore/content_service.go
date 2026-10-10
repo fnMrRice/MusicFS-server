@@ -102,6 +102,7 @@ func (s *ContentService) upload(ctx context.Context, owner string, metadata Cont
 		}
 	}
 	metadata.Format = validated.Format
+	metadata.Language = CanonicalLanguage(metadata.Field, metadata.Language)
 	if err = metadata.Validate(); err != nil {
 		return ContentObject{}, err
 	}

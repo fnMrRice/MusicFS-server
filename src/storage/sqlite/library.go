@@ -85,6 +85,9 @@ func (s *Store) Publish(ctx context.Context, supplied jobs.Job, publication libr
 			return err
 		}
 		seen[id] = true
+		if err = enqueueScanAutomation(ctx, tx, j, o.RootID, id, asset, o.ObservedVersion); err != nil {
+			return err
+		}
 	}
 	for id, t := range old {
 		if !seen[id] && scopes[t.RootID].Contains(t.RootID, t.Path) {

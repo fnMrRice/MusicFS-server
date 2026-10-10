@@ -392,7 +392,7 @@
           }
         }
       },
-      "description": "部分覆盖；关闭且未给深度规范为 0；从关闭切换开启且未给深度恢复 64。null 与未知字段拒绝。importLyrics=true 在语义校验返回 UNSUPPORTED。"
+      "description": "部分覆盖；关闭且未给深度规范为 0；从关闭切换开启且未给深度恢复 64。null 与未知字段拒绝。importLyrics=true 在成功扫描后独立触发本地歌词导入，只补充缺失且未锁定的内容。"
     },
     "ImportOptions": {
       "type": "object",

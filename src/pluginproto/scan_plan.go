@@ -22,9 +22,6 @@ type ImportOptions struct {
 }
 
 func (o ImportOptions) Validate() error {
-	if o.ImportLyrics {
-		return domain.Fail("UNSUPPORTED", "Lyrics import is not available")
-	}
 	if o.Recursive && (o.MaxDepth < 1 || o.MaxDepth > MaxScanDepth) || !o.Recursive && o.MaxDepth != 0 {
 		return domain.Fail("INVALID_ARGUMENT", "Invalid recursive scan depth")
 	}

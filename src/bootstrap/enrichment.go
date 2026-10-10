@@ -22,7 +22,7 @@ func configureEnrichment(ctx context.Context, c config.Config, log *slog.Logger,
 			continue
 		}
 		for _, instance := range plugin.Instances {
-			runtime := enrichmentworker.Runtime{ID: instance.InstanceID, Name: instance.Name, Owner: "admin"}
+			runtime := enrichmentworker.Runtime{ID: instance.InstanceID, Name: instance.Name, Owner: "admin", Enabled: plugin.Enabled && instance.Enabled}
 			if plugin.Enabled && instance.Enabled {
 				var err error
 				runtime.Host, err = scraperlocal.NewHost(scraperlocal.Config{WorkerPath: plugin.Executable, WorkerSHA256: expectedChecksum(plugin.SHA256, plugin.Executable), WorkDir: c.DataRoot, InstanceID: instance.InstanceID, MaxConcurrent: 1})
@@ -40,7 +40,7 @@ func configureEnrichment(ctx context.Context, c config.Config, log *slog.Logger,
 		// not shared with playback or the fingerprint worker's NCM admission.
 		decoder = fingerprintNCMDecoder(c, log)
 	}
-	service, err := enrichmentworker.New(store, lib, content, runtimes, enrichmentworker.Config{MaxConcurrent: 1, NCMDecoder: decoder})
+	service, err := enrichmentworker.New(store, lib, content, runtimes, enrichmentworker.Config{MaxConcurrent: 1, NCMDecoder: decoder, Automatic: c.Metadata.Automatic})
 	if err != nil {
 		return nil, err
 	}

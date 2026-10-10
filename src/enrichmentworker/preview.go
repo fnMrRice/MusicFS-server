@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/enrichment"
@@ -17,15 +16,7 @@ import (
 // ID3 declares ISO 639-2. Only known exact aliases are normalized; no language
 // is inferred from lyrics text and unknown declarations stay explicit.
 func canonicalLanguage(language string) string {
-	language = strings.ToLower(language)
-	aliases := map[string]string{"eng": "en", "zho": "zh", "chi": "zh", "jpn": "ja", "kor": "ko", "fra": "fr", "fre": "fr", "deu": "de", "ger": "de", "spa": "es", "ita": "it", "por": "pt", "rus": "ru", "ara": "ar", "hin": "hi"}
-	if value, ok := aliases[language]; ok {
-		return value
-	}
-	if language == "" {
-		return "und"
-	}
-	return language
+	return mediastore.CanonicalLanguage("lyrics", language)
 }
 
 func languageSelected(language string, requested []string) bool {

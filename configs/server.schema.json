@@ -21,6 +21,23 @@
     "maxProcessing": {"type": "integer", "minimum": 1, "maximum": 8, "default": 2},
     "maxCacheBytes": {"type": "integer", "minimum": 1048576, "maximum": 9223372036854775807, "default": 1073741824},
     "sessionTtlSeconds": {"type": "integer", "minimum": 60, "maximum": 86400, "default": 3600},
+    "metadata": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "automatic": {
+          "type": "object", "additionalProperties": false,
+          "description": "成功扫描后的独立自动补缺策略，默认关闭。单次导入歌词另由 importLyrics 控制。实例优先级按声明顺序，人工锁不可覆盖。",
+          "properties": {
+            "enabled": {"type": "boolean", "default": false},
+            "instancePriority": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9_-]+$"}},
+            "fields": {"type": "array", "maxItems": 2, "uniqueItems": true, "items": {"enum": ["lyrics", "artwork"]}, "default": ["lyrics", "artwork"]},
+            "languages": {"type": "array", "maxItems": 16, "uniqueItems": true, "items": {"type": "string", "minLength": 2, "maxLength": 35, "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"}}
+          },
+          "if": {"required": ["enabled"], "properties": {"enabled": {"const": true}}},
+          "then": {"properties": {"fields": {"minItems": 1}}}
+        }
+      }
+    },
     "fingerprinting": {
       "type": "object",
       "additionalProperties": false,
@@ -197,7 +214,7 @@
           }
         }
       },
-      "description": "部分覆盖；关闭且未给深度规范为 0；从关闭切换开启且未给深度恢复 64。null 与未知字段拒绝。importLyrics=true 在语义校验返回 UNSUPPORTED。"
+      "description": "部分覆盖；关闭且未给深度规范为 0；从关闭切换开启且未给深度恢复 64。null 与未知字段拒绝。importLyrics 在成功扫描后按资产版本补齐缺失且未人工锁定的歌词；需启用本地 Scraper。"
     },
     "ID": {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,128}$"},
     "Path": {"type": "string", "not": {"pattern": "\u0000"}},

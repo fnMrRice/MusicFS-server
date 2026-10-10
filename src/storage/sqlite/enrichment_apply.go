@@ -10,6 +10,14 @@ import (
 )
 
 func (s *Store) ApplyEnrichment(ctx context.Context, owner, candidateID, expectedObjectID string, expected int64, key string, guard mediastore.Guard) (mediastore.Selection, error) {
+	return s.applyEnrichment(ctx, owner, candidateID, expectedObjectID, expected, key, guard, false)
+}
+
+func (s *Store) ApplyAutomaticEnrichment(ctx context.Context, owner, candidateID, expectedObjectID string, expected int64, key string, guard mediastore.Guard) (mediastore.Selection, error) {
+	return s.applyEnrichment(ctx, owner, candidateID, expectedObjectID, expected, key, guard, true)
+}
+
+func (s *Store) applyEnrichment(ctx context.Context, owner, candidateID, expectedObjectID string, expected int64, key string, guard mediastore.Guard, automatic bool) (mediastore.Selection, error) {
 	var empty mediastore.Selection
 	if guard == nil {
 		return empty, domain.Fail("INVALID_ARGUMENT", "Metadata selection requires a file guard")
@@ -23,7 +31,8 @@ func (s *Store) ApplyEnrichment(ctx context.Context, owner, candidateID, expecte
 	request := struct {
 		CandidateID, ObjectID string
 		ExpectedRevision      int64
-	}{candidateID, expectedObjectID, expected}
+		Automatic             bool
+	}{candidateID, expectedObjectID, expected, automatic}
 	m, replay, err := s.beginContentMutation(ctx, owner, c.Target.SourceTrackID, "metadata-apply", key, expected, request)
 	if err != nil {
 		return empty, err
@@ -38,6 +47,9 @@ func (s *Store) ApplyEnrichment(ctx context.Context, owner, candidateID, expecte
 	}
 	if c.Status != "available" || c.PreviewObjectID == nil || *c.PreviewObjectID != expectedObjectID {
 		return empty, domain.Fail("CONFLICT", "Metadata candidate does not match this selection revision")
+	}
+	if automatic && c.Origin != "embedded" && (c.Origin != "sidecar" || c.Basis != "exactStem") {
+		return empty, domain.Fail("UNSUPPORTED", "Automatic metadata requires a local track-specific candidate")
 	}
 	var jobState, targetState, expires string
 	var candidateGeneration, targetGeneration int64
@@ -61,7 +73,11 @@ func (s *Store) ApplyEnrichment(ctx context.Context, owner, candidateID, expecte
 		return empty, domain.Fail("RESOURCE_CHANGED", "Metadata preview object changed")
 	}
 	previous := ""
-	if old, _ := contentSelectedSlot(m.result, c.Field, c.Language); old != nil {
+	old, locked := contentSelectedSlot(m.result, c.Field, c.Language)
+	if automatic && (locked || (old != nil && old.Current && old.State == "available")) {
+		return empty, domain.Fail("CONFLICT", "Automatic content cannot replace an existing or manually locked selection")
+	}
+	if old != nil {
 		previous = old.ID
 	}
 	var result mediastore.Selection
@@ -72,7 +88,7 @@ func (s *Store) ApplyEnrichment(ctx context.Context, owner, candidateID, expecte
 			return domain.Fail("CONFLICT", "Metadata candidate was already applied")
 		}
 		called = true
-		result, publicationErr = m.selectObject(ctx, mediastore.SelectRequest{Target: target, ExpectedRevision: expected, ObjectID: expectedObjectID, Automatic: false}, object, previous)
+		result, publicationErr = m.selectObject(ctx, mediastore.SelectRequest{Target: target, ExpectedRevision: expected, ObjectID: expectedObjectID, Automatic: automatic}, object, previous)
 		return publicationErr
 	})
 	if err != nil {

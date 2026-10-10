@@ -91,6 +91,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	handler.RegisterFingerprinting(fingerprints)
 	handler.RegisterMedia(content)
 	handler.RegisterEnrichment(metadata)
+	handler.RegisterMetadataAutomation(metadata)
 	var fingerprintDetails matching.FingerprintDetails
 	if fingerprints != nil {
 		fingerprintDetails = fingerprints

@@ -19,10 +19,14 @@ import (
 type Runtime struct {
 	ID, Name, Owner string
 	Host            *scraperlocal.Host
+	// Enabled distinguishes configured dependencies that failed to start from
+	// intentionally disabled instances when resolving the default priority.
+	Enabled bool
 }
 type Config struct {
 	MaxConcurrent int
 	NCMDecoder    *ncmdecoder.Processor
+	Automatic     enrichment.AutomaticPolicy
 }
 type runningTask struct {
 	jobID  string
@@ -33,6 +37,7 @@ type Service struct {
 	library  *library.Service
 	content  *mediastore.ContentService
 	runtimes map[string]Runtime
+	ordered  []Runtime
 	config   Config
 	mu       sync.Mutex
 	running  map[string]runningTask
@@ -42,6 +47,11 @@ type Service struct {
 }
 
 func New(repo enrichment.Repository, lib *library.Service, content *mediastore.ContentService, runtimes []Runtime, config Config) (*Service, error) {
+	policy, err := config.Automatic.Normalize()
+	if err != nil {
+		return nil, err
+	}
+	config.Automatic = policy
 	if config.MaxConcurrent == 0 {
 		config.MaxConcurrent = 1
 	}
@@ -60,6 +70,7 @@ func New(repo enrichment.Repository, lib *library.Service, content *mediastore.C
 			r.Name = r.ID
 		}
 		s.runtimes[r.ID] = r
+		s.ordered = append(s.ordered, r)
 	}
 	return s, nil
 }
@@ -169,6 +180,10 @@ func (s *Service) Start(ctx context.Context) error {
 	for i := 0; i < s.config.MaxConcurrent; i++ {
 		s.wg.Add(1)
 		go s.worker(run)
+	}
+	if repo, ok := s.repo.(enrichment.AutomationRepository); ok {
+		s.wg.Add(1)
+		go s.automationWorker(run, repo)
 	}
 	return nil
 }

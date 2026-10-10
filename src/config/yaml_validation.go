@@ -134,6 +134,12 @@ func validateDocumentShape(root *yaml.Node) error {
 			"enabled": boolShape, "fpcalcPath": stringShape, "fpcalcSha256": stringShape,
 			"maxConcurrent": intShape, "timeoutSeconds": intShape,
 		}),
+		"metadata": mappingShape(map[string]fieldShape{
+			"automatic": mappingShape(map[string]fieldShape{
+				"enabled": boolShape, "instancePriority": sequenceShape(stringShape),
+				"fields": sequenceShape(stringShape), "languages": sequenceShape(stringShape),
+			}),
+		}),
 	}, "configVersion")
 	if err := validateShape(root, shape, "config"); err != nil {
 		return err

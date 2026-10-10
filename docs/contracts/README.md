@@ -22,7 +22,7 @@
 
 Provider 响应增加 `configuration` 与 `roots`。Local Files 的配置包含插件提供的 `schemaRevision/importOptionsSchema/importDefaults/unavailableOptions`；实例默认已合成到公开 `importDefaults`。根列表只含授权编号和显示名，不含路径、真实文件系统身份、能力票据或内部配置摘要。当前 Web 列表/播放允许忽略新响应字段，本步骤没有导入表单 UI。
 
-创建扫描必须提交 `{mode,schemaRevision,rootIds,options}`。`rootIds` 为 1—256 个不重复的已授权根编号，`options` 可为 `{}` 或部分覆盖；不兼容旧的仅 `{mode}` 请求。实例与请求层都遵守[递归归一规则](../configuration.md#导入选项)：默认 true/64/false，关闭规范为 0，从关闭重新开启且未给深度恢复 64，开启深度 1—64。类型错误、矛盾深度或未知字段为 400；不属于当前实例的根为 403；旧 schema 修订为 409；未实现的 `importLyrics=true` 为 415 `UNSUPPORTED`。
+创建扫描必须提交 `{mode,schemaRevision,rootIds,options}`。`rootIds` 为 1—256 个不重复的已授权根编号，`options` 可为 `{}` 或部分覆盖；不兼容旧的仅 `{mode}` 请求。实例与请求层都遵守[递归归一规则](../configuration.md#导入选项)：默认 true/64/false，关闭规范为 0，从关闭重新开启且未给深度恢复 64，开启深度 1—64。类型错误、矛盾深度或未知字段为 400；不属于当前实例的根为 403；旧 schema 修订为 409。当前 `local-import-v2` 支持 `importLyrics=true`，扫描成功后独立处理歌词，结果另查 metadata-results。
 
 任务只合并同所有者、实例与有效计划的在途请求；同幂等键改变选中根、选项、模式或绑定版本返回 `CONFLICT`。根顺序不改变计划。读取任务新增 `rootIds/effectiveOptions/schemaRevision`，内部计划摘要和根身份不公开。`complete` 表示所选范围完整完成；未选根和范围之外的更深曲目保留。排队后有效计划持久固定，重启配置改变不能静默改用新参数。
 
@@ -80,7 +80,13 @@ Provider 响应增加 `configuration` 与 `roots`。Local Files 的配置包含�
 
 `GET /metadata-jobs/{id}` 返回 `queued/running/completed/failed/cancelled` 状态及逐目标结果，批量部分失败必须查看各目标。候选仅含安全描述、来源依据、30分钟有效期和可空 `previewObjectId`，没有正文或内部资源票据；通过已有媒体端点授权预览。搜索不会改变当前选择。`POST /metadata-candidates/{id}/apply` 要求 `expectedRevision` 和幂等键，在当前资产、候选有效期、代次、任务取消状态及预览文件复核后人工选用并加锁。候选修订是搜索快照，后续逐字段选用可使用最新修订。
 
-`POST /metadata-jobs/{id}/cancel` 接受 `{}`，自然幂等，不要求键；包括已完成任务的候选应用资格，可取消但不删除已发布内容/锁。原成功应用键仍重放，新应用拒绝。配置停用后历史任务和内容仍可读取；尚未提供自动导入补缺、专辑展开或Web补全页。真实插件、NCM、重启和权限范围见[接口验收](../validation/metadata-http.md)。
+`POST /metadata-jobs/{id}/cancel` 接受 `{}`，自然幂等，不要求键；包括已完成任务的候选应用资格，可取消但不删除已发布内容/锁。原成功应用键仍重放，新应用拒绝。配置停用后历史任务和内容仍可读取；尚未提供专辑展开或Web补全页。真实插件、NCM、重启和权限范围见[接口验收](../validation/metadata-http.md)。
+
+### S-P6-04 扫描后的歌词导入与自动补缺
+
+`GET /scan-jobs/{id}/metadata-results` 为鉴权只读接口，无修改副作用。可选 cursor（最多256字符）与 limit（1—200，默认50），未知/重复/非法查询参数为400；不存在或其他用户的扫描为404，游标不属于当前扫描为410。返回 `MetadataAutomationPage`，每来源/资产/触发原因独立记录状态、子任务和逐字段 action，`nextCursor=null` 表示本页已到末尾。内部策略、路径、代次和并发修订不出公开DTO。
+
+`importLyrics` 与全局自动策略独立；扫描 succeeded 不代表补齐 completed，completed 也不代表所有 action 已选用。选用遵守人工锁、只补缺、实例优先顺序和本地明确来源依据，配置及跳过原因见[补全说明](../metadata.md#导入歌词与自动补缺)，接口与真实服务证据见[验收记录](../validation/metadata-automatic.md)。
 
 ### NCM 解密增量
 

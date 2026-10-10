@@ -20,8 +20,8 @@ func TestOfficialImportConfigurationIsBoundedAndExecutable(t *testing.T) {
 	}
 	options := c.ImportDefaults
 	options.ImportLyrics = true
-	if err := c.ValidateOptions(options); err == nil || !strings.Contains(err.Error(), "UNSUPPORTED") {
-		t.Fatalf("lyrics not rejected explicitly: %v", err)
+	if err := c.ValidateOptions(options); err != nil {
+		t.Fatalf("lyrics import rejected: %v", err)
 	}
 	// The host evaluates the supplied rule, rather than a second hardcoded form.
 	c.ImportOptionsSchema["properties"].(map[string]any)["maxDepth"].(map[string]any)["maximum"] = 4
@@ -39,7 +39,6 @@ func TestOfficialImportConfigurationIsBoundedAndExecutable(t *testing.T) {
 		func(c *pluginproto.Configuration) { c.ImportOptionsSchema["additionalProperties"] = true },
 		func(c *pluginproto.Configuration) { c.ImportOptionsSchema["description"] = strings.Repeat("x", 1025) },
 		func(c *pluginproto.Configuration) { c.SchemaRevision = "" },
-		func(c *pluginproto.Configuration) { c.ImportDefaults.ImportLyrics = true },
 		func(c *pluginproto.Configuration) {
 			c.ImportOptionsSchema["properties"].(map[string]any)["secret"] = map[string]any{"type": "object", "$ref": "file:///private"}
 		},
