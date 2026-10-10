@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/playlists"
@@ -122,6 +125,14 @@ func (s *Store) Playlist(ctx context.Context, owner, id string) (playlists.Playl
 	return p, err
 }
 func (s *Store) Playlists(ctx context.Context, owner, after string, limit int) ([]playlists.Playlist, error) {
+	return s.SearchPlaylists(ctx, owner, "", after, limit)
+}
+
+func (s *Store) SearchPlaylists(ctx context.Context, owner, query, after string, limit int) ([]playlists.Playlist, error) {
+	query = strings.TrimSpace(query)
+	if !utf8.ValidString(query) || len(query) > 256 || strings.ContainsFunc(query, unicode.IsControl) {
+		return nil, playlists.Invalid()
+	}
 	if limit < 1 || limit > playlists.MaxPageSize+1 || after != "" && !playlists.ValidID(after) {
 		return nil, playlists.Invalid()
 	}
@@ -130,7 +141,7 @@ func (s *Store) Playlists(ctx context.Context, owner, after string, limit int) (
 		return nil, err
 	}
 	defer tx.Rollback()
-	ids, err := readAlbumIDs(ctx, tx, "SELECT id FROM personal_playlists WHERE owner=? AND id>? ORDER BY id LIMIT ?", owner, after, limit)
+	ids, err := searchPersonalPlaylistIDs(ctx, tx, owner, query, after, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -151,6 +162,34 @@ func (s *Store) Playlists(ctx context.Context, owner, after string, limit int) (
 		result = append(result, p)
 	}
 	return result, nil
+}
+
+func searchPersonalPlaylistIDs(ctx context.Context, tx *sql.Tx, owner, query, after string, limit int) ([]string, error) {
+	rows, err := tx.QueryContext(ctx, "SELECT id,document FROM personal_playlists WHERE owner=? AND id>? ORDER BY id", owner, after)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	ids := []string{}
+	query = strings.ToLower(query)
+	for rows.Next() {
+		var id string
+		var raw []byte
+		if err = rows.Scan(&id, &raw); err != nil {
+			return nil, err
+		}
+		var p playlists.Playlist
+		if err = json.Unmarshal(raw, &p); err != nil {
+			return nil, err
+		}
+		if strings.Contains(strings.ToLower(p.Name), query) {
+			ids = append(ids, id)
+			if len(ids) == limit {
+				break
+			}
+		}
+	}
+	return ids, rows.Err()
 }
 func (s *Store) PlaylistSnapshot(ctx context.Context, owner, id string, revision int64) (playlists.AggregateSnapshot, error) {
 	var empty playlists.AggregateSnapshot

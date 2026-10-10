@@ -11,9 +11,14 @@ import (
 )
 
 type neteasePlaylist struct {
-	ID         json.Number `json:"id"`
-	Name       string      `json:"name"`
-	TrackCount *int64      `json:"trackCount"`
+	ID          json.Number `json:"id"`
+	Name        string      `json:"name"`
+	TrackCount  *int64      `json:"trackCount"`
+	CoverImgURL string      `json:"coverImgUrl"`
+	PicURL      string      `json:"picUrl"`
+	Creator     *struct {
+		Nickname string `json:"nickname"`
+	} `json:"creator"`
 }
 
 func (p neteasePlaylist) summary() (Playlist, error) {
@@ -24,7 +29,25 @@ func (p neteasePlaylist) summary() (Playlist, error) {
 	if err != nil || name == "" {
 		return Playlist{}, upstreamInvalid()
 	}
-	return Playlist{ExternalID: p.ID.String(), Title: name, SourceURL: "https://music.163.com/playlist?id=" + p.ID.String(), TrackCount: p.TrackCount}, nil
+	image := p.CoverImgURL
+	if image == "" {
+		image = p.PicURL
+	}
+	cover, err := imageURL(image)
+	if err != nil {
+		return Playlist{}, err
+	}
+	var creator *string
+	if p.Creator != nil {
+		value, err := textValue(p.Creator.Nickname, 4096)
+		if err != nil {
+			return Playlist{}, err
+		}
+		if value != "" {
+			creator = &value
+		}
+	}
+	return Playlist{ExternalID: p.ID.String(), Title: name, SourceURL: "https://music.163.com/playlist?id=" + p.ID.String(), TrackCount: p.TrackCount, CoverURL: cover, Creator: creator}, nil
 }
 
 // PublicRecommendations reads the single supported public page. The upstream
@@ -120,9 +143,15 @@ func (c *Client) ObservePlaylist(ctx context.Context, externalID string) (Playli
 		}
 		observation.Entries = append(observation.Entries, PlaylistEntry{Position: index, ExternalTrackID: entry.ID.String()})
 	}
-	observation.MetadataDigest = digest(struct {
+	observation.MetadataDigest = playlistDigest(playlist, observation.Entries)
+	return observation, nil
+}
+
+func playlistDigest(playlist Playlist, entries []PlaylistEntry) string {
+	// CDN routing is not a change to the observed playlist membership.
+	playlist.CoverURL = nil
+	return digest(struct {
 		Playlist Playlist
 		Entries  []PlaylistEntry
-	}{playlist, observation.Entries})
-	return observation, nil
+	}{playlist, entries})
 }

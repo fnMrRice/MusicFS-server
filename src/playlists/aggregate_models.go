@@ -135,6 +135,7 @@ type AggregateRepository interface {
 	EditPlaylist(context.Context, string, string, EditPlaylistRequest, string) (Playlist, error)
 	Playlist(context.Context, string, string) (Playlist, error)
 	Playlists(context.Context, string, string, int) ([]Playlist, error)
+	SearchPlaylists(context.Context, string, string, string, int) ([]Playlist, error)
 	RebuildPlaylist(context.Context, string, string, RebuildRequest, string) (AggregateSnapshot, error)
 	PlaylistSnapshot(context.Context, string, string, int64) (AggregateSnapshot, error)
 	HiddenRules(context.Context, string, string) (HiddenRules, error)

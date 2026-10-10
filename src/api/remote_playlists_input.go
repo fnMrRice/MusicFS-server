@@ -10,20 +10,23 @@ import (
 
 type remotePage struct {
 	after         string
+	query         string
 	offset, limit int
 }
 
-func remotePagination(r *http.Request, snapshot bool) (remotePage, error) {
+func remotePagination(r *http.Request, snapshot bool, searchable ...bool) (remotePage, error) {
 	p := remotePage{limit: 50}
 	query, err := url.ParseQuery(r.URL.RawQuery)
 	if err != nil {
 		return p, playlists.Invalid()
 	}
 	for key, values := range query {
-		if len(values) != 1 || (key != "limit" && !(snapshot && key == "offset") && !(!snapshot && key == "after")) {
+		if len(values) != 1 || (key != "limit" && !(snapshot && key == "offset") && !(!snapshot && key == "after") && !(len(searchable) > 0 && searchable[0] && key == "q")) {
 			return p, playlists.Invalid()
 		}
 		switch key {
+		case "q":
+			p.query = values[0]
 		case "limit":
 			n, e := remoteInteger(values[0], 1, playlists.MaxPageSize)
 			if e != nil {

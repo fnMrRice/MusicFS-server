@@ -14,8 +14,11 @@ import (
 var externalID = regexp.MustCompile(`^[A-Za-z0-9]{1,64}$`)
 
 func (s *Service) Search(ctx context.Context, owner, id string, request online.SearchRequest) (online.SearchPage, error) {
+	if request.Kind == "" {
+		request.Kind = "tracks"
+	}
 	request.Query = strings.TrimSpace(request.Query)
-	if request.Query == "" || len(request.Query) > 256 || !utf8.ValidString(request.Query) || strings.ContainsFunc(request.Query, unicode.IsControl) || request.Limit < 1 || request.Limit > online.MaxPageItems || len(request.Cursor) > 1024 {
+	if !online.SearchKind(request.Kind) || request.Query == "" || len(request.Query) > 256 || !utf8.ValidString(request.Query) || strings.ContainsFunc(request.Query, unicode.IsControl) || request.Limit < 1 || request.Limit > online.MaxPageItems || len(request.Cursor) > 1024 {
 		return online.SearchPage{}, domain.Fail("INVALID_ARGUMENT", "Invalid online search request")
 	}
 	return call(ctx, s, owner, id, func(ctx context.Context, r Runtime) (online.SearchPage, error) {

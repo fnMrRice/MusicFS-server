@@ -58,24 +58,31 @@ type Track struct {
 }
 
 type SearchRequest struct {
+	Kind   string
 	Query  string
 	Limit  int
 	Cursor string
 }
 
 type SearchPage struct {
-	Tracks      []Track   `json:"tracks"`
-	NextCursor  *string   `json:"nextCursor"`
-	Truncated   bool      `json:"truncated"`
-	Consistency string    `json:"consistency"`
-	ObservedAt  time.Time `json:"observedAt"`
+	Kind        string     `json:"kind"`
+	Tracks      []Track    `json:"tracks"`
+	Albums      []Album    `json:"albums"`
+	Artists     []Artist   `json:"artists"`
+	Playlists   []Playlist `json:"playlists"`
+	NextCursor  *string    `json:"nextCursor"`
+	Truncated   bool       `json:"truncated"`
+	Consistency string     `json:"consistency"`
+	ObservedAt  time.Time  `json:"observedAt"`
 }
 
 type Playlist struct {
-	ExternalID string `json:"externalId"`
-	Title      string `json:"title"`
-	SourceURL  string `json:"sourceUrl"`
-	TrackCount *int64 `json:"trackCount"`
+	ExternalID string  `json:"externalId"`
+	Title      string  `json:"title"`
+	SourceURL  string  `json:"sourceUrl"`
+	TrackCount *int64  `json:"trackCount"`
+	Creator    *string `json:"creator"`
+	CoverURL   *string `json:"coverUrl"`
 }
 
 type Recommendation struct {
@@ -118,6 +125,16 @@ func (c *Client) Capabilities() []Capability {
 func Capabilities(platform string) []Capability {
 	return []Capability{
 		{"search.tracks", platform == Netease, "Netease verified; QQ adapter exists but its latest live check failed; Apple requires credentials"},
+		{"search.albums", platform == Netease, "Netease anonymous public search verified"},
+		{"search.artists", platform == Netease, "Netease anonymous public search verified"},
+		{"search.playlists", platform == Netease, "Netease anonymous public search verified"},
+		{"metadata.album", platform == Netease, "Netease anonymous album detail verified"},
+		{"metadata.artist", platform == Netease, "Netease anonymous artist detail verified"},
+		{"album.tracks", platform == Netease, "Digest-bound album observation with paged tracks"},
+		{"artist.albums", platform == Netease, "Netease public artist album paging verified"},
+		{"artist.tracks", platform == Netease, "Netease public artist track paging verified; order remains upstream hot order"},
+		{"metadata.tracks.batch", platform == Netease, "At most 50 public track identities per request"},
+		{"playlist.tracks", platform == Netease, "Digest-bound observation with batched display metadata; no audio authorization"},
 		{"metadata.track", platform == Netease, "Only Netease anonymous detail has been verified"},
 		{"playlist.observe", platform == Netease, "Unversioned public entry observations only"},
 		{"recommendations.playlists", platform == Netease, "Anonymous first page only; no personalized recommendations"},

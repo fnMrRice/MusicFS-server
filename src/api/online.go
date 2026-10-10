@@ -12,6 +12,9 @@ import (
 )
 
 func (s *Server) RegisterOnline(service *onlinehost.Service) {
+	s.registerOnlineAccounts(service)
+	s.registerOnlineDisplay(service)
+	s.registerOnlineEntities(service)
 	s.Handle("GET /api/v1/online-instances", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		if _, err := onlineQuery(r); err != nil {
 			return err
@@ -25,7 +28,7 @@ func (s *Server) RegisterOnline(service *onlinehost.Service) {
 		}{items})
 	})
 	s.Handle("GET /api/v1/online-instances/{id}/search", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
-		query, err := onlineQuery(r, "q", "limit", "cursor")
+		query, err := onlineQuery(r, "q", "kind", "limit", "cursor")
 		if err != nil {
 			return err
 		}
@@ -33,7 +36,7 @@ func (s *Server) RegisterOnline(service *onlinehost.Service) {
 		if err != nil {
 			return err
 		}
-		page, err := service.Search(r.Context(), session.User.ID, r.PathValue("id"), online.SearchRequest{Query: query.Get("q"), Limit: limit, Cursor: query.Get("cursor")})
+		page, err := service.Search(r.Context(), session.User.ID, r.PathValue("id"), online.SearchRequest{Kind: query.Get("kind"), Query: query.Get("q"), Limit: limit, Cursor: query.Get("cursor")})
 		if err != nil {
 			return err
 		}

@@ -16,7 +16,7 @@ func TestOnlineOpenAPIOperations(t *testing.T) {
 			}
 		}
 	}
-	for _, operation := range []string{"listOnlineInstances", "searchOnlineTracks", "getOnlineTrack", "observeOnlinePlaylist", "getOnlineRecommendations", "resolveOnlineTrack"} {
+	for _, operation := range []string{"listOnlineInstances", "searchOnlineMetadata", "getOnlineTrack", "observeOnlinePlaylist", "getOnlineRecommendations", "resolveOnlineTrack", "lookupOnlineTracks", "listOnlinePlaylistTracks", "lookupSourceReferences", "getOnlineAlbum", "getOnlineArtist", "listOnlineAlbumTracks", "listOnlineArtistAlbums", "listOnlineArtistTracks"} {
 		if !operations[operation] {
 			t.Errorf("missing online operation %s", operation)
 		}

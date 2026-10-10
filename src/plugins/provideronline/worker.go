@@ -66,6 +66,13 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 	var scope pluginproto.Context
 	var run func(context.Context) (any, error)
 	switch method {
+	case "provider.online.account":
+		var r pluginproto.OnlineAccount
+		if err = pluginproto.DecodeOnline(raw, &r); err != nil {
+			return nil, err
+		}
+		scope = r.Context
+		run = func(ctx context.Context) (any, error) { return client.Account(ctx, r.Request) }
 	case "provider.online.describe":
 		var r pluginproto.OnlineScope
 		if err = pluginproto.DecodeOnline(raw, &r); err != nil {
@@ -80,7 +87,7 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 		}
 		scope = r.Context
 		run = func(ctx context.Context) (any, error) {
-			return client.Search(ctx, online.SearchRequest{Query: r.Query, Limit: r.Limit, Cursor: r.Cursor})
+			return client.Search(ctx, online.SearchRequest{Kind: r.Kind, Query: r.Query, Limit: r.Limit, Cursor: r.Cursor})
 		}
 	case "provider.online.metadata", "provider.online.playlist", "provider.online.resolve":
 		var r pluginproto.OnlineReference
@@ -98,6 +105,48 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 				return nil, client.Resolve(ctx, r.ExternalID)
 			}
 		}
+	case "provider.online.album", "provider.online.artist":
+		var r pluginproto.OnlineReference
+		if err = pluginproto.DecodeOnline(raw, &r); err != nil {
+			return nil, err
+		}
+		scope = r.Context
+		run = func(ctx context.Context) (any, error) {
+			if method == "provider.online.album" {
+				return client.Album(ctx, r.ExternalID)
+			}
+			return client.Artist(ctx, r.ExternalID)
+		}
+	case "provider.online.albumTracks", "provider.online.artistAlbums", "provider.online.artistTracks":
+		var r pluginproto.OnlineEntityPage
+		if err = pluginproto.DecodeOnline(raw, &r); err != nil {
+			return nil, err
+		}
+		scope = r.Context
+		run = func(ctx context.Context) (any, error) {
+			switch method {
+			case "provider.online.albumTracks":
+				return client.AlbumTracks(ctx, r.EntityPageRequest)
+			case "provider.online.artistAlbums":
+				return client.ArtistAlbums(ctx, r.EntityPageRequest)
+			default:
+				return client.ArtistTracks(ctx, r.EntityPageRequest)
+			}
+		}
+	case "provider.online.metadataBatch":
+		var r pluginproto.OnlineTrackBatch
+		if err = pluginproto.DecodeOnline(raw, &r); err != nil {
+			return nil, err
+		}
+		scope = r.Context
+		run = func(ctx context.Context) (any, error) { return client.MetadataBatch(ctx, r.ExternalIDs) }
+	case "provider.online.playlistTracks":
+		var r pluginproto.OnlinePlaylistTracks
+		if err = pluginproto.DecodeOnline(raw, &r); err != nil {
+			return nil, err
+		}
+		scope = r.Context
+		run = func(ctx context.Context) (any, error) { return client.PlaylistTracks(ctx, r.PlaylistTracksRequest) }
 	case "provider.online.recommendations":
 		var r pluginproto.OnlineRecommendations
 		if err = pluginproto.DecodeOnline(raw, &r); err != nil {

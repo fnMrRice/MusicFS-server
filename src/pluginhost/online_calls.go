@@ -67,9 +67,16 @@ func (w *OnlineWorker) Search(ctx context.Context, r online.SearchRequest) (onli
 	if err != nil {
 		return online.SearchPage{}, err
 	}
-	page, err := onlineCall[online.SearchPage](ctx, w, "provider.online.search", scope, pluginproto.OnlineSearch{Context: scope, Query: r.Query, Limit: r.Limit, Cursor: r.Cursor})
+	page, err := onlineCall[online.SearchPage](ctx, w, "provider.online.search", scope, pluginproto.OnlineSearch{Context: scope, Kind: r.Kind, Query: r.Query, Limit: r.Limit, Cursor: r.Cursor})
 	if err == nil {
 		err = online.ValidateSearch(w.config.Platform, page, r.Limit)
+		want := r.Kind
+		if want == "" {
+			want = "tracks"
+		}
+		if err == nil && page.Kind != want {
+			err = domain.Fail("PROTOCOL_MISMATCH", "Online result kind mismatch")
+		}
 	}
 	if err != nil {
 		return online.SearchPage{}, err
@@ -145,7 +152,7 @@ func onlineError(ctx context.Context, err error) error {
 	if errors.As(err, &rpc) {
 		code := rpc.Data.Code
 		switch code {
-		case "INVALID_ARGUMENT", "ACCESS_DENIED", "AUTH_REQUIRED", "NOT_FOUND", "RATE_LIMITED", "TEMPORARY_FAILURE", "UNSUPPORTED", "PROTOCOL_MISMATCH", "CANCELED":
+		case "INVALID_ARGUMENT", "CURSOR_EXPIRED", "ACCESS_DENIED", "AUTH_REQUIRED", "NOT_FOUND", "RATE_LIMITED", "TEMPORARY_FAILURE", "UNSUPPORTED", "PROTOCOL_MISMATCH", "CANCELED":
 		default:
 			code = "TEMPORARY_FAILURE"
 		}

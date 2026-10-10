@@ -26,6 +26,7 @@ type OnlineScope struct {
 	Context Context `json:"context"`
 }
 type OnlineSearch struct {
+	Kind    string  `json:"kind"`
 	Context Context `json:"context"`
 	Query   string  `json:"query"`
 	Limit   int     `json:"limit"`

@@ -21,6 +21,23 @@ type onlineTransport struct{}
 func (onlineTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	status, raw := 200, `{"code":200,"result":{"songs":[{"id":42,"name":"Synthetic","artists":[],"album":{"name":"Album"},"duration":120000}],"songCount":2,"hasMore":true}}`
 	switch r.URL.Path {
+	case "/api/v1/album/91":
+		raw = `{"code":200,"album":{"id":91,"name":"Synthetic album","size":3},"songs":[{"id":42,"name":"Synthetic","ar":[],"al":{},"dt":120000}]}`
+	case "/api/artist/92":
+		raw = `{"code":200,"artist":{"id":92,"name":"Synthetic artist","albumSize":2,"musicSize":3}}`
+	case "/api/artist/albums/92":
+		raw = `{"code":200,"artist":{"id":92,"name":"Synthetic artist"},"hotAlbums":[{"id":91,"name":"Synthetic album","size":3}],"more":false}`
+	case "/api/v1/artist/songs":
+		raw = `{"code":200,"songs":[{"id":42,"name":"Synthetic","artists":[],"album":{},"duration":120000}],"more":false,"total":1}`
+	case "/api/search/get":
+		switch r.URL.Query().Get("type") {
+		case "10":
+			raw = `{"code":200,"result":{"albums":[{"id":91,"name":"Synthetic album","artists":[{"name":"Artist"}],"size":3}],"albumCount":1}}`
+		case "100":
+			raw = `{"code":200,"result":{"artists":[{"id":92,"name":"Synthetic artist","albumSize":1,"musicSize":3}],"artistCount":1}}`
+		case "1000":
+			raw = `{"code":200,"result":{"playlists":[{"id":93,"name":"Synthetic playlist","creator":{"nickname":"Creator"},"trackCount":3}],"playlistCount":1}}`
+		}
 	case "/api/v3/song/detail":
 		raw = `{"code":200,"songs":[{"id":42,"name":"Synthetic","ar":[],"al":{"name":"Album"},"dt":120000}]}`
 	case "/api/personalized/playlist":

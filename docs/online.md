@@ -24,7 +24,7 @@ QQ 和 Apple 对应 `musicfs.qqmusic`、`musicfs.applemusic`。平台由程序�
 
 | 平台 | 当前实际范围 | 明确限制 |
 | --- | --- | --- |
-| 网易云 | 匿名曲目搜索、资料、公共推荐第一页和公开歌单条目观测已实测 | 不登录、不读取私人歌单、不解析音频；上游无固定快照版本 |
+| 网易云 | 匿名曲目／专辑／歌手／歌单四类搜索、批量曲目资料、公开歌单曲目分页、公共推荐第一页和公开歌单条目观测已实测 | 不登录、不读取私人歌单、不解析音频；上游无固定快照版本 |
 | QQ | 匿名搜索适配存在，可返回真实上游结果/失败 | 最近核心验收收到 HTTP 500，因此没有 supported 能力声明；资料、推荐和歌单不支持 |
 | Apple Music | 声明目录需要开发者授权 | 未接入凭据，目录操作返回401 AUTH_REQUIRED；没有 MusicKit/preview/完整音频交付 |
 
@@ -36,13 +36,25 @@ QQ 和 Apple 对应 `musicfs.qqmusic`、`musicfs.applemusic`。平台由程序�
 
 | 方法与路径（均以 `/api/v1` 开头） | 输入 | 返回 |
 | --- | --- | --- |
-| GET `/online-instances/{id}/search` | `q` 必需，去两端空白后1—256 UTF-8字节；limit默认20、1—50；可选cursor | `tracks/nextCursor/truncated/consistency/observedAt` |
+| GET `/online-instances/{id}/search` | `q` 必需，去两端空白后1—256 UTF-8字节；`kind=tracks\|albums\|artists\|playlists` 默认tracks；limit默认20、1—50；可选cursor | `kind`及对应数组；其他类型数组为空，另含`nextCursor/truncated/consistency/observedAt` |
 | GET `/online-instances/{id}/tracks/{externalId}` | 平台曲目编号 | 标题、艺人、专辑、可空时长、平台资料页及元数据摘要 |
+| GET `/online-instances/{id}/albums/{externalId}` | 平台专辑编号 | 专辑实体、歌手、可空曲目数、封面引用和来源页 |
+| GET `/online-instances/{id}/artists/{externalId}` | 平台歌手编号 | 歌手实体、可空作品计数、头像引用和来源页 |
+| GET `/online-instances/{id}/albums/{externalId}/tracks` | limit默认20、1—50；可选cursor | `kind=tracks`的页；游标绑定本次专辑完整观察摘要，最后一页truncated表明观察不完整 |
+| GET `/online-instances/{id}/artists/{externalId}/albums` | limit默认20、1—50；可选cursor | `kind=albums`的页，保留上游专辑顺序，不固定远端快照 |
+| GET `/online-instances/{id}/artists/{externalId}/tracks` | limit默认20、1—50；可选cursor | `kind=tracks`的页，固定上游hot排序，不固定远端快照 |
+| POST `/online-instances/{id}/tracks/lookup` | `externalIds` 数组，1—50项；允许Origin和CSRF，无幂等键 | 保持输入顺序与重复，缺失逐项`NOT_FOUND`；只使用一次上游批量详情请求 |
 | GET `/online-instances/{id}/recommendations` | limit默认20、1—50 | 公共歌单推荐、观测时间和120秒有效期；`personalized=false,nextCursor=null` |
 | GET `/online-instances/{id}/playlists/{externalId}` | 公开歌单编号 | 条目、`complete/consistency/metadataDigest/observedAt` |
+| GET `/online-instances/{id}/playlists/{externalId}/tracks` | limit默认20、1—50；可选cursor | 位置、来源ID、标题／歌手／时长等资料，缺失项保留；每页一次歌单观测和一次批量详情请求 |
+| POST `/source-refs/lookup` | `sources` 是1—50项个人歌单`SourceRef`；允许Origin和CSRF，无幂等键 | 本地`SourceTrack`或远程来源及资料；顺序、重复和单项错误保留，不遍历整个曲库 |
 | POST `/online-instances/{id}/tracks/{externalId}/resolve` | `{}`；另需允许Origin和CSRF，无幂等键 | 当前所有可用平台均415 UNSUPPORTED，不生成会话或返回音频地址 |
 
-搜索游标绑定用户、实例、平台、规范查询和limit；有效期5分钟，进程重启也失效。游标不能跨实例或改查询使用。它表示继续读取远端分页，不固定远端快照；需要完整列表时由调用方检查 `nextCursor`、`truncated` 及远端变化风险，不能把两页视为同一确定版本。
+搜索游标绑定用户、实例、平台、kind、规范查询和limit；有效期5分钟，过期返回`CURSOR_EXPIRED`，进程重启后签名失效。伪造、跨实例或改查询使用返回`INVALID_ARGUMENT`。它表示继续读取远端分页，不固定远端快照；需要完整列表时由调用方检查 `nextCursor`、`truncated` 及远端变化风险，不能把两页视为同一确定版本。歌单曲目分页另绑定本次完整条目观测摘要；下一页观测改变返回`CURSOR_EXPIRED`，前端须刷新首屏，不拼接新旧结果。
+
+专辑和歌手外部身份必须与实例ID一起使用，不能仅按同名合并。歌单含可空创建者和封面；专辑含歌手、曲目数、封面，歌手含作品计数和头像。图像引用只保留平台`*.music.126.net`的HTTPS地址，Server不会据此后台抓取文件；Web需依据自己的CSP策略决定是否显示。专辑／歌手详情与关联作品的三条分页均已提供接口，仍不代表Web已经接入详情页面。专辑与歌单分页成员摘要忽略封面CDN域名轮换，避免同一观察被误判为集合变化。
+
+来源引用批量展示先按当前用户查询，未知和其他用户来源均为`NOT_FOUND`；在线条目按实例分组，一组一次批量调用，不逐首访问上游。在线离线、禁用、限流等错误保留在对应条目，不影响本地条目。资料是当前读取值，不声称与过去的个人歌单快照具有相同修订。本人歌单`GET /playlists?q=...`同时支持Unicode小写后的名称包含匹配；过滤作用于完整本人歌单集，沿用`after` ID键集分页，实时更新可能影响后续页，改变关键词时应从第一页开始。
 
 曲目 `metadataDigest` 是规范元数据的摘要，不能当作音频资产版本、文件 SHA-512 或识别证据。`playbackAvailability=unknown`，`sourceUrl` 是固定平台资料页。接口不返回 SourceAsset、streamUrl、请求私密头或播放SDK句柄，不把目录preview当作完整裸流。
 

@@ -25,11 +25,11 @@ func (s *Server) RegisterPlaylists(service *playlists.AggregateService) {
 		return WriteJSON(w, http.StatusCreated, result)
 	})
 	s.Handle("GET /api/v1/playlists", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
-		page, err := remotePagination(r, false)
+		page, err := remotePagination(r, false, true)
 		if err != nil {
 			return err
 		}
-		items, err := service.Playlists(r.Context(), session.User.ID, page.after, page.limit+1)
+		items, err := service.SearchPlaylists(r.Context(), session.User.ID, page.query, page.after, page.limit+1)
 		if err != nil {
 			return err
 		}
