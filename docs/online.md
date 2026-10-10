@@ -18,7 +18,7 @@ S-P7-02 提供三个独立 Go Provider 程序的配置与公开资料接口。�
       config: {}
 ```
 
-QQ 和 Apple 对应 `musicfs.qqmusic`、`musicfs.applemusic`。平台由程序身份固定，实例不能通过请求改变平台。配置只接受空 `config`，拒绝上游 URL、代理、任意参数、Cookie、凭据、账号编号、musicRoots 和本地扫描导入选项。路径相对 YAML 所在目录，程序可配置 SHA-256；修改配置重启生效，没有动态启停。三平台合计最多16个在线实例，业务使用对应实例当前已校验的账号；实例列表在未登录/待校验时显示 loginRequired，账号 ID 仅在已校验时返回。
+QQ 和 Apple 对应 `musicfs.qqmusic`、`musicfs.applemusic`。平台由程序身份固定，实例不能通过请求改变平台。配置只接受空 `config`，拒绝上游 URL、代理、任意参数、Cookie、凭据、账号编号、musicRoots 和本地扫描导入选项。路径相对 YAML 所在目录，程序可配置 SHA-256；已配置的插件和实例支持管理员动态启停，显示名称支持在线修改；执行程序路径、程序摘要和平台身份仍由部署配置管理。三平台合计最多16个在线实例，业务使用对应实例当前已校验的账号；实例列表在未登录/待校验时显示 loginRequired，账号 ID 仅在已校验时返回。
 
 `GET /api/v1/online-instances` 只列出本人配置实例，含 `instanceId/name/pluginId/platform/accountId/availability` 及安全能力/空配置声明。`available` 表示工作进程已通过校验、仍运行且平台账号已校验，每项能力另看 `supported`；程序丢失、禁用、摘要或握手错误则为 offline。列表不公开执行路径、运行目录、配置摘要或平台凭据。
 
@@ -69,3 +69,9 @@ QQ 和 Apple 对应 `musicfs.qqmusic`、`musicfs.applemusic`。平台由程序�
 离线为503 SOURCE_OFFLINE，上游异常为503 TEMPORARY_FAILURE，当前未实现能力为415 UNSUPPORTED，平台未登录或待校验为403 PLATFORM_AUTH_REQUIRED；不会退出 MusicFS 会话。公开错误不携带上游原始正文、网络地址参数或账号秘密；已有本地曲库和播放流程保持独立。
 
 按来源聚合读取、部分失败与缓存刷新见[公开推荐](recommendations.md)；该接口同样不隐式导入曲库。公开模型见 [OpenAPI](contracts/openapi.yaml)、[HTTP Schema](contracts/http.schema.json)；独立进程契约见 [online.schema.json](contracts/plugins/v1/online.schema.json)。没有新增Node运行依赖，参考来源及许可核对见[平台调查](platform-capabilities.md)。
+
+## 动态运行状态
+
+禁用立即停止接收该实例的新查询，返回`PLUGIN_DISABLED`；drain允许已准入的查询和整项歌单同步完成。歌单同步从运行时校验、上游观测到快照发布或失败记录共用一次任务租约，停机须等这些步骤释放资源。force取消已准入请求，但只有实际清理和工作进程退出后才完成停机；其他实例继续独立运行。
+
+重新启用会建立新的工作进程和运行代次，旧运行时不能借用新代次的准入许可。推荐仅清理发生变化实例的缓存和共享请求，迟到的旧结果不会覆盖新资料；禁用或进程死亡后不把过去的成功缓存标成可用。`GET /api/v1/events`通过登录Cookie提供`capabilities.changed`事件，连接及重连会收到当前修订，调用方据此重新读取实例和能力列表；事件本身不携带部署路径或完整配置。

@@ -10,4 +10,10 @@
 
 另使用正式匿名传输验证专辑`2462086`、歌手`90513`实体，专辑曲目、歌手专辑、歌手曲目三类关系各取连续两页，每页2项且身份不同；`TestLiveAnonymousEntityDetailsAndRelationshipPaging`通过，耗时8.774秒。旧`/api/album/{id}`返回业务错误-462，未采用；使用实测成功的`/api/v1/album/{id}`。真实验收发现图片CDN域名会轮换；分页观察摘要现排除仅用于展示的封面，仍校验完整曲目集合与资料，避免误报集合过期。
 
-QQ和Apple未新增supported声明；Apple仍要求开发者授权。上游搜索及歌手作品列表没有固定快照；歌单和专辑分页通过每页重新核对完整观察摘要防止混合观察。个人歌单按实时ID键集分页，SourceRef展示使用当前资料，与旧歌单快照修订分开表达。
+本轮资料接口没有为QQ和Apple新增supported声明；Apple目录仍要求开发者授权。上游搜索及歌手作品列表没有固定快照；歌单和专辑分页通过每页重新核对完整观察摘要防止混合观察。个人歌单按实时ID键集分页，SourceRef展示使用当前资料，与旧歌单快照修订分开表达。
+
+独立测试工作进程通过真实JSON-RPC通道覆盖专辑、歌手、歌单搜索、实体详情、关联分页、重复及缺失曲目的批量查询、歌单曲目分页，`TestActualOnlineWorkerEntityAndBatchProtocol`通过（18.028秒）。SourceRef服务使用两个实例与交错、重复来源验证每实例只发一次批量调用，且返回顺序与输入一致。
+
+动态运行测试覆盖在线实例drain内嵌套调用、force取消而不提前释放租约、实例隔离、推荐缓存失效、旧运行代次不能复用新代次准入、共享推荐请求清理完毕才释放租约、迟到结果不能重新发布。管理HTTP集成测试覆盖管理员授权、CSRF、配置修订、幂等重放、配置Schema、路径脱敏，以及SSE初始通知、变更通知和重连。对应`onlinehost/recommendations/sourcedisplay`单元测试及`plugincontrol`集成测试均通过竞态检查。
+
+真实SQLite歌单任务另验证drain期间的任务租约直到快照发布才释放，force直到失败记录持久化才释放，取消观察不发布新快照。`TestManagedOnlineWorkerRestartCacheIsolationAndForcedDrain`使用两个独立测试工作进程贯穿正式bootstrap和HTTP：启停、名称配置重建、目标实例缓存失效、慢查询drain及force清理、另一实例不受影响，普通测试通过（4.64秒）。

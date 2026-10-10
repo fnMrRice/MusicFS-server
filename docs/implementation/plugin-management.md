@@ -1,6 +1,6 @@
 # Server 插件管理
 
-状态：动态管理仍待实现；2026-10-09。YAML插件/实例模型、启动双层开关和带SQLite日志的配置读写服务已落地；保存期望配置不等于运行时已应用。统一Registry/Manager、任务租约、平滑/强制停用及管理API/命令仍未完成。返回[实施入口](../implementation.md)；已有基础见[YAML配置](../configuration.md)及[验收](../validation/configuration.md)，Worker细节见[插件实施](plugins.md)。
+状态：动态管理及 HTTP 配置接口已实现；2026-10-10。统一 Manager、工作租约、平滑／强制停用、持久操作状态与 SSE 能力变更已接入本地 Provider、在线 Provider、Scraper、FFmpeg 和 NCM。管理 CLI、插件安装发现和管理页面不在本轮接口交付范围。返回[实施入口](../implementation.md)；配置基础见[YAML配置](../configuration.md)，本轮证据见[管理验收](../validation/plugin-management.md)。
 
 ## 1. 范围与已确认行为
 
@@ -15,9 +15,9 @@ Server 负责列出已配置插件、查看运行状态、启用和禁用，覆�
 | pluginId | 插件注册身份，包含版本、角色及可执行程序；总开关作用于全部实例 |
 | instanceId | 一个插件下的独立角色/配置/账号上下文，有自己的开关；保留现有稳定 ID |
 | configuredEnabled | 对象自身在 YAML 中保存的开关；管理读取同时返回修订 |
-| effectiveEnabled | 插件总开关与实例开关均为 true；不等于已运行就绪 |
+| effectiveEnabled | 插件总开关与实例开关均为 true，且必需配置齐全；不等于已运行就绪 |
 | acceptingNewWork | 有效启用且依赖/权限/运行状态满足准入；draining 必为 false |
-| runtimeState | disabled、starting、ready、draining、failed；与期望开关分开 |
+| runtimeState | disabled、pending_configuration、starting、ready、draining、failed；与期望开关分开 |
 | generation | 每次状态变更/Worker 重建的代次，防止旧启动或排空结果覆盖新操作 |
 | operationId | 已保存管理操作的跟踪 ID；用于等待应用、排空、完成或失败 |
 
@@ -48,23 +48,27 @@ Server 负责列出已配置插件、查看运行状态、启用和禁用，覆�
 
 排空期间重新启用会产生新修订和新代次：若 Worker 尚健康则按同一配置恢复准入，否则重新握手；旧排空回调必须核对代次，不能关闭重新启用后的实例。新操作可使旧操作变为 superseded，不能让旧轮询结果回写旧意图。强制停止中的旧 Worker 不复用，新一代在回收完成后启动。
 
-## 4. 管理入口草案
+## 4. 已实现管理入口
 
-以下均为待实现的 Server 管理接口，业务前缀 `/api/v1`。它们先服务管理员命令/测试工具；当前 Web 不依赖这些路由。详细 Schema 在实现时写入 Server `docs/contracts/openapi.yaml`。
+以下业务前缀为 `/api/v1`，均已纳入 OpenAPI；管理端点要求管理员。当前 Web 仅订阅能力变更，不提供管理表单。
 
 | 路由 | 作用 |
 | --- | --- |
-| GET /admin/plugins | 已配置插件、版本、角色、开关、状态、有效修订和脱敏原因 |
-| GET /admin/plugins/{pluginId}/instances | 各实例配置开关、有效开关、状态、活动租约数和待完成操作 |
+| GET /admin/plugins | 已配置插件、实例角色、能力、开关、状态、有效修订和脱敏原因 |
+| GET /admin/plugins/{pluginId}/instances | 各实例配置开关、有效开关、状态和活动租约数 |
 | PUT /admin/plugins/{pluginId}/state | 设置插件总开关；正文 enabled，禁用时 mode=drain/force |
 | PUT /admin/plugin-instances/{instanceId}/state | 设置实例开关，复用同一状态机和持久化逻辑 |
-| GET /admin/plugin-operations/{operationId} | saved/applying/draining/succeeded/failed/superseded 及可解释原因 |
+| GET /admin/plugin-operations/{id} | applying/draining/succeeded/failed/superseded 及脱敏错误码 |
+| GET/PUT /admin/plugin-instances/{id}/configuration | 可编辑声明与安全配置读取，按声明校验写入并排空重建 |
+| GET /events | 登录用户的 SSE 能力失效通知，不包含管理员配置 |
 
 修改带 `If-Match` 配置修订及 `Idempotency-Key`，重复请求返回同一操作结果，换参数复用键报冲突。保存成功、尚在处理返回 202 与 operationId；到达目标状态才算 succeeded。配置修订不符返回 412；父开关、依赖/故障、配置只读等分别明确表达，不能统一伪装成成功。
 
-管理命令目标为 `musicfs plugins list/status/enable/disable`，禁用默认 drain，显式 `--force` 强制；命令是管理 API 的客户端，不能绕过运行服务直接改 DB 或进程状态。鉴权要求管理员权限；浏览器 Cookie 模式继续要求 CSRF/Origin，命令行使用授权的凭据通道，不能把令牌塞进 URL/命令行日志。
+管理 CLI `musicfs plugins list/status/enable/disable` 仍为后续计划；当前通过 HTTP 操作。所有修改继续要求 Cookie、允许的 Origin 与 CSRF，不把令牌放入 URL。
 
-普通来源/播放接口对已禁用对象给出明确不可用状态（拟定 `PLUGIN_DISABLED`）；实际失败原因与“未授权/不支持”区分。保留列表中的来源条目供展示。若后续 Web 消费新增细分字段，先同步跨端契约，不能直接下发 Server 内部路径、凭据或任意日志。
+普通来源/播放接口对已禁用或正在排空的实例返回 `PLUGIN_DISABLED`，实际故障与未授权／不支持分开。开关开启但必需配置不足时，状态为 `pending_configuration`，`effectiveEnabled` 与 `acceptingNewWork` 均为 false，状态原因 `reason` 为 `CONFIGURATION_REQUIRED`，不接收工作。来源列表保留条目并标记不可用。配置读取不返回音乐根路径、工具路径、程序路径或凭据；写入路径为 write-only，省略已有根的路径时保留原绑定。已有根 ID 不能改绑到另一目录；新增目录必须使用新的根 ID。`musicRoots/watch/importDefaults` 整组替换，`importDefaults` 要求完整有效选项；未提供的顶层设置保持不变。改配置使用 drain，重建成功前不开放新任务。
+
+插件以配置中的固定身份启动，握手报告自身能力和配置声明，由宿主校验后登记；不扫描任意目录自动安装程序。运行时启动、停用、故障和应用修订触发 `capabilities.changed`，数据仅为 `{revision,sequence}`。每次 SSE 首连／重连先发当前状态，前端重新读取授权列表；通知不是状态事实来源。每个登录会话最多8条连接，15秒心跳复核登录，30分钟重连。账号登录变化使用独立账号接口，不由该事件承诺。
 
 ## 5. 分阶段落地任务
 
@@ -80,7 +84,7 @@ Server 负责列出已配置插件、查看运行状态、启用和禁用，覆�
 | PM-P6-01 | Scraper 与写回接入同一管理规则 | src/enrichment、src/writeback；安全发布、人工内容和独立实例保留 |
 | PM-P8-01 | 重启/升级/只读部署、原流与处理播放回归 | tests/integration、tests/e2e；记录实际平台证据 |
 
-表中仅配置基础已完成，其余运行管理任务仍待实现；编号表示关联原阶段，不要求重新开始全部阶段。后续在现有读写服务之上实现统一管理，再接原流/处理链；未接齐所有已交付插件前，不把静态开关或保存文件称为完整动态插件管理。
+表中运行管理、租约、HTTP 和配置应用部分已完成，统一管理代码位于 `src/plugincontrol`。PM-P2-04 的 CLI 仍待实施；跨平台完整冻结验收与升级场景不随当前 Windows 增量验证自动完成。运行故障保持 YAML 意图，显式重试才重新启动；Server 重启将旧未完成操作记为 superseded，再按当前 YAML 初始化。
 
 源码继续放 `src/<模块>/`，入口仅在 `src/app/`，测试放根 `tests/`。按状态转换、租约、配置存储、HTTP 和命令解析拆分文件，遵守源文件约 400 行的约定，不增加万能管理器。
 

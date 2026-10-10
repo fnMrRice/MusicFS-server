@@ -1,6 +1,10 @@
 # 共同契约
 
-Web 页面后续能力需求见[Web 接口缺口交接](../web-ui-api-gaps.md)。该文档只记录需求，由 Server 设计接口；不作为新增协议定义。
+Web 页面需求与本轮交付对照见[Web 接口对照](../web-ui-api-gaps.md)。本地查询、四类在线资料搜索、个人收藏／历史、批量来源展示、插件管理及配置均已纳入本目录契约；页面是否接入由 Web 文档单独说明。
+
+本轮新增 `/events` SSE，`capabilities.changed` 的数据使用 `CapabilitiesChangedEvent`。它在首连、重连和插件运行状态变化时通知客户端重新读取授权能力，不携带管理员配置。管理响应使用 `ManagedPluginConfiguration`，原 `PluginConfiguration` 继续表示 Provider 的导入选项声明，两者不可混用。管理写请求使用 Cookie／Origin／CSRF、`If-Match` 与 `Idempotency-Key`，202 表示保存并开始应用；最终状态通过操作 ID 查询。详见[插件管理](../implementation/plugin-management.md)。
+
+个人收藏、资料与历史接口使用自然幂等语义；批量 lookup 是无副作用读取，但其 POST 形式仍校验 Origin／CSRF。OpenAPI 的 `x-idempotency` 明确这些例外，不能据 HTTP 方法推断所有 POST 都要求创建键。个人记录和完整曲库查询的分页期限、数量上限及身份边界分别见[个人库](../personal-library.md)与[本地查询](../catalog-query.md)。
 
 `openapi.yaml` 使用 YAML 1.2 兼容的 JSON 语法。HTTP 模型只定义在 `http.schema.json`，不从手写 DTO 自动反向生成规范。控制请求拒绝未知字段；响应允许添加可忽略字段。OpenAPI 3.1 与插件 Schema 均使用 JSON Schema 2020-12。
 
