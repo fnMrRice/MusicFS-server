@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://musicfs.invalid/contracts/platform-account.schema.json",
+  "title": "平台账号登录 HTTP 契约 v1",
+  "$defs": {
+    "Request": {
+      "type": "object", "additionalProperties": false, "required": ["action"],
+      "properties": {
+        "action": {"enum": ["begin", "poll", "complete", "cancel", "check", "logout"]},
+        "loginId": {"type": "string", "maxLength": 128},
+        "userToken": {"type": "string", "maxLength": 16384}
+      }
+    },
+    "View": {
+      "type": "object", "additionalProperties": false, "required": ["state"],
+      "properties": {
+        "state": {"enum": ["signedOut", "waiting", "scanned", "signedIn", "unverified", "expired", "canceled"]},
+        "accountId": {"type": "string", "minLength": 1, "maxLength": 128},
+        "displayName": {"type": "string", "maxLength": 512},
+        "loginId": {"type": "string", "minLength": 1, "maxLength": 128},
+        "method": {"enum": ["qr", "musicKit"]},
+        "qrUrl": {"type": "string", "pattern": "^https://music\\.163\\.com/login\\?codekey=", "maxLength": 32768},
+        "qrImage": {"type": "string", "pattern": "^data:image/png;base64,", "maxLength": 180000},
+        "expiresAt": {"type": "string", "format": "date-time"},
+        "pollAfterSeconds": {"type": "integer", "minimum": 3}
+      }
+    },
+    "Options": {
+      "type": "object", "additionalProperties": false, "required": ["method", "configured", "validation"],
+      "properties": {
+        "method": {"enum": ["qr", "musicKit"]},
+        "configured": {"type": "boolean"},
+        "developerToken": {"type": "string", "maxLength": 16384},
+        "validation": {"const": "liveAccountPending"}
+      }
+    }
+  }
+}

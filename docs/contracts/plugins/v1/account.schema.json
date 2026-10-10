@@ -1,0 +1,29 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://musicfs.invalid/contracts/plugins/v1/account.schema.json",
+  "title":"在线平台账号 Worker 扩展 v1",
+  "$defs":{
+    "Request":{"type":"object","additionalProperties":false,"required":["context","request"],"properties":{
+      "context":{"$ref":"./online.schema.json#/$defs/Context"},
+      "request":{"type":"object","additionalProperties":false,"required":["action"],"properties":{
+        "action":{"enum":["state","begin","poll","complete","check","cancel","logout","restore","signalCancel"]},
+        "loginId":{"type":"string","maxLength":128},
+        "userToken":{"type":"string","maxLength":16384},
+        "developerToken":{"type":"string","maxLength":16384},
+        "secret":{"type":"object"}
+      }}
+    }},
+    "Result":{"type":"object","additionalProperties":false,"required":["context","value"],"properties":{
+      "context":{"$ref":"./online.schema.json#/$defs/Context"},
+      "value":{"type":"object","additionalProperties":false,"required":["view"],"properties":{
+        "view":{"$ref":"../../platform-account.schema.json#/$defs/View"},
+        "secret":{"type":"object"}
+      }}
+    }}
+  },
+  "oneOf":[
+    {"type":"object","additionalProperties":false,"required":["jsonrpc","id","method","params"],"properties":{"jsonrpc":{"const":"2.0"},"id":{"type":"string","minLength":1},"method":{"const":"provider.online.account"},"params":{"$ref":"#/$defs/Request"}}},
+    {"type":"object","additionalProperties":false,"required":["jsonrpc","id","result"],"properties":{"jsonrpc":{"const":"2.0"},"id":{"type":"string","minLength":1},"result":{"$ref":"#/$defs/Result"}}},
+    {"$ref":"./online.schema.json#/$defs/Failure"}
+  ]
+}

@@ -82,6 +82,7 @@ func TestOpenAPIReferencesAndOperations(t *testing.T) {
 		t.Fatal("expected OpenAPI 3.1.0")
 	}
 	models := testkit.ReadJSON(t, "docs/contracts/http.schema.json").(map[string]any)["$defs"].(map[string]any)
+	accountModels := testkit.ReadJSON(t, "docs/contracts/platform-account.schema.json").(map[string]any)["$defs"].(map[string]any)
 	var walk func(any)
 	walk = func(value any) {
 		switch v := value.(type) {
@@ -94,6 +95,10 @@ func TestOpenAPIReferencesAndOperations(t *testing.T) {
 				if strings.HasPrefix(ref, "./http.schema.json#/$defs/") {
 					if models[strings.TrimPrefix(ref, "./http.schema.json#/$defs/")] == nil {
 						t.Errorf("unresolved model reference: %s", ref)
+					}
+				} else if strings.HasPrefix(ref, "./platform-account.schema.json#/$defs/") {
+					if accountModels[strings.TrimPrefix(ref, "./platform-account.schema.json#/$defs/")] == nil {
+						t.Errorf("unresolved platform account reference: %s", ref)
 					}
 				} else if strings.HasPrefix(ref, "#/") {
 					var current any = doc
@@ -133,7 +138,7 @@ func TestOpenAPIReferencesAndOperations(t *testing.T) {
 				if !strings.Contains(string(encoded), "/CSRF") {
 					t.Errorf("missing CSRF contract: %s %s", method, path)
 				}
-				if (method == "post" || method == "put") && path != "/lifecycle/leases/{id}/renew" && path != "/lifecycle/leases/{id}/release" && path != "/remote-playlist-sync-jobs/{id}/cancel" && path != "/online-instances/{id}/tracks/{externalId}/resolve" && path != "/media/{id}/thumbnail" && path != "/writeback-jobs/{id}/cancel" && path != "/writeback-jobs/{id}/recover" && path != "/metadata-jobs/{id}/cancel" && path != "/hash-jobs/{id}/cancel" && path != "/fingerprint-jobs/{id}/cancel" && path != "/source-tracks/{id}/match-candidates/refresh" && !strings.Contains(string(encoded), "/Idempotency") {
+				if (method == "post" || method == "put") && path != "/online-instances/{id}/account" && path != "/lifecycle/leases/{id}/renew" && path != "/lifecycle/leases/{id}/release" && path != "/remote-playlist-sync-jobs/{id}/cancel" && path != "/online-instances/{id}/tracks/{externalId}/resolve" && path != "/media/{id}/thumbnail" && path != "/writeback-jobs/{id}/cancel" && path != "/writeback-jobs/{id}/recover" && path != "/metadata-jobs/{id}/cancel" && path != "/hash-jobs/{id}/cancel" && path != "/fingerprint-jobs/{id}/cancel" && path != "/source-tracks/{id}/match-candidates/refresh" && !strings.Contains(string(encoded), "/Idempotency") {
 					t.Errorf("missing idempotency contract: %s %s", method, path)
 				}
 			}

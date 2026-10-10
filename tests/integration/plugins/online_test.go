@@ -93,7 +93,7 @@ func TestActualOnlineWorkerMappingScopeAndCleanup(t *testing.T) {
 		t.Fatal("process cleanup was not completed")
 	}
 	entries, err := os.ReadDir(cfg.StateDir)
-	if err != nil || len(entries) != 0 {
+	if err != nil || len(entries) != 1 || entries[0].Name() != "credentials" || !entries[0].IsDir() {
 		t.Fatalf("working directory was not reclaimed: %v", err)
 	}
 	_, err = w.Search(context.Background(), online.SearchRequest{Query: "fixture", Limit: 1})

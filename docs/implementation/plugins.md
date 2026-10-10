@@ -1,5 +1,7 @@
 # Server 插件分阶段实现计划
 
+后续增量：[平台账号登录](../platform-login.md)已接入网易云 eapi、QQ 扫码及桌面账号接口、Apple MusicKit 用户令牌校验，以及 Worker / Host / Web 入口；完整实号授权仍待验收。下文阶段原始状态不包含此增量，不能据此宣称完整在线能力已交付。
+
 状态：2026-10-10。Local Files、音频处理、[NCM解密](../ncm.md)、[本地Scraper](../metadata.md)及网易/QQ/Apple三个[在线资料Worker](../online.md)均已有独立程序；在线能力逐项声明，未实现平台账号登录或完整音频。连同Server共八个构建入口。本文保留各阶段任务与扩展边界，当前结果见[逐项核对](../validation/documentation-audit.md)、[实施记录](../validation/progress.md)；动态启停、第三方SDK和恶意插件OS沙箱仍未交付。
 
 设计约束来自 [Server 架构](../architecture.md)和[音频处理设计](../audio-processing.md)。本文保留计划边界，已存在代码及已验证能力以验证记录为准。阶段编号与 Server / Web 共用；源文件尽量不超过 400 行，按职责拆分。

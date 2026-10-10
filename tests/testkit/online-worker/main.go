@@ -25,6 +25,12 @@ func (fixture) RoundTrip(r *http.Request) (*http.Response, error) {
 	}
 	status, body := 200, `{"code":200,"result":{"songs":[{"id":42,"name":"Synthetic","artists":[{"name":"Artist"}],"album":{"name":"Album"},"duration":120000}],"songCount":1,"hasMore":false}}`
 	switch r.URL.Path {
+	case "/eapi/login/qrcode/unikey":
+		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"code":200,"unikey":"fixture-challenge"}`))}, nil
+	case "/eapi/login/qrcode/client/login":
+		return &http.Response{StatusCode: 200, Header: http.Header{"Set-Cookie": []string{"MUSIC_U=fixture-account-token; Secure"}}, Body: io.NopCloser(strings.NewReader(`{"code":803}`))}, nil
+	case "/eapi/nuser/account/get":
+		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"code":200,"profile":{"userId":12345,"nickname":"Fixture listener"}}`))}, nil
 	case "/api/v3/song/detail":
 		body = `{"code":200,"songs":[{"id":42,"name":"Synthetic","ar":[],"al":{"name":"Album"},"dt":120000}]}`
 	case "/api/personalized/playlist":

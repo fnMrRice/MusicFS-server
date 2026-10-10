@@ -138,7 +138,7 @@ func Capabilities(platform string) []Capability {
 		{"metadata.track", platform == Netease, "Only Netease anonymous detail has been verified"},
 		{"playlist.observe", platform == Netease, "Unversioned public entry observations only"},
 		{"recommendations.playlists", platform == Netease, "Anonymous first page only; no personalized recommendations"},
-		{"account.login", false, "Account authorization has not been implemented or verified"},
+		{"account.login", false, "Login adapters are available for evaluation; live account validation is pending"},
 		{"stream.resolve", false, "No authorized complete audio resource has been verified"},
 	}
 }

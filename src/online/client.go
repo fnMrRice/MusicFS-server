@@ -15,6 +15,7 @@ var numericID = regexp.MustCompile(`^[1-9][0-9]{0,19}$`)
 var songMID = regexp.MustCompile(`^[A-Za-z0-9]{1,64}$`)
 
 type Client struct {
+	account  accountState
 	platform string
 	scope    Scope
 	http     *http.Client

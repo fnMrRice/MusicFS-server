@@ -10,8 +10,10 @@ import (
 	"os/exec"
 	"runtime"
 	"slices"
+	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/src/accountstore"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
@@ -23,10 +25,12 @@ type OnlineConfig struct {
 }
 
 type OnlineWorker struct {
-	config OnlineConfig
-	peer   *pluginproto.Peer
-	cancel context.CancelFunc
-	done   chan struct{}
+	accountMu    sync.Mutex
+	accountStore *accountstore.Store
+	config       OnlineConfig
+	peer         *pluginproto.Peer
+	cancel       context.CancelFunc
+	done         chan struct{}
 }
 
 func StartOnline(parent context.Context, config OnlineConfig) (*OnlineWorker, error) {
@@ -127,6 +131,9 @@ func StartOnline(parent context.Context, config OnlineConfig) (*OnlineWorker, er
 	}
 	_, err = w.Describe(startup)
 	if err != nil {
+		return nil, err
+	}
+	if err = w.initializeAccount(startup); err != nil {
 		return nil, err
 	}
 	if err = ctx.Err(); err != nil {
