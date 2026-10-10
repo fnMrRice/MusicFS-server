@@ -1,6 +1,6 @@
 # Server YAML 配置
 
-状态：2026-10-10。部署配置使用 YAML；Local Files 的目录、名称、扫描默认值和监听设置通过管理接口保存到 Server 数据库。YAML 可显式提供目录授权上限；未配置权限时使用 Server 用户 Music 目录和首次启动探测的默认授权，详见[插件配置数据库与目录管理](plugin-configuration.md)。动态启停、排空与设置应用已提供管理 API；管理 CLI 和 Web 目录编辑表单尚未实现。
+状态：2026-10-10。部署配置使用 YAML；Local Files 的目录、名称、扫描默认值和监听设置通过管理接口保存到 Server 数据库。YAML 可显式提供目录授权上限；未配置权限时使用 Server 用户 Music 目录和首次启动探测的默认授权，详见[插件配置数据库与目录管理](plugin-configuration.md)。动态启停、排空与设置应用已提供管理 API；Web 管理员可浏览允许路径并选择音乐子目录，管理 CLI 尚未实现。
 
 启动见[运行说明](running.md)；正式[示例配置](../configs/server.example.yaml)和[编辑器 Schema](../configs/server.schema.json)随代码维护，实际验证见[配置验收](validation/configuration.md)。HTTP JSON、JSON-RPC、JSON Schema 和媒体清单继续使用各自格式。
 
@@ -70,7 +70,7 @@
 
 Local Files 实例未声明 `permissions` 时，默认允许 Server 运行用户的 Music 目录（Windows `%USERPROFILE%/Music`，其他平台 `~/Music`），并保留旧 YAML `musicRoots` 的兼容授权。Windows 首次启用启动时仅检查各逻辑磁盘根目录下的 `Music`、`NeteaseMusic`、`CloudMusic`、`QQMusic`、`Kugou`、`KuwoMusic`，将存在且可读、与存储/缓存可写根不重叠的目录加入默认允许范围。结果（包括空结果）保存在插件配置数据库的 `host-default-read-directories`，以后读取配置或重启不再探测；不递归扫盘，不自动写回 YAML，不添加 `musicRoots` 或扫描音乐。
 
-显式 `permissions.readDirectories` 完整覆盖默认授权，`[]` 禁止读取；实际音乐目录仍由管理接口选择。收紧授权后保留数据库设置，越界实例进入 `pending_configuration`，管理员通过接口移除越界目录。默认授权不改变目录字段、参数字段或管理 API，详见[部署授权](plugin-configuration.md#部署授权)。
+显式 `permissions.readDirectories` 完整覆盖默认授权，`[]` 禁止读取；实际音乐目录仍由管理接口选择。收紧授权后保留数据库设置，越界实例进入 `pending_configuration`，管理员通过接口移除越界目录。管理员通过 GET /admin/plugin-instances/{id}/directories 浏览允许目录及其子目录，再由配置 PUT 保存，待配置实例也可使用；详见[部署授权](plugin-configuration.md#部署授权)。
 
 ### 导入选项
 
@@ -92,7 +92,7 @@ Local Files当前声明 `schemaRevision=local-import-v3`，插件版本0.3.0。`
 
 每实例/请求最多32条、每条UTF-8最多256字节。规则是根相对路径、用 `/` 分隔且始终大小写敏感：`*` 匹配一层内任意字符，`?` 匹配一个Unicode字符，独立段 `**` 匹配零或多层。`*.tmp` 只匹配根本层，`**/*.tmp` 匹配任意深度，`**/cache` 匹配任意层名为cache的目录及整支内容。不支持绝对/盘符路径、反斜线、空/点路径段、字符类、花括号或否定；重复规则和null拒绝。实际排除/递归/根授权由宿主执行，不能由worker跳过后冒称完整扫描；详细说明与例子见[扫描范围](scanning.md)。
 
-`importLyrics=true` 在成功扫描后创建独立歌词补齐任务，只处理该扫描实际观察到的来源及资产版本；全局自动补齐关闭也可显式导入歌词。实例默认开启时须配置本地 Scraper；依赖暂时禁用不使 YAML 失效，运行任务按来源明确报告不可用。扫描成功不等于歌词完成，见[补全说明](metadata.md#导入歌词与自动补缺)。音频/NCM/Scraper 实例不接受 `importDefaults`。本地实例设置可通过管理接口保存到数据库并排空重建，不回写 YAML；Web 暂无配置表单。
+`importLyrics=true` 在成功扫描后创建独立歌词补齐任务，只处理该扫描实际观察到的来源及资产版本；全局自动补齐关闭也可显式导入歌词。实例默认开启时须配置本地 Scraper；依赖暂时禁用不使 YAML 失效，运行任务按来源明确报告不可用。扫描成功不等于歌词完成，见[补全说明](metadata.md#导入歌词与自动补缺)。音频/NCM/Scraper 实例不接受 `importDefaults`。本地实例设置可通过管理接口保存到数据库并排空重建，不回写 YAML；Web 提供本地音乐目录管理，扫描选项继续由导入流程处理。
 
 ### 自动补齐策略
 

@@ -150,6 +150,7 @@ func prepareLocalSettings(c Config, change Change) (Config, LocalSettings, error
 			}
 			if s.MusicRoots != nil {
 				roots := []MusicRoot{}
+				selectedPaths := map[string]bool{}
 				for _, input := range *s.MusicRoots {
 					r := MusicRoot{ID: input.ID, Name: input.Name}
 					if input.Path != nil {
@@ -162,7 +163,7 @@ func prepareLocalSettings(c Config, change Change) (Config, LocalSettings, error
 						if input.Path == nil {
 							r.Path = old.Path
 						}
-						if canonicalPath(r.Path) != canonicalPath(old.Path) {
+						if directoryIdentity(r.Path) != directoryIdentity(old.Path) {
 							return Config{}, LocalSettings{}, domain.Fail("INVALID_ARGUMENT", "Existing root IDs cannot change directories")
 						}
 					}
@@ -173,11 +174,17 @@ func prepareLocalSettings(c Config, change Change) (Config, LocalSettings, error
 						return Config{}, LocalSettings{}, err
 					}
 					if input.Path != nil {
-						info, err := os.Stat(r.Path)
-						if err != nil || !info.IsDir() {
-							return Config{}, LocalSettings{}, domain.Fail("SOURCE_UNAVAILABLE", "Music directory is unavailable")
+						root, err := OpenAllowedDirectory(*i, r.Path)
+						if err != nil {
+							return Config{}, LocalSettings{}, err
 						}
+						root.Close()
 					}
+					identity := directoryIdentity(r.Path)
+					if selectedPaths[identity] {
+						return Config{}, LocalSettings{}, domain.Fail("INVALID_ARGUMENT", "Music directory is already selected")
+					}
+					selectedPaths[identity] = true
 					roots = append(roots, r)
 				}
 				i.Config.MusicRoots = roots

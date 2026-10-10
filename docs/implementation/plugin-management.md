@@ -60,6 +60,7 @@ Server 负责列出已配置插件、查看运行状态、启用和禁用，覆�
 | PUT /admin/plugin-instances/{instanceId}/state | 设置实例开关，复用同一状态机和持久化逻辑 |
 | GET /admin/plugin-operations/{id} | applying/draining/succeeded/failed/superseded 及脱敏错误码 |
 | GET/PUT /admin/plugin-instances/{id}/configuration | 可编辑声明与安全配置读取，按声明校验写入并排空重建 |
+| GET /admin/plugin-instances/{id}/directories | 管理员浏览 Local Files 允许根及直接子目录，待配置时也可使用；返回路径、可读取状态及已配置根 ID |
 | GET /events | 登录用户的 SSE 能力失效通知，不包含管理员配置 |
 
 修改带 `If-Match` 配置修订及 `Idempotency-Key`，重复请求返回同一操作结果，换参数复用键报冲突。保存成功、尚在处理返回 202 与 operationId；到达目标状态才算 succeeded。配置修订不符返回 412；父开关、依赖/故障、配置只读等分别明确表达，不能统一伪装成成功。

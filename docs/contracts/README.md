@@ -12,7 +12,7 @@ Web 页面需求与本轮交付对照见[Web 接口对照](../web-ui-api-gaps.md
 
 ## HTTP 语义
 
-- ID 均为不透明字符串；客户端不得从 ID 解析路径，也不得自行拼接 streamUrl。输出不返回磁盘路径、引导凭据或插件能力 token。
+- ID 均为不透明字符串；客户端不得从 ID 解析路径，也不得自行拼接 streamUrl。普通接口及配置投影不返回磁盘路径、引导凭据或插件能力 token；管理员目录浏览接口明确返回允许选择的绝对路径。
 - UTC 时间必须以 `Z` 结尾；曲目位置/时长为整数毫秒、大小为字节、码率为 bit/s。HTTP 错误 `retryAfter` 是秒；插件 `retryAfterMs` 是毫秒。
 - `null` 表示未知、不适用或尚未探测；时长、大小的 0 是已知零值，码率只能为正整数或 `null`，不能用 0 代替未知。`artists: []` 表示尚无可展示歌手。`nextCursor: null` 为列表结束。
 - 登录后修改状态校验允许的 Origin、HttpOnly Cookie 与 `X-CSRF-Token`。浏览器原生 audio 通过同源 Cookie 请求音频，无需自定义 Authorization。
@@ -23,6 +23,10 @@ Web 页面需求与本轮交付对照见[Web 接口对照](../web-ui-api-gaps.md
 - 稳定文件流支持单范围和最多 16 段的多范围。非法语法、反向范围或超出段数上限返回 400 `INVALID_ARGUMENT`；合法范围交由 HTTP 标准库计算，无法满足时返回 416。If-Range 失配可回退为完整固定表示。处理中的流不继承输入 Content-Length/ETag/Range。
 
 ## 兼容与验证
+
+### 管理员本地目录浏览
+
+`GET /admin/plugin-instances/{id}/directories` 使用 `ManagedPluginDirectories`，让管理员在部署允许路径中浏览并选择子目录，待配置实例也可调用；其绝对路径仅在此管理员接口公开。省略 `path` 列允许根，提供 `path` 列直接子目录，文件不返回。`available` 表示当前可读取，失效根保留为不可选项。最多检查 100 个条目，使用 `nextCursor` 判断结束；本接口游标失效返回 `CURSOR_EXPIRED` 并重新打开当前目录。保存选中路径复用 configuration PUT、修订及幂等流程，详见[目录管理](../plugin-configuration.md#管理接口)。
 
 ### 插件导入选项
 

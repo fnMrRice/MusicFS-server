@@ -322,8 +322,7 @@
         "pluginId": {"const": "musicfs.localfiles"},
         "instances": {"items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"role": {"const": "provider"}, "config": {"$ref": "#/$defs/LocalSettings"}}}}
       },
-      "if": {"allOf": [{"$ref": "#/$defs/Enabled"}, {"not": {"$ref": "#/$defs/BundledPlugin"}}]},
-      "then": {"properties": {"instances": {"items": {"if": {"allOf": [{"$ref": "#/$defs/Enabled"}, {"not": {"required": ["permissions"]}}]}, "then": {"properties": {"config": {"required": ["musicRoots"], "properties": {"musicRoots": {"minItems": 1}}}}}}}}}
+      "description": "permissions 限定可浏览和选择的目录范围；未选择 musicRoots 时处于待配置状态，可通过管理员目录接口选择授权根或子目录。"
     },
     "FFmpegPlugin": {
       "allOf": [

@@ -106,3 +106,34 @@ func TestOfficialYAMLExampleMatchesLoaderAndSchema(t *testing.T) {
 		t.Fatalf("official example failed the configuration schema: %v", err)
 	}
 }
+
+func TestLocalPendingConfigurationMatchesLoaderAndSchema(t *testing.T) {
+	for _, permission := range []string{"", "        permissions: {readDirectories: []}\n", "        permissions: {readDirectories: ['./music']}\n"} {
+		raw := minimalYAML + `pluginBundle: ''
+plugins:
+  - pluginId: musicfs.localfiles
+    executable: './local-worker'
+    enabled: true
+    instances:
+      - instanceId: local
+        role: provider
+        enabled: true
+        config: {}
+` + permission
+		doc, err := parse(t, raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !doc.Config.Plugins[0].Instances[0].PendingConfiguration {
+			t.Fatal("unselected local instance should remain pending")
+		}
+		var value any
+		if err := yaml.Unmarshal([]byte(raw), &value); err != nil {
+			t.Fatal(err)
+		}
+		body, _ := json.Marshal(value)
+		if err := configurationSchema(t).Validate(testkit.DecodeJSON(t, body)); err != nil {
+			t.Fatalf("pending local configuration rejected by editor schema: %v", err)
+		}
+	}
+}

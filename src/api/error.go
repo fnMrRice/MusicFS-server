@@ -31,7 +31,7 @@ func classifyError(err error) (string, int) {
 			return failure.Code, http.StatusUnsupportedMediaType
 		case "RATE_LIMITED":
 			return failure.Code, http.StatusTooManyRequests
-		case "SOURCE_OFFLINE", "TEMPORARY_FAILURE", "PLUGIN_DISABLED", "CONFIG_READ_ONLY", "CONFIG_NOT_APPLIED":
+		case "SOURCE_OFFLINE", "SOURCE_UNAVAILABLE", "TEMPORARY_FAILURE", "PLUGIN_DISABLED", "CONFIG_READ_ONLY", "CONFIG_NOT_APPLIED":
 			return failure.Code, http.StatusServiceUnavailable
 		}
 	}

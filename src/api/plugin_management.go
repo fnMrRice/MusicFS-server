@@ -21,6 +21,7 @@ func requireAdmin(next Handler) Handler {
 }
 
 func (s *Server) RegisterPluginManagement(manager *plugincontrol.Manager) {
+	s.registerPluginDirectories(manager)
 	s.Handle("GET /api/v1/admin/plugins", true, false, requireAdmin(func(w http.ResponseWriter, r *http.Request, _ auth.Session) error {
 		if _, err := onlineQuery(r); err != nil {
 			return err
