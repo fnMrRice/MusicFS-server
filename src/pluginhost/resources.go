@@ -25,6 +25,8 @@ type entrySnapshot struct {
 
 func (w *Worker) handle(ctx context.Context, method string, raw json.RawMessage) (any, error) {
 	switch method {
+	case "host.database.get", "host.database.compareAndSet":
+		return w.database(ctx, method, raw)
 	case "host.entries":
 		var r pluginproto.EntriesRequest
 		if json.Unmarshal(raw, &r) != nil {

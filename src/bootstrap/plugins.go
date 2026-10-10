@@ -49,9 +49,16 @@ func configurePlugins(ctx context.Context, c config.Config, log *slog.Logger) ([
 				if enabled && err == nil {
 					roots := make([]sourceaccess.RootConfig, 0, len(instance.Config.MusicRoots))
 					for _, root := range instance.Config.MusicRoots {
-						roots = append(roots, sourceaccess.RootConfig{ID: root.ID, Path: root.Path})
+						boundary, boundaryErr := config.RootBoundary(instance, root.Path)
+						if boundaryErr != nil {
+							err = boundaryErr
+							break
+						}
+						roots = append(roots, sourceaccess.RootConfig{ID: root.ID, Path: root.Path, Boundary: boundary})
 					}
-					r.Worker, err = pluginhost.Start(ctx, pluginhost.Config{Executable: plugin.Executable, Args: plugin.Args, SHA256: binaryHash, InstanceID: instance.InstanceID, UserID: "admin", Roots: roots, StateDir: filepath.Join(c.DataRoot, "providers", instance.InstanceID)})
+					if err == nil {
+						r.Worker, err = pluginhost.Start(ctx, pluginhost.Config{Executable: plugin.Executable, Args: plugin.Args, SHA256: binaryHash, InstanceID: instance.InstanceID, UserID: "admin", Roots: roots, StateDir: filepath.Join(c.DataRoot, "providers", instance.InstanceID), DatabasePath: config.PluginDatabasePath(c)})
+					}
 					if err == nil {
 						// The verified worker must describe the same official options used by YAML.
 						workerConfig := r.Worker.Manifest.Configuration

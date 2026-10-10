@@ -218,3 +218,8 @@ P5 增补 SHA-512、指纹与人工匹配；P6 实现独立 Scraper、手动/自
 刮削验收包括插件/账号独立、无在线 Provider 仍可刮削本地库、预览不发布、自动任务不覆盖人工、批量逐项失败、本地编辑不依赖插件。文件正文不入数据库；默认不改原音频摘要；发布中断留旧文件、回收保护引用、备份含人工文件；仅授权且有能力才回写，失败可恢复，成功换 asset/hash 但保留 track/歌单关系。
 
 播放、缓存、seek 与处理任务验收见[音频处理](audio-processing.md)。上述均为设计，未验证选型不视为已实现。
+
+
+## 本地插件配置持久化
+
+Local Files 目录与导入/监听设置通过管理 API 持久化到 Server 的插件配置数据库；YAML 的实例 permissions.readDirectories 限定目录访问范围。宿主提供按实例隔离的 host.database.get/compareAndSet，受管目录设置仍经权限检查与排空重建。具体接口、旧配置兼容及客户端影响见[插件配置数据库与目录管理](plugin-configuration.md)。

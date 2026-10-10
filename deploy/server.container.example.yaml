@@ -17,9 +17,8 @@ plugins:
         name: '本地音乐'
         role: 'provider'
         enabled: true
-        importDefaults: {recursive: true, maxDepth: 64, importLyrics: false}
-        config:
-          musicRoots: [{id: 'local', name: '只读音乐', path: '/music'}]
+        permissions: {readDirectories: ['/music']}
+        config: {}
   - pluginId: 'musicfs.audio.ffmpeg'
     executable: '/opt/musicfs/bin/musicfs-plugin-audio-ffmpeg'
     enabled: false

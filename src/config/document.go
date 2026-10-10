@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -92,12 +93,29 @@ func ParseDocument(raw []byte, path string, overrides map[string]string) (*Docum
 	}
 	resolvePaths(&c, filepath.Dir(abs))
 	markPendingConfiguration(&c, bundlePath(root, filepath.Dir(abs)))
-	if err := c.Validate(); err != nil {
-		return nil, err
+	for pi := range c.Plugins {
+		if c.Plugins[pi].PluginID != "musicfs.localfiles" {
+			continue
+		}
+		for ii := range c.Plugins[pi].Instances {
+			i := &c.Plugins[pi].Instances[ii]
+			if i.Permissions != nil && (len(i.Config.MusicRoots) == 0 || validateRootAuthority(*i, i.Config.MusicRoots) != nil) {
+				i.PendingConfiguration = true
+			}
+		}
 	}
 	c.SourcePath, c.SourceOverrides = abs, maps.Clone(overrides)
 	hash := sha256.Sum256(raw)
-	return &Document{Config: c, Root: &document, Raw: bytes.Clone(raw), Revision: hex.EncodeToString(hash[:]), Path: abs}, nil
+	doc := &Document{Config: c, Root: &document, Raw: bytes.Clone(raw), Revision: hex.EncodeToString(hash[:]), Path: abs}
+	// Validate cross-feature references against effective settings, including
+	// writeback grants for roots created through the API rather than YAML.
+	if err := loadPluginSettings(context.Background(), doc); err != nil {
+		return nil, err
+	}
+	if err := doc.Config.Validate(); err != nil {
+		return nil, err
+	}
+	return doc, nil
 }
 
 func documentPath(path string) (string, error) {

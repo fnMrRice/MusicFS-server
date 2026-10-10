@@ -990,7 +990,7 @@
         {
           "properties": {
             "method": {
-              "const": "host.state.get"
+              "enum": ["host.state.get", "host.database.get"]
             },
             "params": {
               "$ref": "#/$defs/StateGet"
@@ -1000,7 +1000,7 @@
         {
           "properties": {
             "method": {
-              "const": "host.state.compareAndSet"
+              "enum": ["host.state.compareAndSet", "host.database.compareAndSet"]
             },
             "params": {
               "$ref": "#/$defs/StateCAS"

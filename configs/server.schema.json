@@ -271,6 +271,7 @@
         "instanceId": {
           "$ref": "#/$defs/ID"
         },
+        "permissions": {"type": "object", "additionalProperties": false, "required": ["readDirectories"], "properties": {"readDirectories": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/NonemptyPath"}}}},
         "name": {
           "type": "string"
         },
@@ -322,7 +323,7 @@
         "instances": {"items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"role": {"const": "provider"}, "config": {"$ref": "#/$defs/LocalSettings"}}}}
       },
       "if": {"allOf": [{"$ref": "#/$defs/Enabled"}, {"not": {"$ref": "#/$defs/BundledPlugin"}}]},
-      "then": {"properties": {"instances": {"items": {"if": {"$ref": "#/$defs/Enabled"}, "then": {"properties": {"config": {"required": ["musicRoots"], "properties": {"musicRoots": {"minItems": 1}}}}}}}}}
+      "then": {"properties": {"instances": {"items": {"if": {"allOf": [{"$ref": "#/$defs/Enabled"}, {"not": {"required": ["permissions"]}}]}, "then": {"properties": {"config": {"required": ["musicRoots"], "properties": {"musicRoots": {"minItems": 1}}}}}}}}}
     },
     "FFmpegPlugin": {
       "allOf": [

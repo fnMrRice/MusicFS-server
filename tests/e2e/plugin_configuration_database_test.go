@@ -1,0 +1,53 @@
+package e2e_test
+
+import (
+	"bytes"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/fnMrRice/MusicFS-server/src/config"
+)
+
+func TestDatabaseConfiguredLocalDirectoryWorkflow(t *testing.T) {
+	music := t.TempDir()
+	payload, err := os.ReadFile(filepath.Join("..", "testdata", "audio", "markers.wav"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(music, "first.wav"), payload, 0600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, base := yamlServiceConfig(t)
+	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.localfiles", Executable: build(t, "musicfs-plugin-local"), Enabled: true, Instances: []config.Instance{{InstanceID: "local", Role: "provider", Enabled: true, Permissions: &config.Permissions{ReadDirectories: []string{music}}}}}}
+	path := writeYAMLConfiguration(t, cfg)
+	original, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stop := startAudioYAMLServer(t, path, cfg, base)
+	defer func() { stop() }()
+	c := login(t, base, cfg.AdminToken)
+	status, raw, _ := c.request(t, "GET", "/api/v1/admin/plugins", nil, "")
+	if status != 200 || !bytes.Contains(raw, []byte("pending_configuration")) {
+		t.Fatalf("empty provider was not pending: %d %s", status, raw)
+	}
+	op := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/local/configuration", map[string]any{"musicRoots": []config.MusicRoot{{ID: "music", Name: "Music", Path: music}}})
+	waitLibraryOperation(t, c, op.ID)
+	tracks := scanProvider(t, c, "local", "database-initial-scan")
+	if len(tracks) != 1 {
+		t.Fatal("API-selected root was not scanned")
+	}
+	first := tracks["first.wav"].ID
+	saved, _ := os.ReadFile(path)
+	if !bytes.Equal(original, saved) {
+		t.Fatal("API changed deployment configuration")
+	}
+	stop()
+	stop = startAudioYAMLServer(t, path, cfg, base)
+	c = login(t, base, cfg.AdminToken)
+	tracks = scanProvider(t, c, "local", "database-restored-scan")
+	if len(tracks) != 1 || tracks["first.wav"].ID != first {
+		t.Fatal("restart lost database root or track identity")
+	}
+}

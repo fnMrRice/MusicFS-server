@@ -23,6 +23,11 @@ func resolvePaths(c *Config, base string) {
 		resolve(&plugin.Executable)
 		for j := range plugin.Instances {
 			instance := &plugin.Instances[j]
+			if instance.Permissions != nil {
+				for k := range instance.Permissions.ReadDirectories {
+					resolve(&instance.Permissions.ReadDirectories[k])
+				}
+			}
 			if instance.Name == "" {
 				instance.Name = instance.InstanceID
 			}

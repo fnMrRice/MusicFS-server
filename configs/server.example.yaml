@@ -18,22 +18,10 @@ plugins:
         name: '本地音乐'
         role: 'provider'
         enabled: true
-        importDefaults:
-          recursive: true
-          maxDepth: 64
-          importLyrics: false
-          excludePatterns: []
-        config:
-          watch:
-            enabled: false
-            debounceMs: 1000
-            maxDelayMs: 10000
-            fullRescanSeconds: 3600
-          musicRoots:
-            # Replace with your music directory; this sample uses project fixtures.
-            - id: 'local'
-              name: '合成测试音乐'
-              path: '../tests/testdata/audio'
+        # Deployment boundary only; select music roots through the admin API.
+        permissions:
+          readDirectories: ['../tests/testdata/audio']
+        config: {}
   - pluginId: 'musicfs.audio.ffmpeg'
     executable: '../build/windows/musicfs-plugin-audio-ffmpeg.exe'
     # Set both enabled values to true after configuring the two tool paths.

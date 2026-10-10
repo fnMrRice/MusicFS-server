@@ -180,8 +180,8 @@ func TestManagedLocalWorkerDrainRestartScanAndWatchRebuild(t *testing.T) {
 		t.Fatal("settings update changed stable identity")
 	}
 	stored, err := os.ReadFile(path)
-	if err != nil || !strings.Contains(string(stored), "Updated music") {
-		t.Fatal("runtime settings were not persisted to YAML", err)
+	if err != nil || strings.Contains(string(stored), "Updated music") {
+		t.Fatal("runtime settings changed deployment YAML", err)
 	}
 	stop()
 	stop = startAudioYAMLServer(t, path, cfg, base)
@@ -189,9 +189,9 @@ func TestManagedLocalWorkerDrainRestartScanAndWatchRebuild(t *testing.T) {
 	c = login(t, base, cfg.AdminToken)
 	code, raw, _ = c.request(t, "GET", "/api/v1/admin/plugin-instances/local/configuration", nil, "")
 	if code != 200 || !bytes.Contains(raw, []byte("Updated music")) {
-		t.Fatalf("saved configuration was not restored: %d %s", code, raw)
+		t.Fatalf("database configuration was not restored: %d %s", code, raw)
 	}
-	tracks = scanProvider(t, c, "local", "configuration-restart-rescan")
+	tracks = scanProvider(t, c, "local", "database-restart-rescan")
 	if len(tracks) != 3 || tracks["first.wav"].ID != first.ID {
 		t.Fatal("restart lost configured roots or stable identity")
 	}

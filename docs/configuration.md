@@ -1,6 +1,6 @@
 # Server YAML 配置
 
-状态：2026-10-10。配置解析、显式插件/实例模型、带修订的读写服务、管理 HTTP 与动态启停已实现；支持平滑排空、显式强制停止和配置应用，见[插件管理](implementation/plugin-management.md)。管理 CLI 和 Web 管理表单仍待实施。本版本只使用 YAML，不兼容旧 JSON 配置，不提供旧字段回退或自动转换。
+状态：2026-10-10。部署配置使用 YAML；Local Files 的目录、名称、扫描默认值和监听设置通过管理接口保存到 Server 数据库，YAML 提供目录授权上限，详见[插件配置数据库与目录管理](plugin-configuration.md)。动态启停、排空与设置应用已提供管理 API；管理 CLI 和 Web 目录编辑表单尚未实现。
 
 启动见[运行说明](running.md)；正式[示例配置](../configs/server.example.yaml)和[编辑器 Schema](../configs/server.schema.json)随代码维护，实际验证见[配置验收](validation/configuration.md)。HTTP JSON、JSON-RPC、JSON Schema 和媒体清单继续使用各自格式。
 
@@ -124,7 +124,7 @@ metadata:
 | `Reload` | 完整验证磁盘文件后更新已加载的期望修订，失败保留原配置；不自动应用到运行进程 |
 | `MarkApplied` | 仅供生命周期所有者在确实应用该修订后确认；读取或保存成功不自动调用它 |
 
-修订为原始YAML字节的SHA-256，注释变化也改变修订。写入需要持久日志、匹配的预期修订和8—128字符幂等键；同键同参数返回已有结果，换参数返回冲突。预期修订过期返回`PRECONDITION_FAILED`；磁盘已被外部修改则返回`CONFIG_NOT_APPLIED`，必须先重载或重启，不能把运行旧参数和磁盘新开关拼接执行。无日志、文件/目录只读或不能安全替换时拒绝写入。
+没有数据库配置时修订为原始YAML字节的SHA-256；存在本地插件数据库设置时再纳入各实例修订，注释变化也改变修订。写入需要持久日志、匹配的预期修订和8—128字符幂等键；同键同参数返回已有结果，换参数返回冲突。预期修订过期返回`PRECONDITION_FAILED`；磁盘已被外部修改则返回`CONFIG_NOT_APPLIED`，必须先重载或重启，不能把运行旧参数和磁盘新开关拼接执行。无日志、文件/目录只读或不能安全替换时拒绝写入。
 
 修改基于YAML语法树，仅变更选定的开关或实例设置节点；保留其他字段语义及注释，不承诺原排版逐字节不变，不把有效配置中的默认值或覆盖值整体回写。保存后`Revision`改变，`AppliedRevision`不会自动前进，因此`RestartRequired`保持true，直到生命周期所有者确认应用。管理 HTTP 保存返回202与操作编号，Manager在排空或重建成功后确认应用；读取操作终态前不能将保存视为已就绪。没有部署文件自动热重载，手工编辑仍应停服并重启。
 
@@ -134,4 +134,6 @@ metadata:
 
 Linux保留文件所有者/组与权限，同步文件及目录后rename；Windows复制原文件DACL并保护其继承，使用带write-through的`MoveFileEx`替换，不退化为跨卷复制。权限或替换失败明确返回错误。配置旁的`.lock`文件协调遵守该锁的进程，锁文件可以保留；它不能防止不遵守锁的外部编辑器在最终检查与替换间竞争。手工编辑应停服或使用同一协调机制。
 
-重启读取到旧修订时将未确认操作标为`notSaved`，读取到预期新修订时标为`saved`，其他修订标为`superseded`；不会重新播放旧操作覆盖新文件。数据库只记录操作与恢复事实，不保存第二份权威启用开关。保存、运行应用和插件退出是不同阶段；后两者由[插件管理器](implementation/plugin-management.md)执行。管理读取隐藏音乐根、工具与程序路径；路径输入为 write-only。`capabilities.changed` SSE 只通知客户端重新读取授权来源能力，不广播配置内容。
+重启读取到旧修订时将未确认操作标为`notSaved`，读取到预期新修订时标为`saved`，其他修订标为`superseded`；不会重新播放旧操作覆盖新文件。主数据库记录操作与恢复事实，插件配置数据库保存本地实例设置；启用开关仍以 YAML 为准。保存、运行应用和插件退出是不同阶段；后两者由[插件管理器](implementation/plugin-management.md)执行。管理读取隐藏音乐根、工具与程序路径；路径输入为 write-only。`capabilities.changed` SSE 只通知客户端重新读取授权来源能力，不广播配置内容。
+
+Local Files 实例设置通过管理接口保存到数据库并排空重建，不回写 YAML；权限、兼容规则与示例见[插件配置数据库与目录管理](plugin-configuration.md)。

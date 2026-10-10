@@ -33,7 +33,7 @@ func TestManagedWritebackDisabledStartAndChangedRootFence(t *testing.T) {
 	}
 	cfg, base := yamlServiceConfig(t)
 	cfg.Plugins = []config.Plugin{
-		{PluginID: "musicfs.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Role: "provider", Enabled: false, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Music", Path: music}}}}}},
+		{PluginID: "musicfs.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Role: "provider", Enabled: false, Permissions: &config.Permissions{ReadDirectories: []string{music, replacement}}, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Music", Path: music}}}}}},
 		{PluginID: "musicfs.audio.ffmpeg", Executable: audio, Enabled: true, Instances: []config.Instance{{InstanceID: "audio-default", Role: "audio", Enabled: false, Config: config.InstanceConfig{FFmpegPath: ffmpeg, FFprobePath: ffprobe}}}},
 	}
 	cfg.WriteBack = config.WriteBackConfig{Enabled: true, MaxFileBytes: 8 << 30, Roots: []config.WriteBackRoot{{InstanceID: "local", RootID: "local", Fields: []string{"lyrics"}}}}

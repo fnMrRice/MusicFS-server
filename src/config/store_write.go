@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"go.yaml.in/yaml/v3"
@@ -24,6 +24,17 @@ func (s *Store) SetEnabled(ctx context.Context, change Change) (Operation, error
 	}
 	if len(change.IdempotencyKey) < 8 || len(change.IdempotencyKey) > 128 || len(change.ExpectedRevision) != 64 {
 		return Operation{}, domain.Fail("INVALID_ARGUMENT", "Expected revision and idempotency key are required")
+	}
+	if err := os.MkdirAll(filepath.Dir(PluginDatabasePath(s.document.Config)), 0700); err != nil {
+		return Operation{}, err
+	}
+	unlockDatabase, err := lockConfig(PluginDatabasePath(s.document.Config))
+	if err != nil {
+		return Operation{}, domain.Fail("CONFLICT", "Plugin configuration is being written")
+	}
+	defer unlockDatabase()
+	if change.Settings != nil && change.PluginID == "musicfs.localfiles" {
+		return s.saveLocalSettings(ctx, change)
 	}
 	unlock, err := lockConfig(s.document.Path)
 	if err != nil {
@@ -46,6 +57,13 @@ func (s *Store) SetEnabled(ctx context.Context, change Change) (Operation, error
 	}
 	if err := s.checkDisk(); err != nil {
 		return Operation{}, err
+	}
+	current, err := ReadDocument(s.document.Path, s.overrides)
+	if err != nil {
+		return Operation{}, err
+	}
+	if current.Revision != s.document.Revision {
+		return Operation{}, domain.Fail("PRECONDITION_FAILED", "Plugin configuration changed")
 	}
 	if !canWriteConfig(s.document.Path) {
 		return Operation{}, domain.Fail("CONFIG_READ_ONLY", "Configuration file or directory is not writable")
@@ -79,7 +97,7 @@ func (s *Store) SetEnabled(ctx context.Context, change Change) (Operation, error
 		return Operation{}, domain.Fail("INVALID_ARGUMENT", "Plugin settings do not satisfy the configuration schema")
 	}
 	op := Operation{ID: domain.NewID(), Key: change.IdempotencyKey, Digest: digest, ConfigPath: doc.Path,
-		PreviousRevision: doc.Revision, NextRevision: next.Revision, PluginID: change.PluginID,
+		PreviousRevision: s.document.Revision, NextRevision: next.Revision, PluginID: change.PluginID,
 		InstanceID: change.InstanceID, Enabled: change.Enabled, Status: "prepared"}
 	if err := s.journal.BeginConfigOperation(ctx, op); err != nil {
 		return Operation{}, err
@@ -109,7 +127,7 @@ func (s *Store) checkDisk() error {
 	}
 	defer f.Close()
 	raw, err := io.ReadAll(io.LimitReader(f, (1<<20)+1))
-	if err != nil || len(raw) > 1<<20 || fmt.Sprintf("%x", sha256.Sum256(raw)) != s.document.Revision {
+	if err != nil || len(raw) > 1<<20 || sha256.Sum256(raw) != sha256.Sum256(s.document.Raw) {
 		return domain.Fail("CONFIG_NOT_APPLIED", "Configuration on disk changed; reload or restart first")
 	}
 	return nil

@@ -20,6 +20,7 @@ type Config struct {
 	UserID              string
 	Roots               []sourceaccess.RootConfig
 	StateDir            string
+	DatabasePath        string
 	Disabled            bool
 	SnapshotIdleTimeout time.Duration
 	SnapshotMaxLifetime time.Duration

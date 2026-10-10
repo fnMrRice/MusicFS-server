@@ -14,6 +14,7 @@ import (
 )
 
 type RootConfig struct {
+	Boundary         string `json:"-"`
 	ID               string `json:"id"`
 	Path             string `json:"path"`
 	ExpectedIdentity string `json:"expectedIdentity"`
@@ -39,7 +40,7 @@ func New(roots []RootConfig) (*Access, error) {
 		if _, ok := a.roots[cfg.ID]; ok {
 			return nil, fmt.Errorf("ACCESS_DENIED: duplicate root ID")
 		}
-		r, err := os.OpenRoot(cfg.Path)
+		r, err := openConfiguredRoot(cfg)
 		if err != nil {
 			return nil, fmt.Errorf("SOURCE_OFFLINE: root unavailable")
 		}
@@ -76,7 +77,7 @@ func (a *Access) openRoot(id string) (*os.Root, error) {
 	if !ok {
 		return nil, fmt.Errorf("ACCESS_DENIED: unknown root")
 	}
-	r, err := os.OpenRoot(cfg.Path)
+	r, err := openConfiguredRoot(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("SOURCE_OFFLINE: root unavailable")
 	}

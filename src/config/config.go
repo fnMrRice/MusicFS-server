@@ -21,6 +21,7 @@ type Plugin struct {
 }
 
 type Instance struct {
+	Permissions          *Permissions                 `yaml:"permissions,omitempty" json:"permissions,omitempty"`
 	PendingConfiguration bool                         `yaml:"-" json:"-"`
 	InstanceID           string                       `yaml:"instanceId" json:"instanceId"`
 	Name                 string                       `yaml:"name,omitempty" json:"name,omitempty"`
@@ -28,6 +29,10 @@ type Instance struct {
 	Enabled              bool                         `yaml:"enabled" json:"enabled"`
 	Config               InstanceConfig               `yaml:"config" json:"config"`
 	ImportDefaults       *pluginproto.ImportOverrides `yaml:"importDefaults,omitempty" json:"importDefaults,omitempty"`
+}
+
+type Permissions struct {
+	ReadDirectories []string `yaml:"readDirectories" json:"readDirectories"`
 }
 
 type InstanceConfig struct {

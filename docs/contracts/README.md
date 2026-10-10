@@ -155,3 +155,8 @@ SourceAsset 和 `assetId` 始终指向原始 NCM；列表保留 `container=ncm`�
 执行 `go test ./tests/contract/api`。测试编译全部 HTTP/插件模型、验证有效/无效/新增响应字段兼容样本，并校验 OpenAPI 路径、引用和幂等/CSRF 声明。该测试的 OpenAPI 检查是项目结构校验，JSON Schema 模型验证由独立库执行；不将项目结构检查描述为完整 OpenAPI 官方元规范验证。后续 API handler 集成测试须调用 `tests/testkit.ValidateHTTP` 校验真实序列化响应，防止样本与 DTO 各自通过但相互漂移。
 
 验证库为 `github.com/santhosh-tekuri/jsonschema/v6`，用于契约测试和运行时受限插件导入选项校验；当前固定版本与许可证见[依赖记录](../dependencies.md)。运行时声明最多 32 KiB、8 层与每对象 32 个属性，采用关键字白名单，不接受外部 `$ref`、脚本或任意扩展；Schema 不通过网络装载依赖。NCM 增量另由 `go test ./tests/contract/plugins` 验证有效/无效 wire 样本，真实 Worker 与 Server 测试校验实际序列化结果。
+
+
+## 本地插件配置持久化
+
+Local Files 目录与导入/监听设置通过管理 API 持久化到 Server 的插件配置数据库；YAML 的实例 permissions.readDirectories 限定目录访问范围。宿主提供按实例隔离的 host.database.get/compareAndSet，受管目录设置仍经权限检查与排空重建。具体接口、旧配置兼容及客户端影响见[插件配置数据库与目录管理](../plugin-configuration.md)。

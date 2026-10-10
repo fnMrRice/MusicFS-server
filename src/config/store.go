@@ -116,6 +116,9 @@ func cloneConfig(c Config) Config {
 		c.Plugins[i].Instances = append([]Instance(nil), c.Plugins[i].Instances...)
 		for j := range c.Plugins[i].Instances {
 			instance := &c.Plugins[i].Instances[j]
+			if instance.Permissions != nil {
+				instance.Permissions = &Permissions{ReadDirectories: append([]string{}, instance.Permissions.ReadDirectories...)}
+			}
 			if instance.Config.Watch != nil {
 				watch := *instance.Config.Watch
 				instance.Config.Watch = &watch

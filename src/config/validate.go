@@ -126,6 +126,16 @@ func (c Config) validatePlugins(writable []string) error {
 		}
 		active := 0
 		for _, instance := range plugin.Instances {
+			if instance.Permissions != nil {
+				if plugin.PluginID != "musicfs.localfiles" || len(instance.Permissions.ReadDirectories) > 256 {
+					return errors.New("invalid filesystem permissions")
+				}
+				for _, path := range instance.Permissions.ReadDirectories {
+					if path == "" || strings.ContainsRune(path, 0) {
+						return errors.New("invalid allowed directory")
+					}
+				}
+			}
 			if _, err := EffectiveImportDefaults(plugin.PluginID, instance); err != nil {
 				return err
 			}
