@@ -19,7 +19,7 @@ Web 先在独立仓库按自己的工具链构建。`--web-root` 可省略；只
 
 安装包不包含 `docs/` 目录，运行、配置和协议文档保留在对应版本的源码仓库中。
 
-配置示例自动改为 `../bin`，Windows 保留 `.exe`；内置插件默认自动发现，音乐根为待替换的 `../music`；缺配置的插件显示待配置。复制为 `configs/server.yaml`，配置实际音乐路径，需要禁用时设置插件或实例 enabled: false，然后创建管理员令牌并启动：
+配置示例自动改为 `../bin`，Windows 保留 `.exe`；内置插件默认自动发现，本地音乐默认没有选定的导入目录。允许访问的范围采用当前运行用户的 Music 目录及 Windows 首次探测结果，也可通过 `permissions.readDirectories` 显式覆盖；缺配置的插件显示待配置。复制为 `configs/server.yaml`，需要禁用时设置插件或实例 enabled: false，然后创建管理员令牌并启动。实际导入目录启动后从 Web 管理页面选择，保存不会自动扫描：
 
 ```powershell
 $env:MUSICFS_ADMIN_TOKEN = (& ./bin/musicfs.exe token).Trim()

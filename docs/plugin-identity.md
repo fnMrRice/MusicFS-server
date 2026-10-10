@@ -1,6 +1,6 @@
 # 音乐来源插件身份与显示名称
 
-在线插件通过 `provider.online.describe` 返回 `plugin` 声明，Local Files 在握手 manifest 中返回同样的声明。Server 校验并缓存插件实际返回的值，再由 `GET /api/v1/online-instances` 或 `GET /api/v1/provider-instances` 传给 Web / Client。名称、译名和功能分类归插件所有，宿主和前端不维护平台名称映射。
+在线插件通过 `provider.online.describe` 返回 `plugin` 声明，Local Files 在握手 manifest 中返回同样的声明。Server 校验并缓存插件实际返回的值，再由 `GET /api/v1/online-instances` 或 `GET /api/v1/provider-instances` 传给 Web / Client。内置 Local Files 在 Worker 尚未启动时，复用随 Server 构建的插件自身声明。名称、译名和功能分类归插件所有，宿主和前端不维护平台名称映射。
 
 ## 字段与用途
 
@@ -41,7 +41,8 @@
 
 - 在线 Worker 修订升级为 `online-authenticated-v3`；其描述必须包含有效的 `plugin`。能力、平台和空配置约束仍单独校验，新增显示字段不扩大插件业务权限。
 - Server 使用已验证的 Worker 描述，保留本次 Server 运行期间取得的名称供实例离线或停用时显示；重新成功启动后采用新 Worker 的声明。
-- Server 启动后从未成功取得声明的实例可省略 HTTP `plugin`。前端显示通用未知来源提示，不根据 `qq-public` 等内部编号或旧配置别名推断名称。声明缓存不持久化到磁盘。
+- 内置 Local Files 使用插件代码内同一个声明函数提供默认名 `Local Music` 和中文名“本地音乐”。首次待选择目录、禁用、清空选择后重启等尚无 Worker 的状态仍返回 `plugin`；该声明不授予扫描能力，也不启用 Worker。成功启动后以实际 Worker 的已验证声明为准，因此自定义 Worker 的名称不会被内置默认名覆盖。
+- 其他从未成功取得声明的实例可省略 HTTP `plugin`。前端显示通用未知来源提示，不根据 `qq-public` 等内部编号或旧配置别名推断名称。运行期间取得的 Worker 声明缓存不持久化到磁盘。
 - Server 和在线 Worker 需要同时升级；缺少声明或仍使用 v2 的 Worker 会被拒绝，实例显示为离线。HTTP v1 增加可选字段，现有实例标识、账号绑定及名称字段的含义不变。
 - Local Files 的宿主握手同样要求有效声明和 `music-source`；Server 与包含 Local Files 的插件程序须同步重建。通用 manifest 的 `plugin` 字段保持可选，音频和 Scraper 的既有声明无需新增该字段。
 - 新 Web 可连接未提供 `plugin` 的旧 Server，但这类在线来源只显示通用提示。旧 Web 可忽略新字段，只有更新 Web 才会采用插件提供的名称与译名。桌面 Client 当前只有设计文档，后续实现须消费该声明。

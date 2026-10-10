@@ -18,9 +18,9 @@ plugins:
       - instanceId: 'local'
         name: '本地音乐'
         role: 'provider'
-        # Deployment boundary only; select music roots through the admin API.
-        permissions:
-          readDirectories: ['../tests/testdata/audio']
+        # Default access: the server user's Music folder and Windows download folders.
+        # Override access with permissions.readDirectories; this does not select music roots.
+        # Select import directories in Web settings after startup.
         config: {}
   - pluginId: 'musicfs.audio.ffmpeg'
     executable: '../build/windows/musicfs-plugins.exe'

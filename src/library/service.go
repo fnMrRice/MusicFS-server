@@ -17,15 +17,17 @@ import (
 
 type Runtime struct {
 	ID, Name, Owner string
-	Plugin          *pluginproto.PluginIdentity
-	Worker          *pluginhost.Worker
-	StableHash      bool
-	ConfigRevision  string
-	ImportDefaults  pluginproto.ImportOptions
-	RootNames       map[string]string
-	WriteBack       map[string]RootWriteBack
-	Configuration   *pluginproto.Configuration
-	Gate            *plugincontrol.Gate
+	// Plugin is a bundled plugin declaration supplied by bootstrap. A verified
+	// worker takes precedence; neither configuration nor instance aliases set it.
+	Plugin         *pluginproto.PluginIdentity
+	Worker         *pluginhost.Worker
+	StableHash     bool
+	ConfigRevision string
+	ImportDefaults pluginproto.ImportOptions
+	RootNames      map[string]string
+	WriteBack      map[string]RootWriteBack
+	Configuration  *pluginproto.Configuration
+	Gate           *plugincontrol.Gate
 }
 type Probe func(context.Context, io.ReadSeeker, int64) (Observation, error)
 type ProbeSession func(context.Context) (context.Context, Probe, func(), error)
@@ -43,7 +45,7 @@ type Service struct {
 func New(repo Repository, queue *jobs.Service, runtimes []Runtime, probe Probe) *Service {
 	s := &Service{repo: repo, jobs: queue, runtimes: map[string]Runtime{}, probe: probe, gates: map[string]*providerGate{}}
 	for _, r := range runtimes {
-		r.Plugin = nil
+		r.Plugin = r.Plugin.Clone()
 		if r.Worker != nil {
 			r.Plugin = r.Worker.PluginIdentity()
 		}

@@ -77,7 +77,7 @@ func TestLocalMusicIdentityFlowsFromWorkerAndSurvivesStop(t *testing.T) {
 		return worker
 	}
 	w := start("first")
-	runtime := library.Runtime{ID: "local", Owner: "owner", Name: "Private instance alias", Worker: w}
+	runtime := library.Runtime{ID: "local", Owner: "owner", Name: "Private instance alias", Plugin: localfiles.Identity(), Worker: w}
 	service := library.New(displayRepository{}, jobs.New(nil), []library.Runtime{runtime}, nil)
 	read := func(want, availability string) library.Provider {
 		t.Helper()
@@ -134,7 +134,7 @@ func TestLocalWorkerRequiresValidMusicSourceDeclaration(t *testing.T) {
 }
 
 func TestNeverStartedLocalProviderDoesNotInventPluginIdentity(t *testing.T) {
-	service := library.New(displayRepository{}, jobs.New(nil), []library.Runtime{{ID: "local", Owner: "owner", Name: "Private alias", Plugin: localfiles.Identity()}}, nil)
+	service := library.New(displayRepository{}, jobs.New(nil), []library.Runtime{{ID: "local", Owner: "owner", Name: "Private alias"}}, nil)
 	providers := service.Providers(context.Background(), "owner")
 	if len(providers) != 1 || providers[0].Plugin != nil {
 		t.Fatal("never-started provider exposed unverified plugin metadata")
@@ -143,4 +143,26 @@ func TestNeverStartedLocalProviderDoesNotInventPluginIdentity(t *testing.T) {
 	if err != nil || strings.Contains(string(wire), `"plugin":`) {
 		t.Fatal("never-started provider did not omit plugin identity", string(wire), err)
 	}
+}
+
+func TestBundledLocalProviderKeepsItsDeclarationBeforeWorkerStarts(t *testing.T) {
+	identity := localfiles.Identity()
+	runtime := library.Runtime{ID: "custom-local-instance", Owner: "owner", Name: "Private alias", Plugin: identity}
+	service := library.New(displayRepository{}, jobs.New(nil), []library.Runtime{runtime}, nil)
+	identity.Name = "Caller mutation"
+	identity.LocalizedNames["zh-Hans"] = "Caller mutation"
+	read := func() {
+		t.Helper()
+		providers := service.Providers(context.Background(), "owner")
+		if len(providers) != 1 || providers[0].Plugin == nil || providers[0].Plugin.Name != "Local Music" || providers[0].Plugin.LocalizedNames["zh-Hans"] != "本地音乐" || providers[0].Availability != "offline" || len(providers[0].Capabilities) != 0 {
+			t.Fatalf("bundled plugin identity missing before worker startup: %+v", providers)
+		}
+		providers[0].Plugin.Name = "Response mutation"
+	}
+	read()
+	runtime.Plugin = nil
+	if err := service.UpdateRuntime(runtime); err != nil {
+		t.Fatal(err)
+	}
+	read()
 }

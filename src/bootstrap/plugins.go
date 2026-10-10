@@ -12,6 +12,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/localfiles"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
 	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
 )
@@ -42,7 +43,9 @@ func configurePlugins(ctx context.Context, c config.Config, log *slog.Logger) ([
 				for _, root := range instance.Config.MusicRoots {
 					rootNames[root.ID] = root.Name
 				}
-				r := library.Runtime{ID: instance.InstanceID, Name: name, Owner: "admin", StableHash: true,
+				// The bundled plugin owns its declaration even before roots are selected.
+				// A successfully verified worker declaration supersedes this fallback.
+				r := library.Runtime{ID: instance.InstanceID, Name: name, Owner: "admin", StableHash: true, Plugin: localfiles.Identity(),
 					ImportDefaults: defaults, Configuration: declaration, RootNames: rootNames,
 					ConfigRevision: providerConfigRevision(instance, binaryHash, defaults)}
 				err = defaultsErr
