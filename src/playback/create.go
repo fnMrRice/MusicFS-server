@@ -5,11 +5,8 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io"
 	"math"
 	"mime"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/auth"
@@ -85,9 +82,14 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 			s.mu.Unlock()
 			return Description{}, err
 		}
-		if _, err = s.find(who, d.SessionID); err != nil {
+		current, currentErr := s.find(who, d.SessionID)
+		if currentErr != nil {
 			s.mu.Unlock()
 			return d, domain.Fail("SESSION_EXPIRED", "Playback result expired; create a new operation")
+		}
+		if current.description.AttemptID != d.AttemptID {
+			s.mu.Unlock()
+			return Description{}, domain.Fail("CONFLICT", "Playback result was superseded")
 		}
 		s.mu.Unlock()
 		return d, nil
@@ -104,78 +106,17 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 		delete(s.preparing, who.ID)
 		s.mu.Unlock()
 	}()
-	t, err := s.library.Track(ctx, who.User.ID, r.SourceTrackID)
-	if err != nil {
-		return Description{}, err
-	}
-	if t.Availability != "available" {
-		return Description{}, domain.Fail("SOURCE_OFFLINE", "Track is unavailable")
-	}
-	if t.Size <= 0 {
-		return Description{}, domain.Fail("UNSUPPORTED", "Source contains no audio data")
-	}
-	// A cached representation still counts as an active source playback until
-	// the session stops. Preparation's task grant is revoked separately.
-	sourceLease, err := s.library.HoldRead(ctx, who.User.ID, t.ProviderID)
-	if err != nil {
-		return Description{}, err
-	}
-	transferredLease := false
-	defer func() {
-		if !transferredLease {
-			sourceLease.Close()
-		}
-	}()
 	id := domain.NewID()
-	defer s.library.Revoke(t.ProviderID, id)
-	handle, err := s.library.Open(ctx, t, id)
+	prepared, err := s.prepare(ctx, who.User.ID, id, r, availableBytes)
 	if err != nil {
 		return Description{}, err
 	}
-	defer handle.Close()
-	input, size, decrypted, closeInput, err := s.prepareInput(ctx, id, handle, &t)
-	if err != nil {
-		return Description{}, err
-	}
-	defer closeInput()
-	if size <= 0 || size > availableBytes {
-		return Description{}, domain.Fail("RATE_LIMITED", "Representation exceeds the cache budget")
-	}
-	processed := r.Preferences.ForceProcessing || r.Preferences.GainDB != 0 || !originalCandidate(t) || !supports(r.Capabilities, t.MIME)
-	if processed && (s.processor == nil || !supports(r.Capabilities, "audio/mpeg")) {
-		return Description{}, domain.Fail("UNSUPPORTED", "No compatible audio processing profile is available")
-	}
-	path := filepath.Join(s.config.CacheRoot, id+".bin")
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
-	if err != nil {
-		return Description{}, domain.Fail("TEMPORARY_FAILURE", "Cannot prepare playback representation")
-	}
-	success := false
+	transferred := false
 	defer func() {
-		f.Close()
-		if !success {
-			os.Remove(path)
+		if !transferred {
+			prepared.discard()
 		}
 	}()
-	hash := sha256.New()
-	n, err := io.Copy(io.MultiWriter(f, hash), io.LimitReader(input, size+1))
-	if err != nil || n != size {
-		return Description{}, domain.Fail("RESOURCE_CHANGED", "Source changed while preparing playback")
-	}
-	if err = handle.Validate(); err != nil {
-		return Description{}, domain.Fail("RESOURCE_CHANGED", "Source changed while preparing playback")
-	}
-	if err = f.Close(); err != nil {
-		return Description{}, err
-	}
-	if err = ctx.Err(); err != nil {
-		return Description{}, err
-	}
-	if !processed && t.MIME == "audio/wav" {
-		if err := inspectWave(path, &t); err != nil {
-			return Description{}, err
-		}
-	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.ctx.Err() != nil {
@@ -189,28 +130,14 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 		return Description{}, domain.Fail("AUTH_REQUIRED", "Authentication session expired or was revoked")
 	}
 	lifetime, cancel := context.WithCancel(s.ctx)
-	a := &session{owner: who.ID, user: who.User.ID, path: path, etag: fmt.Sprintf("\"%x\"", hash.Sum(nil)), size: n, track: t, gain: r.Preferences.GainDB, ctx: lifetime, cancel: cancel, lastAccess: time.Now(), sourceLease: sourceLease}
+	capabilities := r.Capabilities
+	capabilities.Formats = append([]Format(nil), r.Capabilities.Formats...)
+	a := &session{owner: who.ID, user: who.User.ID, path: prepared.path, etag: prepared.etag, size: prepared.size, track: prepared.track, gain: r.Preferences.GainDB, capabilities: capabilities, ctx: lifetime, cancel: cancel, lastAccess: time.Now(), sourceLease: prepared.lease}
 	expiry := time.Now().UTC().Add(30 * time.Minute)
 	if who.ExpiresAt.Before(expiry) {
 		expiry = who.ExpiresAt
 	}
-	d := Description{SessionID: id, AssetID: t.AssetID, DeliveryMode: "proxy", OutputProfile: OutputProfile{MIME: t.MIME, Codec: t.Codec, Container: t.Container, Transport: "htmlAudio"}, ExpiresAt: expiry, SeekMode: "byteRange", EffectiveProcessing: []Processing{}, ResumeDecision: "continue"}
-	if decrypted {
-		d.EffectiveProcessing = append(d.EffectiveProcessing, Processing{Type: "ncmDecrypt", Version: "1", Execution: "server"})
-	}
-	if t.DurationMs != nil {
-		d.SeekableRange = &Range{EndMs: *t.DurationMs}
-	}
-	if processed {
-		codec, container := "mp3", "mp3"
-		d.DeliveryMode = "processed"
-		d.OutputProfile = OutputProfile{MIME: "audio/mpeg", Codec: &codec, Container: &container, Transport: "htmlAudio"}
-		d.SeekMode = "none"
-		if t.DurationMs != nil {
-			d.SeekMode = "timeRestart"
-		}
-		d.EffectiveProcessing = append(d.EffectiveProcessing, Processing{Type: "gain", GainDB: a.gain, Version: "1", Execution: "server"})
-	}
+	d := prepared.describe(id, a.gain, expiry)
 	a.description = d
 	s.nextAttempt(a, 0)
 	raw, _ := json.Marshal(a.description)
@@ -219,9 +146,8 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 		return Description{}, err
 	}
 	s.sessions[id] = a
-	transferredLease = true
-	s.used += n
-	success = true
+	transferred = true
+	s.used += prepared.size
 	return a.description, nil
 }
 func (s *Service) nextAttempt(a *session, position int64) {

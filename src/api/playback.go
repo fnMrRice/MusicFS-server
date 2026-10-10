@@ -10,6 +10,7 @@ import (
 )
 
 func (s *Server) RegisterPlayback(service *playback.Service) {
+	s.registerTimeline(service)
 	s.Handle("POST /api/v1/playback/sessions", true, true, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
 		request, err := decodeCreate(w, r)
 		if err != nil {

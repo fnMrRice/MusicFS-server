@@ -1,0 +1,44 @@
+[
+  {
+    "name": "recovery-without-evidence-prompts",
+    "schema": "RecoveryResult",
+    "valid": true,
+    "value": {"decision": "promptRestart", "reason": "TIMELINE_EVIDENCE_REQUIRED", "targetSourceTrackId": "source-b", "playback": null}
+  },
+  {
+    "name": "continue-requires-playback",
+    "schema": "RecoveryResult",
+    "valid": false,
+    "value": {"decision": "continue", "reason": "MANUAL_ALIGNMENT", "targetSourceTrackId": "source-b", "playback": null}
+  },
+  {
+    "name": "prompt-cannot-claim-alignment",
+    "schema": "RecoveryResult",
+    "valid": false,
+    "value": {"decision": "promptRestart", "reason": "MANUAL_ALIGNMENT", "targetSourceTrackId": "source-b", "playback": null}
+  },
+  {
+    "name": "recovery-explicit-zero-position",
+    "schema": "RecoverSource",
+    "valid": true,
+    "value": {"attemptId": "attempt-a", "targetSourceTrackId": "source-b", "positionMs": 0, "observedError": {"code": "NETWORK", "message": "Interrupted"}}
+  },
+  {
+    "name": "recovery-no-implicit-position",
+    "schema": "RecoverSource",
+    "valid": false,
+    "value": {"attemptId": "attempt-a", "targetSourceTrackId": "source-b", "observedError": {"code": "NETWORK", "message": "Interrupted"}}
+  },
+  {
+    "name": "recovery-cannot-inject-source-path",
+    "schema": "RecoverSource",
+    "valid": false,
+    "value": {"attemptId": "attempt-a", "targetSourceTrackId": "source-b", "positionMs": 0, "path": "/private/audio.wav", "observedError": {"code": "NETWORK", "message": "Interrupted"}}
+  },
+  {
+    "name": "recovery-observed-code-required",
+    "schema": "RecoverSource",
+    "valid": false,
+    "value": {"attemptId": "attempt-a", "targetSourceTrackId": "source-b", "positionMs": 0, "observedError": {"code": "", "message": "Interrupted"}}
+  }
+]

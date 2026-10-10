@@ -14,6 +14,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
+	"github.com/fnMrRice/MusicFS-server/src/timeline"
 )
 
 type Repository interface {
@@ -44,8 +45,8 @@ type session struct {
 	active                  int
 	consumers               map[string]int
 	lastAccess              time.Time
-	recoveryCount           int
-	recoveryStarted         time.Time
+	capabilities            Capabilities
+	recovery                timeline.Budget
 	sourceLease             *library.ReadLease
 }
 type Service struct {
