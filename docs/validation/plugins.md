@@ -80,7 +80,7 @@ go build ./src/pluginproto ./src/pluginhost ./src/sourceaccess ./src/plugins/...
 
 探测与解码同时限定 `http,tcp` 输入协议及 `wav,mp3,flac,aiff,ogg,mov,matroska,webm,aac` 音频 demuxer，排除 HLS/concat 等可引用额外来源的播放列表。只限定网络协议不能防止音频文件伪装为播放列表，因此包含真实远端计数回归测试。
 
-默认最多两个活跃音频 Worker，无无界排队；配置允许 1–8。任务最长 30 分钟。控制 RPC 最多 16 个在途请求，单消息最多 1 MiB；扫描最多 50,000 个候选，单页最多 200 条；分页快照最多 16 份、保留 5 分钟，单页扫描不占快照槽位。资源引用最多 4096 个并具备期限。Worker stdout 只用于协议；stderr 不传播私密路径或输入能力地址。
+默认最多两个活跃音频 Worker，无无界排队；配置允许 1–8。任务最长 30 分钟。控制 RPC 最多 16 个在途请求，单消息最多 1 MiB；扫描最多 50,000 个候选，单页最多 200 条；分页快照最多 16 份，单页扫描不占快照槽位。最初基线的快照固定保留 5 分钟；2026-10-10 修复为默认空闲 5 分钟滑动续期、创建后最多 1 小时，并将整次库扫描预算设为 1 小时，见[扫描期限专项验证](scan-snapshot-lifetime.md)。资源引用最多 4096 个并具备期限。Worker stdout 只用于协议；stderr 不传播私密路径或输入能力地址。
 
 Windows 音频 Worker 置于 `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` Job Object，取消通过控制上下文和关闭管道传播；回收 Job 时终止子进程树。Linux/Darwin代码采用进程组回收。基线当时仅验证Linux控制Worker故障回收，尚未验证Linux音频子进程；后续真实音频断连回收见第6节，Darwin仍未运行验收。
 

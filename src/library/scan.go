@@ -15,7 +15,7 @@ func (s *Service) scan(ctx context.Context, j jobs.Job) (int, error) {
 	if !ok || r.Owner != j.Owner || r.Worker == nil {
 		return 0, domain.Fail("SOURCE_OFFLINE", "Provider is offline")
 	}
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, time.Hour)
 	defer cancel()
 	defer r.Worker.Access.Revoke(j.ID)
 	all := []Observation{}

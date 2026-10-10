@@ -19,6 +19,7 @@ type entrySnapshot struct {
 	entries          []pluginproto.Entry
 	issues           []string
 	expires          time.Time
+	deadline         time.Time
 }
 
 func (w *Worker) handle(ctx context.Context, method string, raw json.RawMessage) (any, error) {
@@ -53,6 +54,9 @@ func (w *Worker) handle(ctx context.Context, method string, raw json.RawMessage)
 }
 
 func (w *Worker) entries(ctx context.Context, r pluginproto.EntriesRequest) (pluginproto.EntriesPage, error) {
+	if err := ctx.Err(); err != nil {
+		return pluginproto.EntriesPage{}, err
+	}
 	if r.Limit < 1 || r.Limit > pluginproto.MaxPageItems {
 		return pluginproto.EntriesPage{}, fmt.Errorf("ACCESS_DENIED: invalid page size")
 	}
@@ -76,11 +80,17 @@ func (w *Worker) entries(ctx context.Context, r pluginproto.EntriesRequest) (plu
 		var random [16]byte
 		rand.Read(random[:])
 		token = hex.EncodeToString(random[:])
-		snapshot = entrySnapshot{rootID: r.RootID, identity: identity, entries: entries, issues: issues, expires: time.Now().Add(5 * time.Minute)}
+		now := time.Now()
+		idle, lifetime := w.config.snapshotTimeouts()
+		snapshot = entrySnapshot{rootID: r.RootID, identity: identity, entries: entries, issues: issues, expires: now.Add(idle), deadline: now.Add(lifetime)}
 		if len(entries) > r.Limit {
 			w.mu.Lock()
+			if err := ctx.Err(); err != nil {
+				w.mu.Unlock()
+				return pluginproto.EntriesPage{}, err
+			}
 			for id, s := range w.snapshots {
-				if time.Now().After(s.expires) {
+				if !now.Before(s.expires) || !now.Before(s.deadline) {
 					delete(w.snapshots, id)
 				}
 			}
@@ -105,10 +115,26 @@ func (w *Worker) entries(ctx context.Context, r pluginproto.EntriesRequest) (plu
 		}
 		w.mu.Lock()
 		snapshot, ok = w.snapshots[token]
-		w.mu.Unlock()
-		if !ok || snapshot.rootID != r.RootID || time.Now().After(snapshot.expires) || offset > len(snapshot.entries) {
+		now := time.Now()
+		if ok && (!now.Before(snapshot.expires) || !now.Before(snapshot.deadline)) {
+			delete(w.snapshots, token)
+			ok = false
+		}
+		if !ok || snapshot.rootID != r.RootID || offset > len(snapshot.entries) {
+			w.mu.Unlock()
 			return pluginproto.EntriesPage{}, fmt.Errorf("RESOURCE_CHANGED: scan cursor expired")
 		}
+		if err := ctx.Err(); err != nil {
+			w.mu.Unlock()
+			return pluginproto.EntriesPage{}, err
+		}
+		idle, _ := w.config.snapshotTimeouts()
+		snapshot.expires = now.Add(idle)
+		if snapshot.expires.After(snapshot.deadline) {
+			snapshot.expires = snapshot.deadline
+		}
+		w.snapshots[token] = snapshot
+		w.mu.Unlock()
 	}
 	end := min(offset+r.Limit, len(snapshot.entries))
 	page := pluginproto.EntriesPage{Items: snapshot.entries[offset:end], RootIdentity: snapshot.identity, Issues: snapshot.issues}

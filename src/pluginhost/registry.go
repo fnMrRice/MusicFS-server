@@ -7,22 +7,40 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
 )
 
 type Config struct {
-	Executable string
-	Args       []string
-	SHA256     string
-	InstanceID string
-	UserID     string
-	Roots      []sourceaccess.RootConfig
-	StateDir   string
-	Disabled   bool
+	Executable          string
+	Args                []string
+	SHA256              string
+	InstanceID          string
+	UserID              string
+	Roots               []sourceaccess.RootConfig
+	StateDir            string
+	Disabled            bool
+	SnapshotIdleTimeout time.Duration
+	SnapshotMaxLifetime time.Duration
+}
+
+func (c Config) snapshotTimeouts() (time.Duration, time.Duration) {
+	idle, lifetime := c.SnapshotIdleTimeout, c.SnapshotMaxLifetime
+	if idle == 0 {
+		idle = 5 * time.Minute
+	}
+	if lifetime == 0 {
+		lifetime = time.Hour
+	}
+	return idle, lifetime
 }
 
 func (c Config) Validate() error {
+	idle, lifetime := c.snapshotTimeouts()
+	if idle <= 0 || lifetime <= 0 || idle > lifetime || lifetime > time.Hour {
+		return fmt.Errorf("ACCESS_DENIED: invalid scan snapshot timeouts")
+	}
 	if c.Disabled {
 		return fmt.Errorf("UNSUPPORTED: instance disabled")
 	}
