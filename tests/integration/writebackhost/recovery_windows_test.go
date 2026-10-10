@@ -33,6 +33,8 @@ type faultJournal struct {
 	mu           sync.Mutex
 	stage        string
 	after, fired bool
+	entered      chan struct{}
+	release      chan struct{}
 }
 
 func (j *faultJournal) Save(ctx context.Context, from string, r writeback.Record) error {
@@ -40,6 +42,18 @@ func (j *faultJournal) Save(ctx context.Context, from string, r writeback.Record
 	defer j.mu.Unlock()
 	if r.Stage == j.stage && !j.fired {
 		j.fired = true
+		if j.entered != nil {
+			if err := j.Journal.Save(ctx, from, r); err != nil {
+				return err
+			}
+			close(j.entered)
+			select {
+			case <-j.release:
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
 		if j.after {
 			if err := j.Journal.Save(ctx, from, r); err != nil {
 				return err
@@ -69,7 +83,7 @@ func TestWritebackHostRecoversFileAndDatabaseBoundary(t *testing.T) {
 	for _, scenario := range []struct {
 		name, stage    string
 		after, restart bool
-	}{{"written-explicit", "written", true, false}, {"database-explicit", "committed", false, false}, {"written-startup", "written", true, true}} {
+	}{{"written-explicit", "written", true, false}, {"database-explicit", "committed", false, false}, {"written-startup", "written", true, true}, {"committed-release", "committed", true, false}} {
 		t.Run(scenario.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
 			defer cancel()
@@ -128,6 +142,10 @@ func TestWritebackHostRecoversFileAndDatabaseBoundary(t *testing.T) {
 			}
 			defer journal.Close()
 			fault := &faultJournal{Journal: journal, stage: scenario.stage, after: scenario.after}
+			if scenario.name == "committed-release" {
+				fault.entered = make(chan struct{})
+				fault.release = make(chan struct{})
+			}
 			cfg := writebackhost.Config{Policy: writeback.Policy{Enabled: true, Roots: []writeback.Root{{Owner: "admin", InstanceID: "local", RootID: "music", Path: music, Identity: worker.Access.Roots()[0].ExpectedIdentity, Fields: []string{"lyrics"}}}}, Probe: probe}
 			service, err := writebackhost.New(store, lib, media, fault, runtimes, cfg)
 			if err != nil {
@@ -142,6 +160,30 @@ func TestWritebackHostRecoversFileAndDatabaseBoundary(t *testing.T) {
 			job, _, err := service.Submit(ctx, "admin", request, key)
 			if err != nil {
 				t.Fatal(err)
+			}
+			if fault.entered != nil {
+				select {
+				case <-fault.entered:
+				case <-ctx.Done():
+					t.Fatal("commit gate timeout")
+				}
+				pending, e := service.Get(ctx, "admin", job.ID)
+				if e != nil || pending.Status != "running" || pending.Error != nil {
+					close(fault.release)
+					t.Fatalf("active finalization must remain running: %+v %v", pending, e)
+				}
+				close(fault.release)
+				wait(t, ctx, service, job.ID)
+				final, e := service.Get(ctx, "admin", job.ID)
+				if e != nil || final.Status != "succeeded" {
+					t.Fatalf("finalized job: %+v %v", final, e)
+				}
+				read, e := lib.HoldRead(ctx, "admin", "local")
+				if e != nil {
+					t.Fatal(e)
+				}
+				read.Close()
+				return
 			}
 			wait(t, ctx, service, job.ID)
 			beforeRecovery, _ := service.Get(ctx, "admin", job.ID)
@@ -167,7 +209,7 @@ func TestWritebackHostRecoversFileAndDatabaseBoundary(t *testing.T) {
 				}
 				for ctx.Err() == nil {
 					pending, _ := service.Get(ctx, "admin", job.ID)
-					if pending.Status != "recovery" {
+					if pending.Status != "recovery" && pending.Status != "running" {
 						break
 					}
 					time.Sleep(20 * time.Millisecond)

@@ -19,10 +19,18 @@ type ContentService struct {
 	journal Repository
 	files   *Files
 	gate    chan struct{}
+	derived *DerivedService
 }
 
 func NewContent(repo ContentRepository, journal Repository, files *Files) *ContentService {
-	return &ContentService{ContentRepository: repo, journal: journal, files: files, gate: make(chan struct{}, 2)}
+	s := &ContentService{ContentRepository: repo, journal: journal, files: files, gate: make(chan struct{}, 2)}
+	if derived, ok := repo.(DerivedRepository); ok {
+		media, err := New(journal, files)
+		if err == nil {
+			s.derived = &DerivedService{DerivedRepository: derived, media: media, content: s, gate: make(chan struct{}, 2)}
+		}
+	}
+	return s
 }
 
 var languageTag = regexp.MustCompile(`^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$`)

@@ -35,7 +35,7 @@ Content-Type: application/json
 {"sourceTrackIds":["来源编号"],"instanceIds":["scraper-local"],"fields":["lyrics","artwork"],"languages":[]}
 ```
 
-单曲也使用1项 `sourceTrackIds`；显式批量最多64项，不接受重复来源。当前没有来源专辑展开接口。`fields` 为不重复的 `lyrics/artwork`；`instanceIds` 省略或空数组选择本人当前可用实例，再扣除可选 `excludeInstanceIds`。最终选择最多4项，较多实例时应显式指定。排除列表最多16项，不能把同一实例同时选中和排除。未知实例统一404，显式离线实例503；未选到可用实例415。
+单曲也使用1项 `sourceTrackIds`；显式批量最多64项，不接受重复来源。也可用 `sourceAlbum:{sourceAlbumId,expectedRevision}` 在入队事务展开1—64个固定成员，不能同时传非空 `sourceTrackIds`；详见[专辑流程](albums.md)。`fields` 为不重复的 `lyrics/artwork`；`instanceIds` 省略或空数组选择本人当前可用实例，再扣除可选 `excludeInstanceIds`。最终选择最多4项，较多实例时应显式指定。排除列表最多16项，不能把同一实例同时选中和排除。未知实例统一404，显式离线实例503；未选到可用实例415。
 
 `languages` 最多16项，不接受空标签；省略或空数组不筛选。指定语言时只按已声明语言过滤，常见 ID3 代码作明确别名归一（例如 `zho→zh`、`eng→en`）。未知语言为 `und`，只有显式请求 `und` 才会匹配未知语言；不会从中文歌词正文猜语言。封面不参与语言过滤。没有匹配时保留问题说明，不伪造候选。
 
@@ -77,3 +77,5 @@ Local Files 的 `local-import-v2` 声明允许 `importLyrics=true`。可设在�
 自动选用仅接受本地内嵌内容或同名旁置内容，不自动选目录通用封面；按实例顺序选候选，不靠文件顺序打破内容歧义。只补空或不可用且未锁定的字段/语言，不覆盖现有可用内容，也不自动加人工锁。人工选用后再扫描，即使旁置文件变化，也保留已选对象和人工锁。任务发布复核资产、候选与文件状态，重启不会把已成功选用重复执行成新修订。源音频和旁置文件始终只读。
 
 自动流程的真实服务验证见[自动补全验收](validation/metadata-automatic.md)。停用Scraper后仍能读取已有内容和结果；新导入任务按不可用失败，普通播放保持独立。
+
+完整结构化搜索与取回记录保存在独立文件，通过任务的 /documents 接口读取；封面可生成256像素 PNG 缩略图，见[派生媒体](derived-media.md)。

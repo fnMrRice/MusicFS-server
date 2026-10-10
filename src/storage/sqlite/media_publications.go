@@ -85,6 +85,9 @@ func publicationJob(ctx context.Context, tx *sql.Tx, p mediastore.Publication) (
 }
 
 func (s *Store) BeginPublication(ctx context.Context, p mediastore.Publication) error {
+	if p.Target.Purpose == "derived" {
+		return s.beginDerived(ctx, p)
+	}
 	if !mediaID(p.ID) || !mediaID(p.Object.ID) || p.Owner == "" || p.Status != "prepared" || p.Kind != "fingerprint" || p.Object.Kind != p.Kind || p.Object.MIME != "application/json" || p.Object.Size != 0 || p.Object.SHA256 != "" || p.Object.RelativePath != "objects/"+p.Object.ID || p.CreatedAt.IsZero() {
 		return identification.Invalid()
 	}
@@ -145,6 +148,10 @@ func (s *Store) WrittenPublication(ctx context.Context, owner, id string, o medi
 		}
 		if o.Size != input.Size || o.SHA256 != input.SHA256 {
 			return domain.Fail("RESOURCE_CHANGED", "Written content differs from the prepared bytes")
+		}
+	} else if p.Target.Purpose == "derived" {
+		if _, _, err = derivedMetadata(p); err != nil {
+			return err
 		}
 	} else if p.Target.Purpose != "fingerprint" || o.Kind != "fingerprint" || o.MIME != "application/json" || o.Size > fingerprint.MaxDetailBytes {
 		return identification.Invalid()

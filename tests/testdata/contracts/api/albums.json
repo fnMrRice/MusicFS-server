@@ -1,0 +1,14 @@
+[
+  {"name":"create-explicit-empty-album","schema":"CreateSourceAlbumRequest","valid":true,"value":{"providerInstanceId":"local","name":"同名不合并","sourceTrackIds":[]}},
+  {"name":"album-members-not-null","schema":"CreateSourceAlbumRequest","valid":false,"value":{"providerInstanceId":"local","name":"专辑","sourceTrackIds":null}},
+  {"name":"album-members-unique","schema":"CreateSourceAlbumRequest","valid":false,"value":{"providerInstanceId":"local","name":"专辑","sourceTrackIds":["one","one"]}},
+  {"name":"cover-independent-revisions","schema":"SelectAlbumCoverRequest","valid":true,"value":{"objectId":"object-1","expectedRevision":0,"expectedTargetRevision":1}},
+  {"name":"cover-target-revision-required","schema":"SelectAlbumCoverRequest","valid":false,"value":{"objectId":"object-1","expectedRevision":0}},
+  {"name":"cover-not-arbitrary-path","schema":"SelectAlbumCoverRequest","valid":false,"value":{"objectId":"object-1","expectedRevision":0,"expectedTargetRevision":1,"path":"private.png"}},
+  {"name":"scrape-explicit-album-revision","schema":"CreateMetadataRequest","valid":true,"value":{"sourceAlbum":{"sourceAlbumId":"album-1","expectedRevision":1},"fields":["lyrics"]}},
+  {"name":"scrape-album-or-sources","schema":"CreateMetadataRequest","valid":false,"value":{"sourceAlbum":{"sourceAlbumId":"album-1","expectedRevision":1},"sourceTrackIds":["one"],"fields":["lyrics"]}},
+  {"name":"scrape-album-revision-required","schema":"CreateMetadataRequest","valid":false,"value":{"sourceAlbum":{"sourceAlbumId":"album-1"},"fields":["lyrics"]}},
+  {"name":"scrape-album-revision-positive","schema":"CreateMetadataRequest","valid":false,"value":{"sourceAlbum":{"sourceAlbumId":"album-1","expectedRevision":0},"fields":["lyrics"]}},
+  {"name":"scrape-album-null-rejected","schema":"CreateMetadataRequest","valid":false,"value":{"sourceAlbum":null,"fields":["lyrics"]}},
+  {"name":"scrape-album-not-path","schema":"CreateMetadataRequest","valid":false,"value":{"sourceAlbum":{"sourceAlbumId":"album-1","expectedRevision":1,"path":"private"},"fields":["lyrics"]}}
+]

@@ -76,11 +76,19 @@ Provider 响应增加 `configuration` 与 `roots`。Local Files 的配置包含�
 
 ### S-P6-03 本地补全任务
 
-`GET /scraper-instances` 只返回本人实例的安全声明。`POST /metadata-jobs` 接受必需 `sourceTrackIds/fields`、可选 `instanceIds/excludeInstanceIds/languages/query`；单曲也用1项数组，最多64来源、4选中实例、16排除实例和16语言。请求要求幂等键，返回202 `{jobId,merged}`。本地插件不支持非空查询修正，明确返回415；语言只按已声明标签过滤，未知为und，不推断正文语言。实例配置与操作见[补全说明](../metadata.md)。
+`GET /scraper-instances` 只返回本人实例的安全声明。`POST /metadata-jobs` 必需 `fields`，目标由非空 `sourceTrackIds` 或 `sourceAlbum:{sourceAlbumId,expectedRevision}` 二选一指定；两种字段同时出现（包括空数组）或显式 null 均拒绝。单曲也用1项数组；专辑入队在同一事务校验成员修订并固定成员、当前资产和选择修订，最多64来源，不截断。可选 `instanceIds/excludeInstanceIds/languages/query`；最多4选中实例、16排除实例和16语言。请求要求幂等键，返回202 `{jobId,merged}`，原专辑编号和修订进入持久请求，重放不重新展开变化后的成员。本地插件不支持非空查询修正，明确返回415；语言只按已声明标签过滤，未知为und，不推断正文语言。实例配置与操作见[补全说明](../metadata.md)。
 
 `GET /metadata-jobs/{id}` 返回 `queued/running/completed/failed/cancelled` 状态及逐目标结果，批量部分失败必须查看各目标。候选仅含安全描述、来源依据、30分钟有效期和可空 `previewObjectId`，没有正文或内部资源票据；通过已有媒体端点授权预览。搜索不会改变当前选择。`POST /metadata-candidates/{id}/apply` 要求 `expectedRevision` 和幂等键，在当前资产、候选有效期、代次、任务取消状态及预览文件复核后人工选用并加锁。候选修订是搜索快照，后续逐字段选用可使用最新修订。
 
-`POST /metadata-jobs/{id}/cancel` 接受 `{}`，自然幂等，不要求键；包括已完成任务的候选应用资格，可取消但不删除已发布内容/锁。原成功应用键仍重放，新应用拒绝。配置停用后历史任务和内容仍可读取；尚未提供专辑展开或Web补全页。真实插件、NCM、重启和权限范围见[接口验收](../validation/metadata-http.md)。
+`POST /metadata-jobs/{id}/cancel` 接受 `{}`，自然幂等，不要求键；包括已完成任务的候选应用资格，可取消但不删除已发布内容/锁。原成功应用键仍重放，新应用拒绝。配置停用后历史任务和内容仍可读取；尚未提供Web补全页。真实插件、NCM、重启和权限范围见[接口验收](../validation/metadata-http.md)，来源专辑和派生文件增量见[专辑接口验收](../validation/albums-http.md)。
+
+### P6 来源专辑、发行和派生文件增量
+
+`/source-albums` 与 `/releases` 提供创建、读取、完整更新和列表；名称不是身份，成员编号有序且不重复，来源专辑最多1000曲且限定同本人Provider实例，发行最多256个本人来源专辑。空集合合法，但空专辑仍须授权真实配置实例。实体修订从1开始；PUT必需 expectedRevision，成员/名称修改推进修订，来源专辑更新也推进引用它的发行修订。列表返回 `{items,nextAfter}`，默认50、limit1—100；after为上页返回的编号，来源专辑支持 providerInstanceId 过滤，未知/重复参数拒绝。列表不保证跨页固定快照。
+
+两类实体分别有 `/cover-selection` GET/PUT、`/cover-selection/unlock` POST 和 `/changes` GET。封面修订从0开始，PUT同时要求封面 expectedRevision 与实体 expectedTargetRevision，选择成员当前资产的既有图片对象并设置人工锁。封面绑定保留原source/asset依据，成员编辑不会清掉历史选择，来源曲目的媒体选择修订也不受影响。解锁只解除人工锁，不删除图片。修改需幂等键和CSRF；changes按本实体序号分页，after为十进制序号，limit1—100。精确输入和响应见[专辑说明](../albums.md)。
+
+`POST /media/{id}/thumbnail {}` 使用登录/Origin/CSRF，天然幂等，不要求键；返回200 `DerivedObject`，固定 `thumbnail256/v1`、PNG且长边≤256，不放大小图。`GET /metadata-jobs/{id}/documents` 返回最多1024项 `ScrapeDocuments`，仅包含已发布文件；单份完整结构化记录为 `scrape-document/v1`，最大16 MiB。`GET /media/{id}/info` 返回 `ContentObject` 或 `DerivedObject`，正文通过同一授权GET读取，文档以JSON附件交付。派生对象关系和索引不含正文、路径、能力票据或公开URL；完整文档使用文档内资源序号。文件语义、损坏处理、恢复和备份边界见[派生媒体说明](../derived-media.md)。
 
 ### S-P6-04 扫描后的歌词导入与自动补缺
 

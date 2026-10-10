@@ -12,8 +12,15 @@ import (
 var jobLanguage = regexp.MustCompile(`^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$`)
 
 func (r JobRequest) Normalize() (JobRequest, error) {
-	if len(r.SourceTrackIDs) < 1 || len(r.SourceTrackIDs) > MaxJobSources || len(r.Fields) < 1 || len(r.Fields) > 2 || len(r.Languages) > 16 || len(r.InstanceIDs) > 4 || len(r.ExcludeInstanceIDs) > 16 {
+	if (r.SourceAlbum == nil && len(r.SourceTrackIDs) < 1) || (r.SourceAlbum != nil && len(r.SourceTrackIDs) != 0) || len(r.SourceTrackIDs) > MaxJobSources || len(r.Fields) < 1 || len(r.Fields) > 2 || len(r.Languages) > 16 || len(r.InstanceIDs) > 4 || len(r.ExcludeInstanceIDs) > 16 {
 		return r, domain.Fail("INVALID_ARGUMENT", "Invalid metadata request limits")
+	}
+	if r.SourceAlbum != nil {
+		album := *r.SourceAlbum
+		if err := album.Validate(); err != nil {
+			return r, err
+		}
+		r.SourceAlbum = &album
 	}
 	var err error
 	r.SourceTrackIDs, err = jobIDs(r.SourceTrackIDs)

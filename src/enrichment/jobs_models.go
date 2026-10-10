@@ -22,12 +22,13 @@ type Instance struct {
 }
 
 type JobRequest struct {
-	SourceTrackIDs     []string `json:"sourceTrackIds"`
-	Fields             []string `json:"fields"`
-	Languages          []string `json:"languages"`
-	Query              *Query   `json:"query"`
-	InstanceIDs        []string `json:"instanceIds"`
-	ExcludeInstanceIDs []string `json:"excludeInstanceIds"`
+	SourceTrackIDs     []string            `json:"sourceTrackIds,omitempty"`
+	SourceAlbum        *SourceAlbumRequest `json:"sourceAlbum,omitempty"`
+	Fields             []string            `json:"fields"`
+	Languages          []string            `json:"languages"`
+	Query              *Query              `json:"query"`
+	InstanceIDs        []string            `json:"instanceIds"`
+	ExcludeInstanceIDs []string            `json:"excludeInstanceIds"`
 }
 
 // PreviewCandidate is a public projection; it contains no resource grants,

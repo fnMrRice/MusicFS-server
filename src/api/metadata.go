@@ -30,6 +30,11 @@ func (s *Server) RegisterEnrichment(service enrichmentAPI) {
 			return err
 		}
 		request := enrichment.JobRequest{SourceTrackIDs: input.SourceTrackIDs, Fields: input.Fields, Languages: input.Languages, InstanceIDs: input.InstanceIDs, ExcludeInstanceIDs: input.ExcludeInstanceIDs}
+		var err error
+		request.SourceAlbum, err = input.album()
+		if err != nil {
+			return err
+		}
 		if input.Query != nil {
 			request.Query = &enrichment.Query{Title: input.Query.Title, Artists: input.Query.Artists}
 		}

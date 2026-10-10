@@ -29,6 +29,16 @@ func (s *Store) ReferencePublication(ctx context.Context, owner, id string) erro
 	if p.Status != "published" {
 		return domain.Fail("CONFLICT", "Media bytes are not published")
 	}
+	if p.Target.Purpose == "derived" {
+		if err = referenceDerived(ctx, tx, p); err != nil {
+			return err
+		}
+		p.Status = "referenced"
+		if err = savePublication(ctx, tx, &p, false); err != nil {
+			return err
+		}
+		return tx.Commit()
+	}
 	if p.Target.Purpose == "content" {
 		if err = referenceContent(ctx, tx, p); err != nil {
 			return err
@@ -92,6 +102,16 @@ func (s *Store) InvalidatePublication(ctx context.Context, owner, id, code strin
 	}
 	if p.Status != "referenced" && p.Status != "finished" {
 		return domain.Fail("CONFLICT", "Only referenced media can become unavailable")
+	}
+	if p.Target.Purpose == "derived" {
+		if _, err = tx.ExecContext(ctx, "UPDATE media_derived_objects SET state='unavailable' WHERE owner=? AND publication_id=?", owner, id); err != nil {
+			return err
+		}
+		p.Status = "unavailable"
+		if err = savePublication(ctx, tx, &p, false); err != nil {
+			return err
+		}
+		return tx.Commit()
 	}
 	if p.Target.Purpose == "content" {
 		if err = invalidateContentPublication(ctx, tx, p); err != nil {

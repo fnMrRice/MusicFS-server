@@ -23,6 +23,8 @@ type mediaAPI interface {
 }
 
 func (s *Server) RegisterMedia(service mediaAPI) {
+	derived := derivedMedia(service)
+	s.registerDerivedMedia(derived)
 	s.HandleMediaUpload("POST /api/v1/media", func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		query, err := url.ParseQuery(r.URL.RawQuery)
 		if err != nil {
@@ -47,6 +49,13 @@ func (s *Server) RegisterMedia(service mediaAPI) {
 	})
 	s.Handle("GET /api/v1/media/{id}/info", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		object, err := service.ContentObject(r.Context(), session.User.ID, r.PathValue("id"))
+		if mediaNotFound(err) && derived != nil {
+			o, e := derived.DerivedObject(r.Context(), session.User.ID, r.PathValue("id"))
+			if e != nil {
+				return e
+			}
+			return WriteJSON(w, http.StatusOK, o)
+		}
 		if err != nil {
 			return err
 		}
@@ -54,6 +63,9 @@ func (s *Server) RegisterMedia(service mediaAPI) {
 	})
 	s.HandleMediaDelivery("GET /api/v1/media/{id}", func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		object, body, err := service.Open(r.Context(), session.User.ID, r.PathValue("id"))
+		if mediaNotFound(err) && derived != nil {
+			return deliverDerived(w, r, session, derived)
+		}
 		if err != nil {
 			return err
 		}

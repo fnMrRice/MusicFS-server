@@ -97,6 +97,8 @@ func (s *Service) runRecovery() bool {
 	if id == "" {
 		return false
 	}
+	s.active.Store(&id)
+	defer s.active.Store(nil)
 	ctx, cancel := context.WithTimeout(s.ctx, 30*time.Minute)
 	defer cancel()
 	w, err := s.repo.WritebackWork(ctx, owner, id)

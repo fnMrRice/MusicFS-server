@@ -84,7 +84,7 @@ func (s *Service) Recover(ctx context.Context) error {
 			if err = ctx.Err(); err != nil {
 				return err
 			}
-			if p.Target.Purpose != "fingerprint" && p.Target.Purpose != "content" {
+			if p.Target.Purpose != "fingerprint" && p.Target.Purpose != "content" && p.Target.Purpose != "derived" {
 				return domain.Fail("UNSUPPORTED", "Media publication recovery handler is unavailable")
 			}
 			switch p.Status {

@@ -1,0 +1,378 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://musicfs.invalid/contracts/scrape-document.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "jobId",
+    "target",
+    "targets",
+    "generation",
+    "request",
+    "resources",
+    "sourceIssues",
+    "attempts",
+    "outcome",
+    "startedAt",
+    "finishedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "scrape-document/v1"
+    },
+    "jobId": {
+      "$ref": "http.schema.json#/$defs/ID"
+    },
+    "target": {
+      "$ref": "http.schema.json#/$defs/MetadataTarget"
+    },
+    "targets": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "$ref": "http.schema.json#/$defs/MetadataTarget"
+      },
+      "minItems": 1
+    },
+    "generation": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "request": {
+      "$ref": "http.schema.json#/$defs/MetadataRequest"
+    },
+    "resources": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "$ref": "#/$defs/Resource"
+      }
+    },
+    "sourceIssues": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "$ref": "#/$defs/Issue"
+      }
+    },
+    "attempts": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {
+        "$ref": "#/$defs/Attempt"
+      }
+    },
+    "outcome": {
+      "$ref": "#/$defs/Outcome"
+    },
+    "startedAt": {
+      "$ref": "http.schema.json#/$defs/Timestamp"
+    },
+    "finishedAt": {
+      "$ref": "http.schema.json#/$defs/Timestamp"
+    }
+  },
+  "$defs": {
+    "Resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "number",
+        "version",
+        "kind",
+        "sizeBytes",
+        "match"
+      ],
+      "properties": {
+        "number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "version": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "kind": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "match": {
+          "type": "string",
+          "maxLength": 64
+        }
+      }
+    },
+    "Issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resourceNumber",
+        "code"
+      ],
+      "properties": {
+        "resourceNumber": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+        }
+      }
+    },
+    "Candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateId",
+        "target",
+        "field",
+        "language",
+        "format",
+        "mime",
+        "sizeBytes",
+        "sha256",
+        "origin",
+        "resourceNumber",
+        "resourceVersion",
+        "basis",
+        "status",
+        "failureCode"
+      ],
+      "properties": {
+        "candidateId": {
+          "$ref": "http.schema.json#/$defs/ID"
+        },
+        "target": {
+          "$ref": "http.schema.json#/$defs/MetadataTarget"
+        },
+        "field": {
+          "enum": [
+            "lyrics",
+            "artwork"
+          ]
+        },
+        "language": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "format": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "mime": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sha256": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "origin": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "resourceNumber": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "resourceVersion": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "basis": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "status": {
+          "enum": [
+            "available",
+            "unavailable"
+          ]
+        },
+        "failureCode": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Search": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidates",
+        "issues"
+      ],
+      "properties": {
+        "candidates": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/Candidate"
+          }
+        },
+        "issues": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "#/$defs/Issue"
+          }
+        }
+      }
+    },
+    "Fetch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateId",
+        "state",
+        "code",
+        "preview"
+      ],
+      "properties": {
+        "candidateId": {
+          "$ref": "http.schema.json#/$defs/ID"
+        },
+        "state": {
+          "enum": [
+            "completed",
+            "failed",
+            "notRequested"
+          ]
+        },
+        "code": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "preview": {
+          "anyOf": [
+            {
+              "$ref": "http.schema.json#/$defs/MetadataCandidate"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instanceId",
+        "pluginId",
+        "pluginVersion",
+        "state",
+        "failureCode",
+        "search",
+        "fetches"
+      ],
+      "properties": {
+        "instanceId": {
+          "$ref": "http.schema.json#/$defs/ID"
+        },
+        "pluginId": {
+          "$ref": "http.schema.json#/$defs/ID"
+        },
+        "pluginVersion": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "state": {
+          "enum": [
+            "completed",
+            "failed"
+          ]
+        },
+        "failureCode": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "search": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Search"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fetches": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/Fetch"
+          }
+        }
+      }
+    },
+    "Outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidates",
+        "issues",
+        "failureCode"
+      ],
+      "properties": {
+        "candidates": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "http.schema.json#/$defs/MetadataCandidate"
+          }
+        },
+        "issues": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "http.schema.json#/$defs/MetadataIssue"
+          }
+        },
+        "failureCode": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

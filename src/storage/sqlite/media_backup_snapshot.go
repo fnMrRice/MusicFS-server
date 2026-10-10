@@ -56,7 +56,8 @@ func readBackupSnapshot(ctx context.Context, path string) ([]mediastore.BackupOb
 	}
 	rows, err := db.QueryContext(ctx, `SELECT p.document,p.id,p.owner,p.object_id,p.status FROM media_publications p
  WHERE EXISTS(SELECT 1 FROM media_content_objects c WHERE c.publication_id=p.id)
- OR EXISTS(SELECT 1 FROM fingerprint_indexes i WHERE i.publication_id=p.id) ORDER BY p.object_id`)
+ OR EXISTS(SELECT 1 FROM fingerprint_indexes i WHERE i.publication_id=p.id)
+ OR EXISTS(SELECT 1 FROM media_derived_objects d WHERE d.publication_id=p.id) ORDER BY p.object_id`)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +123,8 @@ func validateBackupDatabase(ctx context.Context, db *sql.DB) error {
 	var invalid int
 	err = db.QueryRowContext(ctx, `SELECT
  (SELECT COUNT(*) FROM media_content_objects c JOIN media_publications p ON p.id=c.publication_id WHERE c.owner!=p.owner OR c.id!=p.object_id)
- +(SELECT COUNT(*) FROM fingerprint_indexes i JOIN media_publications p ON p.id=i.publication_id WHERE i.owner!=p.owner OR i.object_id!=p.object_id)`).Scan(&invalid)
+ +(SELECT COUNT(*) FROM fingerprint_indexes i JOIN media_publications p ON p.id=i.publication_id WHERE i.owner!=p.owner OR i.object_id!=p.object_id)
+ +(SELECT COUNT(*) FROM media_derived_objects d JOIN media_publications p ON p.id=d.publication_id WHERE d.owner!=p.owner OR d.id!=p.object_id)`).Scan(&invalid)
 	if err != nil {
 		return err
 	}

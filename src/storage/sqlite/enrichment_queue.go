@@ -34,9 +34,6 @@ func (s *Store) QueueEnrichment(ctx context.Context, owner string, request enric
 		return empty, false, err
 	}
 	defer tx.Rollback()
-	if err = visibleSources(ctx, tx, owner, request.SourceTrackIDs); err != nil {
-		return empty, false, err
-	}
 	prior, replay, err := contentIdempotency(ctx, tx, owner, "metadata/jobs", key, digest)
 	if err != nil {
 		return empty, false, err
@@ -49,11 +46,15 @@ func (s *Store) QueueEnrichment(ctx context.Context, owner string, request enric
 		j, e := readEnrichmentJob(ctx, tx, owner, id)
 		return j, true, e
 	}
+	sources, err := enrichmentSources(ctx, tx, owner, request)
+	if err != nil {
+		return empty, false, err
+	}
 	var owned, all int
 	if err = tx.QueryRowContext(ctx, "SELECT COALESCE(SUM(CASE WHEN owner=? THEN 1 ELSE 0 END),0),COUNT(*) FROM enrichment_targets WHERE state IN ('queued','running')", owner).Scan(&owned, &all); err != nil {
 		return empty, false, err
 	}
-	if owned+len(request.SourceTrackIDs) > 256 || all+len(request.SourceTrackIDs) > 1024 {
+	if owned+len(sources) > 256 || all+len(sources) > 1024 {
 		return empty, false, domain.Fail("RATE_LIMITED", "Metadata queue is full")
 	}
 	id := domain.NewID()
@@ -61,7 +62,7 @@ func (s *Store) QueueEnrichment(ctx context.Context, owner string, request enric
 	if _, err = tx.ExecContext(ctx, "INSERT INTO enrichment_jobs(id,owner,state,request,created_at,updated_at) VALUES(?,?,'queued',?,?,?)", id, owner, raw, now, now); err != nil {
 		return empty, false, err
 	}
-	for _, source := range request.SourceTrackIDs {
+	for _, source := range sources {
 		selection, e := readContentSelection(ctx, tx, owner, source)
 		if e != nil {
 			return empty, false, e

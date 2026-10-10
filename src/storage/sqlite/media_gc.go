@@ -11,6 +11,7 @@ import (
 )
 
 const garbageUnreferenced = ` NOT EXISTS(SELECT 1 FROM media_content_objects c WHERE c.id=p.object_id)
+ AND NOT EXISTS(SELECT 1 FROM media_derived_objects d WHERE d.id=p.object_id)
  AND NOT EXISTS(SELECT 1 FROM fingerprint_indexes i WHERE i.object_id=p.object_id)
  AND NOT EXISTS(SELECT 1 FROM media_publications active WHERE active.object_id=p.object_id AND active.status IN ('prepared','written','published','referenced'))
  AND NOT EXISTS(SELECT 1 FROM media_backup_objects b WHERE b.object_id=p.object_id)`

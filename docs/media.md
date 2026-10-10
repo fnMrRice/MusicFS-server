@@ -44,3 +44,5 @@ Content-Type: application/json
 文件缺失或摘要不符时，正文读取返回 409 `RESOURCE_CHANGED` 并标记内容不可用，保留选择与人工锁。选中的当前资产内容可出现 `current=true,state=unavailable`；旧资产或已失效资产绑定为 `current=false`，可读旧对象为 `state=stale`。重新扫描不会把旧资产的内容悄悄声明为新资产内容，也不会清掉人工意图。
 
 真实 HTTP、独立服务重启和播放检查见[验收记录](validation/media-http.md)；字段以 [OpenAPI](contracts/openapi.yaml) 和 [HTTP Schema](contracts/http.schema.json) 为准。
+
+来源专辑和发行具有独立封面选择与人工锁，见[专辑流程](albums.md)。已存封面可生成保持比例的256像素 PNG 缩略图；完整刮削记录也作为独立文件保留，见[派生媒体](derived-media.md)。这两类对象通过同一个媒体读取入口授权交付。

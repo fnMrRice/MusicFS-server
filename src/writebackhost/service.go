@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/domain"
@@ -37,6 +38,7 @@ type Service struct {
 	mu         sync.Mutex
 	recoveryMu sync.Mutex
 	retries    map[string]string
+	active     atomic.Pointer[string]
 }
 
 var errBusy = errors.New("writeback source is in use")
@@ -175,6 +177,11 @@ func (s *Service) Get(ctx context.Context, owner, id string) (Job, error) {
 		j.Status = "recovery"
 		j.Error = &domain.Error{Code: "TEMPORARY_FAILURE", Message: "Writeback source protection is being released"}
 	}
+	if active := s.active.Load(); j.Status == "recovery" && active != nil && *active == id {
+		// The durable DB result may precede the final journal flush and lease
+		// release. An executing operation is still running, not interrupted.
+		j.Status, j.Error = "running", nil
+	}
 	return j, nil
 }
 func (s *Service) Cancel(ctx context.Context, owner, id string) (Job, error) {
@@ -253,6 +260,8 @@ func (s *Service) runNext() {
 	if err != nil {
 		return
 	}
+	s.active.Store(&w.Job.ID)
+	defer s.active.Store(nil)
 	ctx, cancel := context.WithTimeout(s.ctx, 30*time.Minute)
 	defer cancel()
 	p, err := s.patch(ctx, w)

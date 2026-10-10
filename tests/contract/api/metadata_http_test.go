@@ -68,11 +68,13 @@ func TestMetadataHTTPPrivateJobsCandidatesAndInstances(t *testing.T) {
 	}
 	t.Cleanup(func() { files.Close() })
 	lib := library.New(store, jobs.New(store), nil, nil)
-	service, err := enrichmentworker.New(store, lib, mediastore.NewContent(store, store, files), []enrichmentworker.Runtime{{ID: "own-scraper", Owner: "admin"}, {ID: "private-scraper", Owner: "other"}}, enrichmentworker.Config{})
+	content := mediastore.NewContent(store, store, files)
+	service, err := enrichmentworker.New(store, lib, content, []enrichmentworker.Runtime{{ID: "own-scraper", Owner: "admin"}, {ID: "private-scraper", Owner: "other"}}, enrichmentworker.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	server.RegisterEnrichment(service)
+	server.RegisterMedia(content)
 	request := func(method, path, body string) *httptest.ResponseRecorder {
 		t.Helper()
 		r := httptest.NewRequest(method, "/api/v1"+path, strings.NewReader(body))
@@ -98,6 +100,7 @@ func TestMetadataHTTPPrivateJobsCandidatesAndInstances(t *testing.T) {
 	testkit.ValidateHTTP(t, "ScraperInstances", w.Body.Bytes())
 	for _, tc := range []struct{ method, path, body string }{
 		{"GET", "/metadata-jobs/" + private.JobID, ""},
+		{"GET", "/metadata-jobs/" + private.JobID + "/documents", ""},
 		{"POST", "/metadata-jobs/" + private.JobID + "/cancel", "{}"},
 		{"POST", "/metadata-candidates/" + candidate.CandidateID + "/apply", `{"expectedRevision":0}`},
 		{"POST", "/metadata-jobs", `{"sourceTrackIds":["any-source"],"fields":["lyrics"],"instanceIds":["private-scraper"]}`},
@@ -112,6 +115,17 @@ func TestMetadataHTTPPrivateJobsCandidatesAndInstances(t *testing.T) {
 		w := request("POST", "/metadata-candidates/"+candidate.CandidateID+"/apply", body)
 		if w.Code != 400 {
 			t.Fatal("invalid candidate apply request accepted")
+		}
+	}
+	for _, body := range []string{
+		`{"sourceAlbum":null,"fields":["lyrics"]}`,
+		`{"sourceAlbum":{"sourceAlbumId":"album"},"fields":["lyrics"]}`,
+		`{"sourceAlbum":{"sourceAlbumId":"album","expectedRevision":null},"fields":["lyrics"]}`,
+		`{"sourceAlbum":{"sourceAlbumId":"album","expectedRevision":1,"path":"bad"},"fields":["lyrics"]}`,
+		`{"sourceAlbum":{"sourceAlbumId":"album","expectedRevision":1},"sourceTrackIds":[],"fields":["lyrics"]}`,
+	} {
+		if w := request("POST", "/metadata-jobs", body); w.Code != 400 {
+			t.Fatalf("invalid album metadata input: %d %s", w.Code, w.Body.String())
 		}
 	}
 }

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/src/albums"
 	"github.com/fnMrRice/MusicFS-server/src/api"
 	"github.com/fnMrRice/MusicFS-server/src/auth"
 	"github.com/fnMrRice/MusicFS-server/src/config"
@@ -103,6 +104,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	handler.RegisterHashing(hashes)
 	handler.RegisterFingerprinting(fingerprints)
 	handler.RegisterMedia(content)
+	handler.RegisterAlbums(albums.New(store, content, lib))
 	handler.RegisterEnrichment(metadata)
 	handler.RegisterMetadataAutomation(metadata)
 	handler.RegisterWriteBack(writebacks)

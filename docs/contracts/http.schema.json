@@ -3,6 +3,126 @@
   "$id": "https://musicfs.invalid/contracts/http.schema.json",
   "title": "MusicFS HTTP v1 模型",
   "$defs": {
+    "ThumbnailMetadata": {"type": "object", "additionalProperties": false, "required": ["transform", "parentObjectId", "parentSha256"], "properties": {"transform": {"const": "thumbnail256/v1"}, "parentObjectId": {"type": "string", "pattern": "^[0-9a-f]{48}$"}, "parentSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}},
+    "ScrapeDocumentMetadata": {"type": "object", "additionalProperties": false, "required": ["transform", "jobId", "sourceTrackId", "assetId", "assetVersion", "generation"], "properties": {"transform": {"const": "scrape-document/v1"}, "jobId": {"type": "string", "pattern": "^[0-9a-f]{48}$"}, "sourceTrackId": {"type": "string", "minLength": 1, "maxLength": 256}, "assetId": {"type": "string", "minLength": 1, "maxLength": 256}, "assetVersion": {"type": "string", "minLength": 1, "maxLength": 256}, "generation": {"type": "integer", "minimum": 1}}},
+    "DerivedObject": {"type": "object", "additionalProperties": false, "required": ["objectId", "kind", "mimeType", "sizeBytes", "sha256", "metadata", "state", "createdAt"], "properties": {"objectId": {"type": "string", "pattern": "^[0-9a-f]{48}$"}, "kind": {"enum": ["thumbnail", "scrape-document"]}, "mimeType": {"enum": ["image/png", "application/json"]}, "sizeBytes": {"type": "integer", "minimum": 1, "maximum": 16777216}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "metadata": {"oneOf": [{"$ref": "#/$defs/ThumbnailMetadata"}, {"$ref": "#/$defs/ScrapeDocumentMetadata"}]}, "state": {"enum": ["available", "unavailable"]}, "createdAt": {"$ref": "#/$defs/Timestamp"}}, "allOf": [{"if": {"properties": {"kind": {"const": "thumbnail"}}}, "then": {"properties": {"mimeType": {"const": "image/png"}, "metadata": {"$ref": "#/$defs/ThumbnailMetadata"}}}}, {"if": {"properties": {"kind": {"const": "scrape-document"}}}, "then": {"properties": {"mimeType": {"const": "application/json"}, "metadata": {"$ref": "#/$defs/ScrapeDocumentMetadata"}}}}]},
+    "ScrapeDocuments": {"type": "object", "additionalProperties": false, "required": ["items"], "properties": {"items": {"type": "array", "maxItems": 1024, "items": {"$ref": "#/$defs/DerivedObject"}}}},
+    "MediaObjectInfo": {"oneOf": [{"$ref": "#/$defs/ContentObject"}, {"$ref": "#/$defs/DerivedObject"}]},
+    "CreateSourceAlbumRequest": {"type": "object", "additionalProperties": false, "required": ["providerInstanceId", "name", "sourceTrackIds"], "properties": {"providerInstanceId": {"type": "string", "minLength": 1, "maxLength": 128}, "name": {"type": "string", "minLength": 1, "maxLength": 256}, "sourceTrackIds": {"type": "array", "maxItems": 1000, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 128}}}},
+    "UpdateSourceAlbumRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expectedRevision",
+        "name",
+        "sourceTrackIds"
+      ],
+      "properties": {
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "sourceTrackIds": {
+          "type": "array",
+          "maxItems": 1000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      }
+    },
+    "CreateReleaseRequest": {"type": "object", "additionalProperties": false, "required": ["name", "sourceAlbumIds"], "properties": {"name": {"type": "string", "minLength": 1, "maxLength": 256}, "sourceAlbumIds": {"type": "array", "maxItems": 256, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 128}}}},
+    "UpdateReleaseRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expectedRevision",
+        "name",
+        "sourceAlbumIds"
+      ],
+      "properties": {
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "sourceAlbumIds": {
+          "type": "array",
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      }
+    },
+    "SourceAlbum": {"type": "object", "additionalProperties": false, "required": ["sourceAlbumId", "providerInstanceId", "name", "revision", "sourceTrackIds", "createdAt", "updatedAt"], "properties": {"sourceAlbumId": {"type": "string", "minLength": 1, "maxLength": 128}, "providerInstanceId": {"type": "string", "minLength": 1, "maxLength": 128}, "name": {"type": "string", "minLength": 1, "maxLength": 256}, "revision": {"type": "integer", "minimum": 1}, "sourceTrackIds": {"type": "array", "maxItems": 1000, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 128}}, "createdAt": {"$ref": "#/$defs/Timestamp"}, "updatedAt": {"$ref": "#/$defs/Timestamp"}}},
+    "Release": {"type": "object", "additionalProperties": false, "required": ["releaseId", "name", "revision", "sourceAlbumIds", "createdAt", "updatedAt"], "properties": {"releaseId": {"type": "string", "minLength": 1, "maxLength": 128}, "name": {"type": "string", "minLength": 1, "maxLength": 256}, "revision": {"type": "integer", "minimum": 1}, "sourceAlbumIds": {"type": "array", "maxItems": 256, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 128}}, "createdAt": {"$ref": "#/$defs/Timestamp"}, "updatedAt": {"$ref": "#/$defs/Timestamp"}}},
+    "AlbumTarget": {"type": "object", "additionalProperties": false, "required": ["kind", "id"], "properties": {"kind": {"enum": ["sourceAlbum", "release"]}, "id": {"type": "string", "minLength": 1, "maxLength": 128}}},
+    "AlbumCoverBinding": {"type": "object", "additionalProperties": false, "required": ["bindingId", "objectId", "targetRevision", "sourceTrackId", "assetId", "assetVersion", "state", "createdAt"], "properties": {"bindingId": {"type": "string", "minLength": 1, "maxLength": 128}, "objectId": {"type": "string", "minLength": 1, "maxLength": 128}, "targetRevision": {"type": "integer", "minimum": 1}, "sourceTrackId": {"type": "string", "minLength": 1, "maxLength": 128}, "assetId": {"type": "string", "minLength": 1, "maxLength": 128}, "assetVersion": {"type": "string", "minLength": 1, "maxLength": 1024}, "state": {"enum": ["available", "unavailable"]}, "createdAt": {"$ref": "#/$defs/Timestamp"}}},
+    "AlbumCoverSelection": {"type": "object", "additionalProperties": false, "required": ["target", "revision", "manualLocked", "binding"], "properties": {"target": {"$ref": "#/$defs/AlbumTarget"}, "revision": {"type": "integer", "minimum": 0}, "manualLocked": {"type": "boolean"}, "binding": {"anyOf": [{"$ref": "#/$defs/AlbumCoverBinding"}, {"type": "null"}]}}},
+    "SelectAlbumCoverRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expectedRevision",
+        "expectedTargetRevision",
+        "objectId"
+      ],
+      "properties": {
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expectedTargetRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "objectId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
+    "UnlockAlbumCoverRequest": {"type": "object", "additionalProperties": false, "required": ["expectedRevision"], "properties": {"expectedRevision": {"type": "integer", "minimum": 0}}},
+    "AlbumChange": {"type": "object", "additionalProperties": false, "required": ["sequence", "target", "area", "revision", "operation", "previousMembers", "members", "previousBindingId", "bindingId", "manualLocked", "createdAt"], "properties": {"sequence": {"type": "integer", "minimum": 1}, "target": {"$ref": "#/$defs/AlbumTarget"}, "area": {"type": "string"}, "revision": {"type": "integer", "minimum": 1}, "operation": {"type": "string"}, "previousMembers": {"type": "array", "maxItems": 1000, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 128}}, "members": {"type": "array", "maxItems": 1000, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 128}}, "previousBindingId": {"anyOf": [{"type": "string", "minLength": 1, "maxLength": 128}, {"type": "null"}]}, "bindingId": {"anyOf": [{"type": "string", "minLength": 1, "maxLength": 128}, {"type": "null"}]}, "manualLocked": {"anyOf": [{"type": "boolean"}, {"type": "null"}]}, "createdAt": {"$ref": "#/$defs/Timestamp"}}},
+    "SourceAlbums": {"type": "object", "additionalProperties": false, "required": ["items", "nextAfter"], "properties": {"items": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/SourceAlbum"}}, "nextAfter": {"anyOf": [{"type": "string", "minLength": 1, "maxLength": 128}, {"type": "null"}]}}},
+    "Releases": {"type": "object", "additionalProperties": false, "required": ["items", "nextAfter"], "properties": {"items": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/Release"}}, "nextAfter": {"anyOf": [{"type": "string", "minLength": 1, "maxLength": 128}, {"type": "null"}]}}},
+    "AlbumChanges": {"type": "object", "additionalProperties": false, "required": ["items", "nextAfter"], "properties": {"items": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/AlbumChange"}}, "nextAfter": {"anyOf": [{"type": "string", "minLength": 1, "maxLength": 128}, {"type": "null"}]}}},
+    "MetadataSourceAlbum": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceAlbumId",
+        "expectedRevision"
+      ],
+      "properties": {
+        "sourceAlbumId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
     "EmptyRequest": {"type": "object", "additionalProperties": false},
     "WriteBackField": {"type": "object", "additionalProperties": false, "required": ["name", "language"], "properties": {"name": {"enum": ["lyrics", "artwork"]}, "language": {"type": "string", "maxLength": 35, "pattern": "^(?:[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*)?$"}}, "if": {"properties": {"name": {"const": "artwork"}}}, "then": {"properties": {"language": {"const": ""}}}},
     "WriteBackRequest": {"type": "object", "additionalProperties": false, "required": ["sourceTrackId", "assetId", "assetVersion", "expectedRevision", "fields", "overwrite"], "properties": {"sourceTrackId": {"type": "string", "minLength": 1, "maxLength": 256}, "assetId": {"type": "string", "minLength": 1, "maxLength": 256}, "assetVersion": {"type": "string", "minLength": 1, "maxLength": 256}, "expectedRevision": {"type": "integer", "minimum": 0}, "fields": {"type": "array", "minItems": 1, "maxItems": 2, "uniqueItems": true, "items": {"$ref": "#/$defs/WriteBackField"}, "allOf": [{"contains": {"properties": {"name": {"const": "lyrics"}}}, "minContains": 0, "maxContains": 1}, {"contains": {"properties": {"name": {"const": "artwork"}}}, "minContains": 0, "maxContains": 1}]}, "overwrite": {"type": "boolean"}}},
@@ -47,8 +167,8 @@
     },
     "MetadataTarget": {"type": "object", "additionalProperties": false, "required": ["sourceTrackId", "assetId", "assetVersion", "revision"], "properties": {"sourceTrackId": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000\\r\\n/\\\\]+$"}, "assetId": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000\\r\\n/\\\\]+$"}, "assetVersion": {"type": "string", "minLength": 1, "maxLength": 1024}, "revision": {"type": "integer", "minimum": 0}}},
     "MetadataQuery": {"type": "object", "additionalProperties": false, "required": [], "properties": {"title": {"type": "string", "minLength": 0, "maxLength": 4096}, "artists": {"type": "array", "minItems": 0, "maxItems": 32, "items": {"type": "string", "minLength": 0, "maxLength": 1024}}}},
-    "CreateMetadataRequest": {"type": "object", "additionalProperties": false, "required": ["sourceTrackIds", "fields"], "properties": {"sourceTrackIds": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000\\r\\n/\\\\]+$"}, "uniqueItems": true}, "fields": {"type": "array", "minItems": 1, "maxItems": 2, "items": {"enum": ["lyrics", "artwork"]}, "uniqueItems": true}, "languages": {"type": "array", "minItems": 0, "maxItems": 16, "items": {"type": "string", "minLength": 2, "maxLength": 35, "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"}, "uniqueItems": true}, "instanceIds": {"type": "array", "minItems": 0, "maxItems": 4, "items": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000\\r\\n/\\\\]+$"}, "uniqueItems": true}, "excludeInstanceIds": {"type": "array", "minItems": 0, "maxItems": 16, "items": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000\\r\\n/\\\\]+$"}, "uniqueItems": true}, "query": {"anyOf": [{"$ref": "#/$defs/MetadataQuery"}, {"type": "null"}]}}},
-    "MetadataRequest": {"type": "object", "additionalProperties": false, "required": ["sourceTrackIds", "fields", "languages", "instanceIds", "excludeInstanceIds", "query"], "properties": {"sourceTrackIds": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000\\r\\n/\\\\]+$"}, "uniqueItems": true}, "fields": {"type": "array", "minItems": 1, "maxItems": 2, "items": {"enum": ["lyrics", "artwork"]}, "uniqueItems": true}, "languages": {"type": "array", "minItems": 0, "maxItems": 16, "items": {"type": "string", "minLength": 2, "maxLength": 35, "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"}, "uniqueItems": true}, "instanceIds": {"type": "array", "minItems": 0, "maxItems": 4, "items": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000\\r\\n/\\\\]+$"}, "uniqueItems": true}, "excludeInstanceIds": {"type": "array", "minItems": 0, "maxItems": 16, "items": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000\\r\\n/\\\\]+$"}, "uniqueItems": true}, "query": {"anyOf": [{"$ref": "#/$defs/MetadataQuery"}, {"type": "null"}]}}},
+    "CreateMetadataRequest": {"type": "object", "additionalProperties": false, "required": ["fields"], "properties": {"sourceTrackIds": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000\\r\\n/\\\\]+$"}, "uniqueItems": true}, "fields": {"type": "array", "minItems": 1, "maxItems": 2, "items": {"enum": ["lyrics", "artwork"]}, "uniqueItems": true}, "languages": {"type": "array", "minItems": 0, "maxItems": 16, "items": {"type": "string", "minLength": 2, "maxLength": 35, "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"}, "uniqueItems": true}, "instanceIds": {"type": "array", "minItems": 0, "maxItems": 4, "items": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000\\r\\n/\\\\]+$"}, "uniqueItems": true}, "excludeInstanceIds": {"type": "array", "minItems": 0, "maxItems": 16, "items": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000\\r\\n/\\\\]+$"}, "uniqueItems": true}, "query": {"anyOf": [{"$ref": "#/$defs/MetadataQuery"}, {"type": "null"}]}, "sourceAlbum": {"$ref": "#/$defs/MetadataSourceAlbum"}}, "oneOf": [{"required": ["sourceTrackIds"], "not": {"required": ["sourceAlbum"]}}, {"required": ["sourceAlbum"], "not": {"required": ["sourceTrackIds"]}}]},
+    "MetadataRequest": {"type": "object", "additionalProperties": false, "required": ["fields", "languages", "instanceIds", "excludeInstanceIds", "query"], "properties": {"sourceTrackIds": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000\\r\\n/\\\\]+$"}, "uniqueItems": true}, "fields": {"type": "array", "minItems": 1, "maxItems": 2, "items": {"enum": ["lyrics", "artwork"]}, "uniqueItems": true}, "languages": {"type": "array", "minItems": 0, "maxItems": 16, "items": {"type": "string", "minLength": 2, "maxLength": 35, "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"}, "uniqueItems": true}, "instanceIds": {"type": "array", "minItems": 0, "maxItems": 4, "items": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000\\r\\n/\\\\]+$"}, "uniqueItems": true}, "excludeInstanceIds": {"type": "array", "minItems": 0, "maxItems": 16, "items": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000\\r\\n/\\\\]+$"}, "uniqueItems": true}, "query": {"anyOf": [{"$ref": "#/$defs/MetadataQuery"}, {"type": "null"}]}, "sourceAlbum": {"$ref": "#/$defs/MetadataSourceAlbum"}}, "oneOf": [{"required": ["sourceTrackIds"], "not": {"required": ["sourceAlbum"]}}, {"required": ["sourceAlbum"], "not": {"required": ["sourceTrackIds"]}}]},
     "ScraperInstance": {"type": "object", "additionalProperties": false, "required": ["instanceId", "name", "pluginId", "availability", "fields", "queryCorrectionsSupported"], "properties": {"instanceId": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000\\r\\n/\\\\]+$"}, "name": {"type": "string"}, "pluginId": {"const": "musicfs.scraper.local"}, "availability": {"enum": ["available", "offline"]}, "fields": {"type": "array", "minItems": 1, "maxItems": 2, "items": {"enum": ["lyrics", "artwork"]}, "uniqueItems": true}, "queryCorrectionsSupported": {"const": false}}},
     "ScraperInstances": {"type": "object", "additionalProperties": false, "required": ["items"], "properties": {"items": {"type": "array", "items": {"$ref": "#/$defs/ScraperInstance"}}}},
     "MetadataCandidate": {"type": "object", "additionalProperties": false, "required": ["candidateId", "target", "instanceId", "field", "language", "format", "mime", "sizeBytes", "sha256", "origin", "basis", "status", "failureCode", "previewObjectId", "expiresAt"], "properties": {"candidateId": {"type": "string", "pattern": "^[0-9a-f]{48}$"}, "target": {"$ref": "#/$defs/MetadataTarget"}, "instanceId": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000\\r\\n/\\\\]+$"}, "field": {"enum": ["lyrics", "artwork"]}, "language": {"type": "string", "maxLength": 35}, "format": {"enum": ["", "text", "lrc", "png", "jpeg"]}, "mime": {"enum": ["", "text/plain; charset=utf-8", "image/png", "image/jpeg"]}, "sizeBytes": {"type": "integer", "minimum": 0, "maximum": 8388608}, "sha256": {"type": "string", "pattern": "^(?:[0-9a-f]{64})?$"}, "origin": {"enum": ["embedded", "sidecar"]}, "basis": {"type": "string", "minLength": 0, "maxLength": 64}, "status": {"enum": ["available", "unavailable"]}, "failureCode": {"anyOf": [{"type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,63}$"}, {"type": "null"}]}, "previewObjectId": {"anyOf": [{"type": "string", "pattern": "^[0-9a-f]{48}$"}, {"type": "null"}]}, "expiresAt": {"$ref": "#/$defs/Timestamp"}}},

@@ -41,6 +41,7 @@ type Session struct {
 	resources []enrichment.Resource
 	mu        sync.Mutex
 	result    *enrichment.SearchResult
+	version   string
 }
 
 func NewHost(config Config) (*Host, error) {
@@ -180,8 +181,11 @@ func (h *Host) Open(parent context.Context, scope pluginproto.Context, target en
 		return nil, err
 	}
 	failed = false
+	session.version = ready.Manifest.PluginVersion
 	return session, nil
 }
+
+func (s *Session) PluginVersion() string { return s.version }
 
 func (s *Session) Close() error { s.cancel(); <-s.closed; return nil }
 

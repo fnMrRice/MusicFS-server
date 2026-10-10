@@ -35,7 +35,8 @@ func (s *Service) execute(parent context.Context, w enrichment.Work) {
 	s.mu.Unlock()
 	defer func() { cancel(); s.mu.Lock(); delete(s.running, key); s.mu.Unlock() }()
 	out := enrichment.Outcome{Candidates: []enrichment.PreviewCandidate{}, Issues: []enrichment.JobIssue{}}
-	err := s.collect(ctx, w, &out)
+	trace := newTrace(w)
+	err := s.collect(ctx, w, &out, trace)
 	if parent.Err() != nil {
 		return
 	}
@@ -45,6 +46,11 @@ func (s *Service) execute(parent context.Context, w enrichment.Work) {
 	}
 	finish, stop := context.WithTimeout(context.Background(), 5*time.Second)
 	defer stop()
+	if err = s.saveDocument(finish, w, trace, out); err != nil {
+		code := failureCode(err)
+		out.FailureCode = &code
+		addIssue(&out, "", code)
+	}
 	if err = s.repo.FinishEnrichment(finish, w, out); err != nil {
 		latest, getErr := s.repo.GetEnrichmentJob(finish, w.Owner, w.JobID)
 		if getErr != nil || latest.State != "cancelled" {
@@ -53,7 +59,7 @@ func (s *Service) execute(parent context.Context, w enrichment.Work) {
 	}
 }
 
-func (s *Service) collect(ctx context.Context, w enrichment.Work, out *enrichment.Outcome) error {
+func (s *Service) collect(ctx context.Context, w enrichment.Work, out *enrichment.Outcome, trace *documentTrace) error {
 	if err := s.repo.CurrentEnrichment(ctx, w); err != nil {
 		return err
 	}
@@ -70,6 +76,7 @@ func (s *Service) collect(ctx context.Context, w enrichment.Work, out *enrichmen
 	if err = input.DecodeNCM(ctx, s.config.NCMDecoder); err != nil {
 		return err
 	}
+	trace.source(input)
 	for _, issue := range input.Issues {
 		addIssue(out, "", issue.Code)
 	}
@@ -80,12 +87,16 @@ func (s *Service) collect(ctx context.Context, w enrichment.Work, out *enrichmen
 			return err
 		}
 		r, ok := s.runtimes[id]
+		attempt := trace.attempt(id)
 		if !ok || r.Owner != w.Owner || r.Host == nil {
 			addIssue(out, id, "SOURCE_OFFLINE")
 			lastFailure = domain.Fail("SOURCE_OFFLINE", "Selected scraper instance is offline")
+			finishAttempt(attempt, lastFailure)
 			continue
 		}
-		if err = s.scrape(ctx, w, task, r, input, out); err != nil {
+		err = s.scrape(ctx, w, task, r, input, out, trace, attempt)
+		finishAttempt(attempt, err)
+		if err != nil {
 			lastFailure = err
 			code := failureCode(err)
 			addIssue(out, id, code)
@@ -117,7 +128,7 @@ func addIssue(out *enrichment.Outcome, instance, code string) {
 	}
 }
 
-func (s *Service) scrape(ctx context.Context, w enrichment.Work, task string, r Runtime, input *library.ScrapeInput, out *enrichment.Outcome) error {
+func (s *Service) scrape(ctx context.Context, w enrichment.Work, task string, r Runtime, input *library.ScrapeInput, out *enrichment.Outcome, trace *documentTrace, attempt *enrichment.ScraperAttempt) error {
 	scope := pluginproto.Context{UserID: w.Owner, InstanceID: r.ID, TaskID: task, TimeoutMs: 30000}
 	session, err := r.Host.Open(ctx, scope, w.Target, input.Inputs)
 	for err != nil && failureCode(err) == "RATE_LIMITED" {
@@ -134,10 +145,12 @@ func (s *Service) scrape(ctx context.Context, w enrichment.Work, task string, r 
 		return err
 	}
 	defer session.Close()
+	attempt.PluginVersion = session.PluginVersion()
 	result, err := session.Search(ctx, w.Request.Fields, w.Request.Languages, nil)
 	if err != nil {
 		return err
 	}
+	attempt.Search = trace.search(result)
 	for _, issue := range result.Issues {
 		addIssue(out, r.ID, issue.Code)
 	}
@@ -151,6 +164,18 @@ func (s *Service) scrape(ctx context.Context, w enrichment.Work, task string, r 
 			continue
 		}
 		preview, err := s.preview(ctx, w, r.ID, input, session, candidate)
+		fetch := enrichment.DocumentFetch{CandidateID: candidate.CandidateID, State: "completed", Preview: &preview}
+		if err != nil {
+			code := failureCode(err)
+			fetch.State = "failed"
+			fetch.Code = &code
+			fetch.Preview = nil
+		}
+		if err == nil && preview.FailureCode != nil {
+			fetch.State = "failed"
+			fetch.Code = preview.FailureCode
+		}
+		attempt.Fetches = append(attempt.Fetches, fetch)
 		if err != nil {
 			code := failureCode(err)
 			addIssue(out, r.ID, code)
