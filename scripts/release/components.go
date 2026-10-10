@@ -1,0 +1,53 @@
+package main
+
+import (
+	"fmt"
+	"path/filepath"
+	"strconv"
+	"strings"
+
+	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
+)
+
+type component struct {
+	Program      string   `json:"program"`
+	PluginID     string   `json:"pluginId,omitempty"`
+	Version      string   `json:"version"`
+	Protocol     string   `json:"protocol"`
+	Capabilities []string `json:"declaredCapabilities"`
+	Requirements []string `json:"requirements"`
+}
+
+// This release catalog records official manifests, not a promise that external
+// tools, credentials or remote platforms will be available at installation.
+func components() []component {
+	result := []component{
+		{Program: "musicfs", Version: "0.1.0", Protocol: "HTTP API v1", Capabilities: []string{"local-library", "playback", "metadata"}, Requirements: []string{"configuration", "administrator token"}},
+		{Program: "musicfs-plugin-local", PluginID: "musicfs.localfiles", Version: "0.3.0", Protocol: pluginproto.ProtocolVersion, Capabilities: []string{"library.scan", "metadata.read", "stream.resolve"}, Requirements: []string{"authorized music root"}},
+		{Program: "musicfs-plugin-audio-ffmpeg", PluginID: "musicfs.audioffmpeg", Version: "0.1.0", Protocol: pluginproto.ProtocolVersion, Capabilities: []string{"audio.decode", "audio.dsp", "audio.encode", "audio.mux"}, Requirements: []string{"FFmpeg and ffprobe capability probe", "audio.normalize requires normalization probe"}},
+		{Program: "musicfs-plugin-ncm", PluginID: "musicfs.ncm", Version: "0.1.0", Protocol: pluginproto.ProtocolVersion, Capabilities: []string{"audio.decrypt"}, Requirements: []string{}},
+		{Program: "musicfs-plugin-scraper-local", PluginID: "musicfs.scraper.local", Version: "0.1.0", Protocol: pluginproto.ProtocolVersion, Capabilities: []string{"scrape.search", "scrape.fetch", "lyrics", "artwork"}, Requirements: []string{"authorized host content channel"}},
+	}
+	for _, platform := range []string{"netease", "qqmusic", "applemusic"} {
+		result = append(result, component{Program: "musicfs-plugin-" + platform, PluginID: pluginproto.OnlinePluginID(platform), Version: "0.1.0", Protocol: pluginproto.ProtocolVersion, Capabilities: pluginproto.OnlineCapabilities(platform), Requirements: []string{"host-controlled network", "no account login or audio resolution"}})
+	}
+	return result
+}
+
+func (b builder) schemaVersion() (int, error) {
+	files, err := filepath.Glob(filepath.Join(b.root, "src", "storage", "migrations", "*.sql"))
+	if err != nil {
+		return 0, err
+	}
+	for index, path := range files {
+		prefix, _, ok := strings.Cut(filepath.Base(path), "_")
+		version, err := strconv.Atoi(prefix)
+		if !ok || err != nil || version != index+1 {
+			return 0, fmt.Errorf("migration sequence is incomplete at %s", filepath.Base(path))
+		}
+	}
+	if len(files) == 0 {
+		return 0, fmt.Errorf("database migration sequence is empty")
+	}
+	return len(files), nil
+}
