@@ -147,5 +147,6 @@ Windows全量测试及竞争检查、四程序Windows/Linux构建、Linux原生�
 | S-P8-02 | Windows真实CLI四轮扫描/摘要/指纹/并发慢消费者资源采样、进程身份复核与完整输出复用；取消后回到Server+Local Worker、无partial、输入可独占重开，保留有界完整缓存。具体CPU/内存/句柄及残留限制见[资源基线](resource-baseline.md)，不外推NAS/ARM或未测环境 |
 | S-P2 排除规则补齐 | Local0.3.0/local-import-v3提供根相对有界glob排除配置，进入完整计划/游标摘要，Host和库对账共同执行；范围外旧记录及证据不变，拒绝借用旧身份跨范围重绑。Windows/Linux真实Worker、HTTP/SQLite和race通过，见[排除规则验收](scan-exclusions.md) |
 | S-P8-03 | 八程序私有安装目录、目标平台配置、版本/协议/能力/依赖与Go许可、校验清单、独立Web静态制品白名单；Windows/WSL全新目录使用实际制品扫描、NCM/处理流/定位和租约退出通过。开发制品明确dirty，最终干净构建另记，见[制品验收](release.md) |
+| S-P8-04 | 本地安装运行、受限容器/只读音乐/健康检查、TLS与流式Nginx示例、部署机密忽略规则；真实直接HTTPS的证书校验、Cookie/Origin/CSRF、Range及撤销在Windows/Linux通过。Docker和Nginx运行未验收，见[部署说明](../deployment.md) |
 
 P6本期门槛已通过；在线平台目前仅宣告已验收的公开资料能力，账号、完整音频和其他未列明能力不随此交付。歌单和完整部署继续分步推进。新增插件导入选项（歌词、递归与深度）均已接入实际扫描及补全流程。

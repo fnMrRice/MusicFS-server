@@ -1,0 +1,48 @@
+configVersion: 1
+listen: '0.0.0.0:8443'
+allowLoopbackHttp: false
+allowedOrigins: ['https://localhost:8443']
+tlsCert: '/etc/musicfs/tls/server.crt'
+tlsKey: '/etc/musicfs/tls/server.key'
+dataRoot: '/var/lib/musicfs/data'
+mediaRoot: '/var/lib/musicfs/media'
+cacheRoot: '/var/cache/musicfs'
+webRoot: ''
+plugins:
+  - pluginId: 'musicfs.localfiles'
+    executable: '/opt/musicfs/bin/musicfs-plugin-local'
+    enabled: true
+    instances:
+      - instanceId: 'local'
+        name: '本地音乐'
+        role: 'provider'
+        enabled: true
+        importDefaults: {recursive: true, maxDepth: 64, importLyrics: false}
+        config:
+          musicRoots: [{id: 'local', name: '只读音乐', path: '/music'}]
+  - pluginId: 'musicfs.audio.ffmpeg'
+    executable: '/opt/musicfs/bin/musicfs-plugin-audio-ffmpeg'
+    enabled: false
+    instances:
+      - instanceId: 'audio-default'
+        role: 'audio'
+        enabled: false
+        config: {ffmpegPath: '/usr/bin/ffmpeg', ffprobePath: '/usr/bin/ffprobe'}
+  - pluginId: 'musicfs.ncm'
+    executable: '/opt/musicfs/bin/musicfs-plugin-ncm'
+    enabled: true
+    instances:
+      - instanceId: 'ncm-default'
+        role: 'audio'
+        enabled: true
+        config: {}
+  - pluginId: 'musicfs.scraper.local'
+    executable: '/opt/musicfs/bin/musicfs-plugin-scraper-local'
+    enabled: true
+    instances:
+      - instanceId: 'scraper-local'
+        role: 'scraper'
+        enabled: true
+        config: {}
+hashing: {auto: false, maxConcurrent: 1, bytesPerSecond: 4194304}
+writeBack: {enabled: false, allowOverwrite: false, maxFileBytes: 8589934592, roots: []}

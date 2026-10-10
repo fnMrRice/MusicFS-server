@@ -1,0 +1,24 @@
+services:
+  musicfs:
+    image: musicfs-server:local
+    user: '10001:10001'
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    init: true
+    stop_grace_period: 30s
+    restart: unless-stopped
+    ports: ['127.0.0.1:8443:8443']
+    env_file: ['./musicfs.env']
+    volumes:
+      - './configuration:/etc/musicfs'
+      - './tls:/etc/musicfs/tls:ro'
+      - './music:/music:ro'
+      - 'data:/var/lib/musicfs/data'
+      - 'media:/var/lib/musicfs/media'
+      - 'cache:/var/cache/musicfs'
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=64m,uid=10001,gid=10001']
+volumes:
+  data: {}
+  media: {}
+  cache: {}

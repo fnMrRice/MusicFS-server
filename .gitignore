@@ -12,3 +12,7 @@ coverage.out
 /musicfs.exe
 /.cache/
 /.idea/
+/deploy/musicfs.env
+/deploy/configuration/
+/deploy/tls/
+/deploy/music/
