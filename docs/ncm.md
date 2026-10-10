@@ -4,19 +4,20 @@
 
 ## 1. 边界与参考
 
-- 独立程序：`musicfs-plugin-ncm`；插件标识 `musicfs.ncm`，角色 `audio`，能力 `audio.decrypt`。
+- 独立进程：`musicfs-plugins --plugin ncm`；插件标识 `musicfs.ncm`，角色 `audio`，能力 `audio.decrypt`。
 - 核心采用 Go 标准库重写；参考 [taurusxin/ncmdump-go 的 MIT 实现](https://git.taurusxin.com/taurusxin/ncmdump-go/src/branch/main/ncmcrypt/ncmcrypt.go)及 [ncmdump.rs 的 MIT 实现](https://github.com/iqiziqi/ncmdump.rs/blob/master/crates/ncmdump/src/ncmdump.rs)。未引入这两个项目的运行依赖，也未移植 GPL 的 keuin/ncm 源码。
 - NCM 是外层加密容器。解密结果保持内部编码字节，不将 MP3/FLAC 解码再压缩；后续仅在终端不兼容或用户要求 DSP 时进入已有 FFmpeg 管线。
 - 原始文件只读，封面 URL 不下载，元数据不写回。封面数据跳过；曲名/艺术家可取自容器，时长/码率以内部音频的实际 ffprobe 结果为准。
 
 ## 2. 运行
 
-运行 `scripts/build.ps1`（Linux为 `sh scripts/build.sh`）构建Server与七个官方Worker，共八个程序；其中 `musicfs-plugin-ncm` 是本功能入口。配置增加：
+运行 `scripts/build.ps1`（Linux为 `sh scripts/build.sh`）构建 `musicfs` 与 `musicfs-plugins` 两个程序；其中 `musicfs-plugins --plugin ncm` 是本功能入口。配置增加：
 
 ```yaml
 # Under the top-level plugins sequence:
 - pluginId: 'musicfs.ncm'
-  executable: '../build/windows/musicfs-plugin-ncm.exe'
+  executable: '../build/windows/musicfs-plugins.exe'
+  args: ['--plugin', 'ncm']
   enabled: true
   instances:
     - instanceId: 'ncm-default'

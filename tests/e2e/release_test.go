@@ -52,8 +52,8 @@ func TestActualInstallationBundleScanAudioWebAndExit(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, p := range cfg.Plugins {
-		if p.Enabled {
-			t.Fatal("installation sample enabled plugins without review")
+		if filepath.Base(p.Executable) != "musicfs-plugins"+suffix || len(p.Args) != 2 || p.Args[0] != "--plugin" {
+			t.Fatal("installation does not use the shared plugin executable")
 		}
 	}
 	music := filepath.Join(installed, "music")

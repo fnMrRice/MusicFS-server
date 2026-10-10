@@ -34,8 +34,8 @@ func (b builder) documents() error {
 			return err
 		}
 	}
-	readme := "# MusicFS 私有安装包\n\n此目录包含 Server 与独立插件程序，不包含音乐、账号凭据或开发数据库。\n\n" +
-		"配置示例为 configs/server.example.yaml，全部插件默认关闭。手动扫描使用 [PowerShell 扫描脚本](scripts/scan.ps1)。\n\n" +
+	readme := "# MusicFS 私有安装包\n\n此目录包含 Server 与统一内置插件程序（各角色仍独立启动进程），不包含音乐、账号凭据或开发数据库。\n\n" +
+		"配置示例为 configs/server.example.yaml，内置插件自动发现，配置齐全且未显式禁用时自动启动。手动扫描使用 [PowerShell 扫描脚本](scripts/scan.ps1)。\n\n" +
 		"安装包不包含 docs 目录；安装部署、配置、运行扫描及备份恢复说明请在对应 revision 的 Server 私有源仓库 docs 目录查阅。\n\n" +
 		"release.json 记录版本、构建平台与依赖许可证；SHA256SUMS 校验文件一致性。Go 工具链许可证位于 licenses/go。\n\n" +
 		"该制品仅供私有安装验证，不自动上传或公开分发。\n"

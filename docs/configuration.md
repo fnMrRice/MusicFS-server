@@ -35,7 +35,8 @@
 | `fingerprinting.fpcalcSha256` | 默认空；启用时必填64位十六进制摘要，加载后转为小写；不能仅信任程序文件名 |
 | `fingerprinting.maxConcurrent` | 默认1，范围1—2；指纹任务并发上限；DSP 前规范化和 NCM 解密各有独立的后台1槽位，不占前台播放准入槽位 |
 | `fingerprinting.timeoutSeconds` | 默认30，范围1—120；指纹任务时间上限；已有规范化管线另有30秒保护，上层较长配置不会撤销内层限制 |
-| `plugins` | 显式插件列表，可为空；模型见下一节 |
+| `plugins` | 插件配置及显式禁用覆盖；可省略，随包角色自动补齐 |
+| `pluginBundle` | 可选统一插件程序路径；省略时检查 Server 程序同目录；空字符串关闭发现 |
 | `writeBack.enabled` | 默认false；显式原件写回开关，不由上传/选用/自动补缺开启 |
 | `writeBack.allowOverwrite` | 默认false；覆盖旧标签还要求本次请求显式overwrite |
 | `writeBack.maxFileBytes` | 默认8589934592（8 GiB），范围46—1099511627776（1 TiB） |
@@ -53,7 +54,7 @@
 
 ## 3. 插件与实例
 
-每个插件包含 `pluginId`、`executable`、可选64位十六进制 `sha256`、`enabled` 和 `instances`。每个实例包含全局唯一 `instanceId`、可选 `name`、`role`、`enabled` 与 `config`。实例ID和音乐根ID由1—128个ASCII字母、数字、连字符或下划线组成；身份不由数组位置或显示名生成。实例ID忽略大小写后也不得重复，以免在Windows上共用状态目录；单个ID的原始大小写保持不变。
+每个插件包含 `pluginId`、`executable`、可选字符串数组 `args`、可选64位十六进制 `sha256`、`enabled` 和 `instances`。每个实例包含全局唯一 `instanceId`、可选 `name`、`role`、`enabled` 与 `config`。实例ID和音乐根ID由1—128个ASCII字母、数字、连字符或下划线组成；身份不由数组位置或显示名生成。实例ID忽略大小写后也不得重复，以免在Windows上共用状态目录；单个ID的原始大小写保持不变。
 
 | `pluginId` | 角色与实例参数 |
 | --- | --- |
@@ -65,7 +66,7 @@
 
 当前只接受上述四个官方插件ID，插件ID不可重复；每个音频插件最多有一个有效启用实例。插件与实例的 `enabled` 省略时均默认false，只有两层都为true才在启动时启用。禁用不改写兄弟实例或删除已有库。有效启用必须配置可执行路径；禁用对象仍严格检查结构、身份、路径隔离与摘要格式，但不要求其程序或外部工具当前可运行。
 
-示例显式启用Local Files、NCM与本地Scraper；音频插件和实例默认false。需要转码/DSP时，填写音频实例的两个工具路径，并通过管理接口将两层 `enabled` 设为true，等待操作成功后使用；手工编辑部署文件仍应停服并重启。Linux将`executable`改为对应Linux构建路径，程序无`.exe`后缀。可选`sha256`用于钉住管理员审核的程序；省略时采用现有显式本机路径信任与本次启动摘要检查，不代表跨重启钉住版本。
+随包内置插件默认启用；缺少音乐目录或音频工具路径时保留为待配置，不阻止服务启动。设置任意一层 `enabled: false` 可禁用；旧配置中的 false 保持有效。Linux将`executable`改为对应Linux构建路径，程序无`.exe`后缀。可选`sha256`用于钉住管理员审核的程序；省略时采用现有显式本机路径信任与本次启动摘要检查，不代表跨重启钉住版本。
 
 ### 导入选项
 
@@ -137,3 +138,25 @@ Linux保留文件所有者/组与权限，同步文件及目录后rename；Windo
 重启读取到旧修订时将未确认操作标为`notSaved`，读取到预期新修订时标为`saved`，其他修订标为`superseded`；不会重新播放旧操作覆盖新文件。主数据库记录操作与恢复事实，插件配置数据库保存本地实例设置；启用开关仍以 YAML 为准。保存、运行应用和插件退出是不同阶段；后两者由[插件管理器](implementation/plugin-management.md)执行。管理读取隐藏音乐根、工具与程序路径；路径输入为 write-only。`capabilities.changed` SSE 只通知客户端重新读取授权来源能力，不广播配置内容。
 
 Local Files 实例设置通过管理接口保存到数据库并排空重建，不回写 YAML；权限、兼容规则与示例见[插件配置数据库与目录管理](plugin-configuration.md)。
+
+## 内置插件程序与自动发现
+
+默认构建仅生成 `musicfs` 和 `musicfs-plugins`。七种内置角色为 `local`、`audio-ffmpeg`、`ncm`、`scraper-local`、`netease`、`qqmusic`、`applemusic`。插件配置以 `executable` 指向统一程序，以 `args: ['--plugin', '角色']` 固定角色；不通过 shell 解释参数。`args` 最多 64 项，每项最多 4096 UTF-8 字节，不得包含 NUL；参数中不应保存凭据。
+
+启动读取配置时检查 `pluginBundle` 指定的文件；省略该字段则检查 Server 程序同目录的 `musicfs-plugins[.exe]`。仅发现本版本内置的七种角色，不扫描 PATH、不自动执行目录中的任意 EXE。显式指定的其他可执行文件及其参数保持原义，旧独立插件入口仍可单独编译。
+
+发现后补齐缺省的插件和默认实例。内置插件及实例省略 `enabled` 时默认 true；任意一层明确 false 都阻止启动。无需为了禁用自动发现项复制整份配置，例如：
+
+```yaml
+plugins:
+  - pluginId: musicfs.ncm
+    enabled: false
+```
+
+缺少可访问音乐目录或 FFmpeg/ffprobe 文件时，实例保持启用意图，但 `effectiveEnabled=false`、`runtimeState=pending_configuration`、`reason=CONFIGURATION_REQUIRED`；不创建工作进程，也不阻止服务启动。设置页显示待配置原因。在部署授权范围内，通过已有实例设置接口补齐配置后自动进入启动流程；没有目录授权时先在服务端 YAML 设置 permissions.readDirectories。手工编辑 YAML 后重启。运行中安装新的程序需重启发现，当前不是目录热监控。
+
+发现只展开内存配置，不因读取而修改 YAML；通过管理接口保存启停开关时，将展开后的角色及开关一同持久化，重启仍保留显式禁用。业务设置使用各插件的配置存储机制；本地目录设置存于插件数据库，不扩大 YAML 中的部署授权。没有找到统一程序时不凭空注册插件。设置 `pluginBundle: ''` 可关闭自动发现，显式配置仍有效。
+
+多个插件共用文件，但仍按实例或任务分别启动独立进程，保留原来的协议、工作目录、用户绑定和取消回收；公共文件的升级需先停机。此改动减少磁盘重复代码，不把进程内存或权限合并。旧安装配置的 `musicfs-plugin-*.exe` 路径不会自动改写：升级时改为统一程序并补充对应 args；旧 `enabled: false` 不会被覆盖。第三方入口沿用已有受支持的协议与身份校验，不表示任意第三方插件 ID 已开放。
+
+发布打包启用 `-ldflags="-s -w"`，去掉调试符号；开发构建保留调试信息。`release.json` 列出两个程序和七个插件角色的参数，许可证按实际链接依赖生成。

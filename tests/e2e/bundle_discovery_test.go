@@ -1,0 +1,60 @@
+package e2e_test
+
+import (
+	"encoding/json"
+	"testing"
+	"time"
+
+	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/tests/testkit"
+)
+
+func TestBundledPluginsAutostartPendingAndPersistedDisable(t *testing.T) {
+	cfg, base := yamlServiceConfig(t)
+	cfg.PluginBundle = build(t, "musicfs-plugins")
+	path := writeYAMLConfiguration(t, cfg)
+	stop := startAudioYAMLServer(t, path, cfg, base)
+	c := login(t, base, cfg.AdminToken)
+	check := func(ncmState string) {
+		t.Helper()
+		for deadline := time.Now().Add(10 * time.Second); ; {
+			code, raw, _ := c.request(t, "GET", "/api/v1/admin/plugins", nil, "")
+			var snapshot plugincontrol.Snapshot
+			if code != 200 || json.Unmarshal(raw, &snapshot) != nil {
+				t.Fatalf("plugins: %d %s", code, raw)
+			}
+			testkit.ValidateHTTP(t, "PluginManagementSnapshot", raw)
+			valid := len(snapshot.Items) == 7
+			for _, p := range snapshot.Items {
+				want := "ready"
+				if p.PluginID == "musicfs.localfiles" || p.PluginID == "musicfs.audio.ffmpeg" {
+					want = "pending_configuration"
+				}
+				if p.PluginID == "musicfs.ncm" {
+					want = ncmState
+				}
+				valid = valid && len(p.Instances) == 1 && p.Instances[0].RuntimeState == want
+				if len(p.Instances) == 1 && want == "pending_configuration" {
+					i := p.Instances[0]
+					valid = valid && !i.EffectiveEnabled && !i.AcceptingNewWork && i.Reason != nil && *i.Reason == "CONFIGURATION_REQUIRED"
+				}
+			}
+			if valid {
+				return
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("unexpected discovery states: %s", raw)
+			}
+			time.Sleep(20 * time.Millisecond)
+		}
+	}
+	check("ready")
+	op := libraryManagementChange(t, c, "/api/v1/admin/plugins/musicfs.ncm/state", map[string]any{"enabled": false, "mode": "drain"})
+	waitLibraryOperation(t, c, op.ID)
+	check("disabled")
+	stop()
+	stop = startAudioYAMLServer(t, path, cfg, base)
+	defer stop()
+	c = login(t, base, cfg.AdminToken)
+	check("disabled")
+}

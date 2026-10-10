@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -14,7 +15,7 @@ import (
 	"time"
 )
 
-var programs = []string{"musicfs", "musicfs-plugin-local", "musicfs-plugin-audio-ffmpeg", "musicfs-plugin-ncm", "musicfs-plugin-scraper-local", "musicfs-plugin-netease", "musicfs-plugin-qqmusic", "musicfs-plugin-applemusic"}
+var programs = []string{"musicfs", "musicfs-plugins"}
 
 type builder struct {
 	root, out, target, arch, web string
@@ -108,7 +109,7 @@ func run() error {
 		if b.target == "windows" {
 			file += ".exe"
 		}
-		if _, err = b.command("go", "build", "-mod=readonly", "-trimpath", "-buildvcs=false", "-o", filepath.Join(b.out, "bin", file), "./src/app/"+name); err != nil {
+		if _, err = b.command("go", "build", "-mod=readonly", "-trimpath", "-buildvcs=false", "-ldflags=-s -w", "-o", filepath.Join(b.out, "bin", file), "./src/app/"+name); err != nil {
 			return err
 		}
 	}
@@ -172,9 +173,14 @@ func (b builder) command(name string, args ...string) ([]byte, error) {
 	cmd := exec.Command(name, args...)
 	cmd.Dir = b.root
 	cmd.Env = b.env
-	output, err := cmd.CombinedOutput()
+	var diagnostics bytes.Buffer
+	cmd.Stderr = &diagnostics
+	output, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("%s failed: %w\n%s", name, err, output)
+		return nil, fmt.Errorf("%s failed: %w\n%s\n%s", name, err, output, diagnostics.Bytes())
+	}
+	if diagnostics.Len() != 0 {
+		_, _ = os.Stderr.Write(diagnostics.Bytes())
 	}
 	return output, nil
 }

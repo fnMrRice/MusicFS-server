@@ -13,11 +13,11 @@
 Copy-Item configs/server.example.yaml configs/server.local.yaml
 ```
 
-构建生成 `musicfs.exe`、`musicfs-plugin-local.exe`、`musicfs-plugin-audio-ffmpeg.exe`、`musicfs-plugin-ncm.exe`、`musicfs-plugin-scraper-local.exe` 和 `musicfs-plugin-netease.exe`、`musicfs-plugin-qqmusic.exe`、`musicfs-plugin-applemusic.exe` 八个程序。编辑 `configs/server.local.yaml`（旧JSON配置不兼容，字段及读写边界见[YAML配置](configuration.md)）：
+构建生成 `musicfs.exe` 与 `musicfs-plugins.exe` 两个程序；内置角色由配置中的 `args` 选择，仍分别启动进程。编辑 `configs/server.local.yaml`（旧JSON配置不兼容，字段及读写边界见[YAML配置](configuration.md)）：
 
 - `plugins` 的 `musicfs.localfiles` 实例在 `config.musicRoots` 下配置音乐根的 `id/name/path`；示例使用项目合成样本，可替换为自己的音乐目录。保持已使用的实例ID和根ID稳定。
-- `musicfs.audio.ffmpeg` 实例的 `config.ffmpegPath`、`config.ffprobePath` 指向本机工具；需要转码/DSP时将该插件和实例的 `enabled` 都改为true。示例默认关闭音频处理，仅验证标准PCM16 WAV原流时不需要启用；AIFF与当前NCM FLAC转码路径需要两种工具。
-- 各插件的 `executable` 指向对应程序；示例默认Windows构建路径，Local Files与NCM的插件/实例显式启用。把 `musicfs.ncm.enabled` 设为false并重启可停用本地NCM解密，其他格式仍可使用。
+- `musicfs.audio.ffmpeg` 实例的 `config.ffmpegPath`、`config.ffprobePath` 指向本机工具；配置齐全且未显式禁用时自动启动。缺少路径时显示待配置，仅验证标准PCM16 WAV原流时不需要启用；AIFF与当前NCM FLAC转码路径需要两种工具。
+- 内置插件的 `executable` 指向统一程序，`args` 选择角色；示例默认 Windows 构建路径，省略 enabled 时自动启用。把 `musicfs.ncm.enabled` 设为false并重启可停用本地NCM解密，其他格式仍可使用。
 - 各插件可配置 `sha256` 固定管理员审核过的二进制摘要（`Get-FileHash -Algorithm SHA256`）。省略时信任显式配置的本机可执行路径，只核对本次启动的读取一致性，不承诺跨重启钉住版本；更新制品后需同步显式摘要。
 - 音乐目录与 `dataRoot/mediaRoot/cacheRoot` 保持分离。相对配置路径以 YAML 所在目录为基准，修改后重启应用；当前没有自动热重载或动态启停管理入口。
 - `allowedOrigins` 必须与页面实际 URL 完全一致。默认只允许明确配置的 loopback HTTP，远程监听必须配置 TLS。
@@ -43,7 +43,7 @@ NCM无需新增页面操作：配置Worker、重新扫描后直接选曲。内�
 
 ## Linux 与同源部署
 
-使用 `sh scripts/build.sh` 构建相同八个程序（无 `.exe`），复制相同YAML示例，并将各 `plugins[].executable` 改为 `../build/linux/` 下对应程序，配置音频实例的FFmpeg/ffprobe路径后显式启用。服务仍可通过 `--web-root` 提供独立 Web 制品。NCM 真实 Worker 已在 Arch WSL2 通过；Linux 配置与运行验收见[配置记录](validation/configuration.md)，与交叉构建结果分开，不由构建推断所有发行版支持。
+使用 `sh scripts/build.sh` 构建相同两个程序（无 `.exe`），复制相同YAML示例，并将 `pluginBundle` 与各 `plugins[].executable` 改为 `../build/linux/musicfs-plugins`，保留 args，配置音频实例的 FFmpeg/ffprobe 路径后自动启用（显式禁用除外）。服务仍可通过 `--web-root` 提供独立 Web 制品。NCM 真实 Worker 已在 Arch WSL2 通过；Linux 配置与运行验收见[配置记录](validation/configuration.md)，与交叉构建结果分开，不由构建推断所有发行版支持。
 
 2026-10-10已在Arch WSL使用原生FFmpeg/ffprobe 6.1.6通过YAML处理后播放、实际PCM定位、音频启用边界和同配置重启验证；工具为官方签名源码的LGPLv2.1+本地构建，不随仓库分发。工具能力、定向结果与范围见[Linux音频记录](validation/configuration-linux-audio.md)。这项Server验证不代替Linux浏览器、人工听音或其他架构/系统验收，也不包含动态启停。
 

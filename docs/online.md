@@ -4,11 +4,12 @@ S-P7-02 提供三个独立 Go Provider 程序的配置与公开资料接口。�
 
 ## 配置和实例状态
 
-构建脚本同时生成 `musicfs-plugin-netease`、`musicfs-plugin-qqmusic`、`musicfs-plugin-applemusic`。Windows 程序有 `.exe` 后缀。示例默认禁用三个在线插件；需要读取公开资料时，显式启用插件及实例：
+三个在线角色分别使用 `musicfs-plugins --plugin netease|qqmusic|applemusic` 启动独立进程。Windows 程序有 `.exe` 后缀。随包发现的在线插件默认启动；可通过插件或实例的 `enabled: false` 禁用：
 
 ```yaml
 - pluginId: musicfs.netease
-  executable: ../build/windows/musicfs-plugin-netease.exe
+  executable: ../build/windows/musicfs-plugins.exe
+  args: ['--plugin', 'netease']
   enabled: true
   instances:
     - instanceId: netease-public

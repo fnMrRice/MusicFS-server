@@ -25,6 +25,8 @@ Server 管理音乐来源、统一音乐库、歌单、信息刮削和音频流�
 
 第一阶段采用 Go 实现模块化单体服务，SQLite 为当前存储方案。源码在 `src/`，Server 和官方插件程序入口在 `src/app/`，模块实现按职责分目录，测试统一在根 `tests/`；Go module 与包边界见 [P0 工程布局](implementation/00-project-layout.md)。首版官方插件采用独立进程，不引入多个语言宿主。Client 播放器、主题和桌面框架由 Client 仓库设计，本仓库不规定其 UI 实现。内部依赖见[组件图](diagrams/components.puml)。
 
+内置插件现共用 `musicfs-plugins` 程序文件，通过启动参数固定角色；运行进程和协议边界保持独立。启动时发现随包角色，尊重显式禁用；缺配置的实例保留为待配置，详见[发现与兼容](configuration.md#内置插件程序与自动发现)。该变化不引入 Go DLL 动态链接，也不扩大第三方 SDK 的已交付范围。
+
 ## 2. 数据模型与资产身份
 
 | 实体 | 内部语义 |

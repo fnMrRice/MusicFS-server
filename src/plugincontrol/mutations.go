@@ -89,7 +89,7 @@ func (m *Manager) Change(ctx context.Context, owner string, change config.Change
 			if r == nil {
 				continue // Newly installed roles require startup registration.
 			}
-			if p.PluginID != change.PluginID || change.InstanceID != "" && i.InstanceID != change.InstanceID {
+			if (p.PluginID != change.PluginID || change.InstanceID != "" && i.InstanceID != change.InstanceID) && r.instance.PendingConfiguration == i.PendingConfiguration {
 				continue
 			}
 			r.plugin = p

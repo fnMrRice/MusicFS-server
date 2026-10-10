@@ -15,11 +15,11 @@
 sh scripts/release.sh --os linux --output ./build/releases/linux-amd64 --web-root ../web/dist
 ```
 
-Web 先在独立仓库按自己的工具链构建。`--web-root` 可省略；只复制静态制品，拒绝隐藏文件、链接、源码映射和超限文件，不复制 Web 源码或 Git。制品中的 `bin` 包含八个程序；`release.json` 记录源提交、脏树状态、平台、版本/协议和实际编译依赖，`SHA256SUMS` 覆盖所有交付文件。存在 `.incomplete` 表示失败，不可当成完成的制品。校验清单证明文件一致性，不代表有发布者签名。
+Web 先在独立仓库按自己的工具链构建。`--web-root` 可省略；只复制静态制品，拒绝隐藏文件、链接、源码映射和超限文件，不复制 Web 源码或 Git。制品中的 `bin` 包含 `musicfs` 与 `musicfs-plugins` 两个程序（Windows 带 `.exe`）；发布构建移除调试信息，七种插件的启动参数记录在 `components[].args`；`release.json` 记录源提交、脏树状态、平台、版本/协议和实际编译依赖，`SHA256SUMS` 覆盖所有交付文件。存在 `.incomplete` 表示失败，不可当成完成的制品。校验清单证明文件一致性，不代表有发布者签名。
 
 安装包不包含 `docs/` 目录，运行、配置和协议文档保留在对应版本的源码仓库中。
 
-配置示例自动改为 `../bin`，Windows 保留 `.exe`；全部插件默认关闭，音乐根为待替换的 `../music`。复制为 `configs/server.yaml`，配置实际音乐路径、需要的插件与实例双层开关，然后创建管理员令牌并启动：
+配置示例自动改为 `../bin`，Windows 保留 `.exe`；内置插件默认自动发现，音乐根为待替换的 `../music`；缺配置的插件显示待配置。复制为 `configs/server.yaml`，配置实际音乐路径，需要禁用时设置插件或实例 enabled: false，然后创建管理员令牌并启动：
 
 ```powershell
 $env:MUSICFS_ADMIN_TOKEN = (& ./bin/musicfs.exe token).Trim()

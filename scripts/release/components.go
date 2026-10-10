@@ -11,6 +11,7 @@ import (
 
 type component struct {
 	Program      string   `json:"program"`
+	Args         []string `json:"args,omitempty"`
 	PluginID     string   `json:"pluginId,omitempty"`
 	Version      string   `json:"version"`
 	Protocol     string   `json:"protocol"`
@@ -30,6 +31,10 @@ func components() []component {
 	}
 	for _, platform := range []string{"netease", "qqmusic", "applemusic"} {
 		result = append(result, component{Program: "musicfs-plugin-" + platform, PluginID: pluginproto.OnlinePluginID(platform), Version: "0.1.0", Protocol: pluginproto.ProtocolVersion, Capabilities: pluginproto.OnlineCapabilities(platform), Requirements: []string{"host-controlled network", "no account login or audio resolution"}})
+	}
+	for i := 1; i < len(result); i++ {
+		result[i].Args = []string{"--plugin", strings.TrimPrefix(result[i].Program, "musicfs-plugin-")}
+		result[i].Program = "musicfs-plugins"
 	}
 	return result
 }

@@ -44,7 +44,7 @@ MusicFS的Go后端服务。已实现本地扫描/音乐库、鉴权与原流Rang
 
 本仓库与 Client、Web 分别管理 Git 历史。跨仓库相对链接按 MusicFS 根目录下 `server`、`client`、`web` 并列检出的工作区布局解析。
 
-工程采用根 `go.mod` 的单 module：源码放 `src/`，Server 与插件程序入口放 `src/app/<程序>/`，测试统一放根 `tests/`。使用 `scripts/build.ps1` / `scripts/build.sh` 构建八个独立程序：`musicfs`、`musicfs-plugin-local`、`musicfs-plugin-audio-ffmpeg`、`musicfs-plugin-ncm`、`musicfs-plugin-scraper-local`，以及[在线资料插件](docs/online.md) `musicfs-plugin-netease`、`musicfs-plugin-qqmusic`、`musicfs-plugin-applemusic`；使用 `scripts/check.ps1` / `scripts/check.sh` 检查。真实音频工具测试需设置 `MUSICFS_FFMPEG` 和 `MUSICFS_FFPROBE`；指纹测试另需 `MUSICFS_FPCALC`，缺少工具时明确跳过对应部分。
+工程采用根 `go.mod` 的单 module：源码放 `src/`，Server 与插件程序入口放 `src/app/<程序>/`，测试统一放根 `tests/`。使用 `scripts/build.ps1` / `scripts/build.sh` 构建两个程序：`musicfs` 与 `musicfs-plugins`；后者通过 `--plugin` 选择七种内置角色，每次启动仍为独立进程，详见[插件发现与兼容](docs/configuration.md#内置插件程序与自动发现)；使用 `scripts/check.ps1` / `scripts/check.sh` 检查。真实音频工具测试需设置 `MUSICFS_FFMPEG` 和 `MUSICFS_FFPROBE`；指纹测试另需 `MUSICFS_FPCALC`，缺少工具时明确跳过对应部分。
 
 第一条交付链为Local Files扫描→音乐库→授权原流→Web实际解码，随后完成解码→PCM DSP→编码/封装→Web播放与时间定位。浏览器非零PCM、频率标记与控制操作已有证据，人工扬声器听音仍待用户验收。P5—P7扩展不改变未匹配来源可播放的规则；所有未测环境单独保留。
 

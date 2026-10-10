@@ -8,9 +8,11 @@ dataRoot: '/var/lib/musicfs/data'
 mediaRoot: '/var/lib/musicfs/media'
 cacheRoot: '/var/cache/musicfs'
 webRoot: ''
+pluginBundle: '/opt/musicfs/bin/musicfs-plugins'
 plugins:
   - pluginId: 'musicfs.localfiles'
-    executable: '/opt/musicfs/bin/musicfs-plugin-local'
+    executable: '/opt/musicfs/bin/musicfs-plugins'
+    args: ['--plugin', 'local']
     enabled: true
     instances:
       - instanceId: 'local'
@@ -20,7 +22,8 @@ plugins:
         permissions: {readDirectories: ['/music']}
         config: {}
   - pluginId: 'musicfs.audio.ffmpeg'
-    executable: '/opt/musicfs/bin/musicfs-plugin-audio-ffmpeg'
+    executable: '/opt/musicfs/bin/musicfs-plugins'
+    args: ['--plugin', 'audio-ffmpeg']
     enabled: false
     instances:
       - instanceId: 'audio-default'
@@ -28,7 +31,8 @@ plugins:
         enabled: false
         config: {ffmpegPath: '/usr/bin/ffmpeg', ffprobePath: '/usr/bin/ffprobe'}
   - pluginId: 'musicfs.ncm'
-    executable: '/opt/musicfs/bin/musicfs-plugin-ncm'
+    executable: '/opt/musicfs/bin/musicfs-plugins'
+    args: ['--plugin', 'ncm']
     enabled: true
     instances:
       - instanceId: 'ncm-default'
@@ -36,7 +40,8 @@ plugins:
         enabled: true
         config: {}
   - pluginId: 'musicfs.scraper.local'
-    executable: '/opt/musicfs/bin/musicfs-plugin-scraper-local'
+    executable: '/opt/musicfs/bin/musicfs-plugins'
+    args: ['--plugin', 'scraper-local']
     enabled: true
     instances:
       - instanceId: 'scraper-local'

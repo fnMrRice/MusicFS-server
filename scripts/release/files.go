@@ -59,8 +59,7 @@ func (b builder) configuration() error {
 	text = strings.ReplaceAll(text, "../tests/testdata/audio", "../music")
 	text = strings.ReplaceAll(text, "合成测试音乐", "本地音乐")
 	text = strings.ReplaceAll(text, "# Replace with your music directory; this sample uses project fixtures.", "# Replace with your own music directory before scanning.")
-	// A release requires explicit administrator review of paths and capabilities.
-	text = strings.ReplaceAll(text, "enabled: true", "enabled: false")
+	// Missing runtime dependencies remain pending; explicit opt-outs are preserved.
 	if b.web != "" {
 		text = strings.Replace(text, "webRoot: ''", "webRoot: '../web'", 1)
 	}

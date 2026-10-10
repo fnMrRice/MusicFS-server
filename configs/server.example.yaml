@@ -9,75 +9,69 @@ dataRoot: '../data'
 mediaRoot: '../media'
 cacheRoot: '../cache'
 webRoot: ''
+pluginBundle: '../build/windows/musicfs-plugins.exe'
 plugins:
   - pluginId: 'musicfs.localfiles'
-    executable: '../build/windows/musicfs-plugin-local.exe'
-    enabled: true
+    executable: '../build/windows/musicfs-plugins.exe'
+    args: ['--plugin', 'local']
     instances:
       - instanceId: 'local'
         name: '本地音乐'
         role: 'provider'
-        enabled: true
         # Deployment boundary only; select music roots through the admin API.
         permissions:
           readDirectories: ['../tests/testdata/audio']
         config: {}
   - pluginId: 'musicfs.audio.ffmpeg'
-    executable: '../build/windows/musicfs-plugin-audio-ffmpeg.exe'
-    # Set both enabled values to true after configuring the two tool paths.
-    enabled: false
+    executable: '../build/windows/musicfs-plugins.exe'
+    args: ['--plugin', 'audio-ffmpeg']
+    # Starts automatically when both tool paths are configured; enabled: false opts out.
     instances:
       - instanceId: 'audio-default'
         role: 'audio'
-        enabled: false
         config:
           ffmpegPath: ''
           ffprobePath: ''
   - pluginId: 'musicfs.ncm'
-    executable: '../build/windows/musicfs-plugin-ncm.exe'
-    enabled: true
+    executable: '../build/windows/musicfs-plugins.exe'
+    args: ['--plugin', 'ncm']
     instances:
       - instanceId: 'ncm-default'
         role: 'audio'
-        enabled: true
         config: {}
   - pluginId: 'musicfs.scraper.local'
-    executable: '../build/windows/musicfs-plugin-scraper-local.exe'
+    executable: '../build/windows/musicfs-plugins.exe'
+    args: ['--plugin', 'scraper-local']
     # Automatic import still requires importLyrics or metadata.automatic below.
-    enabled: true
     instances:
       - instanceId: 'scraper-local'
         name: '本地歌词与封面'
         role: 'scraper'
-        enabled: true
         config: {}
   - pluginId: 'musicfs.netease'
-    executable: '../build/windows/musicfs-plugin-netease.exe'
+    executable: '../build/windows/musicfs-plugins.exe'
+    args: ['--plugin', 'netease']
     # Public metadata only; no login, audio resolution or automatic library import.
-    enabled: false
     instances:
       - instanceId: 'netease-public'
         name: '网易云公开资料'
         role: 'provider'
-        enabled: false
         config: {}
   - pluginId: 'musicfs.qqmusic'
-    executable: '../build/windows/musicfs-plugin-qqmusic.exe'
+    executable: '../build/windows/musicfs-plugins.exe'
+    args: ['--plugin', 'qqmusic']
     # Latest live search failed upstream; no supported capability is advertised.
-    enabled: false
     instances:
       - instanceId: 'qq-public'
         role: 'provider'
-        enabled: false
         config: {}
   - pluginId: 'musicfs.applemusic'
-    executable: '../build/windows/musicfs-plugin-applemusic.exe'
+    executable: '../build/windows/musicfs-plugins.exe'
+    args: ['--plugin', 'applemusic']
     # Credential support is not implemented; catalog calls return AUTH_REQUIRED.
-    enabled: false
     instances:
       - instanceId: 'apple-public'
         role: 'provider'
-        enabled: false
         config: {}
 maxSessions: 8
 maxProcessing: 2
@@ -85,7 +79,6 @@ maxCacheBytes: 1073741824
 sessionTtlSeconds: 3600
 metadata:
   automatic:
-    enabled: false
     instancePriority: ['scraper-local']
     fields: ['lyrics', 'artwork']
     languages: []

@@ -8,7 +8,8 @@
 
 ```yaml
 - pluginId: musicfs.scraper.local
-  executable: ../build/windows/musicfs-plugin-scraper-local.exe
+  executable: ../build/windows/musicfs-plugins.exe
+  args: ['--plugin', 'scraper-local']
   enabled: true
   instances:
     - instanceId: scraper-local
@@ -18,7 +19,7 @@
       config: {}
 ```
 
-Linux 使用 `../build/linux/musicfs-plugin-scraper-local`。可选 `sha256` 钉住可信程序；省略时采用明确路径与本次启动摘要检查。插件和实例都启用才可运行，配置修改重启生效，没有动态启停。最多16个配置实例；每个请求最多选择4个。Scraper 没有独立 `musicRoots`、凭据或导入默认项，读取授权来自目标曲目的 Provider，不能用配置扩大音乐根权限。
+Linux 使用 `../build/linux/musicfs-plugins`，保留相同 `args`。可选 `sha256` 钉住可信程序；省略时采用明确路径与本次启动摘要检查。插件和实例都启用才可运行，配置修改重启生效，没有动态启停。最多16个配置实例；每个请求最多选择4个。Scraper 没有独立 `musicRoots`、凭据或导入默认项，读取授权来自目标曲目的 Provider，不能用配置扩大音乐根权限。
 
 `GET /api/v1/scraper-instances` 返回本人实例的编号、显示名、字段和可用状态，不包含执行路径。`available` 表示已启用且程序通过本地校验，不保证每个源都支持提取。`queryCorrectionsSupported=false`：当前本地插件不进行在线搜索，提交非空标题/艺人修正返回415 `UNSUPPORTED`。
 

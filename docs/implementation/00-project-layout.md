@@ -163,6 +163,6 @@ Windows 制品使用 `.exe` 后缀。格式化脚本枚举 src 与 tests 中的 
 - [x] 合成媒体夹具与 P3/P4 验收记录可复用，来源/许可明确。
 - [x] 工程建立与各功能阶段分别记录，不用空包或构建成功证明可播放。
 
-逐步证据见[核对表](../validation/documentation-audit.md#p0工程与契约)、[夹具](../validation/fixtures.md)和[制品验收](../validation/release.md)。上方目录树是初始职责规划，现有八个程序入口以 `src/app` 与构建脚本为准；实现包不要求与规划一一同名。
+逐步证据见[核对表](../validation/documentation-audit.md#p0工程与契约)、[夹具](../validation/fixtures.md)和[制品验收](../validation/release.md)。上方目录树是初始职责规划，当前默认两个程序、保留单插件兼容入口，以 `src/app` 与构建脚本为准；实现包不要求与规划一一同名。
 
 依据：[Go 模块组织](https://go.dev/doc/modules/layout)、[go.mod](https://go.dev/doc/modules/gomod-ref)、[Go 测试](https://pkg.go.dev/testing)。官方包/测试规则与本项目的目录选择分别说明，不将其他社区目录模板称为强制标准。
