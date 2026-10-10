@@ -128,18 +128,18 @@ func TestOpenAPIReferencesAndOperations(t *testing.T) {
 				t.Errorf("invalid operation: %s %s", method, path)
 			}
 			ids[id] = true
-			if (method == "post" || method == "delete") && path != "/auth/session" || method == "delete" {
+			if (method == "post" || method == "put" || method == "delete") && path != "/auth/session" || method == "delete" {
 				encoded, _ := json.Marshal(op["parameters"])
 				if !strings.Contains(string(encoded), "/CSRF") {
 					t.Errorf("missing CSRF contract: %s %s", method, path)
 				}
-				if method == "post" && path != "/hash-jobs/{id}/cancel" && path != "/fingerprint-jobs/{id}/cancel" && path != "/source-tracks/{id}/match-candidates/refresh" && !strings.Contains(string(encoded), "/Idempotency") {
+				if (method == "post" || method == "put") && path != "/hash-jobs/{id}/cancel" && path != "/fingerprint-jobs/{id}/cancel" && path != "/source-tracks/{id}/match-candidates/refresh" && !strings.Contains(string(encoded), "/Idempotency") {
 					t.Errorf("missing idempotency contract: %s %s", method, path)
 				}
 			}
 		}
 	}
-	for _, id := range []string{"healthReady", "login", "currentSession", "logout", "listProviders", "createScan", "getScan", "listSourceTracks", "createPlayback", "stopPlayback", "seekPlayback", "recoverPlayback", "getStream", "headStream", "createHash", "getHash", "cancelHash", "createFingerprint", "getFingerprint", "cancelFingerprint", "listFingerprints", "getFingerprintDetail", "getMatchingRevision", "refreshMatchCandidates", "listMatchCandidates", "getRecordingLink", "getRecording", "manualLink", "manualUnlink", "manualSplit", "setMatchExclusion", "listMatchingChanges"} {
+	for _, id := range []string{"healthReady", "login", "currentSession", "logout", "listProviders", "createScan", "getScan", "listSourceTracks", "createPlayback", "stopPlayback", "seekPlayback", "recoverPlayback", "getStream", "headStream", "createHash", "getHash", "cancelHash", "createFingerprint", "getFingerprint", "cancelFingerprint", "listFingerprints", "getFingerprintDetail", "getMatchingRevision", "refreshMatchCandidates", "listMatchCandidates", "getRecordingLink", "getRecording", "manualLink", "manualUnlink", "manualSplit", "setMatchExclusion", "listMatchingChanges", "uploadMedia", "getMedia", "getMediaInfo", "getMediaSelection", "selectMedia", "unlockMediaSelection"} {
 		if !ids[id] {
 			t.Errorf("missing operation %s", id)
 		}

@@ -18,6 +18,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/matching"
+	"github.com/fnMrRice/MusicFS-server/src/mediastore"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
 	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 )
@@ -47,6 +48,11 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	if err != nil {
 		return nil, nil, err
 	}
+	mediaFiles, media, err := configureMedia(ctx, c, store)
+	if err != nil {
+		store.Close()
+		return nil, nil, err
+	}
 	queue := jobs.New(store)
 	runtimes, processor, decoder, ffprobe := configurePlugins(ctx, c, log)
 	cleanup := func() {
@@ -56,6 +62,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 				r.Worker.Close()
 			}
 		}
+		mediaFiles.Close()
 		store.Close()
 	}
 	lib := library.New(store, queue, runtimes, metadataProbe(ffprobe, decoder))
@@ -66,7 +73,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	}
 	closeBeforeHashes := cleanup
 	cleanup = func() { hashes.Close(); closeBeforeHashes() }
-	fingerprints, closeFingerprints := configureFingerprinting(ctx, c, log, store, lib, processor)
+	fingerprints, closeFingerprints := configureFingerprinting(ctx, c, log, store, lib, processor, media)
 	closeBeforeFingerprints := cleanup
 	cleanup = func() { closeFingerprints(); closeBeforeFingerprints() }
 	sessions := auth.New(store, c.AdminToken, c.AllowedOrigins, time.Duration(c.SessionTTLSeconds)*time.Second)
@@ -74,6 +81,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	handler.RegisterLibrary(lib)
 	handler.RegisterHashing(hashes)
 	handler.RegisterFingerprinting(fingerprints)
+	handler.RegisterMedia(mediastore.NewContent(store, store, mediaFiles))
 	var fingerprintDetails matching.FingerprintDetails
 	if fingerprints != nil {
 		fingerprintDetails = fingerprints

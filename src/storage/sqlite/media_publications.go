@@ -123,9 +123,6 @@ func (s *Store) WrittenPublication(ctx context.Context, owner, id string, o medi
 	if err := o.Validate(); err != nil {
 		return err
 	}
-	if o.Kind != "fingerprint" || o.MIME != "application/json" || o.Size > fingerprint.MaxDetailBytes {
-		return identification.Invalid()
-	}
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -140,6 +137,17 @@ func (s *Store) WrittenPublication(ctx context.Context, owner, id string, o medi
 	}
 	if p.Status != "prepared" || p.Object.ID != o.ID || p.Object.Kind != o.Kind || p.Object.MIME != o.MIME {
 		return domain.Fail("CONFLICT", "Media write does not match its prepared publication")
+	}
+	if p.Target.Purpose == "content" {
+		input, e := contentPublicationInput(p)
+		if e != nil {
+			return e
+		}
+		if o.Size != input.Size || o.SHA256 != input.SHA256 {
+			return domain.Fail("RESOURCE_CHANGED", "Written content differs from the prepared bytes")
+		}
+	} else if p.Target.Purpose != "fingerprint" || o.Kind != "fingerprint" || o.MIME != "application/json" || o.Size > fingerprint.MaxDetailBytes {
+		return identification.Invalid()
 	}
 	p.Object, p.Status = o, "written"
 	if err = savePublication(ctx, tx, &p, false); err != nil {

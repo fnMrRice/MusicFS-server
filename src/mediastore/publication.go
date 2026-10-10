@@ -67,8 +67,8 @@ func (s *Service) Publish(ctx context.Context, owner, kind, mime string, target 
 	return p, nil
 }
 
-// Recover fingerprints before restarting extraction workers. A previous process's
-// source guard no longer exists, so incomplete results are not made current.
+// Recover content before restarting workers. A previous process's source guard
+// or upload body no longer exists, so incomplete results are not made current.
 // Published orphan files remain available to the later reference-aware collector.
 func (s *Service) Recover(ctx context.Context) error {
 	after := ""
@@ -84,7 +84,7 @@ func (s *Service) Recover(ctx context.Context) error {
 			if err = ctx.Err(); err != nil {
 				return err
 			}
-			if p.Target.Purpose != "fingerprint" {
+			if p.Target.Purpose != "fingerprint" && p.Target.Purpose != "content" {
 				return domain.Fail("UNSUPPORTED", "Media publication recovery handler is unavailable")
 			}
 			switch p.Status {

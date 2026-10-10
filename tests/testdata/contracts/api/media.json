@@ -1,0 +1,156 @@
+[
+  {
+    "name": "media-select",
+    "schema": "SelectMediaRequest",
+    "valid": true,
+    "value": {
+      "objectId": "media-object",
+      "assetId": "asset",
+      "assetVersion": "version",
+      "expectedRevision": 0
+    }
+  },
+  {
+    "name": "media-reject-auto",
+    "schema": "SelectMediaRequest",
+    "valid": false,
+    "value": {
+      "objectId": "media-object",
+      "assetId": "asset",
+      "assetVersion": "version",
+      "expectedRevision": 0,
+      "automatic": true
+    }
+  },
+  {
+    "name": "media-reject-spoofed-track",
+    "schema": "SelectMediaRequest",
+    "valid": false,
+    "value": {
+      "objectId": "media-object",
+      "assetId": "asset",
+      "assetVersion": "version",
+      "expectedRevision": 0,
+      "sourceTrackId": "other"
+    }
+  },
+  {
+    "name": "media-reject-null-revision",
+    "schema": "SelectMediaRequest",
+    "valid": false,
+    "value": {
+      "objectId": "media-object",
+      "assetId": "asset",
+      "assetVersion": "version",
+      "expectedRevision": null
+    }
+  },
+  {
+    "name": "media-unlock-language",
+    "schema": "UnlockMediaRequest",
+    "valid": true,
+    "value": {
+      "field": "lyrics",
+      "language": "zh-Hant",
+      "expectedRevision": 1
+    }
+  },
+  {
+    "name": "media-reject-language-path",
+    "schema": "UnlockMediaRequest",
+    "valid": false,
+    "value": {
+      "field": "lyrics",
+      "language": "../../private",
+      "expectedRevision": 1
+    }
+  },
+  {
+    "name": "media-reject-missing-revision",
+    "schema": "UnlockMediaRequest",
+    "valid": false,
+    "value": {
+      "field": "lyrics"
+    }
+  },
+  {
+    "name": "media-language-response-und",
+    "schema": "ContentMetadata",
+    "valid": true,
+    "value": {
+      "target": {
+        "sourceTrackId": "track",
+        "assetId": "asset",
+        "assetVersion": "version"
+      },
+      "field": "lyrics",
+      "language": "und",
+      "format": "text",
+      "origin": {
+        "kind": "upload",
+        "instanceId": "",
+        "candidateId": ""
+      }
+    }
+  },
+  {
+    "name": "media-language-response-zh-cn",
+    "schema": "ContentMetadata",
+    "valid": true,
+    "value": {
+      "target": {
+        "sourceTrackId": "track",
+        "assetId": "asset",
+        "assetVersion": "version"
+      },
+      "field": "lyrics",
+      "language": "zh-cn",
+      "format": "text",
+      "origin": {
+        "kind": "upload",
+        "instanceId": "",
+        "candidateId": ""
+      }
+    }
+  },
+  {
+    "name": "media-language-response-empty",
+    "schema": "ContentMetadata",
+    "valid": false,
+    "value": {
+      "target": {
+        "sourceTrackId": "track",
+        "assetId": "asset",
+        "assetVersion": "version"
+      },
+      "field": "lyrics",
+      "language": "",
+      "format": "text",
+      "origin": {
+        "kind": "upload",
+        "instanceId": "",
+        "candidateId": ""
+      }
+    }
+  },
+  {
+    "name": "media-language-response-ZH-CN",
+    "schema": "ContentMetadata",
+    "valid": false,
+    "value": {
+      "target": {
+        "sourceTrackId": "track",
+        "assetId": "asset",
+        "assetVersion": "version"
+      },
+      "field": "lyrics",
+      "language": "ZH-CN",
+      "format": "text",
+      "origin": {
+        "kind": "upload",
+        "instanceId": "",
+        "candidateId": ""
+      }
+    }
+  }
+]

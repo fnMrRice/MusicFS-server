@@ -66,6 +66,14 @@ Provider 响应增加 `configuration` 与 `roots`。Local Files 的配置包含�
 
 `GET /recordings/{id}` 与 `GET /source-tracks/{id}/recording-link` 查询本人关系；其他所有者与不存在都返回 `NOT_FOUND`。`GET /matching/changes` 按本人 `sequence` 提供默认50、最大200条审计，保留原目标/新目标或排除两端，供后续可逆迁移使用。本步不删除来源、不扩张权限、不迁移歌单隐藏意图，不增加 Web 匹配管理页面。完整操作说明见[人工关联](../matching.md)，测试边界见[接口验收](../validation/matching-http.md)。
 
+### S-P6-01 歌词与封面内容
+
+`POST /media` 接受原始正文和 query 中的 `sourceTrackId/assetId/assetVersion/field/language`，要求 Cookie、Origin、CSRF 和幂等键。上传成功只得到预览对象，不能直接改变人工选择。歌词为规范 UTF-8 文本/LRC、最多1 MiB，PNG/JPEG 最多8 MiB并完整解码；真实格式与声明 Content-Type 必须一致。歌词语言省略/空值统一 `und`，其余统一小写，封面语言为空；请求不能伪造 origin、路径、URL或实例。
+
+`GET /media/{id}` 授权交付正文，`GET /media/{id}/info` 返回描述；均限制所有者和来源归属。上传与正文交付各有30秒期限，上传专用8 MiB预算不放宽普通64 KiB控制请求。`GET/PUT /source-tracks/{id}/media-selection` 读取/人工选用；PUT 必填 `objectId/assetId/assetVersion/expectedRevision` 并加人工锁。`POST /source-tracks/{id}/media-selection/unlock` 接受 `field/language/expectedRevision`，只解锁、不删除旧选择。两项修改要求幂等键，修订按所有者/来源隔离，幂等窗口24小时。
+
+选择提交前验证正文，损坏新预览不能覆盖旧内容；缺失/损坏对象标记 unavailable，保留选择和人工锁。旧资产绑定 `current=false`，仍可读的旧对象为 stale；未变化的当前资产对象缺失时可为 `current=true,state=unavailable`。媒体服务不依赖指纹功能开关。本步没有 Web 编辑界面或自动抓取/写回，操作与限制见[内容说明](../media.md)、[HTTP 验收](../validation/media-http.md)。
+
 ### NCM 解密增量
 
 本次沿用既有 `/api/v1` 端点、请求和鉴权规则。播放描述的 `effectiveProcessing` 新增 `{ "type": "ncmDecrypt", "gainDb": 0, "version": "1", "execution": "server" }`。Schema 的 type 原已允许扩展字符串，无需收紧枚举或增加必填字段；客户端可以忽略未知处理项。该项表示外层容器解密，`gainDb: 0` 不代表执行了增益 DSP。后续进入转码管线时再报告独立 `gain` 项；用户未请求衰减时其值也可为 0。

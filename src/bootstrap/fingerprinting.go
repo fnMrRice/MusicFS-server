@@ -16,7 +16,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 )
 
-func configureFingerprinting(ctx context.Context, c config.Config, log *slog.Logger, store *sqlite.Store, lib *library.Service, audio *audioffmpeg.Processor) (*fingerprintworker.Service, func()) {
+func configureFingerprinting(ctx context.Context, c config.Config, log *slog.Logger, store *sqlite.Store, lib *library.Service, audio *audioffmpeg.Processor, media *mediastore.Service) (*fingerprintworker.Service, func()) {
 	noop := func() {}
 	if !c.Fingerprinting.Enabled {
 		return nil, noop
@@ -31,17 +31,6 @@ func configureFingerprinting(ctx context.Context, c config.Config, log *slog.Log
 		log.Warn("fingerprinting unavailable", "errorCode", pluginproto.ErrorCode(err))
 		return nil, noop
 	}
-	files, err := mediastore.OpenFiles(c.MediaRoot)
-	if err != nil {
-		log.Warn("fingerprint media store unavailable", "errorCode", "TEMPORARY_FAILURE")
-		return nil, noop
-	}
-	media, err := mediastore.New(store, files)
-	if err != nil {
-		files.Close()
-		log.Warn("fingerprint media store unavailable", "errorCode", pluginproto.ErrorCode(err))
-		return nil, noop
-	}
 	worker, err := fingerprintworker.New(store, lib, extractor, media, fingerprintworker.Config{MaxConcurrent: f.MaxConcurrent, Timeout: time.Duration(f.TimeoutSeconds) * time.Second, NCMDecoder: fingerprintNCMDecoder(c, log)})
 	if err == nil {
 		err = worker.Start(ctx)
@@ -50,11 +39,10 @@ func configureFingerprinting(ctx context.Context, c config.Config, log *slog.Log
 		if worker != nil {
 			worker.Close()
 		}
-		files.Close()
 		log.Warn("fingerprinting unavailable", "errorCode", pluginproto.ErrorCode(err))
 		return nil, noop
 	}
-	return worker, func() { worker.Close(); files.Close() }
+	return worker, worker.Close
 }
 
 // Background decryption has a separate bounded lane so fingerprint jobs cannot
