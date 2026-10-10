@@ -10,6 +10,8 @@
 
 每个已绑定用户的 Provider 实例在本增量中只有一个平台账号；切换账号先退出该实例账号，多个账号使用多个实例。三个平台独立隔离，不能将账号共享给 Scraper。返回 accountId 是绑定身份；Apple API 不提供 Apple ID，此处为本地随机 ID。
 
+View 的可选 `avatarUrl` 是展示资料，与 `displayName` 一起返回；当前仅网易云从本人资料解析，地址规范与未支持平台的回退见[平台登录说明](../../../platform-login.md)。头像随加密 secret 快照恢复，旧快照无此字段仍有效；缺失或无效头像不能导致登录失败。HTTP 客户端应容忍字段缺失，旧客户端可忽略；Worker 通道采用严格解码，新 Worker 与 Server 必须配套升级，旧 Host 不接受此新增字段。该变更不新增数据库迁移或账号事件。
+
 登录网络请求只允许固定 HTTPS 平台域名、公开解析地址、固定路径和有界响应，不跟随任意重定向；QQ授权回跳只解析并检查约定域名、路径和 state。平台授权失败不使 MusicFS 会话失效。
 
 当前没有账号事件推送，界面按受鉴权 GET / POST 查询状态。完整平台账号实测尚待用户授权；能力描述中的 account.login 不标为已验证支持，HTTP options 的 validation 固定为 liveAccountPending。

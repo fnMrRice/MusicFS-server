@@ -18,6 +18,7 @@ type AccountView struct {
 	State            string     `json:"state"`
 	AccountID        string     `json:"accountId,omitempty"`
 	DisplayName      string     `json:"displayName,omitempty"`
+	AvatarURL        string     `json:"avatarUrl,omitempty"`
 	LoginID          string     `json:"loginId,omitempty"`
 	Method           string     `json:"method,omitempty"`
 	QRURL            string     `json:"qrUrl,omitempty"`
@@ -57,6 +58,7 @@ type accountSecret struct {
 	DeviceID       string            `json:"deviceId"`
 	AccountID      string            `json:"accountId,omitempty"`
 	Name           string            `json:"name,omitempty"`
+	AvatarURL      string            `json:"avatarUrl,omitempty"`
 	Cookies        map[string]string `json:"cookies,omitempty"`
 	MusicKey       string            `json:"musicKey,omitempty"`
 	UserToken      string            `json:"userToken,omitempty"`
@@ -97,9 +99,10 @@ func (c *Client) Account(ctx context.Context, r AccountRequest) (AccountResult, 
 		if len(r.Secret) > 64<<10 || json.Unmarshal(r.Secret, &secret) != nil || secret.Platform != c.platform || secret.UserID != c.scope.UserID || secret.InstanceID != c.scope.InstanceID || secret.AccountID == "" {
 			return AccountResult{}, domain.Fail("ACCESS_DENIED", "Stored platform account scope is invalid")
 		}
+		secret.AvatarURL = accountAvatarURL(c.platform, secret.AvatarURL)
 		a.secret = secret
 		a.revoked.Store(false)
-		a.view = AccountView{State: "unverified", AccountID: secret.AccountID, DisplayName: secret.Name}
+		a.view = c.savedAccountView()
 	case "state":
 		if a.revoked.Load() {
 			return AccountResult{View: AccountView{State: "signedOut"}}, nil
@@ -244,7 +247,7 @@ func (c *Client) savedAccountView() AccountView {
 	if s.AccountID == "" {
 		return AccountView{State: "signedOut"}
 	}
-	return AccountView{State: "unverified", AccountID: s.AccountID, DisplayName: s.Name}
+	return AccountView{State: "unverified", AccountID: s.AccountID, DisplayName: s.Name, AvatarURL: accountAvatarURL(c.platform, s.AvatarURL)}
 }
 func (c *Client) completeAccount() {
 	a := &c.account

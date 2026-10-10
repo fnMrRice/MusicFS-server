@@ -99,8 +99,9 @@ func (c *Client) checkNetease(ctx context.Context, secret *accountSecret) error 
 	var result struct {
 		Code    int `json:"code"`
 		Profile *struct {
-			ID   json.Number `json:"userId"`
-			Name string      `json:"nickname"`
+			ID        json.Number `json:"userId"`
+			Name      string      `json:"nickname"`
+			AvatarURL string      `json:"avatarUrl"`
 		} `json:"profile"`
 	}
 	if err := c.neteaseAccountRequest(ctx, secret, "/api/nuser/account/get", map[string]any{}, &result); err != nil {
@@ -121,5 +122,6 @@ func (c *Client) checkNetease(ctx context.Context, secret *accountSecret) error 
 	}
 	secret.AccountID = result.Profile.ID.String()
 	secret.Name = name
+	secret.AvatarURL = accountAvatarURL(Netease, result.Profile.AvatarURL)
 	return nil
 }

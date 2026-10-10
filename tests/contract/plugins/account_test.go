@@ -25,6 +25,7 @@ func TestPlatformAccountWireSchema(t *testing.T) {
 	values := []any{
 		map[string]any{"jsonrpc": "2.0", "id": "request", "method": "provider.online.account", "params": pluginproto.OnlineAccount{Context: scope, Request: online.AccountRequest{Action: "begin"}}},
 		map[string]any{"jsonrpc": "2.0", "id": "request", "result": pluginproto.OnlineResult[online.AccountResult]{Context: scope, Value: online.AccountResult{View: online.AccountView{State: "signedOut"}}}},
+		map[string]any{"jsonrpc": "2.0", "id": "request", "result": pluginproto.OnlineResult[online.AccountResult]{Context: scope, Value: online.AccountResult{View: online.AccountView{State: "signedIn", AccountID: "12345", DisplayName: "Fixture listener", AvatarURL: "https://p2.music.126.net/fixture/avatar.jpg"}}}},
 	}
 	for _, value := range values {
 		raw, _ := json.Marshal(value)
@@ -38,5 +39,10 @@ func TestPlatformAccountWireSchema(t *testing.T) {
 	}
 	if public.Validate(map[string]any{"state": "signedIn", "secret": map[string]any{"token": "fixture"}}) == nil {
 		t.Fatal("public schema accepted secret")
+	}
+	for _, address := range []string{"http://p1.music.126.net/avatar.jpg", "https://example.com/avatar.jpg", "https://p1.music.126.net/avatar.jpg?token=private", "https://p1.music.126.net:443/avatar.jpg"} {
+		if public.Validate(map[string]any{"state": "signedIn", "avatarUrl": address}) == nil {
+			t.Fatal("Public schema accepted an unsupported avatar URL")
+		}
 	}
 }

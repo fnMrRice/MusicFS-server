@@ -20,7 +20,13 @@
 
 构建并部署本次 Server、对应在线 Worker 和 Web 后，在设置页“音乐来源”中选择已启用实例：网易云用网易云音乐 App 扫码，QQ 音乐当前用手机 QQ 扫码。轮询至少间隔三秒，挑战有效期三分钟，可取消；失败可查看当前状态再重试，避免结果不明时重复发起。每个用户的一个实例绑定一个账号，多个账号使用多个实例。
 
-网易云的 `qrUrl` 由 Web 本地编码为 PNG，QQ 的 `qrImage` 由平台返回；两者都通过 `data:image/png;base64,` 展示，不使用外部二维码生成服务。Server 静态页面的内容安全策略以 `img-src 'self' data:` 允许这些图片，其他资源仍沿用原有限制；反向代理若另设内容安全策略，也须允许图片的 `data:` 来源。
+网易云的 `qrUrl` 由 Web 本地编码为 PNG，QQ 的 `qrImage` 由平台返回；两者都通过 `data:image/png;base64,` 展示，不使用外部二维码生成服务。Server 静态页面的内容安全策略允许同源图片、`data:` 二维码和下述四个 HTTPS 头像主机，其他资源仍沿用原有限制；反向代理若另设内容安全策略，也须同步这些图片来源。
+
+平台账号显示名使用 `displayName`；可选 `avatarUrl` 来自网易云账号查询响应的 `profile.avatarUrl`。只接受 `p1.music.126.net`、`p2.music.126.net`、`p3.music.126.net`、`p4.music.126.net`，将 HTTP 规范为 HTTPS，拒绝携带用户信息、端口、查询串或片段的地址；缺失、无效或未确认的主机直接省略头像，不使账号登录失败。Server 不抓取此地址，Web 直接显示；头像随账号私密快照保存，恢复和校验时重新约束地址，退出时清除。
+
+QQ 的现有 `QQLogin` / `GetLoginUserInfo` 登录链路尚无已核验的头像字段，保持默认头像；核查了 [QQMusicApi 登录实现](https://github.com/L-1124/QQMusicApi/blob/main/qqmusic_api/modules/login.py)和[凭据模型](https://github.com/L-1124/QQMusicApi/blob/main/qqmusic_api/models/request.py)，不把[另一个用户主页接口](https://github.com/L-1124/QQMusicApi/blob/main/qqmusic_api/models/user.py)的字段猜测为当前响应。Apple 的现有 storefront 接口不提供用户姓名或头像，保留平台与地区显示名以及默认头像。头像接入有合成响应回归，未完成真实账号头像验收。
+
+`avatarUrl` 为可选增量：旧 Web 可忽略该字段，新 Web 对旧 Server、缺失头像或图片加载失败使用默认头像，旧账号快照无需迁移。Worker 通道严格拒绝未知字段，提供头像的新 Worker 必须与本次 Server 配套部署，不能连接旧 Host。
 
 Apple 由部署者将**自己的、适用于该网页来源的开发者 JWT**通过服务进程环境 `MUSICFS_APPLE_DEVELOPER_TOKEN` 提供；不把签名私钥或令牌放入配置提交。设置页先加载官方 MusicKit，再由用户点击“打开 Apple 授权”；授权结果只经同源 CSRF 保护的 POST 传给插件。未配置时入口明确不可用。开发者 JWT 会提供给本人页面用于 MusicKit，它不是 Apple 用户令牌。
 
@@ -37,7 +43,7 @@ Apple 由部署者将**自己的、适用于该网页来源的开发者 JWT**通
 
 合成测试覆盖 eapi 请求解码/摘要与账号 Cookie、QR 等待/已扫码/成功、QQ OAuth state 及桌面公参、MusicKit 用户令牌校验、取消后拒绝旧挑战、用户/实例隔离、CSRF、平台错误不影响 MusicFS、密文篡改拒绝、实际 Worker 重启恢复及退出持久化。回归测试还覆盖三平台全部业务入口的未登录/未校验拒绝、HTTP 403 不退出 MusicFS、EAPI 查询 Cookie、QQ 桌面搜索参数、失效后拒绝、退出取消在途查询，以及推荐缓存账号/登录代次隔离。浏览器测试覆盖未登录不查询、扫码登录后查询、退出后不再查询。
 
-静态页面回归测试通过真实 Server 的 GET / HEAD 响应检查二维码图片的内容安全策略，防止仅在开发服务器中验证通过、部署后图片被浏览器拦截。
+静态页面回归测试通过真实 Server 的 GET / HEAD 响应检查二维码和头像的内容安全策略，限制外部图片只能来自已确认的 HTTPS 主机。账号测试覆盖头像 HTTP 升级、无效地址省略、登录/校验/恢复/退出，以及实际 Worker 密文持久化和协议 Schema。
 
 真实探测仅调用网易云、QQ 的二维码创建接口并立即取消，不输出二维码地址或平台凭据；两平台均成功。这不能代替扫码确认、账号资料读取和恢复后的真实校验。实号双账号隔离、拒绝/风控、过期、Apple 授权弹窗与令牌生命周期仍需用户在受控入口完成验收；缺少这些证据时不标为正式可用。完整音频交付和个性化歌单不在本次登录增量内。
 

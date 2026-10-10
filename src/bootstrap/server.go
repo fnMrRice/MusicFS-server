@@ -111,7 +111,7 @@ func ServeWithOptions(ctx context.Context, c config.Config, log *slog.Logger, op
 			http.NotFound(w, r)
 			return
 		}
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; img-src 'self' data:; media-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; img-src 'self' data: https://p1.music.126.net https://p2.music.126.net https://p3.music.126.net https://p4.music.126.net; media-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		web.ServeHTTP(w, r)
 	})

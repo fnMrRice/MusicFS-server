@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestWebPolicyAllowsLoginQRImages(t *testing.T) {
+func TestWebPolicyAllowsLoginQRImagesAndPlatformAvatars(t *testing.T) {
 	cfg, base := yamlServiceConfig(t)
 	cfg.WebRoot = t.TempDir()
 	const page = "<!doctype html><title>Login QR policy fixture</title>"
@@ -31,8 +31,8 @@ func TestWebPolicyAllowsLoginQRImages(t *testing.T) {
 					directives[fields[0]] = fields[1:]
 				}
 			}
-			if !slices.Equal(directives["img-src"], []string{"'self'", "data:"}) {
-				t.Fatal("Web policy must allow same-origin images and inline login QR images")
+			if !slices.Equal(directives["img-src"], []string{"'self'", "data:", "https://p1.music.126.net", "https://p2.music.126.net", "https://p3.music.126.net", "https://p4.music.126.net"}) {
+				t.Fatal("Web policy must allow same-origin images, inline QR images and verified platform avatar hosts")
 			}
 			if !slices.Equal(directives["default-src"], []string{"'self'"}) || !slices.Equal(directives["object-src"], []string{"'none'"}) {
 				t.Fatal("Login QR images must not relax other resource policies")

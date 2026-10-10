@@ -42,7 +42,7 @@ func (fixture) RoundTrip(r *http.Request) (*http.Response, error) {
 	case "/eapi/login/qrcode/client/login":
 		return &http.Response{StatusCode: 200, Header: http.Header{"Set-Cookie": []string{"MUSIC_U=fixture-account-token; Secure"}}, Body: io.NopCloser(strings.NewReader(`{"code":803}`))}, nil
 	case "/eapi/nuser/account/get":
-		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"code":200,"profile":{"userId":12345,"nickname":"Fixture listener"}}`))}, nil
+		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"code":200,"profile":{"userId":12345,"nickname":"Fixture listener","avatarUrl":"http://p2.music.126.net/fixture/avatar.jpg"}}`))}, nil
 	case "/api/search/get":
 		switch r.URL.Query().Get("type") {
 		case "10":

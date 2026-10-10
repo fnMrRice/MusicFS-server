@@ -80,7 +80,7 @@ func TestNeteaseAccountLifecycleAndPrivateSnapshot(t *testing.T) {
 			if err != nil || cookie.Value != "fixture-private-token" {
 				t.Fatal("missing platform session")
 			}
-			return accountResponse(`{"code":200,"profile":{"userId":12345,"nickname":"Test listener"}}`), nil
+			return accountResponse(`{"code":200,"profile":{"userId":12345,"nickname":"Test listener","avatarUrl":"http://p2.music.126.net/fixture/avatar.jpg"}}`), nil
 		default:
 			t.Fatal("unexpected endpoint")
 			return nil, nil
@@ -106,7 +106,7 @@ func TestNeteaseAccountLifecycleAndPrivateSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if done.View.State != "signedIn" || done.View.AccountID != "12345" || len(done.Secret) == 0 {
+	if done.View.State != "signedIn" || done.View.AccountID != "12345" || done.View.DisplayName != "Test listener" || done.View.AvatarURL != "https://p2.music.126.net/fixture/avatar.jpg" || len(done.Secret) == 0 {
 		t.Fatal("missing authenticated binding")
 	}
 	public, _ := json.Marshal(done.View)
@@ -122,11 +122,11 @@ func TestNeteaseAccountLifecycleAndPrivateSnapshot(t *testing.T) {
 	expectCode(t, err, "ACCESS_DENIED")
 	restored := anonymousScoped(t, online.Netease, response(`{}`))
 	v, err := restored.Account(ctx, online.AccountRequest{Action: "restore", Secret: done.Secret})
-	if err != nil || v.View.State != "unverified" {
+	if err != nil || v.View.State != "unverified" || v.View.AvatarURL != done.View.AvatarURL {
 		t.Fatal("restored credential incorrectly trusted")
 	}
 	v, err = c.Account(ctx, online.AccountRequest{Action: "logout"})
-	if err != nil || len(v.Secret) != 0 || v.View.State != "signedOut" {
+	if err != nil || len(v.Secret) != 0 || v.View.State != "signedOut" || v.View.AvatarURL != "" || v.View.DisplayName != "" {
 		t.Fatal("logout retained credentials")
 	}
 	_, err = c.Account(ctx, online.AccountRequest{Action: "poll", LoginID: begin.View.LoginID})
