@@ -20,10 +20,12 @@ type ImportOptions struct {
 	MaxDepth        int      `json:"maxDepth" yaml:"maxDepth"`
 	ImportLyrics    bool     `json:"importLyrics" yaml:"importLyrics"`
 	ExcludePatterns []string `json:"excludePatterns" yaml:"excludePatterns"`
+	SkipHidden      bool     `json:"skipHidden,omitempty" yaml:"skipHidden,omitempty"`
+	RespectNoMedia  bool     `json:"respectNoMedia,omitempty" yaml:"respectNoMedia,omitempty"`
 }
 
 func (o ImportOptions) Validate() error {
-	if o.Recursive && (o.MaxDepth < 1 || o.MaxDepth > MaxScanDepth) || !o.Recursive && o.MaxDepth != 0 {
+	if o.MaxDepth < 0 || o.MaxDepth > MaxScanDepth || !o.Recursive && o.MaxDepth != 0 {
 		return domain.Fail("INVALID_ARGUMENT", "Invalid recursive scan depth")
 	}
 	_, err := CanonicalExclusions(o.ExcludePatterns)
@@ -52,6 +54,8 @@ type ScanScope struct {
 	Recursive       bool     `json:"recursive"`
 	MaxDepth        int      `json:"maxDepth"`
 	ExcludePatterns []string `json:"excludePatterns"`
+	SkipHidden      bool     `json:"skipHidden,omitempty"`
+	RespectNoMedia  bool     `json:"respectNoMedia,omitempty"`
 }
 
 func scanLabel(s string) bool {
@@ -103,7 +107,7 @@ func (p ScanPlan) Scope(rootID string) (ScanScope, error) {
 	}
 	for _, root := range canonical.Roots {
 		if root.RootID == rootID {
-			return ScanScope{RootID: root.RootID, RootIdentity: root.RootIdentity, Recursive: canonical.Options.Recursive, MaxDepth: canonical.Options.MaxDepth, ExcludePatterns: canonical.Options.ExcludePatterns}, nil
+			return ScanScope{RootID: root.RootID, RootIdentity: root.RootIdentity, Recursive: canonical.Options.Recursive, MaxDepth: canonical.Options.MaxDepth, ExcludePatterns: canonical.Options.ExcludePatterns, SkipHidden: canonical.Options.SkipHidden, RespectNoMedia: canonical.Options.RespectNoMedia}, nil
 		}
 	}
 	return ScanScope{}, domain.Fail("ACCESS_DENIED", "Root is outside the scan plan")
@@ -122,7 +126,13 @@ func ValidScanPath(p string) bool {
 }
 
 func (s ScanScope) Contains(rootID, relativePath string) bool {
-	return s.Validate() == nil && rootID == s.RootID && ValidScanPath(relativePath) && strings.Count(relativePath, "/") <= s.MaxDepth && !Excludes(s.ExcludePatterns, relativePath)
+	return s.Validate() == nil && rootID == s.RootID && ValidScanPath(relativePath) && s.containsDepth(strings.Count(relativePath, "/")) && !Excludes(s.ExcludePatterns, relativePath) && (!s.SkipHidden || !HasHiddenPathSegment(relativePath))
+}
+
+// A zero depth is unlimited only when recursion is enabled. Flat scans still
+// cover root files alone, so reconciliation cannot remove unvisited children.
+func (s ScanScope) containsDepth(depth int) bool {
+	return depth == 0 || s.Recursive && (s.MaxDepth == 0 || depth <= s.MaxDepth)
 }
 
 func (p ScanPlan) Contains(rootID, relativePath string) bool {

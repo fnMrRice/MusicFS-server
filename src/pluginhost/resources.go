@@ -19,6 +19,7 @@ type entrySnapshot struct {
 	rootID, identity string
 	entries          []pluginproto.Entry
 	issues           []string
+	excluded         []string
 	expires          time.Time
 	deadline         time.Time
 }
@@ -77,7 +78,7 @@ func (w *Worker) entries(ctx context.Context, r pluginproto.EntriesRequest) (plu
 	var token string
 	offset := 0
 	if r.Cursor == "" {
-		entries, identity, issues, err := w.Access.Entries(ctx, grant.binding.scope)
+		entries, identity, issues, excluded, err := w.Access.EntriesWithExclusions(ctx, grant.binding.scope)
 		if err != nil {
 			return pluginproto.EntriesPage{}, err
 		}
@@ -86,7 +87,7 @@ func (w *Worker) entries(ctx context.Context, r pluginproto.EntriesRequest) (plu
 		token = hex.EncodeToString(random[:])
 		now := time.Now()
 		idle, lifetime := w.config.snapshotTimeouts()
-		snapshot = entrySnapshot{binding: grant.binding, rootID: r.RootID, identity: identity, entries: entries, issues: issues, expires: now.Add(idle), deadline: now.Add(lifetime)}
+		snapshot = entrySnapshot{binding: grant.binding, rootID: r.RootID, identity: identity, entries: entries, issues: issues, excluded: excluded, expires: now.Add(idle), deadline: now.Add(lifetime)}
 		if len(entries) > r.Limit {
 			w.mu.Lock()
 			if err := ctx.Err(); err != nil {
@@ -145,5 +146,14 @@ func (w *Worker) entries(ctx context.Context, r pluginproto.EntriesRequest) (plu
 	if end < len(snapshot.entries) {
 		page.NextCursor = token + ":" + strconv.Itoa(end)
 	}
+	w.mu.Lock()
+	g, ok := w.scanGrants[r.GrantID]
+	if !ok || g.receipt != nil {
+		w.mu.Unlock()
+		return pluginproto.EntriesPage{}, fmt.Errorf("ACCESS_DENIED: scan grant already consumed")
+	}
+	g.receipt = &scanReceipt{page: page, excluded: append([]string{}, snapshot.excluded...)}
+	w.scanGrants[r.GrantID] = g
+	w.mu.Unlock()
 	return page, nil
 }

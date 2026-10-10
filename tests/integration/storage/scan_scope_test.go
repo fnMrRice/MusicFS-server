@@ -3,6 +3,7 @@ package storage_test
 import (
 	"context"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/src/domain"
@@ -30,6 +31,34 @@ func publishScope(t *testing.T, s *sqlite.Store, plan pluginproto.ScanPlan, item
 		t.Fatal(err)
 	}
 	return j
+}
+
+func TestUnlimitedDepthReconcilesDeepTracksOnlyWhenCovered(t *testing.T) {
+	s := evidenceStore(t)
+	deep := scopeObservation("deep", "a", strings.Repeat("d/", 70)+"song.mp3")
+	full := testkit.ScanPlan("a")
+	full.Options.MaxDepth = 0
+	publishScope(t, s, full, deep)
+	before := tracksByName(t, s)["deep"]
+	if before.Availability != "available" {
+		t.Fatal("unlimited scan did not publish deep track")
+	}
+	for _, options := range []pluginproto.ImportOptions{
+		{Recursive: true, MaxDepth: 64},
+		{},
+		{Recursive: true, ExcludePatterns: []string{"d"}},
+	} {
+		limited := full
+		limited.Options = options
+		publishScope(t, s, limited)
+		if after := tracksByName(t, s)["deep"]; !reflect.DeepEqual(before, after) {
+			t.Fatal("unvisited deep track was changed by a limited scan")
+		}
+	}
+	publishScope(t, s, full)
+	if after := tracksByName(t, s)["deep"]; after.Availability != "missing" || after.Asset.Current {
+		t.Fatal("unlimited scan did not reconcile a missing deep track")
+	}
 }
 
 func scopeObservation(id, root, path string) library.Observation {

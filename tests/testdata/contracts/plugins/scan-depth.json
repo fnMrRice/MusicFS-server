@@ -1,0 +1,7 @@
+[
+  {"name":"scope-unlimited","schema":"ScanScope","valid":true,"value":{"rootId":"root","rootIdentity":"root-version","recursive":true,"maxDepth":0,"excludePatterns":[]}},
+  {"name":"scope-flat","schema":"ScanScope","valid":true,"value":{"rootId":"root","rootIdentity":"root-version","recursive":false,"maxDepth":0,"excludePatterns":[]}},
+  {"name":"scope-flat-nonzero-rejected","schema":"ScanScope","valid":false,"value":{"rootId":"root","rootIdentity":"root-version","recursive":false,"maxDepth":1,"excludePatterns":[]}},
+  {"name":"options-unlimited","schema":"ImportOptions","valid":true,"value":{"recursive":true,"maxDepth":0,"importLyrics":false,"excludePatterns":[]}},
+  {"name":"overrides-unlimited","schema":"ImportOverrides","valid":true,"value":{"recursive":true,"maxDepth":0}}
+]

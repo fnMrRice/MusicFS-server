@@ -15,7 +15,7 @@ Copy-Item configs/server.example.yaml configs/server.local.yaml
 
 构建生成 `musicfs.exe` 与 `musicfs-plugins.exe` 两个程序；内置角色由配置中的 `args` 选择，仍分别启动进程。编辑 `configs/server.local.yaml`（旧JSON配置不兼容，字段及读写边界见[YAML配置](configuration.md)）：
 
-- `plugins` 的 `musicfs.localfiles` 实例默认没有选定的导入目录，采用[默认目录授权](plugin-configuration.md#部署授权)。需要指定其他允许范围时，在 YAML 中设置 `permissions.readDirectories`；管理页面只读显示该范围。启动后用管理员账号打开 Web「设置 → 音乐来源 → 管理音乐目录」，点击「添加本地目录」，从弹窗中的允许目录选择根目录或子目录并保存，再手动扫描导入。实际选择保存在插件配置数据库，YAML 不因选择而改写；旧 `config.musicRoots` 仍兼容。
+- `plugins` 的 `musicfs.localfiles` 实例默认没有选定的导入目录，采用[默认目录授权](plugin-configuration.md#部署授权)。需要指定其他允许范围时，在 YAML 中设置 `permissions.readDirectories`。启动后用管理员账号打开 Web「设置 → 音乐来源」，点击「本地音乐」标题右侧的「管理目录」。弹窗中的目录树以允许访问的目录为根，展开并选择根或子目录；下方配置递归查找，按需勾选深度限制后保存。默认不限制递归深度；没有已选目录时标题下显示「暂无已选择目录」。之后通过扫描接口或脚本手动导入。实际选择与递归设置保存在插件配置数据库，YAML 不因选择而改写；旧 `config.musicRoots` 仍兼容。
 - `musicfs.audio.ffmpeg` 实例的 `config.ffmpegPath`、`config.ffprobePath` 指向本机工具；配置齐全且未显式禁用时自动启动。缺少路径时显示待配置，仅验证标准PCM16 WAV原流时不需要启用；AIFF与当前NCM FLAC转码路径需要两种工具。
 - 内置插件的 `executable` 指向统一程序，`args` 选择角色；示例默认 Windows 构建路径，省略 enabled 时自动启用。把 `musicfs.ncm.enabled` 设为false并重启可停用本地NCM解密，其他格式仍可使用。
 - 各插件可配置 `sha256` 固定管理员审核过的二进制摘要（`Get-FileHash -Algorithm SHA256`）。省略时信任显式配置的本机可执行路径，只核对本次启动的读取一致性，不承诺跨重启钉住版本；更新制品后需同步显式摘要。
@@ -31,7 +31,7 @@ $env:MUSICFS_ADMIN_TOKEN = (& ./build/windows/musicfs.exe token).Trim()
 
 扫描由管理 API 执行，页面不承担目录管理。在另一个设置了同一 `MUSICFS_ADMIN_TOKEN` 的终端运行 `./scripts/scan.ps1 -ProviderID local`；脚本使用独立临时登录会话，先读取 Provider 声明和授权根列表，再提交 `mode/schemaRevision/rootIds/options`，等待扫描完成并退出该会话。默认选择该实例全部授权根并使用实例导入默认值。Linux 可用 PowerShell 7 执行脚本，或按 OpenAPI 使用同样的登录、创建扫描和查询任务接口；旧的仅 `{mode}` 请求不再接受。
 
-只扫描选中根的本层文件可运行 `./scripts/scan.ps1 -ProviderID local -RootIDs local -Recursive:$false`；扫描到两层子目录可运行 `./scripts/scan.ps1 -ProviderID local -RootIDs local -Recursive:$true -MaxDepth 2`。多个根使用 `-RootIDs root1,root2`，增量模式使用 `-Mode incremental`。根编号应来自 Provider 的 `roots`，不是磁盘路径；启用本地 Scraper 后，`-ImportLyrics:$true` 会在扫描成功后独立补齐歌词；扫描完成后继续查询 `/api/v1/scan-jobs/{id}/metadata-results` 确认逐项结果。递归开关与深度的逐层规则见[配置说明](configuration.md#导入选项)。脚本最多等待一小时；超时后先用返回的任务状态查询接口确认结果，不假定任务已取消。
+只扫描选中根的本层文件可运行 `./scripts/scan.ps1 -ProviderID local -RootIDs local -Recursive:$false`；扫描到两层子目录可运行 `./scripts/scan.ps1 -ProviderID local -RootIDs local -Recursive:$true -MaxDepth 2`；扫描全部子目录使用 `-Recursive:$true -MaxDepth 0`。多个根使用 `-RootIDs root1,root2`，增量模式使用 `-Mode incremental`。根编号应来自 Provider 的 `roots`，不是磁盘路径；启用本地 Scraper 后，`-ImportLyrics:$true` 会在扫描成功后独立补齐歌词；扫描完成后继续查询 `/api/v1/scan-jobs/{id}/metadata-results` 确认逐项结果。递归开关与深度的逐层规则见[配置说明](configuration.md#导入选项)。脚本最多等待一小时；超时后先用返回的任务状态查询接口确认结果，不假定任务已取消。
 
 排除临时目录可传 `-ExcludePatterns '**/cache','**/*.tmp'`，`-ExcludePatterns @()`清除实例继承。需要自动复核时，在Local实例的`config.watch`中显式启用后重启；默认仍手动扫描。监听与周期复核使用实例默认范围，手工覆盖不改变监听配置。`retry_wait`继续等待原任务；`paused`需修正依赖/权限后手工重试，自动监听须重启才恢复。具体范围、资源上限及跨范围移动的复核方法见[扫描说明](scanning.md)。
 

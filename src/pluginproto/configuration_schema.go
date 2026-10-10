@@ -144,6 +144,10 @@ func optionValue(options ImportOptions) map[string]any {
 	b, _ := json.Marshal(options)
 	var value map[string]any
 	_ = json.Unmarshal(b, &value)
+	// Option validation always evaluates explicit values. JSON plans omit false
+	// flags to preserve digests of plans persisted before these options existed.
+	value["skipHidden"] = options.SkipHidden
+	value["respectNoMedia"] = options.RespectNoMedia
 	return value
 }
 

@@ -56,6 +56,9 @@ func (a *Access) WatchDirectories(ctx context.Context, scope pluginproto.ScanSco
 		if before.Mode()&os.ModeSymlink != 0 || !before.IsDir() {
 			return nil
 		}
+		if scope.SkipHidden && relative != "." && hiddenAttribute(before) {
+			return nil
+		}
 		if len(result) >= limit {
 			return fmt.Errorf("RATE_LIMITED: watch directory limit reached")
 		}
@@ -70,6 +73,15 @@ func (a *Access) WatchDirectories(ctx context.Context, scope pluginproto.ScanSco
 			return fmt.Errorf("RESOURCE_CHANGED: watch directory changed")
 		}
 		result = append(result, WatchDirectory{RelativePath: relative, File: f})
+		// Keep the marked directory itself registered so deleting .nomedia can
+		// trigger a rescan, but do not register or enumerate its descendants.
+		skip, err := excludedEntry(r, scope, relative, before)
+		if err != nil {
+			return fmt.Errorf("SOURCE_OFFLINE: watch exclusion marker unavailable")
+		}
+		if skip {
+			return nil
+		}
 		for {
 			batch, err := f.ReadDir(128)
 			if err != nil && err != io.EOF {

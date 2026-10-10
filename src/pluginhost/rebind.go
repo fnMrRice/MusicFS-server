@@ -55,7 +55,7 @@ func (w *Worker) RebindLocalTrack(ctx context.Context, r LocalRebind) (pluginpro
 	if w.Manifest.PluginID != "musicfs.localfiles" || w.Access == nil || w.state == nil {
 		return pluginproto.Observation{}, fmt.Errorf("UNSUPPORTED: provider cannot rebind local identities")
 	}
-	scope := pluginproto.ScanScope{RootID: r.RootID, RootIdentity: r.RootIdentity, Recursive: true, MaxDepth: 64}
+	scope := pluginproto.ScanScope{RootID: r.RootID, RootIdentity: r.RootIdentity, Recursive: true, MaxDepth: 0}
 	if !localJobID.MatchString(r.JobID) || !localExternalID.MatchString(r.ExternalID) || r.OldIdentity == "" || r.NewIdentity == "" || r.OldIdentity == r.NewIdentity || r.OldVersion == "" || r.NewVersion == "" || !scope.Contains(r.RootID, r.RelativePath) {
 		return pluginproto.Observation{}, fmt.Errorf("INVALID_ARGUMENT: invalid local rebind")
 	}

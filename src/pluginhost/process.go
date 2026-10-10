@@ -146,6 +146,9 @@ func (w *Worker) Scan(ctx context.Context, r pluginproto.ScanRequest) (pluginpro
 	if err == nil && page.PlanDigest != r.PlanDigest {
 		err = fmt.Errorf("PROTOCOL_MISMATCH: scan result belongs to another plan")
 	}
+	if err == nil {
+		err = w.validateScanReceipt(grant, &page)
+	}
 	return page, err
 }
 func (w *Worker) Resolve(ctx context.Context, r pluginproto.ResolveRequest) (pluginproto.Resource, error) {

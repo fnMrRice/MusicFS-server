@@ -61,6 +61,15 @@ func describe(f *os.File, rootID, path string) (pluginproto.Entry, error) {
 }
 
 func (a *Access) Entries(ctx context.Context, scope pluginproto.ScanScope) ([]pluginproto.Entry, string, []string, error) {
+	return a.entries(ctx, scope, nil)
+}
+
+func (a *Access) EntriesWithExclusions(ctx context.Context, scope pluginproto.ScanScope) (entries []pluginproto.Entry, identity string, issues, excluded []string, err error) {
+	entries, identity, issues, err = a.entries(ctx, scope, &excluded)
+	return
+}
+
+func (a *Access) entries(ctx context.Context, scope pluginproto.ScanScope, excluded *[]string) ([]pluginproto.Entry, string, []string, error) {
 	if err := scope.Validate(); err != nil {
 		return nil, "", nil, err
 	}
@@ -75,6 +84,7 @@ func (a *Access) Entries(ctx context.Context, scope pluginproto.ScanScope) ([]pl
 	defer r.Close()
 	entries := make([]pluginproto.Entry, 0)
 	issues := make([]string, 0)
+	excludedCount, excludedBytes := 0, 0
 	err = fs.WalkDir(r.FS(), ".", func(path string, d fs.DirEntry, walkErr error) error {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -85,11 +95,40 @@ func (a *Access) Entries(ctx context.Context, scope pluginproto.ScanScope) ([]pl
 			}
 			return nil
 		}
+		// Prune unselected depths and static exclusions before consulting entry
+		// attributes or marker files in directories outside the requested scope.
+		if d.IsDir() && !scope.ContainsDirectory(path) {
+			return fs.SkipDir
+		}
 		if path != "." && pluginproto.Excludes(scope.ExcludePatterns, path) {
 			if d.IsDir() {
 				return fs.SkipDir
 			}
 			return nil
+		}
+		if scope.SkipHidden || scope.RespectNoMedia {
+			info, err := r.Lstat(path)
+			if err != nil {
+				return fmt.Errorf("RESOURCE_CHANGED: scan entry attributes unavailable")
+			}
+			skip, err := excludedEntry(r, scope, path, info)
+			if err != nil {
+				return fmt.Errorf("SOURCE_OFFLINE: scan exclusion marker unavailable")
+			}
+			if skip {
+				excludedCount++
+				excludedBytes += len(path)
+				if excludedCount > 50000 || excludedBytes > 8<<20 {
+					return fmt.Errorf("RATE_LIMITED: scan exclusion limit reached")
+				}
+				if excluded != nil {
+					*excluded = append(*excluded, path)
+				}
+				if d.IsDir() {
+					return fs.SkipDir
+				}
+				return nil
+			}
 		}
 		if d.Type()&os.ModeSymlink != 0 {
 			if len(issues) < 100 {
@@ -98,9 +137,6 @@ func (a *Access) Entries(ctx context.Context, scope pluginproto.ScanScope) ([]pl
 			return nil
 		}
 		if d.IsDir() {
-			if !scope.ContainsDirectory(path) {
-				return fs.SkipDir
-			}
 			return nil
 		}
 		if !scope.Contains(rootID, path) {

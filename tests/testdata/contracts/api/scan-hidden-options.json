@@ -1,0 +1,7 @@
+[
+  {"name":"scan-advanced-defaults","schema":"ImportOptions","valid":true,"value":{"recursive":true,"maxDepth":0,"importLyrics":false,"excludePatterns":[],"skipHidden":true,"respectNoMedia":true}},
+  {"name":"scan-advanced-overrides","schema":"ImportOverrides","valid":true,"value":{"skipHidden":false,"respectNoMedia":false}},
+  {"name":"scan-legacy-options","schema":"ImportOptions","valid":true,"value":{"recursive":true,"maxDepth":64,"importLyrics":false,"excludePatterns":[]}},
+  {"name":"scan-hidden-reject-string","schema":"ImportOverrides","valid":false,"value":{"skipHidden":"false"}},
+  {"name":"scan-nomedia-reject-null","schema":"ImportOverrides","valid":false,"value":{"respectNoMedia":null}}
+]

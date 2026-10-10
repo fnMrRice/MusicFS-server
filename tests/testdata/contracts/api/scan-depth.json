@@ -1,0 +1,10 @@
+[
+  {"name":"recursive-zero-unlimited","schema":"ImportOptions","valid":true,"value":{"recursive":true,"maxDepth":0,"importLyrics":false,"excludePatterns":[]}},
+  {"name":"recursive-one-bounded","schema":"ImportOptions","valid":true,"value":{"recursive":true,"maxDepth":1,"importLyrics":false,"excludePatterns":[]}},
+  {"name":"flat-zero","schema":"ImportOptions","valid":true,"value":{"recursive":false,"maxDepth":0,"importLyrics":false,"excludePatterns":[]}},
+  {"name":"flat-nonzero-rejected","schema":"ImportOptions","valid":false,"value":{"recursive":false,"maxDepth":1,"importLyrics":false,"excludePatterns":[]}},
+  {"name":"negative-depth-rejected","schema":"ImportOptions","valid":false,"value":{"recursive":true,"maxDepth":-1,"importLyrics":false,"excludePatterns":[]}},
+  {"name":"override-recursive-zero","schema":"ImportOverrides","valid":true,"value":{"recursive":true,"maxDepth":0}},
+  {"name":"override-zero-inherits-recursion","schema":"ImportOverrides","valid":true,"value":{"maxDepth":0}},
+  {"name":"override-flat-nonzero-rejected","schema":"ImportOverrides","valid":false,"value":{"recursive":false,"maxDepth":1}}
+]

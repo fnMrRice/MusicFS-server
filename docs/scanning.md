@@ -1,16 +1,28 @@
 # 扫描范围、排除规则与文件通知
 
-Local Files插件提供配置说明和校验Schema；宿主加载YAML实例默认值，再合成本次请求覆盖。当前插件0.3.0、声明 `local-import-v3`。改变配置需重启服务，没有动态启停。授权根路径只在宿主配置中，API选择的是安全根ID。
+Local Files插件提供配置说明和校验Schema；宿主加载实例默认值，再合成本次请求覆盖。当前插件0.3.0、声明 `local-import-v5`。管理员点击「本地音乐」标题右侧的「管理目录」，在弹窗的多根目录树中展开并选择授权根或子目录。下方递归查找默认开启，深度限制放在默认折叠的「高级选项」中且默认不勾选；勾选深度限制后才可编辑数字，未勾选或填写0均不限深度。设置存入数据库并重建实例，保存不自动扫描。YAML 控制允许访问的路径，修改这些权限需重启服务；扫描请求选择已配置的音乐根ID。
 
 ```yaml
 importDefaults:
   recursive: true
-  maxDepth: 64
+  maxDepth: 0
+  skipHidden: true
+  respectNoMedia: true
   importLyrics: false
   excludePatterns: ['**/cache', '**/*.tmp']
 ```
 
-这是实例上与 `config` 同级的字段。默认递归64层、无排除；根本层文件是深度0。关闭递归时有效深度为0；重新开启且本层没给深度时恢复64，开启时显式0拒绝。每实例最多256个授权根，单次扫描总曲目上限50,000。
+这是实例上与 `config` 同级的字段。默认递归不限深度、无排除；根本层文件是深度0。关闭递归时有效深度为0，仅扫描当前目录；重新开启且本层没给深度时恢复0。开启递归时，0表示全部子目录，不会被映射为64；1—64表示最多进入的子目录层数。旧设置中的显式正数深度保持原义。每实例最多256个音乐根，单次扫描总曲目上限50,000。
+
+Host 遍历、目录通知注册和数据库缺失对账共用上述范围判断。不限深度仍受授权、排除、取消及资源数量限制；超过通知目录预算会退为周期复核。第 70 层实际目录、Worker 与数据库对账验证见[不限递归深度验证](validation/scan-depth.md)。
+
+## 隐藏内容与 .nomedia
+
+高级选项默认跳过隐藏内容并遵循 `.nomedia`。`skipHidden:true` 同时过滤点开头文件、目录和 Windows 隐藏属性条目；`respectNoMedia:true` 检查标记是否存在，不读取其内容，并跳过所在目录及子树。两项可独立关闭。允许访问的路径仍由部署授权决定，目录选择树不因导入筛选缩小授权展示。宿主为本轮扫描记录实际跳过的路径，发布时保留这些范围中的旧曲目，不能将未扫描内容当作丢失。
+
+显式选择的隐藏目录仍作为音乐根扫描，隐藏筛选只作用于根内条目。`.nomedia` 从每个所选根开始检查：根本身包含标记时跳过整个根，不向根外的祖先目录查找标记。监听保留标记所在目录的通知，以便移除标记后重新扫描该目录。
+
+新实例的有效默认值包含两个 `true`。旧持久化扫描计划省略高级字段时保留原先 `false/false` 的含义和摘要；当前配置声明为 `local-import-v5`，旧声明的任务不能悄然套用新默认范围。
 
 ## 规则语义
 
@@ -32,7 +44,7 @@ importDefaults:
 先读 `GET /api/v1/provider-instances` 获取当前 `configuration.schemaRevision` 和 `roots`，再提交完整模式/修订/根ID及部分选项：
 
 ```json
-{"mode":"full","schemaRevision":"local-import-v3","rootIds":["local"],"options":{"excludePatterns":["**/cache"]}}
+{"mode":"full","schemaRevision":"local-import-v5","rootIds":["local"],"options":{"excludePatterns":["**/cache"]}}
 ```
 
 每一层的 `excludePatterns` 都整组替换，省略继承、显式 `[]` 清除，不自动追加。`scripts/scan.ps1 -ProviderID local -ExcludePatterns '**/cache','**/*.tmp'` 可提交本次规则；传 `-ExcludePatterns @()` 清除实例继承。登录、Origin/CSRF、幂等键和等待任务由脚本处理。

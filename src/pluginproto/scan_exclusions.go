@@ -89,12 +89,12 @@ func Excludes(patterns []string, relativePath string) bool {
 }
 
 func (s ScanScope) Equal(other ScanScope) bool {
-	return s.RootID == other.RootID && s.RootIdentity == other.RootIdentity && s.Recursive == other.Recursive && s.MaxDepth == other.MaxDepth && slices.Equal(s.ExcludePatterns, other.ExcludePatterns)
+	return s.RootID == other.RootID && s.RootIdentity == other.RootIdentity && s.Recursive == other.Recursive && s.MaxDepth == other.MaxDepth && s.SkipHidden == other.SkipHidden && s.RespectNoMedia == other.RespectNoMedia && slices.Equal(s.ExcludePatterns, other.ExcludePatterns)
 }
 
 func (s ScanScope) ContainsDirectory(relativePath string) bool {
 	if relativePath == "." {
 		return s.Validate() == nil
 	}
-	return s.Validate() == nil && ValidScanPath(relativePath) && strings.Count(relativePath, "/")+1 <= s.MaxDepth && !Excludes(s.ExcludePatterns, relativePath)
+	return s.Validate() == nil && ValidScanPath(relativePath) && s.containsDepth(strings.Count(relativePath, "/")+1) && !Excludes(s.ExcludePatterns, relativePath) && (!s.SkipHidden || !HasHiddenPathSegment(relativePath))
 }

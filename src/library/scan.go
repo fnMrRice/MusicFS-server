@@ -3,6 +3,7 @@ package library
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/domain"
@@ -36,23 +37,25 @@ func (s *Service) scan(ctx context.Context, j jobs.Job) (int, error) {
 	all := []Observation{}
 	roots := j.Plan.Roots
 	seenTracks := map[string]bool{}
+	excluded := map[string][]string{}
 	for _, root := range roots {
 		var err error
-		all, err = s.scanRoot(ctx, j, r, root.RootID, all, seenTracks, probe)
+		all, err = s.scanRoot(ctx, j, r, root.RootID, all, seenTracks, excluded, probe)
 		if err != nil {
 			return len(all), err
 		}
 	}
-	return len(all), s.repo.Publish(ctx, j, ScanPublication{PlanDigest: j.PlanDigest, CompletedRoots: roots, Observations: all})
+	return len(all), s.repo.Publish(ctx, j, ScanPublication{PlanDigest: j.PlanDigest, CompletedRoots: roots, Observations: all, ExcludedPaths: excluded})
 }
 
-func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID string, all []Observation, seenTracks map[string]bool, probe Probe) ([]Observation, error) {
+func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID string, all []Observation, seenTracks map[string]bool, excluded map[string][]string, probe Probe) ([]Observation, error) {
 	cursor := ""
 	scope, err := j.Plan.Scope(rootID)
 	if err != nil {
 		return all, err
 	}
 	expectedPage := 0
+	var coverage pluginproto.ScanCoverage
 	seenCursors := map[string]bool{}
 	for {
 		page, err := r.Worker.Scan(ctx, pluginproto.ScanRequest{RootID: rootID, ScanID: j.ID, Generation: j.Generation, Cursor: cursor, Limit: 200, Scope: scope, PlanDigest: j.PlanDigest})
@@ -68,9 +71,18 @@ func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID st
 		if page.RootIdentity != scope.RootIdentity {
 			return all, domain.Fail("RESOURCE_CHANGED", "Scan root identity changed")
 		}
+		if expectedPage == 0 {
+			coverage, err = pluginproto.NewScanCoverage(scope, page.ExcludedPaths)
+			if err != nil {
+				return all, err
+			}
+			excluded[rootID] = append([]string{}, page.ExcludedPaths...)
+		} else if !slices.Equal(excluded[rootID], page.ExcludedPaths) {
+			return all, domain.Fail("RESOURCE_CHANGED", "Scan exclusions changed between pages")
+		}
 		expectedPage++
 		for _, o := range page.Items {
-			if o.ExternalID == "" || o.ObservedVersion == "" || !scope.Contains(o.RootID, o.RelativePath) || seenTracks[o.ExternalID] {
+			if o.ExternalID == "" || o.ObservedVersion == "" || !coverage.Contains(o.RootID, o.RelativePath) || seenTracks[o.ExternalID] {
 				return all, domain.Fail("CONFLICT", "Scan contains an invalid or repeated track identity")
 			}
 			seenTracks[o.ExternalID] = true

@@ -1,0 +1,7 @@
+[
+  {"name":"scan-advanced-options","schema":"ImportOptions","valid":true,"value":{"recursive":true,"maxDepth":0,"importLyrics":false,"excludePatterns":[],"skipHidden":true,"respectNoMedia":true}},
+  {"name":"scan-advanced-overrides","schema":"ImportOverrides","valid":true,"value":{"skipHidden":false,"respectNoMedia":false}},
+  {"name":"scan-advanced-scope","schema":"ScanScope","valid":true,"value":{"rootId":"music","rootIdentity":"root-version","recursive":true,"maxDepth":0,"excludePatterns":[],"skipHidden":true,"respectNoMedia":true}},
+  {"name":"scan-scope-hidden-reject-string","schema":"ScanScope","valid":false,"value":{"rootId":"music","rootIdentity":"root-version","recursive":true,"maxDepth":0,"excludePatterns":[],"skipHidden":"true"}},
+  {"name":"scan-options-nomedia-reject-number","schema":"ImportOptions","valid":false,"value":{"recursive":true,"maxDepth":0,"importLyrics":false,"excludePatterns":[],"respectNoMedia":1}}
+]

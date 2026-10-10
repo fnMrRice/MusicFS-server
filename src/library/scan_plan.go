@@ -20,6 +20,8 @@ type ScanPublication struct {
 	PlanDigest     string
 	CompletedRoots []pluginproto.ScanRoot
 	Observations   []Observation
+	// ExcludedPaths comes from host snapshots, never from a provider or request.
+	ExcludedPaths map[string][]string
 }
 
 func (s *Service) BuildScanPlan(ctx context.Context, owner, provider string, input ScanInput) (pluginproto.ScanPlan, error) {

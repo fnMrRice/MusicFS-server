@@ -26,6 +26,7 @@ func TestOfficialImportConfigurationIsBoundedAndExecutable(t *testing.T) {
 	// The host evaluates the supplied rule, rather than a second hardcoded form.
 	c.ImportOptionsSchema["properties"].(map[string]any)["maxDepth"].(map[string]any)["maximum"] = 4
 	options = c.ImportDefaults
+	options.MaxDepth = 5
 	if c.ValidateOptions(options) == nil {
 		t.Fatal("plugin schema maximum ignored")
 	}

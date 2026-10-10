@@ -30,11 +30,13 @@ Web 页面需求与本轮交付对照见[Web 接口对照](../web-ui-api-gaps.md
 
 ### 插件导入选项
 
-Provider 响应增加 `configuration` 与 `roots`。Local Files 的配置包含插件提供的 `schemaRevision/importOptionsSchema/importDefaults/unavailableOptions`；实例默认已合成到公开 `importDefaults`。根列表只含授权编号、显示名与可选安全写回能力，不含路径、真实文件系统身份、能力票据或内部配置摘要。当前 Web 列表/播放允许忽略新响应字段，本步骤没有导入表单 UI。
+Provider 响应包含 `configuration` 与 `roots`。Local Files 的配置包含插件提供的 `schemaRevision/importOptionsSchema/importDefaults/unavailableOptions`；实例默认已合成到公开 `importDefaults`。根列表只含编号、显示名与可选安全写回能力，不含路径、真实文件系统身份、能力票据或内部配置摘要。Web 管理目录弹窗可以保存所选目录和默认递归设置；发起扫描继续使用独立扫描接口。
 
-创建扫描必须提交 `{mode,schemaRevision,rootIds,options}`。`rootIds` 为1—256个不重复授权根，`options` 可为 `{}` 或部分覆盖，不兼容旧的仅 `{mode}` 请求。实例/请求遵守[归一规则](../configuration.md#导入选项)：默认true/64/false/空排除集，关闭深度为0，重新开启且未给深度恢复64，开启深度1—64。错误类型/矛盾/未知键为400，未授权根403，旧schema修订409。当前 `local-import-v3` 新增 `excludePatterns` 整组替换（`[]`清除继承），规则进入持久计划/摘要及Host范围核验，排除范围的旧库保留；请求最多32条、每条UTF-8最多256字节，语法见[扫描范围](../scanning.md)。歌词导入仍在成功扫描后独立执行，另查metadata-results。
+创建扫描必须提交 `{mode,schemaRevision,rootIds,options}`。`rootIds` 为1—256个不重复授权根，`options` 可为 `{}` 或部分覆盖，不兼容旧的仅 `{mode}` 请求。实例/请求遵守[归一规则](../configuration.md#导入选项)：默认true/0/false/空排除集，关闭深度为0且只扫描当前目录；重新开启且未给深度恢复0，开启时0表示不限深度、1—64表示子目录层数。错误类型/矛盾/未知键为400，未授权根403，旧schema修订409。当前 `local-import-v5` 接受不限深度并默认true/0；既有 `excludePatterns` 整组替换（`[]`清除继承），规则进入持久计划/摘要及Host范围核验，排除范围的旧库保留；请求最多32条、每条UTF-8最多256字节，语法见[扫描范围](../scanning.md)。歌词导入仍在成功扫描后独立执行，另查metadata-results。
 
-任务只合并同所有者、实例与有效计划的在途请求；同幂等键改变选中根、选项、模式或绑定版本返回 `CONFLICT`。根顺序不改变计划。读取任务新增 `rootIds/effectiveOptions/schemaRevision`，内部计划摘要和根身份不公开。`complete` 表示所选范围完整完成；未选根和范围之外的更深曲目保留。排队后有效计划持久固定，重启配置改变不能静默改用新参数。
+`local-import-v5` 新增 `skipHidden` 与 `respectNoMedia`。新实例默认均为 `true`，对应 Web 高级选项中的隐藏内容过滤与 `.nomedia` 规则；后者排除标记所在目录及子树。配置 GET 的 `importDefaults` 始终显式返回两个布尔值，包括 `false`。扫描计划和历史任务投影允许缺省，缺省沿用旧计划的 `false/false`，不改变已有摘要；旧配置与请求的部分覆盖仍基于当前插件默认值合成。
+
+任务只合并同所有者、实例与有效计划的在途请求；同幂等键改变选中根、选项、模式或绑定版本返回 `CONFLICT`。根顺序不改变计划。读取任务新增 `rootIds/effectiveOptions/schemaRevision`，内部计划摘要和根身份不公开。`complete` 表示所选范围完整完成；未选根和范围之外的更深曲目保留。隐藏属性及 `.nomedia` 的动态排除由 Host 记录并参与发布，客户端或 Worker 不能伪造排除证据；这些范围中的旧记录也保留。排队后有效计划持久固定，重启配置改变不能静默改用新参数。
 
 ### S-P5-01 当前资产证据
 

@@ -14,10 +14,20 @@ type ImportOverrides struct {
 	MaxDepth        *int      `json:"maxDepth,omitempty" yaml:"maxDepth,omitempty"`
 	ImportLyrics    *bool     `json:"importLyrics,omitempty" yaml:"importLyrics,omitempty"`
 	ExcludePatterns *[]string `json:"excludePatterns,omitempty" yaml:"excludePatterns,omitempty"`
+	SkipHidden      *bool     `json:"skipHidden,omitempty" yaml:"skipHidden,omitempty"`
+	RespectNoMedia  *bool     `json:"respectNoMedia,omitempty" yaml:"respectNoMedia,omitempty"`
 }
 
 func (p ImportOverrides) Clone() *ImportOverrides {
 	result := p
+	if p.SkipHidden != nil {
+		value := *p.SkipHidden
+		result.SkipHidden = &value
+	}
+	if p.RespectNoMedia != nil {
+		value := *p.RespectNoMedia
+		result.RespectNoMedia = &value
+	}
 	if p.ExcludePatterns != nil {
 		value := append([]string{}, (*p.ExcludePatterns)...)
 		result.ExcludePatterns = &value
@@ -63,6 +73,12 @@ func (p *ImportOverrides) UnmarshalJSON(data []byte) error {
 
 func MergeImportOptions(base ImportOptions, patch ImportOverrides) (ImportOptions, error) {
 	result := base
+	if patch.SkipHidden != nil {
+		result.SkipHidden = *patch.SkipHidden
+	}
+	if patch.RespectNoMedia != nil {
+		result.RespectNoMedia = *patch.RespectNoMedia
+	}
 	result.ExcludePatterns = append([]string{}, base.ExcludePatterns...)
 	if patch.ExcludePatterns != nil {
 		result.ExcludePatterns = append([]string{}, (*patch.ExcludePatterns)...)
@@ -73,7 +89,7 @@ func MergeImportOptions(base ImportOptions, patch ImportOverrides) (ImportOption
 			if !result.Recursive {
 				result.MaxDepth = 0
 			} else if !base.Recursive {
-				result.MaxDepth = 64
+				result.MaxDepth = 0
 			}
 		}
 	}
@@ -83,8 +99,8 @@ func MergeImportOptions(base ImportOptions, patch ImportOverrides) (ImportOption
 	if patch.ImportLyrics != nil {
 		result.ImportLyrics = *patch.ImportLyrics
 	}
-	if result.Recursive && (result.MaxDepth < 1 || result.MaxDepth > 64) || !result.Recursive && result.MaxDepth != 0 {
-		return ImportOptions{}, domain.Fail("INVALID_ARGUMENT", "Recursion and maximum depth are inconsistent")
+	if err := result.Validate(); err != nil {
+		return ImportOptions{}, err
 	}
 	var err error
 	result.ExcludePatterns, err = CanonicalExclusions(result.ExcludePatterns)

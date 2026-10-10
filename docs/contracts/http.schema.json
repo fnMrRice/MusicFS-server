@@ -418,11 +418,14 @@
         "maxDepth": {
           "type": "integer",
           "minimum": 0,
-          "maximum": 64
+          "maximum": 64,
+          "description": "开启递归时 0 表示不限深度，1—64 表示最多进入的子目录层数；关闭递归时只能为 0。"
         },
         "importLyrics": {
           "type": "boolean"
         },
+        "skipHidden": {"type": "boolean", "description": "跳过点开头条目和 Windows 隐藏文件、目录。"},
+        "respectNoMedia": {"type": "boolean", "description": "遵循 .nomedia 标记，跳过所在目录及子目录。"},
         "excludePatterns": {
           "type": "array",
           "maxItems": 32,
@@ -448,7 +451,7 @@
       "then": {
         "properties": {
           "maxDepth": {
-            "minimum": 1
+            "minimum": 0
           }
         }
       },
@@ -466,7 +469,7 @@
           }
         }
       },
-      "description": "部分覆盖；关闭且未给深度规范为 0；从关闭切换开启且未给深度恢复 64。null 与未知字段拒绝。importLyrics=true 在成功扫描后独立补齐歌词；结果按来源和资产版本查询 metadata-results。"
+      "description": "部分覆盖；关闭且未给深度规范为 0；从关闭切换开启且未给深度恢复 0；开启递归时 0 表示不限深度，1—64 表示子目录层数。null 与未知字段拒绝。importLyrics=true 在成功扫描后独立补齐歌词；结果按来源和资产版本查询 metadata-results。"
     },
     "ImportOptions": {
       "type": "object",
@@ -484,11 +487,14 @@
         "maxDepth": {
           "type": "integer",
           "minimum": 0,
-          "maximum": 64
+          "maximum": 64,
+          "description": "开启递归时 0 表示不限深度，1—64 表示最多进入的子目录层数；关闭递归时只能为 0。"
         },
         "importLyrics": {
           "type": "boolean"
         },
+        "skipHidden": {"type": "boolean", "description": "跳过点开头条目和 Windows 隐藏文件、目录。"},
+        "respectNoMedia": {"type": "boolean", "description": "遵循 .nomedia 标记，跳过所在目录及子目录。"},
         "excludePatterns": {
           "type": "array",
           "maxItems": 32,
@@ -511,7 +517,7 @@
       "then": {
         "properties": {
           "maxDepth": {
-            "minimum": 1
+            "minimum": 0
           }
         }
       },

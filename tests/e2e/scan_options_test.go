@@ -75,7 +75,7 @@ func TestYAMLPluginImportOptionsHTTPAndScopedLibrary(t *testing.T) {
 		t.Fatal(err)
 	}
 	first, second := t.TempDir(), t.TempDir()
-	for _, item := range []struct{ root, path string }{{first, "root.wav"}, {first, "sub/child.wav"}, {first, "sub/deeper/deep.wav"}, {second, "other.wav"}} {
+	for _, item := range []struct{ root, path string }{{first, "root.wav"}, {first, "sub/child.wav"}, {first, "sub/deeper/deep.wav"}, {first, strings.Repeat("d/", 70) + "unlimited.wav"}, {second, "other.wav"}} {
 		path := filepath.Join(item.root, filepath.FromSlash(item.path))
 		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 			t.Fatal(err)
@@ -101,7 +101,7 @@ func TestYAMLPluginImportOptionsHTTPAndScopedLibrary(t *testing.T) {
 		Items []library.Provider `json:"items"`
 	}
 	_ = json.Unmarshal(raw, &descriptor)
-	if descriptor.Items[0].Configuration.ImportDefaults.Recursive || descriptor.Items[0].Configuration.ImportDefaults.MaxDepth != 0 || descriptor.Items[0].Configuration.SchemaRevision != "local-import-v3" || len(descriptor.Items[0].Configuration.UnavailableOptions) != 0 {
+	if descriptor.Items[0].Configuration.ImportDefaults.Recursive || descriptor.Items[0].Configuration.ImportDefaults.MaxDepth != 0 || descriptor.Items[0].Configuration.SchemaRevision != "local-import-v5" || len(descriptor.Items[0].Configuration.UnavailableOptions) != 0 {
 		t.Fatalf("wrong loaded defaults: %s", raw)
 	}
 	sequence := 0
@@ -138,7 +138,7 @@ func TestYAMLPluginImportOptionsHTTPAndScopedLibrary(t *testing.T) {
 	}
 	request["options"] = map[string]any{"recursive": true}
 	job = submit(request)
-	if !job.EffectiveOptions.Recursive || job.EffectiveOptions.MaxDepth != 64 || len(list()) != 4 {
+	if !job.EffectiveOptions.Recursive || job.EffectiveOptions.MaxDepth != 0 || len(list()) != 5 {
 		t.Fatal("enabling recursion did not restore default depth")
 	}
 	before := list()
@@ -157,7 +157,7 @@ func TestYAMLPluginImportOptionsHTTPAndScopedLibrary(t *testing.T) {
 	request["options"] = map[string]any{"recursive": true, "maxDepth": 1}
 	submit(request)
 	after = list()
-	if after["child.wav"].Availability != "missing" || after["deep.wav"].Availability != "available" || after["other.wav"].Availability != "available" {
+	if after["child.wav"].Availability != "missing" || after["deep.wav"].Availability != "available" || after["unlimited.wav"].Availability != "available" || after["other.wav"].Availability != "available" {
 		t.Fatal("scoped missing reconciliation escaped selected depth/root")
 	}
 	for i, tc := range []struct {
@@ -169,7 +169,7 @@ func TestYAMLPluginImportOptionsHTTPAndScopedLibrary(t *testing.T) {
 		{map[string]any{"rootIds": []string{"private"}}, 403, "ACCESS_DENIED"},
 		{map[string]any{"rootIds": []string{"one", "one"}}, 400, "INVALID_ARGUMENT"},
 		{map[string]any{"options": map[string]any{"recursive": false, "maxDepth": 2}}, 400, "INVALID_ARGUMENT"},
-		{map[string]any{"options": map[string]any{"recursive": true, "maxDepth": 0}}, 400, "INVALID_ARGUMENT"},
+		{map[string]any{"options": map[string]any{"recursive": true, "maxDepth": -1}}, 400, "INVALID_ARGUMENT"},
 		{map[string]any{"options": map[string]any{"recursive": nil}}, 400, "INVALID_ARGUMENT"},
 		{map[string]any{"options": map[string]any{"privatePath": "private"}}, 400, "INVALID_ARGUMENT"},
 		{map[string]any{"options": nil}, 400, "INVALID_ARGUMENT"},

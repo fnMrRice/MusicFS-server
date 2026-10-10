@@ -176,6 +176,8 @@ func TestRealWorkerCursorBindsTaskGenerationPlanAndDepth(t *testing.T) {
 		func(r *pluginproto.ScanRequest) { r.PlanDigest = fmt.Sprintf("%064x", 1) },
 		func(r *pluginproto.ScanRequest) { r.Scope.MaxDepth = 1 },
 		func(r *pluginproto.ScanRequest) { r.Scope.ExcludePatterns = []string{"b.wav"} },
+		func(r *pluginproto.ScanRequest) { r.Scope.SkipHidden = true },
+		func(r *pluginproto.ScanRequest) { r.Scope.RespectNoMedia = true },
 	} {
 		changed := r
 		mutate(&changed)

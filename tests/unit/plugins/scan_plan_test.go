@@ -33,6 +33,7 @@ func TestScanPlanCanonicalDigestBindsEveryInput(t *testing.T) {
 		func(p *pluginproto.ScanPlan) { p.Roots[0].RootIdentity = "replacement" },
 		func(p *pluginproto.ScanPlan) { p.Roots = p.Roots[:1] },
 		func(p *pluginproto.ScanPlan) { p.Options.MaxDepth = 1 },
+		func(p *pluginproto.ScanPlan) { p.Options.MaxDepth = 0 },
 		func(p *pluginproto.ScanPlan) { p.Options.ImportLyrics = true },
 		func(p *pluginproto.ScanPlan) { p.Options = pluginproto.ImportOptions{} },
 	}
@@ -77,9 +78,33 @@ func TestScanScopeUsesCanonicalLocalDepth(t *testing.T) {
 	if deep.Contains("other", "a") {
 		t.Fatal("another root accepted")
 	}
-	for _, scope := range []pluginproto.ScanScope{{RootID: "root", RootIdentity: "id", Recursive: true}, {RootID: "root", RootIdentity: "id", MaxDepth: 1}, {RootID: "root", RootIdentity: "id", Recursive: true, MaxDepth: 65}, {RootID: "root"}} {
+	for _, scope := range []pluginproto.ScanScope{{RootID: "root", RootIdentity: "id", MaxDepth: -1}, {RootID: "root", RootIdentity: "id", MaxDepth: 1}, {RootID: "root", RootIdentity: "id", Recursive: true, MaxDepth: 65}, {RootID: "root"}} {
 		if scope.Validate() == nil {
 			t.Fatal("invalid scope accepted")
+		}
+	}
+}
+
+func TestScanScopeZeroMeansUnlimitedOnlyWhenRecursive(t *testing.T) {
+	for _, depth := range []int{0, 1, 64, 65, 1000} {
+		file := strings.Repeat("d/", depth) + "song.wav"
+		directory := strings.TrimSuffix(strings.Repeat("d/", depth), "/")
+		if directory == "" {
+			directory = "."
+		}
+		for _, option := range []struct {
+			recursive bool
+			maxDepth  int
+			covered   bool
+		}{{false, 0, depth == 0}, {true, 0, true}, {true, 1, depth <= 1}, {true, 64, depth <= 64}} {
+			scope := pluginproto.ScanScope{RootID: "root", RootIdentity: "id", Recursive: option.recursive, MaxDepth: option.maxDepth}
+			if scope.Contains("root", file) != option.covered || scope.ContainsDirectory(directory) != option.covered {
+				t.Fatalf("wrong coverage for recursive=%v maxDepth=%d depth=%d", option.recursive, option.maxDepth, depth)
+			}
+			scope.ExcludePatterns = []string{"**/d"}
+			if depth > 0 && (scope.Contains("root", file) || scope.ContainsDirectory(directory)) {
+				t.Fatal("unlimited recursion bypassed exclusions")
+			}
 		}
 	}
 }

@@ -21,13 +21,13 @@ func TestImportOverridesNormalizeEachLayer(t *testing.T) {
 		depth               int
 		valid               bool
 	}{
-		{"defaults", `{}`, `{}`, true, 64, true},
+		{"defaults", `{}`, `{}`, true, 0, true},
 		{"disable", `{}`, `{"recursive":false}`, false, 0, true},
-		{"enable resets", `{"recursive":false}`, `{"recursive":true}`, true, 64, true},
+		{"enable resets", `{"recursive":false}`, `{"recursive":true}`, true, 0, true},
 		{"explicit depth", `{"recursive":false}`, `{"recursive":true,"maxDepth":3}`, true, 3, true},
 		{"keep inherited", `{"maxDepth":8}`, `{"recursive":true}`, true, 8, true},
 		{"contradiction", `{}`, `{"recursive":false,"maxDepth":1}`, false, 0, false},
-		{"zero recursive", `{}`, `{"maxDepth":0}`, false, 0, false},
+		{"zero recursive", `{"maxDepth":8}`, `{"maxDepth":0}`, true, 0, true},
 		{"inherited false", `{"recursive":false}`, `{"maxDepth":3}`, false, 0, false},
 		{"limit", `{}`, `{"maxDepth":65}`, false, 0, false},
 		{"negative", `{}`, `{"maxDepth":-1}`, false, 0, false},
@@ -65,7 +65,7 @@ func TestInstanceImportDefaultsStrictAndCloned(t *testing.T) {
 	withDefaults := func(value string) string {
 		return strings.Replace(minimalYAML+pluginYAML, "        role: provider\n", "        role: provider\n        importDefaults: "+value+"\n", 1)
 	}
-	for _, value := range []string{"{recursive: false}", "{recursive: true, maxDepth: 1}", "{maxDepth: 64}", "{}"} {
+	for _, value := range []string{"{recursive: false}", "{recursive: true, maxDepth: 0}", "{recursive: true, maxDepth: 1}", "{maxDepth: 0}", "{maxDepth: 64}", "{}"} {
 		doc, err := parse(t, withDefaults(value))
 		if err != nil {
 			t.Fatal(err)
@@ -74,7 +74,7 @@ func TestInstanceImportDefaultsStrictAndCloned(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for _, value := range []string{"null", "{recursive: null}", "{maxDepth: '3'}", "{maxDepth: 0}", "{maxDepth: 65}", "{recursive: false, maxDepth: 2}", "{importLyrics: true}", "{privatePath: PRIVATE-SENTINEL}"} {
+	for _, value := range []string{"null", "{recursive: null}", "{maxDepth: '3'}", "{maxDepth: -1}", "{maxDepth: 65}", "{recursive: false, maxDepth: 2}", "{importLyrics: true}", "{privatePath: PRIVATE-SENTINEL}"} {
 		_, err := parse(t, withDefaults(value))
 		if err == nil || strings.Contains(err.Error(), "PRIVATE-SENTINEL") {
 			t.Fatalf("invalid import defaults accepted or disclosed: %s %v", value, err)

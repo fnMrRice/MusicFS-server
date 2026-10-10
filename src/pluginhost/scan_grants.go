@@ -26,6 +26,7 @@ type scanGrant struct {
 	cursor  string
 	limit   int
 	ctx     context.Context
+	receipt *scanReceipt
 }
 
 func (w *Worker) authorizeScan(ctx context.Context, r *pluginproto.ScanRequest) (string, error) {

@@ -37,6 +37,8 @@ type ScanPage struct {
 	Complete     bool          `json:"complete"`
 	RootIdentity string        `json:"rootIdentity"`
 	Issues       []string      `json:"issues"`
+	// ExcludedPaths is trusted host snapshot evidence, never decoded from RPC.
+	ExcludedPaths []string `json:"-"`
 }
 
 type ResolveRequest struct {
