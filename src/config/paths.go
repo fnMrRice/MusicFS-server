@@ -12,6 +12,7 @@ func resolvePaths(c *Config, base string) {
 			*value = filepath.Join(base, *value)
 		}
 	}
+	resolve(&c.PluginBundle)
 	for _, field := range []*string{&c.DataRoot, &c.MediaRoot, &c.CacheRoot, &c.WebRoot, &c.TLSCert, &c.TLSKey, &c.Fingerprinting.FpcalcPath} {
 		resolve(field)
 	}

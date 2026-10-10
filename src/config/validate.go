@@ -26,7 +26,7 @@ func (c Config) Validate() error {
 	if (c.TLSCert == "") != (c.TLSKey == "") {
 		return errors.New("tlsCert and tlsKey must be set together")
 	}
-	if strings.ContainsRune(c.WebRoot, 0) || strings.ContainsRune(c.TLSCert, 0) || strings.ContainsRune(c.TLSKey, 0) {
+	if strings.ContainsRune(c.PluginBundle, 0) || strings.ContainsRune(c.WebRoot, 0) || strings.ContainsRune(c.TLSCert, 0) || strings.ContainsRune(c.TLSKey, 0) {
 		return errors.New("invalid webRoot or TLS path")
 	}
 	if c.TLSCert == "" && (!loopback || !c.AllowLoopbackHTTP) {
@@ -116,6 +116,14 @@ func (c Config) validatePlugins(writable []string) error {
 		if strings.ContainsRune(plugin.Executable, 0) {
 			return errors.New("invalid plugin executable path")
 		}
+		if len(plugin.Args) > 64 {
+			return errors.New("plugin args cannot exceed 64 entries")
+		}
+		for _, arg := range plugin.Args {
+			if len(arg) > 4096 || strings.ContainsRune(arg, 0) {
+				return errors.New("invalid plugin argument")
+			}
+		}
 		active := 0
 		for _, instance := range plugin.Instances {
 			if _, err := EffectiveImportDefaults(plugin.PluginID, instance); err != nil {
@@ -129,7 +137,7 @@ func (c Config) validatePlugins(writable []string) error {
 			if instance.Role != role {
 				return errors.New("instance role does not match pluginId")
 			}
-			enabled := plugin.Enabled && instance.Enabled
+			enabled := plugin.CanStart(instance)
 			if enabled && instance.Config.Watch != nil && instance.Config.Watch.Enabled {
 				watchedInstances++
 				if watchedInstances > MaxWatchedInstances {

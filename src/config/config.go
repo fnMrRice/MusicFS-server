@@ -14,18 +14,20 @@ type MusicRoot struct {
 type Plugin struct {
 	PluginID   string     `yaml:"pluginId" json:"pluginId"`
 	Executable string     `yaml:"executable,omitempty" json:"executable,omitempty"`
+	Args       []string   `yaml:"args,omitempty" json:"args,omitempty"`
 	SHA256     string     `yaml:"sha256,omitempty" json:"sha256,omitempty"`
 	Enabled    bool       `yaml:"enabled" json:"enabled"`
 	Instances  []Instance `yaml:"instances" json:"instances"`
 }
 
 type Instance struct {
-	InstanceID     string                       `yaml:"instanceId" json:"instanceId"`
-	Name           string                       `yaml:"name,omitempty" json:"name,omitempty"`
-	Role           string                       `yaml:"role" json:"role"`
-	Enabled        bool                         `yaml:"enabled" json:"enabled"`
-	Config         InstanceConfig               `yaml:"config" json:"config"`
-	ImportDefaults *pluginproto.ImportOverrides `yaml:"importDefaults,omitempty" json:"importDefaults,omitempty"`
+	PendingConfiguration bool                         `yaml:"-" json:"-"`
+	InstanceID           string                       `yaml:"instanceId" json:"instanceId"`
+	Name                 string                       `yaml:"name,omitempty" json:"name,omitempty"`
+	Role                 string                       `yaml:"role" json:"role"`
+	Enabled              bool                         `yaml:"enabled" json:"enabled"`
+	Config               InstanceConfig               `yaml:"config" json:"config"`
+	ImportDefaults       *pluginproto.ImportOverrides `yaml:"importDefaults,omitempty" json:"importDefaults,omitempty"`
 }
 
 type InstanceConfig struct {
@@ -54,6 +56,9 @@ type MetadataConfig struct {
 }
 
 type Config struct {
+	PluginBundle      string               `yaml:"pluginBundle,omitempty" json:"pluginBundle,omitempty"`
+	SourcePath        string               `yaml:"-" json:"-"`
+	SourceOverrides   map[string]string    `yaml:"-" json:"-"`
 	ConfigVersion     int                  `yaml:"configVersion" json:"configVersion"`
 	Listen            string               `yaml:"listen" json:"listen"`
 	DataRoot          string               `yaml:"dataRoot" json:"dataRoot"`

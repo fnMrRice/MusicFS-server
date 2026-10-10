@@ -118,9 +118,11 @@ func validateDocumentShape(root *yaml.Node) error {
 	}, "instanceId", "role", "config")
 	plugin := mappingShape(map[string]fieldShape{
 		"pluginId": stringShape, "executable": stringShape, "sha256": stringShape,
+		"args":    sequenceShape(stringShape),
 		"enabled": boolShape, "instances": sequenceShape(instance),
 	}, "pluginId", "instances")
 	shape := mappingShape(map[string]fieldShape{
+		"pluginBundle":  stringShape,
 		"configVersion": intShape, "listen": stringShape, "dataRoot": stringShape,
 		"mediaRoot": stringShape, "cacheRoot": stringShape, "webRoot": stringShape,
 		"allowLoopbackHttp": boolShape, "allowedOrigins": sequenceShape(stringShape),

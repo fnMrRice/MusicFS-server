@@ -70,8 +70,6 @@ func TestAutomaticMetadataDependenciesAndSnapshotIsolation(t *testing.T) {
 	policy := "metadata:\n  automatic: {enabled: true, instancePriority: [scraper-local], fields: [lyrics, artwork], languages: [ZH, und]}\n"
 	for name, raw := range map[string]string{
 		"no-scraper":              minimalYAML + policy,
-		"disabled-plugin":         strings.Replace(combined, "executable: '../workers/local-scraper'\n    enabled: true", "executable: '../workers/local-scraper'\n    enabled: false", 1) + policy,
-		"disabled-instance":       strings.Replace(combined, "role: scraper\n        enabled: true", "role: scraper\n        enabled: false", 1) + policy,
 		"wrong-priority":          combined + strings.Replace(policy, "[scraper-local]", "[local]", 1),
 		"unknown-priority":        combined + strings.Replace(policy, "[scraper-local]", "[missing]", 1),
 		"case-duplicate-language": combined + strings.Replace(policy, "[ZH, und]", "[ZH, zh]", 1),

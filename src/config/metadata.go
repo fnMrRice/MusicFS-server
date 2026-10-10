@@ -12,7 +12,7 @@ func (c Config) validateMetadata() error {
 	needed := p.Enabled
 	for _, plugin := range c.Plugins {
 		for _, instance := range plugin.Instances {
-			enabled := plugin.Enabled && instance.Enabled
+			enabled := plugin.CanStart(instance)
 			if plugin.PluginID == "musicfs.scraper.local" {
 				scrapers[instance.InstanceID] = enabled
 				if enabled {
@@ -29,17 +29,14 @@ func (c Config) validateMetadata() error {
 		}
 	}
 	for _, id := range p.InstancePriority {
-		enabled, exists := scrapers[id]
+		_, exists := scrapers[id]
 		if !exists {
 			return errors.New("metadata priority must reference a configured local scraper instance")
 		}
-		if needed && !enabled {
-			return errors.New("automatic metadata requires enabled priority instances")
-		}
 	}
 	if needed {
-		if active == 0 {
-			return errors.New("automatic metadata or lyrics import requires an enabled local scraper")
+		if len(scrapers) == 0 {
+			return errors.New("automatic metadata or lyrics import requires a configured local scraper")
 		}
 		if len(p.InstancePriority) == 0 && active > 4 {
 			return errors.New("automatic metadata requires at most four priority instances")

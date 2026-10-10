@@ -78,8 +78,6 @@ func TestWriteBackReferencesEnablementAndClone(t *testing.T) {
 		"nonlocal-instance": base + "writeBack: {roots: [{instanceId: audio, rootId: root, fields: [lyrics]}]}\n",
 		"unknown-root":      base + "writeBack: {roots: [{instanceId: local, rootId: missing, fields: [lyrics]}]}\n",
 		"duplicate-root":    base + "writeBack: {roots: [{instanceId: local, rootId: root, fields: [lyrics]}, {instanceId: local, rootId: root, fields: [artwork]}]}\n",
-		"inactive-plugin":   strings.Replace(base, "enabled: true", "enabled: false", 1) + "writeBack: {enabled: true, roots: " + writeBackGrant + "}\n",
-		"inactive-instance": strings.Replace(base, "role: provider\n        enabled: true", "role: provider\n        enabled: false", 1) + "writeBack: {enabled: true, roots: " + writeBackGrant + "}\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			if _, err := parse(t, raw); err == nil {

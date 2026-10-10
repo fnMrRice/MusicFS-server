@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -76,6 +77,9 @@ func ParseDocument(raw []byte, path string, overrides map[string]string) (*Docum
 	if err := validateNodes(root, 1); err != nil {
 		return nil, err
 	}
+	if err := discoverBundle(root, filepath.Dir(abs)); err != nil {
+		return nil, err
+	}
 	if err := validateDocumentShape(root); err != nil {
 		return nil, err
 	}
@@ -87,9 +91,11 @@ func ParseDocument(raw []byte, path string, overrides map[string]string) (*Docum
 		return nil, err
 	}
 	resolvePaths(&c, filepath.Dir(abs))
+	markPendingConfiguration(&c, bundlePath(root, filepath.Dir(abs)))
 	if err := c.Validate(); err != nil {
 		return nil, err
 	}
+	c.SourcePath, c.SourceOverrides = abs, maps.Clone(overrides)
 	hash := sha256.Sum256(raw)
 	return &Document{Config: c, Root: &document, Raw: bytes.Clone(raw), Revision: hex.EncodeToString(hash[:]), Path: abs}, nil
 }

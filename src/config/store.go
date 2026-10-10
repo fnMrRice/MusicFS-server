@@ -30,6 +30,8 @@ type Change struct {
 	ExpectedRevision, IdempotencyKey string
 	PluginID, InstanceID             string
 	Enabled                          bool
+	Mode                             string
+	Settings                         *InstanceSettings
 }
 
 type Snapshot struct {
@@ -99,6 +101,7 @@ func (s *Store) Current() Config {
 }
 
 func cloneConfig(c Config) Config {
+	c.SourceOverrides = maps.Clone(c.SourceOverrides)
 	c.WriteBack.Roots = append([]WriteBackRoot(nil), c.WriteBack.Roots...)
 	for i := range c.WriteBack.Roots {
 		c.WriteBack.Roots[i].Fields = append([]string(nil), c.WriteBack.Roots[i].Fields...)
@@ -109,6 +112,7 @@ func cloneConfig(c Config) Config {
 	c.AllowedOrigins = append([]string(nil), c.AllowedOrigins...)
 	c.Plugins = append([]Plugin(nil), c.Plugins...)
 	for i := range c.Plugins {
+		c.Plugins[i].Args = append([]string(nil), c.Plugins[i].Args...)
 		c.Plugins[i].Instances = append([]Instance(nil), c.Plugins[i].Instances...)
 		for j := range c.Plugins[i].Instances {
 			instance := &c.Plugins[i].Instances[j]

@@ -21,8 +21,7 @@ func (c Config) validateWriteBack() error {
 		return errors.New("invalid writeBack limits or missing explicit root grants")
 	}
 	type instanceGrant struct {
-		enabled bool
-		roots   map[string]bool
+		roots map[string]bool
 	}
 	instances := map[string]instanceGrant{}
 	for _, plugin := range c.Plugins {
@@ -30,7 +29,7 @@ func (c Config) validateWriteBack() error {
 			continue
 		}
 		for _, instance := range plugin.Instances {
-			g := instanceGrant{enabled: plugin.Enabled && instance.Enabled, roots: map[string]bool{}}
+			g := instanceGrant{roots: map[string]bool{}}
 			for _, root := range instance.Config.MusicRoots {
 				g.roots[root.ID] = true
 			}
@@ -41,8 +40,8 @@ func (c Config) validateWriteBack() error {
 	for _, root := range p.Roots {
 		grant, ok := instances[root.InstanceID]
 		key := root.InstanceID + "\x00" + root.RootID
-		if !ok || !grant.roots[root.RootID] || seen[key] || (p.Enabled && !grant.enabled) {
-			return errors.New("writeBack grants require unique configured local roots and enabled dependencies when active")
+		if !ok || !grant.roots[root.RootID] || seen[key] {
+			return errors.New("writeBack grants require unique configured local roots")
 		}
 		seen[key] = true
 		if len(root.Fields) < 1 || len(root.Fields) > 2 {

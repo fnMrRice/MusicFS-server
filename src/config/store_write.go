@@ -58,16 +58,12 @@ func (s *Store) SetEnabled(ctx context.Context, change Change) (Operation, error
 	if node == nil {
 		return Operation{}, domain.Fail("NOT_FOUND", "Configured plugin or instance not found")
 	}
-	value := "false"
-	if change.Enabled {
-		value = "true"
-	}
-	field := mappingValue(node, "enabled")
-	if field == nil {
-		node.Content = append(node.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "enabled"},
-			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: value})
-	} else {
-		field.Value, field.Tag = value, "!!bool"
+	if change.Settings != nil {
+		if err := applyInstanceSettings(doc, change, node); err != nil {
+			return Operation{}, err
+		}
+	} else if err := setNode(node, "enabled", change.Enabled); err != nil {
+		return Operation{}, err
 	}
 	var output bytes.Buffer
 	encoder := yaml.NewEncoder(&output)
@@ -80,7 +76,7 @@ func (s *Store) SetEnabled(ctx context.Context, change Change) (Operation, error
 	}
 	next, err := ParseDocument(output.Bytes(), doc.Path, s.overrides)
 	if err != nil {
-		return Operation{}, err
+		return Operation{}, domain.Fail("INVALID_ARGUMENT", "Plugin settings do not satisfy the configuration schema")
 	}
 	op := Operation{ID: domain.NewID(), Key: change.IdempotencyKey, Digest: digest, ConfigPath: doc.Path,
 		PreviousRevision: doc.Revision, NextRevision: next.Revision, PluginID: change.PluginID,

@@ -7,6 +7,7 @@
   "additionalProperties": false,
   "required": ["configVersion", "allowedOrigins"],
   "properties": {
+    "pluginBundle": {"$ref": "#/$defs/Path"},
     "configVersion": {"const": 1},
     "listen": {"type": "string", "minLength": 1, "default": "127.0.0.1:8080"},
     "allowLoopbackHttp": {"type": "boolean", "default": false},
@@ -158,9 +159,6 @@
                 "pluginId": {
                   "const": "musicfs.audio.ffmpeg"
                 },
-                "enabled": {
-                  "const": true
-                },
                 "instances": {
                   "contains": {
                     "required": [
@@ -170,9 +168,6 @@
                     "properties": {
                       "role": {
                         "const": "audio"
-                      },
-                      "enabled": {
-                        "const": true
                       }
                     }
                   }
@@ -250,11 +245,13 @@
     "Path": {"type": "string", "not": {"pattern": "\u0000"}},
     "NonemptyPath": {"$ref": "#/$defs/Path", "minLength": 1},
     "Enabled": {"type": "object", "required": ["enabled"], "properties": {"enabled": {"const": true}}},
+    "BundledPlugin": {"required": ["args"], "properties": {"args": {"type": "array", "prefixItems": [{"const": "--plugin"}], "minItems": 2}}},
     "Plugin": {
-      "type": "object", "additionalProperties": false, "required": ["pluginId", "instances"],
+      "type": "object", "additionalProperties": false, "required": ["pluginId"],
       "properties": {
         "pluginId": {"enum": ["musicfs.localfiles", "musicfs.audio.ffmpeg", "musicfs.ncm", "musicfs.scraper.local", "musicfs.netease", "musicfs.qqmusic", "musicfs.applemusic"]},
         "executable": {"$ref": "#/$defs/Path"},
+        "args": {"type": "array", "maxItems": 64, "items": {"type": "string", "maxLength": 4096, "pattern": "^[^\u0000]*$"}},
         "sha256": {"type": "string", "pattern": "^(?:[a-fA-F0-9]{64})?$"},
         "enabled": {"type": "boolean", "default": false},
         "instances": {"type": "array"}
@@ -324,7 +321,7 @@
         "pluginId": {"const": "musicfs.localfiles"},
         "instances": {"items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"role": {"const": "provider"}, "config": {"$ref": "#/$defs/LocalSettings"}}}}
       },
-      "if": {"$ref": "#/$defs/Enabled"},
+      "if": {"allOf": [{"$ref": "#/$defs/Enabled"}, {"not": {"$ref": "#/$defs/BundledPlugin"}}]},
       "then": {"properties": {"instances": {"items": {"if": {"$ref": "#/$defs/Enabled"}, "then": {"properties": {"config": {"required": ["musicRoots"], "properties": {"musicRoots": {"minItems": 1}}}}}}}}}
     },
     "FFmpegPlugin": {
@@ -356,9 +353,7 @@
           }
         }
       },
-      "if": {
-        "$ref": "#/$defs/Enabled"
-      },
+      "if": {"allOf": [{"$ref": "#/$defs/Enabled"}, {"not": {"$ref": "#/$defs/BundledPlugin"}}]},
       "then": {
         "properties": {
           "instances": {

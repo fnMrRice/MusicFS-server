@@ -27,14 +27,14 @@ func (c Config) validateFingerprinting() error {
 		return errors.New("enabled fingerprinting requires fpcalcPath and fpcalcSha256")
 	}
 	for _, plugin := range c.Plugins {
-		if plugin.PluginID != "musicfs.audio.ffmpeg" || !plugin.Enabled {
+		if plugin.PluginID != "musicfs.audio.ffmpeg" {
 			continue
 		}
 		for _, instance := range plugin.Instances {
-			if instance.Enabled && instance.Role == "audio" {
+			if instance.Role == "audio" {
 				return nil
 			}
 		}
 	}
-	return errors.New("enabled fingerprinting requires an enabled audio FFmpeg instance")
+	return errors.New("enabled fingerprinting requires a configured audio FFmpeg instance")
 }
