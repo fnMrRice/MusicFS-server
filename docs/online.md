@@ -56,4 +56,4 @@ QQ 和 Apple 对应 `musicfs.qqmusic`、`musicfs.applemusic`。平台由程序�
 
 离线为503 SOURCE_OFFLINE，上游异常为503 TEMPORARY_FAILURE，当前未实现能力为415 UNSUPPORTED，Apple目录授权缺失为401 AUTH_REQUIRED。最后一种表示平台授权尚未接入，不能用本地登录凭据替代。公开错误不携带上游原始正文、网络地址参数或账号秘密；已有本地曲库和播放流程保持独立。
 
-公开模型见 [OpenAPI](contracts/openapi.yaml)、[HTTP Schema](contracts/http.schema.json)；独立进程契约见 [online.schema.json](contracts/plugins/v1/online.schema.json)。没有新增Node运行依赖，参考来源及许可核对见[平台调查](platform-capabilities.md)。
+按来源聚合读取、部分失败与缓存刷新见[公开推荐](recommendations.md)；该接口同样不隐式导入曲库。公开模型见 [OpenAPI](contracts/openapi.yaml)、[HTTP Schema](contracts/http.schema.json)；独立进程契约见 [online.schema.json](contracts/plugins/v1/online.schema.json)。没有新增Node运行依赖，参考来源及许可核对见[平台调查](platform-capabilities.md)。

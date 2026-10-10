@@ -14,7 +14,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
-func configureOnline(ctx context.Context, c config.Config, log *slog.Logger) (*onlinehost.Service, func(), error) {
+func configureOnline(ctx context.Context, c config.Config, log *slog.Logger) (*onlinehost.Service, []onlinehost.Runtime, func(), error) {
 	runtimes := []onlinehost.Runtime{}
 	workers := []*pluginhost.OnlineWorker{}
 	closeAll := func() {
@@ -54,7 +54,7 @@ func configureOnline(ctx context.Context, c config.Config, log *slog.Logger) (*o
 	service, err := onlinehost.New(runtimes)
 	if err != nil {
 		closeAll()
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return service, closeAll, nil
+	return service, runtimes, closeAll, nil
 }

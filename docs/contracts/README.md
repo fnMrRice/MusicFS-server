@@ -112,6 +112,12 @@ Provider 根可选 `writeBack` 为 `{enabled,available,formats,fields,replacemen
 
 `POST /online-instances/{id}/tracks/{externalId}/resolve {}` 仍鉴权及CSRF；不产生资源、无幂等键，目前明确415。Apple目录返回401 AUTH_REQUIRED，QQ未实测成功的能力不宣告supported；其他平台/限流/离线错误保留本次请求编号与可选秒单位Retry-After。不存在或其他owner实例404；路径、原始上游错误和凭据不公开。参数、能力和实测边界见[在线说明](../online.md)及[HTTP验收](../validation/online-http.md)。
 
+### S-P7-03 推荐聚合与缓存
+
+`GET /recommendations` 使用登录会话，返回 `Recommendations {sources:[...]}`；可重复传不同 `instanceId`（最多8项）、limit默认20且1—50、refresh严格为true/false。省略实例时选择本人配置，超过8项须显式选择；返回保持所选来源和平台项目顺序。账号当前恒空、personalized恒false、nextCursor恒null。只读刷新不要求CSRF或幂等键，不进行导入、播放或远程写回。
+
+来源错误是每项 `error:{code,message,retryAfter}`，整体200仍须逐项检查；从未成功时items为空且时间为空，刷新失败保留上次成功项目与UTC时间并标stale。refresh不能绕过失败冷却。owner/实例/账号/配置修订/limit共同隔离缓存，重启清空内存；没有声称账号登录或个性化推荐已实现。限额、响应语义和验证范围见[推荐说明](../recommendations.md)与[接口验收](../validation/recommendations-http.md)。
+
 ### NCM 解密增量
 
 本次沿用既有 `/api/v1` 端点、请求和鉴权规则。播放描述的 `effectiveProcessing` 新增 `{ "type": "ncmDecrypt", "gainDb": 0, "version": "1", "execution": "server" }`。Schema 的 type 原已允许扩展字符串，无需收紧枚举或增加必填字段；客户端可以忽略未知处理项。该项表示外层容器解密，`gainDb: 0` 不代表执行了增益 DSP。后续进入转码管线时再报告独立 `gain` 项；用户未请求衰减时其值也可为 0。
