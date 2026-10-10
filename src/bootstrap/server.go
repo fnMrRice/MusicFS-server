@@ -20,6 +20,9 @@ func Serve(ctx context.Context, c config.Config, log *slog.Logger) error {
 	if err := c.Validate(); err != nil {
 		return err
 	}
+	if _, err := os.Lstat(filepath.Join(c.DataRoot, ".restore-incomplete")); !os.IsNotExist(err) {
+		return errors.New("installation restore is incomplete")
+	}
 	for _, dir := range []string{c.DataRoot, c.MediaRoot, c.CacheRoot} {
 		if err := os.MkdirAll(dir, 0700); err != nil {
 			return errors.New("cannot prepare writable directory")

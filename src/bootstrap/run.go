@@ -16,6 +16,9 @@ import (
 const APIVersion = "1"
 
 func Run(args []string, output io.Writer) error {
+	if len(args) > 0 && (args[0] == "backup" || args[0] == "verify-backup" || args[0] == "restore") {
+		return runBackup(args[0], args[1:], output)
+	}
 	if len(args) == 1 && args[0] == "token" {
 		_, err := io.WriteString(output, domain.NewID()+"\n")
 		return err
