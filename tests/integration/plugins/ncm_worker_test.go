@@ -154,7 +154,9 @@ func TestActualNCMWorker(t *testing.T) {
 		if err != nil {
 			t.Fatalf("cancellation did not free worker slot: %v", err)
 		}
-		_ = again.Close()
+		if err := again.Close(); err != nil {
+			t.Fatalf("reopened worker cleanup failed: %v", err)
+		}
 	})
 	t.Run("hash-rejection", func(t *testing.T) {
 		wrong := cfg
@@ -162,17 +164,40 @@ func TestActualNCMWorker(t *testing.T) {
 		if _, err := ncmdecoder.NewProcessor(wrong); err == nil || !strings.HasPrefix(err.Error(), "ACCESS_DENIED") {
 			t.Fatalf("wrong checksum accepted: %v", err)
 		}
-		f, err := os.OpenFile(worker, os.O_APPEND|os.O_WRONLY, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
-		_, writeErr := f.Write([]byte("changed"))
-		_ = f.Close()
-		if writeErr != nil {
-			t.Fatal(writeErr)
-		}
+		replaceNCMWorkerWithChangedCopy(t, worker)
 		if _, err := p.Open(context.Background(), "tampered", "asset", bytes.NewReader([]byte("bad")), 3); err == nil || !strings.HasPrefix(err.Error(), "ACCESS_DENIED") {
 			t.Fatalf("changed executable accepted: %v", err)
 		}
 	})
+}
+
+func replaceNCMWorkerWithChangedCopy(t *testing.T, worker string) {
+	t.Helper()
+	data, err := os.ReadFile(worker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(worker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Replacing the path avoids Linux ETXTBSY when an executed inode is not yet writable.
+	file, err := os.CreateTemp(filepath.Dir(worker), "ncm-worker-changed-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	defer os.Remove(file.Name())
+	if _, err := file.Write(append(data, []byte("changed")...)); err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Chmod(info.Mode().Perm()); err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(file.Name(), worker); err != nil {
+		t.Fatal(err)
+	}
 }
