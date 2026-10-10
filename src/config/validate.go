@@ -81,10 +81,11 @@ func (c Config) Validate() error {
 
 func (c Config) validatePlugins(writable []string) error {
 	plugins, instances := map[string]bool{}, map[string]bool{}
+	onlineInstances := 0
 	for _, plugin := range c.Plugins {
 		role := "audio"
 		switch plugin.PluginID {
-		case "musicfs.localfiles":
+		case "musicfs.localfiles", "musicfs.netease", "musicfs.qqmusic", "musicfs.applemusic":
 			role = "provider"
 		case "musicfs.scraper.local":
 			role = "scraper"
@@ -99,6 +100,12 @@ func (c Config) validatePlugins(writable []string) error {
 			return errors.New("local scraper supports at most 16 configured instances")
 		}
 		plugins[plugin.PluginID] = true
+		if OnlinePlatform(plugin.PluginID) != "" {
+			onlineInstances += len(plugin.Instances)
+			if onlineInstances > 16 {
+				return errors.New("at most 16 online instances are supported")
+			}
+		}
 		if plugin.SHA256 != "" {
 			hash, err := hex.DecodeString(plugin.SHA256)
 			if err != nil || len(hash) != 32 {

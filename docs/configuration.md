@@ -61,6 +61,7 @@
 | `musicfs.audio.ffmpeg` | `audio`；`config.ffmpegPath`与`config.ffprobePath`。有效启用时两者均必填 |
 | `musicfs.ncm` | `audio`；`config: {}`，具体功能见[NCM说明](ncm.md) |
 | `musicfs.scraper.local` | `scraper`；`config: {}`，最多16个配置实例，只读取目标Provider授权的内嵌/旁置内容；见[补全任务](metadata.md) |
+| `musicfs.netease` / `musicfs.qqmusic` / `musicfs.applemusic` | `provider`；`config: {}`，三平台合计最多16实例，仅匿名资料，禁止URL/Cookie/token/账号/本地根配置；能力差异见[在线接口](online.md) |
 
 当前只接受上述四个官方插件ID，插件ID不可重复；每个音频插件最多有一个有效启用实例。插件与实例的 `enabled` 省略时均默认false，只有两层都为true才在启动时启用。禁用不改写兄弟实例或删除已有库。有效启用必须配置可执行路径；禁用对象仍严格检查结构、身份、路径隔离与摘要格式，但不要求其程序或外部工具当前可运行。
 

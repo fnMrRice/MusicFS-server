@@ -104,6 +104,14 @@ Provider 响应增加 `configuration` 与 `roots`。Local Files 的配置包含�
 
 Provider 根可选 `writeBack` 为 `{enabled,available,formats,fields,replacement}`：enabled表示开关与授权，available表示实际本地存储和探测条件，仍不能替代逐文件检查。首版只支持Windows固定本地NTFS的受支持FLAC，replacement为recoverableReplace，不承诺NAS或单次原子替换。客户端可忽略该可选字段，现有Web未增加写回入口。范围、恢复和备份见[写回说明](../writeback.md)及[接口验收](../validation/writeback-http.md)。
 
+### S-P7-02 匿名在线资料
+
+`GET /online-instances` 只返回本人在线实例的安全声明，账号固定空匿名；available与能力supported分开。查询端点为 `/online-instances/{id}/search?q=&limit=&cursor=`、`/tracks/{externalId}`、`/recommendations?limit=` 和 `/playlists/{externalId}`。默认limit20、范围1—50，未知/重复query拒绝；搜索q最多256 UTF-8字节，cursor最多1024。上游游标绑定owner/实例/查询/limit且有时限，不声明稳定快照。
+
+公共返回新增 `OnlineInstances/OnlineSearchPage/OnlineTrack/OnlineRecommendationPage/OnlineObservation`。资料页URL与音频流分离；playbackAvailability恒unknown，metadataDigest不成为asset版本或身份匹配证据。歌单保留重复出现的位置、最多10000条，complete只是观测数量完整且consistency恒unversioned。推荐为匿名第一页，personalized=false、nextCursor=null。所有这些读取不会隐式导入个人曲库。
+
+`POST /online-instances/{id}/tracks/{externalId}/resolve {}` 仍鉴权及CSRF；不产生资源、无幂等键，目前明确415。Apple目录返回401 AUTH_REQUIRED，QQ未实测成功的能力不宣告supported；其他平台/限流/离线错误保留本次请求编号与可选秒单位Retry-After。不存在或其他owner实例404；路径、原始上游错误和凭据不公开。参数、能力和实测边界见[在线说明](../online.md)及[HTTP验收](../validation/online-http.md)。
+
 ### NCM 解密增量
 
 本次沿用既有 `/api/v1` 端点、请求和鉴权规则。播放描述的 `effectiveProcessing` 新增 `{ "type": "ncmDecrypt", "gainDb": 0, "version": "1", "execution": "server" }`。Schema 的 type 原已允许扩展字符串，无需收紧枚举或增加必填字段；客户端可以忽略未知处理项。该项表示外层容器解密，`gainDb: 0` 不代表执行了增益 DSP。后续进入转码管线时再报告独立 `gain` 项；用户未请求衰减时其值也可为 0。

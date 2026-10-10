@@ -57,6 +57,34 @@ plugins:
         role: 'scraper'
         enabled: true
         config: {}
+  - pluginId: 'musicfs.netease'
+    executable: '../build/windows/musicfs-plugin-netease.exe'
+    # Public metadata only; no login, audio resolution or automatic library import.
+    enabled: false
+    instances:
+      - instanceId: 'netease-public'
+        name: '网易云公开资料'
+        role: 'provider'
+        enabled: false
+        config: {}
+  - pluginId: 'musicfs.qqmusic'
+    executable: '../build/windows/musicfs-plugin-qqmusic.exe'
+    # Latest live search failed upstream; no supported capability is advertised.
+    enabled: false
+    instances:
+      - instanceId: 'qq-public'
+        role: 'provider'
+        enabled: false
+        config: {}
+  - pluginId: 'musicfs.applemusic'
+    executable: '../build/windows/musicfs-plugin-applemusic.exe'
+    # Credential support is not implemented; catalog calls return AUTH_REQUIRED.
+    enabled: false
+    instances:
+      - instanceId: 'apple-public'
+        role: 'provider'
+        enabled: false
+        config: {}
 maxSessions: 8
 maxProcessing: 2
 maxCacheBytes: 1073741824

@@ -121,7 +121,7 @@
         "bytesPerSecond": {"type": "integer", "minimum": 65536, "maximum": 1073741824, "default": 4194304}
       }
     },
-    "plugins": {"type": "array", "items": {"oneOf": [{"$ref": "#/$defs/LocalPlugin"}, {"$ref": "#/$defs/FFmpegPlugin"}, {"$ref": "#/$defs/NCMPlugin"}, {"$ref": "#/$defs/LocalScraperPlugin"}]}}
+    "plugins": {"type": "array", "items": {"oneOf": [{"$ref": "#/$defs/LocalPlugin"}, {"$ref": "#/$defs/FFmpegPlugin"}, {"$ref": "#/$defs/NCMPlugin"}, {"$ref": "#/$defs/LocalScraperPlugin"}, {"$ref": "#/$defs/OnlinePlugin"}]}}
   },
   "allOf": [
     {
@@ -185,6 +185,7 @@
     }
   ],
   "$defs": {
+    "OnlinePlugin": {"allOf": [{"$ref": "#/$defs/Plugin"}], "description": "匿名固定平台适配；加载器额外限制三平台总共最多16实例。禁止配置URL、Cookie、token或导入选项。", "properties": {"pluginId": {"enum": ["musicfs.netease", "musicfs.qqmusic", "musicfs.applemusic"]}, "instances": {"type": "array", "maxItems": 16, "items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"role": {"const": "provider"}, "config": {"type": "object", "additionalProperties": false}, "importDefaults": false}}}}},
     "ImportOverrides": {
       "type": "object",
       "additionalProperties": false,
@@ -241,7 +242,7 @@
     "Plugin": {
       "type": "object", "additionalProperties": false, "required": ["pluginId", "instances"],
       "properties": {
-        "pluginId": {"enum": ["musicfs.localfiles", "musicfs.audio.ffmpeg", "musicfs.ncm", "musicfs.scraper.local"]},
+        "pluginId": {"enum": ["musicfs.localfiles", "musicfs.audio.ffmpeg", "musicfs.ncm", "musicfs.scraper.local", "musicfs.netease", "musicfs.qqmusic", "musicfs.applemusic"]},
         "executable": {"$ref": "#/$defs/Path"},
         "sha256": {"type": "string", "pattern": "^(?:[a-fA-F0-9]{64})?$"},
         "enabled": {"type": "boolean", "default": false},

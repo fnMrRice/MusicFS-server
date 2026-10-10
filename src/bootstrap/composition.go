@@ -98,9 +98,17 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	}
 	closeBeforeMetadata := cleanup
 	cleanup = func() { metadata.Close(); closeBeforeMetadata() }
+	online, closeOnline, err := configureOnline(ctx, c, log)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	closeBeforeOnline := cleanup
+	cleanup = func() { closeOnline(); closeBeforeOnline() }
 	sessions := auth.New(store, c.AdminToken, c.AllowedOrigins, time.Duration(c.SessionTTLSeconds)*time.Second)
 	handler := api.New(api.Options{Auth: sessions, InstanceID: instance, Ready: ready, SecureCookie: c.TLSCert != "", Logger: log})
 	handler.RegisterLibrary(lib)
+	handler.RegisterOnline(online)
 	handler.RegisterHashing(hashes)
 	handler.RegisterFingerprinting(fingerprints)
 	handler.RegisterMedia(content)
