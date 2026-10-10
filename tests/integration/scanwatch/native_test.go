@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -62,11 +63,14 @@ func writeFile(t *testing.T, path string) {
 }
 
 func TestNativeDirectoryChangesAreNonrecursiveAndCloseJoins(t *testing.T) {
-	root := t.TempDir()
-	child := filepath.Join(root, "child")
-	if err := os.Mkdir(child, 0700); err != nil {
-		t.Fatal(err)
+	if runtime.GOOS == "linux" {
+		assertNativeNonrecursive(t)
+	} else {
+		t.Log("Windows may report direct-child metadata changes; no descendant-hint absence assertion")
 	}
+	// A separate empty root prevents an earlier child metadata hint from
+	// satisfying the positive assertion for a directly created file.
+	root := t.TempDir()
 	f := openDirectory(t, root)
 	hints, hint := hintChannel()
 	var failures atomic.Int32
@@ -78,8 +82,6 @@ func TestNativeDirectoryChangesAreNonrecursiveAndCloseJoins(t *testing.T) {
 	if err = f.Close(); err != nil {
 		t.Fatal(err)
 	}
-	writeFile(t, filepath.Join(child, "nested.txt"))
-	noHint(t, hints)
 	writeFile(t, filepath.Join(root, "direct.txt"))
 	awaitHint(t, hints)
 	// Multiple callers may join shutdown. No callback may outlive it.
@@ -101,6 +103,30 @@ func TestNativeDirectoryChangesAreNonrecursiveAndCloseJoins(t *testing.T) {
 	noHint(t, hints)
 	if failures.Load() != 0 {
 		t.Fatal("normal shutdown reported a notification failure")
+	}
+}
+
+func assertNativeNonrecursive(t *testing.T) {
+	t.Helper()
+	root := t.TempDir()
+	deep := filepath.Join(root, "child", "deeper")
+	if err := os.MkdirAll(deep, 0700); err != nil {
+		t.Fatal(err)
+	}
+	f := openDirectory(t, root)
+	hints, hint := hintChannel()
+	var failures atomic.Int32
+	stop, err := scanwatch.StartNative(context.Background(), []*os.File{f}, hint, func() { failures.Add(1) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stop()
+	_ = f.Close()
+	writeFile(t, filepath.Join(deep, "nested.txt"))
+	noHint(t, hints)
+	stop()
+	if failures.Load() != 0 {
+		t.Fatal("nonrecursive watch reported a notification failure")
 	}
 }
 

@@ -1,4 +1,4 @@
-param([switch]$Race)
+param([switch]$Race, [string]$TestTimeout = '20m')
 $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path $PSScriptRoot)
 New-Item -ItemType Directory -Force build | Out-Null
@@ -20,9 +20,9 @@ Get-ChildItem $sourceRoots -Recurse -Filter '*.go' | ForEach-Object {
 }
 go vet -mod=readonly @vetPackages
 if ($LASTEXITCODE) { throw 'go vet failed' }
-go test -mod=readonly -count=1 -v '-coverpkg=./src/...' '-coverprofile=build/coverage.out' ./tests/...
+go test -mod=readonly -count=1 -v "-timeout=$TestTimeout" '-coverpkg=./src/...' '-coverprofile=build/coverage.out' ./tests/...
 if ($LASTEXITCODE) { throw 'go test failed' }
 if ($Race) {
-    go test -mod=readonly -count=1 -v -race ./tests/...
+    go test -mod=readonly -count=1 -v "-timeout=$TestTimeout" -race ./tests/...
     if ($LASTEXITCODE) { throw 'race check failed' }
 }
