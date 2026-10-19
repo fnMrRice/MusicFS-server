@@ -1,6 +1,6 @@
 # MusicFS Server 音频处理设计
 
-状态：长期设计与实现约束；2026-10-09。本文补充[Server 架构](architecture.md)，描述内部音频处理。独立音频 Worker、Go gain DSP、MP3 输出及 [NCM 解密](ncm.md)已有实现和实测，具体平台与格式边界见[实施记录](validation/progress.md)，其余设计能力仍待实现或验证。跨端会话、播放描述、恢复与定位契约以[总体架构](../../docs/architecture.md)为准。
+状态：长期设计与实现约束；2026-10-11。本文补充[Server 架构](architecture.md)，描述内部音频处理。独立音频 Worker、Go gain DSP、MP3 输出及 [NCM 解密](ncm.md)已有实现和实测，具体平台与格式边界见[实施记录](validation/progress.md)，其余设计能力仍待实现或验证。跨端会话、播放描述、恢复与定位契约以[总体架构](../../docs/architecture.md)为准；插件职责与 C++ 接入步骤见[插件化细化设计](plugin-architecture.md)。
 
 ## 1. 角色与路径
 
@@ -25,9 +25,25 @@ PCM 块定义采样格式/率、声道数/布局、帧数、时间戳、时间�
 
 控制面覆盖能力、构建/配置、开始、取消、seek/reset、flush/drain、错误和释放。数据面为有界二进制队列/受控共享缓冲，不用 Provider/Scraper RPC 传 JSON/Base64 PCM。Host 负责背压、上限、超时、配额、断连回收和故障隔离。
 
-当前基线使用独立官方音频 Worker，内部通过注册表连接 Go PCM DSP 与 FFmpeg 解码/编码，实际进程边界见[插件验证](validation/plugins.md)。未来进程内外部接口如采用，只用版本化 C 兼容数据、不透明句柄和明确内存归属，不跨 C++ ABI，不传运行时对象/异常。第三方原生插件须另验证权限与故障隔离，清单不是沙箱。
+当前基线使用独立官方音频 Worker，内部通过注册表连接 Go PCM DSP 与 FFmpeg 解码/编码，实际进程边界见[插件验证](validation/plugins.md)。需要 C++ 的音频插件使用 CMake / C++23 构建独立 Worker；共享算法可另适配 Client 的单进程 DLL，Server 不直接加载 Client DLL。Worker 内如需要可替换动态节点，只用版本化 C ABI、不透明句柄和明确内存归属，不跨 C++ ABI，不传运行时对象/异常。第三方原生插件须另验证权限与故障隔离，清单不是沙箱。
 
 构建/配置/换图在控制线程完成，于明确块边界切换，旧图停止使用后释放插件/缓冲。取消上下游传播，失败不能继续发布。必要 DSP 失败明确报错，只有显式配置可旁路的效果才允许旁路并提示。
+
+### 2.1 当前协议与目标节点接口的区别
+
+当前 [v1 Schema](contracts/plugins/v1/protocol.schema.json)的音频模型固定 `f32le / 48000 Hz / stereo`、`mp3-128` 输出，以及包含 `profile/gainDB/positionMs` 的计划；`audio.normalize` 是独立的指纹规范化路径。`audio.describe/prepare/start`、NCM 专用方法和统一取消通知已实现，不能据本文长期描述向当前 Worker 发送任意图、`seek/reset/flush/drain` RPC 或外部 DSP DLL 路径。
+
+下一步目标为“Host 选择和验证图、Worker 执行媒体算法”：解密、解复用、解码、DSP、编码和封装各自声明受支持格式、参数修订、状态重建、预滚、延迟和尾音；按需组合到一个或多个 Worker，不要求每个 PCM 节点都跨进程。图声明、资源引用、二进制帧或 Worker 内 C ABI 需分别冻结和测试，不能把 Go 内部 `Node` 接口当作已稳定的第三方 ABI。
+
+| 节点边界 | 插件责任 | Host 责任和验收 |
+| --- | --- | --- |
+| 字节 → 容器/编码包 | 容器校验、解密/解复用、轨道和格式描述 | 只授指定资产，拒绝格式伪报、越界及输入版本变化 |
+| 编码包 → PCM | 解码、实际采样格式、声道、时间戳 | 格式协商、长度校验、背压；未支持声道/格式明确失败 |
+| PCM → PCM | DSP/重采样、延迟/尾音、可重建状态和映射 | 固定链顺序、参数版本、缓冲上限及旁路策略；两端不重复执行 |
+| PCM → 编码/封装 | 编码、封装、结束排空和错误报告 | 终端兼容、真实 seek、完整性验证和受权交付 |
+| DSP 前分析分支 | 指纹规范化/算法、范围和版本 | 只采用户 DSP 前输入；保存证据，不直接关联 Recording 或允许跨源续播 |
+
+图或算法变化需要更新处理链/插件/参数版本并生成新表示；旧图与正在播放的 attempt 绑定到原租约，排空后才释放。跨端只共享格式和时间语义，Client DLL 的加载、实时回调和崩溃范围由 Client 设计负责。
 
 ## 3. 协商、表示与缓存
 

@@ -2,7 +2,7 @@
 
 平台账号后续增量见[登录与客户端接口](platform-login.md)：三平台登录适配及 Web 入口已接入，网易/QQ 二维码创建已实测，完整用户授权仍待验收。下文长期架构和原阶段状态不等于该增量已通过全部验收。
 
-状态：长期架构与实现约束；2026-10-11。当前已实现本地扫描与受限读取、原流/处理/NCM播放、资产识别与人工关联、内容刮削和受限写回、在线资料与歌单、处理输出缓存、备份部署、Server生命周期，以及插件启用与配置管理；插件停用保存后重启生效。逐项功能、所测环境和限制见[实施记录](validation/progress.md)；平台账号增量以上方专项说明为准，在线完整音频与其他长期设计不能因此视为完成。跨端行为、公共API与事件契约以[总体架构](../../docs/architecture.md)为准；Server在本仓库`docs/contracts`维护OpenAPI与JSON Schema，不在内部设计中另立一套接口。
+状态：长期架构与实现约束；2026-10-11。当前已实现本地扫描与受限读取、原流/处理/NCM播放、资产识别与人工关联、内容刮削和受限写回、在线资料与歌单、处理输出缓存、备份部署、Server生命周期，以及插件启用与配置管理；插件停用保存后重启生效。逐项功能、所测环境和限制见[实施记录](validation/progress.md)；平台账号增量以上方专项说明为准，在线完整音频与其他长期设计不能因此视为完成。跨端行为、公共API与事件契约以[总体架构](../../docs/architecture.md)为准；Server在本仓库`docs/contracts`维护OpenAPI与JSON Schema，不在内部设计中另立一套接口。本次插件职责、原生开发与接入缺口细化见[插件化设计](plugin-architecture.md)，不新增已实现能力。
 
 ## 1. 范围与模块
 
@@ -21,7 +21,7 @@ Server 管理音乐来源、统一音乐库、歌单、信息刮削和音频流�
 | Scheduler | 扫描、探测、摘要、指纹、同步、刮削、写回和恢复 |
 | Storage | SQLite WAL、单写入队列、Media Store、可重建缓存和独立密钥保护 |
 
-第一阶段采用 Go 实现模块化单体服务，SQLite 为当前存储方案。源码在 `src/`，Server 和官方插件程序入口在 `src/app/`，模块实现按职责分目录，测试统一在根 `tests/`；Go module 与包边界见 [P0 工程布局](implementation/00-project-layout.md)。首版官方插件采用独立进程，不引入多个语言宿主。Client 播放器、主题和桌面框架由 Client 仓库设计，本仓库不规定其 UI 实现。内部依赖见[组件图](diagrams/components.puml)。
+第一阶段采用 Go 实现模块化单体服务，SQLite 为当前存储方案。源码在 `src/`，Server 和官方插件程序入口在 `src/app/`，模块实现按职责分目录，测试统一在根 `tests/`；Go module 与包边界见 [P0 工程布局](implementation/00-project-layout.md)。首版官方插件为 Go 独立进程；后续需要 C++ 的插件使用 CMake / C++23 构建独立 Worker，经版本化 IPC 接入，不要求重写现有 Go 插件或为每种语言另建宿主。Client 使用单进程 DLL 插件，其播放器、主题和桌面框架由 Client 仓库设计；Server 与之分别构建和验收。内部依赖见[组件图](diagrams/components.puml)。
 
 内置插件现共用 `musicfs-plugins` 程序文件，通过启动参数固定角色；运行进程和协议边界保持独立。启动时发现随包角色，尊重显式禁用；缺配置的实例保留为待配置，详见[发现与兼容](configuration.md#内置插件程序与自动发现)。该变化不引入 Go DLL 动态链接，也不扩大第三方 SDK 的已交付范围。
 
@@ -88,13 +88,15 @@ TimelineEvidence 单独记录跨资产映射、有效区间及验证版本，纳
 
 三类 Server 插件独立注册、安装、启停、配置和授权；同包多角色不能隐式共用凭据或实例状态。Server 与 Client 分别拥有宿主 SDK，可共享模型，不承诺二进制跨运行端通用。
 
+现有代码只接入固定身份的官方 Provider、Scraper 和 Audio Worker，不是任意 manifest 即可安装的通用 SDK。来源、媒体算法、内容转换与可选策略优先保留扩展点；新增角色、可替换指纹/匹配算法和通用音频节点需先补协议与 Host 适配。职责矩阵、不能外包的授权/数据/事务边界及实施顺序见[插件化细化设计](plugin-architecture.md)。
+
 统一插件管理器区分插件总开关、实例开关与当前运行状态。停用只保存配置，当前 Worker、播放、任务及新工作准入保持，重启 Server 后才停用；旧 drain/force 参数只保留兼容，不再触发热排空或取消。启用和实例配置仍可动态应用，配置重建继续使用工作租约。禁用保留库、账号引用、人工结果与媒体文件；保存开关、运行开关、待重启状态及应用修订分别报告，详见[插件管理](implementation/plugin-management.md)。
 
 Server及插件实例配置使用YAML。配置读写服务按修订校验并原子更新同一文件，SQLite仅记录操作与恢复事实，不另存权威开关；HTTP保存返回202和操作编号。停用操作成功表示保存完成，重启后才应用；实例设置由Manager排空／重建后确认应用。SSE `capabilities.changed` 通知客户端重新读取授权能力。严格解析、路径脱敏、写入和恢复边界见[配置说明](configuration.md)；旧JSON配置不兼容。
 
-manifest 描述 id、version、protocolVersion、roles、能力、配置 schema 和权限。请求带 requestId、instanceRef、可选 accountRef、deadline、cursor 与取消令牌；账号只能属于本次用户及角色实例。分页返回 nextCursor 和可用快照版本；错误含 AUTH_REQUIRED、ACCESS_DENIED、NOT_FOUND、RATE_LIMITED、TEMPORARY_FAILURE、UNSUPPORTED、UNAVAILABLE、retryAfter 及可重试性，不包含密钥。
+长期 manifest/请求模型需表达身份、协议、角色、能力、配置和权限，以及请求关联、实例/账号、超时、分页与取消；实际 wire 字段以[协议 1.0](contracts/plugins/v1/README.md)和 Schema 为准，不把这里的概念名直接视为可发送字段。账号只能属于本次用户及角色实例；权限由 Host 配置授权，manifest 不能自授。稳定错误区分认证、权限、不存在、限流、临时失败和不支持，并按当前契约报告可重试性及重试等待，不包含密钥。
 
-控制面可评估版本化 JSON-RPC，经 stdio 或本地 socket 通信；模型和协议使用可生成绑定的 Schema/IDL，不绑定实现语言，也不要求首版同时交付多个语言宿主。音频数据采用独立有界二进制帧/受控共享缓冲，不用 JSON/Base64 传 PCM。进程内性能接口如采用，限版本化 C 兼容数据和不透明句柄；语言对象、异常和分配器所有权不跨界，不采用跨编译器 C++ ABI。
+当前控制面已采用 JSON-RPC 2.0 / stdio、Content-Length 帧和精确协议版本 1.0；音频、NCM、本地 Scraper 正文走任务限定的 loopback 二进制通道，不用 JSON/Base64 传 PCM。Schema 与角色专用握手/方法共同约束接入，不承诺任意语言实现或未知角色自动兼容。共享缓冲、通用逐节点数据总线仍为待验证增量。C++ Worker 内部如需动态原生节点，使用版本化 C ABI、不透明句柄及明确内存所有权，语言对象、异常和分配器不跨界；构建规则见[CMake / C++23](../../docs/native-plugins.md)。
 
 先交付官方受信任插件，第三方开放前验证权限和故障隔离。权限限定域名、挂载根、任务只读资源、执行时间、资源及日志长度；进程隔离本身不是完整沙箱，原生进程内清单也不是安全边界。官方插件同样无无限文件/网络权限。插件不直接写核心表，经 Host 持久接口保存实例映射等状态；Server 插件仅获得本角色实例已授权凭据，客户端及其插件不能获得这些凭据。
 
@@ -217,7 +219,7 @@ P5 增补 SHA-512、指纹与人工匹配；P6 实现独立 Scraper、手动/自
 
 刮削验收包括插件/账号独立、无在线 Provider 仍可刮削本地库、预览不发布、自动任务不覆盖人工、批量逐项失败、本地编辑不依赖插件。文件正文不入数据库；默认不改原音频摘要；发布中断留旧文件、回收保护引用、备份含人工文件；仅授权且有能力才回写，失败可恢复，成功换 asset/hash 但保留 track/歌单关系。
 
-播放、缓存、seek 与处理任务验收见[音频处理](audio-processing.md)。上述均为设计，未验证选型不视为已实现。
+播放、缓存、seek 与处理任务验收见[音频处理](audio-processing.md)，新增插件契约、C++ Worker、注册/升级及隔离验收见[插件化设计](plugin-architecture.md#7-增量顺序与验收门槛)。本节为完成门槛；已验证部分见各专项记录，未验证选型不视为已实现。
 
 
 ## 本地插件配置持久化

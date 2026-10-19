@@ -6,7 +6,7 @@ MusicFS的Go后端服务。已实现本地扫描/音乐库、鉴权与原流Rang
 
 实现范围与后续边界：
 
-- 插件管理：已实现插件与实例双层开关、工作租约、动态启用、配置应用与能力失效通知；停用只保存配置，重启 Server 后生效，见[插件管理](docs/implementation/plugin-management.md)。
+- 插件管理：已实现插件与实例双层开关、工作租约、动态启用、配置应用与能力失效通知；停用只保存配置，重启 Server 后生效，见[插件管理](docs/implementation/plugin-management.md)。新增插件仍需 Host 注册/角色适配，不能仅添加 manifest 即使用。
 - Music Provider：本地文件与受限在线资料已实现；实体NAS仍需实机验收。当前只有网易公开资料能力实测可用，QQ旧搜索近期失败、Apple目录缺授权。[平台登录增量](docs/platform-login.md)已接入客户端请求及 Web 入口，网易/QQ 二维码创建实测通过；三个在线源统一要求平台登录，网易云业务迁至会话 EAPI、QQ 搜索迁至桌面 RPC，真实用户查询仍待验收；没有在线完整音频。
 - 独立本地Scraper已实现内嵌/旁置候选、预览、人工选用和保守自动补缺；查询修正与远程Scraper未实现。内容在独立文件目录，数据库保存引用；默认不改原件，显式写回仅支持逐根授权的Windows本地NTFS FLAC。
 - 插件化音频处理：解复用、解码、DSP、编码及封装，向 Web 等客户端交付兼容输出；适用时保留直接播放或代理路径。
@@ -21,6 +21,7 @@ MusicFS的Go后端服务。已实现本地扫描/音乐库、鉴权与原流Rang
 - [YAML 配置](docs/configuration.md)：字段、插件与实例、覆盖顺序、配置读写及应用边界。
 - [扫描与文件通知](docs/scanning.md)：选根、递归深度、排除规则、默认关闭的监听与周期补漏，以及暂停任务的处理方式。
 - [插件实施计划](docs/implementation/plugins.md)：协议宿主、Local Files、音频链、独立 Scraper 和平台适配。
+- [插件化细化设计](docs/plugin-architecture.md)：可替换职责、核心权限/数据/事务边界、当前接入缺口与增量验收。需要 C++ 的 Server 插件以 CMake / C++23 构建独立 Worker；Client 的 DLL 与 Server 分别构建，现有 Go 插件继续使用。
 - [联合实施总览](../docs/implementation.md)与[最小 Web 实施](../web/docs/implementation.md)：共同接口和真实浏览器播放验收。
 - [Server 内部架构](docs/architecture.md)：模块、数据模型、Provider/Scraper、存储与任务管理。
 - [Server 音频处理](docs/audio-processing.md)：处理链、播放交付、定位、缓存与资源约束。

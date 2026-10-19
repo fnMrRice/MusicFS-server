@@ -8,6 +8,8 @@
 
 当前交付范围是 Server、Server 插件和能显示文件列表并播放的 Web。桌面 Client 不在本轮实现计划内。跨端接口和联合验收见[实施总览](../../docs/implementation.md)，Server 的长期边界见[内部架构](architecture.md)与[音频设计](audio-processing.md)。
 
+2026-10-11 插件化细化见[职责矩阵与 SP-01—SP-06](plugin-architecture.md)：现有三角色 Worker 可以扩展，固定插件注册、远端资源、通用音频/分析接口需分别补齐。需要 C++ 的插件使用 CMake / C++23 构建独立 Worker；现有 Go 插件保留，Client 单进程 DLL 策略由 Client 独立实施。该增量只有设计，不新增当前已交付功能。
+
 | 阶段 | 详细文档 | 核心结果 |
 | --- | --- | --- |
 | P0 | [工程布局与契约](implementation/00-project-layout.md) | src/app、src 各模块、tests；Go module、Schema、构建和夹具 |
@@ -20,6 +22,7 @@
 | P7 | [在线来源与歌单](implementation/07-online-library.md) | 平台适配、推荐、快照同步、隐藏、有限恢复 |
 | P8 | [交付与验收](implementation/08-release.md) | 构建制品、部署、恢复、兼容矩阵与验收记录 |
 | 插件专题 | [插件实现步骤](implementation/plugins.md) | 各阶段插件协议、进程、适配器、测试及参考来源 |
+| 插件化增量 | [插件细化设计](plugin-architecture.md) | 可替换职责、核心信任/事务边界、C++ Worker、严格契约演进、构建生命周期与验收 |
 | 配置增量 | [YAML 配置](configuration.md) | 严格校验、显式插件/实例、修订与原子写入已实现；保存后仍需应用/重启，见[配置验收](validation/configuration.md) |
 | 管理补充 | [插件管理](implementation/plugin-management.md) | HTTP 状态/配置、动态启用、配置重建与 SSE 已实现；停用保存后重启生效；管理 CLI 仍待实施 |
 
@@ -44,10 +47,11 @@
 | HTTP / 日志 / JSON | 优先标准库 net/http、slog、encoding/json | P1、P3 真实请求与流测试 |
 | 数据访问 | database/sql + modernc.org/sqlite，直接 SQL 与版本迁移 | P1 事务、WAL、取消、恢复；固定已验证驱动版本 |
 | 插件 | 官方 Go worker，版本化 RPC；宿主管理子进程 | P2/P4/P6 的真实进程契约测试 |
+| 原生插件增量 | 需要 C++ 时采用 CMake / C++23 Worker，Go Host 经 IPC 接入；尚待实施 | SP-02 的真实跨语言契约、数据通道、取消与平台制品；不复用 Client DLL 二进制 |
 | 音频工具 | 已验证构建的 ffprobe/FFmpeg，通过音频适配器调用 | P2 探测、P4 数据管线与输出矩阵 |
 | Web | 独立仓库静态制品，浏览器原生 audio | [Web 实施文档](../../web/docs/implementation.md) |
 
-这些选择已有实际实现，固定版本和构建来源见[依赖记录](dependencies.md)。不得承诺所有 FFmpeg 构建、codec、平台或 SQLite 驱动版本均可用。若某依赖不满足阶段验收，先记录具体失败和替代影响，再调整实现文档。
+除明确列为待实施的原生插件增量外，这些选择已有实际实现，固定版本和构建来源见[依赖记录](dependencies.md)。不得承诺所有 FFmpeg 构建、codec、平台或 SQLite 驱动版本均可用。若某依赖不满足阶段验收，先记录具体失败和替代影响，再调整实现文档。
 
 ## 4. 两个必须交付的播放节点
 
