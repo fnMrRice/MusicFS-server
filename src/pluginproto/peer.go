@@ -30,8 +30,12 @@ type Peer struct {
 }
 
 func NewPeer(ctx context.Context, r io.ReadCloser, w io.WriteCloser, prefix string, handler Handler) *Peer {
+	return NewPeerWithLimit(ctx, r, w, prefix, handler, MaxMessageBytes)
+}
+
+func NewPeerWithLimit(ctx context.Context, r io.ReadCloser, w io.WriteCloser, prefix string, handler Handler, limit int) *Peer {
 	ctx, cancel := context.WithCancel(ctx)
-	p := &Peer{framer: NewFramer(r, w), reader: r, writer: w, prefix: prefix, handler: handler, pending: map[string]chan Envelope{}, active: map[string]context.CancelFunc{}, terminal: map[string]bool{}, done: make(chan struct{}), ctx: ctx, cancel: cancel}
+	p := &Peer{framer: NewFramerWithLimit(r, w, limit), reader: r, writer: w, prefix: prefix, handler: handler, pending: map[string]chan Envelope{}, active: map[string]context.CancelFunc{}, terminal: map[string]bool{}, done: make(chan struct{}), ctx: ctx, cancel: cancel}
 	go p.readLoop()
 	go func() {
 		select {

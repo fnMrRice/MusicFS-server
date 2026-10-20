@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/audio/dsp"
 	"github.com/fnMrRice/MusicFS-server/src/instanceid"
 	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
@@ -80,12 +79,15 @@ func (w *audioWorker) handle(ctx context.Context, method string, raw json.RawMes
 	if err := validateLoopback(r.OutputURL); err != nil {
 		return nil, err
 	}
-	node, err := dsp.NewGain(r.Plan.GainDB)
-	if err != nil {
+	if err := ValidateDSP(r.DSPChain, r.DSPPlugins); err != nil {
 		return nil, err
 	}
-	node.Close()
 	if method == "audio.prepare" {
+		node, err := buildDSP(ctx, r.Plan.GainDB, r.DSPChain, r.DSPPlugins)
+		if err != nil {
+			return nil, err
+		}
+		node.Close()
 		return map[string]any{"profile": "mp3-128", "positionOriginMs": r.Plan.PositionMs, "seekMode": "timeRestart"}, nil
 	}
 	w.mu.Lock()

@@ -25,6 +25,13 @@ func Retryable(err error) error {
 	return &retryableError{cause: err}
 }
 
+// IsRetryable preserves the explicit host marker across the persistence SDK.
+// A retry still requires DecideRetry's error-code and attempt-budget checks.
+func IsRetryable(err error) bool {
+	var marked *retryableError
+	return errors.As(err, &marked)
+}
+
 type RetryDecision struct {
 	Status        string
 	Error         *domain.Error

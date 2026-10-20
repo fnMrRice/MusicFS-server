@@ -37,6 +37,10 @@ func Load(path string, overrides map[string]string) (Config, error) {
 }
 
 func ReadDocument(path string, overrides map[string]string) (*Document, error) {
+	return readDocument(path, overrides, nil)
+}
+
+func readDocument(path string, overrides map[string]string, expected *Config) (*Document, error) {
 	if _, err := documentPath(path); err != nil {
 		return nil, err
 	}
@@ -49,10 +53,14 @@ func ReadDocument(path string, overrides map[string]string) (*Document, error) {
 	if err != nil {
 		return nil, errors.New("cannot read configuration file")
 	}
-	return ParseDocument(raw, path, overrides)
+	return parseDocument(raw, path, overrides, expected)
 }
 
 func ParseDocument(raw []byte, path string, overrides map[string]string) (*Document, error) {
+	return parseDocument(raw, path, overrides, nil)
+}
+
+func parseDocument(raw []byte, path string, overrides map[string]string, expected *Config) (*Document, error) {
 	abs, err := documentPath(path)
 	if err != nil {
 		return nil, err
@@ -93,6 +101,12 @@ func ParseDocument(raw []byte, path string, overrides map[string]string) (*Docum
 		return nil, err
 	}
 	resolvePaths(&c, filepath.Dir(abs))
+	if err := c.Storage.Validate(); err != nil {
+		return nil, err
+	}
+	if expected != nil && !SameStartupSettings(*expected, c) {
+		return nil, errors.New("storage, data roots or DSP configuration changed; restart is required")
+	}
 	if err := loadLocalDirectoryDefaults(context.Background(), &c); err != nil {
 		return nil, err
 	}

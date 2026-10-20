@@ -13,6 +13,8 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/fnMrRice/MusicFS-server/src/timeline"
 )
 
 const MaxEntries = 128
@@ -31,7 +33,7 @@ func (i Identity) Key() (string, error) {
 			return "", errors.New("invalid processed cache identity")
 		}
 	}
-	if !validHex(i.InputSHA256, 64) || !validHex(i.WorkerSHA256, 64) || !validHex(i.FFmpegSHA256, 64) || i.PipelineRevision != "gain-v1" || i.Profile != "mp3-128" || math.IsNaN(i.GainDB) || i.GainDB < -60 || i.GainDB > 0 || i.PositionMs < 0 || i.PositionMs > 86400000 {
+	if !validHex(i.InputSHA256, 64) || !validHex(i.WorkerSHA256, 64) || !validHex(i.FFmpegSHA256, 64) || !timeline.ValidProcessingRevision(i.PipelineRevision) || i.Profile != "mp3-128" || math.IsNaN(i.GainDB) || i.GainDB < -60 || i.GainDB > 0 || i.PositionMs < 0 || i.PositionMs > 86400000 {
 		return "", errors.New("invalid processed cache configuration")
 	}
 	raw, err := json.Marshal(i)

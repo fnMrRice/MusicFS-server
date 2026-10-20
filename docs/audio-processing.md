@@ -1,6 +1,6 @@
 # MusicFS Server 音频处理设计
 
-状态：长期设计与实现约束；2026-10-11。本文补充[Server 架构](architecture.md)，描述内部音频处理。独立音频 Worker、Go gain DSP、MP3 输出及 [NCM 解密](ncm.md)已有实现和实测，具体平台与格式边界见[实施记录](validation/progress.md)，其余设计能力仍待实现或验证。跨端会话、播放描述、恢复与定位契约以[总体架构](../../docs/architecture.md)为准；插件职责与 C++ 接入步骤见[插件化细化设计](plugin-architecture.md)。
+状态：长期设计与实现约束；2026-10-20。本文补充[Server 架构](architecture.md)，描述内部音频处理。独立音频 Worker、版本化有序 DSP 链、[独立进程 DSP v1](dsp-plugins.md)、MP3 输出及 [NCM 解密](ncm.md)已有实现和测试，具体平台与格式边界见[实施记录](validation/progress.md)及 DSP 文档的验证记录，其余设计能力仍待实现或验证。跨端会话、播放描述、恢复与定位契约以[总体架构](../../docs/architecture.md)为准；插件职责与 C++ 接入步骤见[插件化细化设计](plugin-architecture.md)。
 
 ## 1. 角色与路径
 
@@ -25,15 +25,17 @@ PCM 块定义采样格式/率、声道数/布局、帧数、时间戳、时间�
 
 控制面覆盖能力、构建/配置、开始、取消、seek/reset、flush/drain、错误和释放。数据面为有界二进制队列/受控共享缓冲，不用 Provider/Scraper RPC 传 JSON/Base64 PCM。Host 负责背压、上限、超时、配额、断连回收和故障隔离。
 
-当前基线使用独立官方音频 Worker，内部通过注册表连接 Go PCM DSP 与 FFmpeg 解码/编码，实际进程边界见[插件验证](validation/plugins.md)。需要 C++ 的音频插件使用 CMake / C++23 构建独立 Worker；共享算法可另适配 Client 的单进程 DLL，Server 不直接加载 Client DLL。Worker 内如需要可替换动态节点，只用版本化 C ABI、不透明句柄和明确内存归属，不跨 C++ ABI，不传运行时对象/异常。第三方原生插件须另验证权限与故障隔离，清单不是沙箱。
+当前基线使用独立官方音频 Worker，内部通过注册表连接 Go PCM DSP 与 FFmpeg 解码/编码；`audioDSP.chain` 按顺序执行内建节点或配置的外部可执行节点。外部节点使用专用 DSP v1 stdin/stdout 帧，PCM 为有界二进制，启动前校验可执行文件 SHA-256；实际进程边界见[DSP 插件](dsp-plugins.md)和[插件验证](validation/plugins.md)。需要 C++ 的音频插件可按该协议构建独立 Worker，当前提供 Go SDK 与可构建的外部 gain 示例，尚无已验证的 C++ DSP 实现。共享算法可另适配 Client 的单进程 DLL，Server 不直接加载 Client DLL。Worker 内未来如需可替换动态节点，应使用版本化 C ABI、不透明句柄和明确内存归属，不跨 C++ ABI，不传运行时对象/异常。第三方原生插件须另验证权限与故障隔离，清单不是沙箱。
 
-构建/配置/换图在控制线程完成，于明确块边界切换，旧图停止使用后释放插件/缓冲。取消上下游传播，失败不能继续发布。必要 DSP 失败明确报错，只有显式配置可旁路的效果才允许旁路并提示。
+当前 DSP 部署配置重启生效，既有会话保留创建时的处理器与链；运行时热换图尚未实现。未来换图须在控制线程完成，于明确块边界切换，旧图停止使用后释放插件/缓冲。取消上下游传播，失败不能继续发布。当前所有配置节点均为必需节点，失败明确报错，无自动旁路配置。
 
 ### 2.1 当前协议与目标节点接口的区别
 
-当前 [v1 Schema](contracts/plugins/v1/protocol.schema.json)的音频模型固定 `f32le / 48000 Hz / stereo`、`mp3-128` 输出，以及包含 `profile/gainDB/positionMs` 的计划；`audio.normalize` 是独立的指纹规范化路径。`audio.describe/prepare/start`、NCM 专用方法和统一取消通知已实现，不能据本文长期描述向当前 Worker 发送任意图、`seek/reset/flush/drain` RPC 或外部 DSP DLL 路径。
+当前 [v1 Schema](contracts/plugins/v1/protocol.schema.json)的音频模型固定 `f32le / 48000 Hz / stereo`、`mp3-128` 输出，以及包含 `profile/gainDB/positionMs` 的计划。`audio.prepare/start` 新增可选 `dspChain/dspPlugins`，先执行用户 gain，再执行有序配置链，版本固定为 1；外部插件声明且必须遵守无状态、保持帧数/时标、零延迟、无尾音。`audio.normalize` 是独立的指纹规范化路径，跳过整条播放 DSP 链。`audio.describe/prepare/start`、NCM 专用方法和统一取消通知已实现；外部 DSP 专用协议有 reset/drain，但音频 JSON-RPC 不接受任意图、`seek/reset/flush/drain` 方法或 DLL 路径。
 
-下一步目标为“Host 选择和验证图、Worker 执行媒体算法”：解密、解复用、解码、DSP、编码和封装各自声明受支持格式、参数修订、状态重建、预滚、延迟和尾音；按需组合到一个或多个 Worker，不要求每个 PCM 节点都跨进程。图声明、资源引用、二进制帧或 Worker 内 C ABI 需分别冻结和测试，不能把 Go 内部 `Node` 接口当作已稳定的第三方 ABI。
+官方 FFmpeg Worker 的实现版本随该扩展升为 `0.2.0`，Host 精确校验版本后才发送音频请求。旧 `0.1.0` 即使忽略未知字段也不能被当作已执行 DSP；包括空链部署在内，Server 与音频 Worker 均须配套升级。
+
+下一步目标为更通用的“Host 选择和验证图、Worker 执行媒体算法”：解密、解复用、解码、DSP、编码和封装各自声明受支持格式、参数修订、状态重建、预滚、延迟和尾音；按需组合到一个或多个 Worker，不要求每个 PCM 节点都跨进程。当前外部扩展边界是 DSP v1 帧协议；重采样、变速、有状态滤波、预滚、尾音和 Worker 内动态 C ABI 仍需另行设计与验证，不能把 Go 内部 `Node` 接口当作第三方二进制 ABI。
 
 | 节点边界 | 插件责任 | Host 责任和验收 |
 | --- | --- | --- |
@@ -50,6 +52,8 @@ PCM 块定义采样格式/率、声道数/布局、帧数、时间戳、时间�
 终端提交 codec、container、MIME、传输和 seek 能力，Server 据插件、权限和配置选已验证 profile，含采样率、声道、目标码率及处理链版本。AAC/fMP4、Opus/WebM 仅为候选；浏览器/MSE 按 MIME/codec 探测并实际验证，没有共同路径就返回可解释错误，不无限更换编码器。
 
 效果明确在 Server 或 Client 执行并报告实际链，避免 EQ/增益重复处理；桌面换曲淡出淡入归 Client，Server 不写入桌面转场。
+
+配置非空 DSP 链时，即使来源可原样播放也选择 `processed`，要求终端支持当前 `audio/mpeg` 输出。`effectiveProcessing` 依次报告用户 gain 和各配置节点的名称、版本、参数及 `execution: server`。空配置仍使用 `gain-v1`；配置链修订为 `dsp-v1:<SHA256>`，绑定有序节点、参数、外部可执行配置与摘要、音频 Worker 摘要和实现版本，并用于处理缓存与恢复证据。固定时标的 v1 节点允许按起点重建，但不因此证明不同音源的时间轴等价。
 
 PlaybackAttempt 固定 inputAssetId、来源、插件/参数版本、profile、起点和 representationId。来源、字节版本、处理参数、编码配置或起点改变时生成新表示及 attempt URL；新 attempt 必须使用新 URL，不能沿用旧 Range/缓冲。仅授权刷新且源字节、输出表示完全未变时可按总体契约保留 attempt，验证原偏移后继续。
 

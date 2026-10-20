@@ -13,7 +13,7 @@
 Copy-Item configs/server.example.yaml configs/server.local.yaml
 ```
 
-构建生成 `musicfs.exe` 与 `musicfs-plugins.exe` 两个程序；内置角色由配置中的 `args` 选择，仍分别启动进程。编辑 `configs/server.local.yaml`（旧JSON配置不兼容，字段及读写边界见[YAML配置](configuration.md)）：
+构建生成 `musicfs.exe`、`musicfs-plugins.exe`、`musicfs-plugin-storage-sqlite.exe`，以及默认不启用的 `musicfs-plugin-dsp-gain.exe`。正式安装包默认把 SQLite 独立进程插件作为必需后端，不提供禁用开关；源仓库示例和旧配置保留内置 SQLite 兼容。内置媒体角色由配置中的 `args` 选择，仍分别启动进程；存储迁移与 DSP 的部署字段见[存储插件](storage-plugins.md)与[DSP 插件](dsp-plugins.md)。编辑 `configs/server.local.yaml`（旧JSON配置不兼容，字段及读写边界见[YAML配置](configuration.md)）：
 
 - `plugins` 的 `musicfs.plugin.source.localfiles` 实例默认没有选定的导入目录，采用[默认目录授权](plugin-configuration.md#部署授权)。需要指定其他允许范围时，在 YAML 中设置 `permissions.readDirectories`。启动后用管理员账号打开 Web「设置 → 音乐来源」，点击「本地音乐」标题右侧的「管理目录」。弹窗中的目录树以允许访问的目录为根，展开并选择根或子目录；下方配置递归查找，按需勾选深度限制后保存。默认不限制递归深度；没有已选目录时标题下显示「暂无已选择目录」。之后通过扫描接口或脚本手动导入。实际选择与递归设置保存在插件配置数据库，YAML 不因选择而改写；旧 `config.musicRoots` 仍兼容。
 - `musicfs.plugin.decoder.ffmpeg` 实例的 `config.ffmpegPath`、`config.ffprobePath` 指向本机工具；配置齐全且未显式禁用时自动启动。缺少路径时显示待配置，仅验证标准PCM16 WAV原流时不需要启用；AIFF与当前NCM FLAC转码路径需要两种工具。
@@ -43,7 +43,7 @@ NCM无需新增页面操作：配置Worker、重新扫描后直接选曲。内�
 
 ## Linux 与同源部署
 
-使用 `sh scripts/build.sh` 构建相同两个程序（无 `.exe`），复制相同YAML示例，并将 `pluginBundle` 与各 `plugins[].executable` 改为 `../build/linux/musicfs-plugins`，保留 args，配置音频实例的 FFmpeg/ffprobe 路径后自动启用（显式禁用除外）。服务仍可通过 `--web-root` 提供独立 Web 制品。NCM 真实 Worker 已在 Arch WSL2 通过；Linux 配置与运行验收见[配置记录](validation/configuration.md)，与交叉构建结果分开，不由构建推断所有发行版支持。
+使用 `sh scripts/build.sh` 构建相同四个程序（无 `.exe`），复制相同YAML示例，并将 `pluginBundle` 与各 `plugins[].executable` 改为 `../build/linux/musicfs-plugins`，保留 args，配置音频实例的 FFmpeg/ffprobe 路径后自动启用（显式禁用除外）。正式安装包的必需 SQLite 存储程序使用对应 Linux 路径和本次打包摘要；源示例仍可使用内置 SQLite。DSP 示例默认不启用，需要时在相应字段中指定路径和摘要。服务仍可通过 `--web-root` 提供独立 Web 制品。NCM 真实 Worker 已在 Arch WSL2 通过；Linux 配置与运行验收见[配置记录](validation/configuration.md)，与交叉构建结果分开，不由构建推断所有发行版支持。
 
 2026-10-10已在Arch WSL使用原生FFmpeg/ffprobe 6.1.6通过YAML处理后播放、实际PCM定位、音频启用边界和同配置重启验证；工具为官方签名源码的LGPLv2.1+本地构建，不随仓库分发。工具能力、定向结果与范围见[Linux音频记录](validation/configuration-linux-audio.md)。这项Server验证不代替Linux浏览器、人工听音或其他架构/系统验收，也不包含动态启停。
 

@@ -1,6 +1,6 @@
 package audioffmpeg
 
-const audioPluginVersion = "0.1.0"
+const audioPluginVersion = "0.2.0"
 
 // ProcessingIdentity describes the verified, fixed startup toolchain. A zero
 // Processor has no verified worker identity and cannot publish reusable output.

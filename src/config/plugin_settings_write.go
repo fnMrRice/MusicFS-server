@@ -34,7 +34,7 @@ func (s *Store) saveLocalSettings(ctx context.Context, change Change) (Operation
 	if err != nil {
 		return Operation{}, err
 	}
-	db, err := plugindb.Open(ctx, PluginDatabasePath(s.document.Config), change.PluginID, change.InstanceID)
+	db, err := plugindb.OpenBackend(ctx, PluginDatabaseBackend(s.document.Config), PluginDatabasePath(s.document.Config), change.PluginID, change.InstanceID)
 	if err != nil {
 		return Operation{}, err
 	}
@@ -81,7 +81,7 @@ func (s *Store) localNextRevision(ctx context.Context, change Change, revision i
 			continue
 		}
 		for _, i := range p.Instances {
-			db, err := plugindb.Open(ctx, PluginDatabasePath(s.document.Config), p.PluginID, i.InstanceID)
+			db, err := plugindb.OpenBackend(ctx, PluginDatabaseBackend(s.document.Config), PluginDatabasePath(s.document.Config), p.PluginID, i.InstanceID)
 			if err != nil {
 				return "", err
 			}

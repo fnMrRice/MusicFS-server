@@ -10,6 +10,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/storage"
 	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 )
 
@@ -46,6 +47,12 @@ func verify(ctx context.Context, root *os.Root) (checkedBundle, error) {
 		return b, err
 	}
 	m := b.Manifest
+	driver, err := storage.Lookup(m.StorageBackend)
+	if err != nil {
+		return b, err
+	}
+	// Verification uses the built-in portable snapshot inspector. No executable
+	// or connection options from the backed-up configuration are ever invoked.
 	version, err := sqlite.BackupSchemaVersion()
 	if err != nil {
 		return b, err
@@ -88,13 +95,13 @@ func verify(ctx context.Context, root *os.Root) (checkedBundle, error) {
 		return b, err
 	}
 	media := b.Media
-	if media.Version != 1 || media.BackupID != m.BackupID || media.Database.Name != "db.sqlite" || len(media.Objects) > mediastore.MaxBackupObjects {
+	if media.Version != 1 || media.BackupID != m.BackupID || media.Database.Name != driver.SnapshotName || len(media.Objects) > mediastore.MaxBackupObjects {
 		return b, domain.Fail("INVALID_ARGUMENT", "Invalid media backup manifest")
 	}
-	if err = checkFile(ctx, root, File{Path: "db.sqlite", Size: media.Database.Size, SHA256: media.Database.SHA256}, maxDatabaseBytes); err != nil {
+	if err = checkFile(ctx, root, File{Path: media.Database.Name, Size: media.Database.Size, SHA256: media.Database.SHA256}, maxDatabaseBytes); err != nil {
 		return b, err
 	}
-	refs, err := sqlite.InspectBackup(ctx, filepath.Join(root.Name(), "db.sqlite"))
+	refs, err := sqlite.InspectBackup(ctx, filepath.Join(root.Name(), media.Database.Name))
 	if err != nil {
 		return b, err
 	}

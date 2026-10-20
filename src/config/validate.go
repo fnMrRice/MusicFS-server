@@ -13,6 +13,25 @@ import (
 )
 
 func (c Config) Validate() error {
+	if err := c.Storage.Validate(); err != nil {
+		return err
+	}
+	if err := c.AudioDSP.Validate(); err != nil {
+		return err
+	}
+	if len(c.AudioDSP.Chain) > 0 {
+		ready := false
+		for _, plugin := range c.Plugins {
+			if plugin.PluginID == "musicfs.plugin.decoder.ffmpeg" {
+				for _, instance := range plugin.Instances {
+					ready = ready || plugin.CanStart(instance)
+				}
+			}
+		}
+		if !ready {
+			return errors.New("configured DSP chain requires an enabled audio instance")
+		}
+	}
 	if c.ConfigVersion != 1 {
 		return errors.New("configVersion must be 1")
 	}

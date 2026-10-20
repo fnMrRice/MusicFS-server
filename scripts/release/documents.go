@@ -34,8 +34,13 @@ func (b builder) documents() error {
 			return err
 		}
 	}
-	readme := "# MusicFS 私有安装包\n\n此目录包含 Server 与统一内置插件程序（各角色仍独立启动进程），不包含音乐、账号凭据或开发数据库。\n\n" +
+	if err = b.containerConfiguration(); err != nil {
+		return err
+	}
+	readme := "# MusicFS 私有安装包\n\n此目录包含 Server、统一内置插件程序（各角色仍独立启动进程）、必需的独立 SQLite 存储插件及可选 DSP gain 示例程序，不包含音乐、账号凭据或开发数据库。\n\n" +
 		"配置示例为 configs/server.example.yaml，内置插件自动发现，配置齐全且未显式禁用时自动启动。手动扫描使用 [PowerShell 扫描脚本](scripts/scan.ps1)。\n\n" +
+		"SQLite 存储插件是必需基础设施，不进入普通插件启停列表，不提供禁用开关；缺失或加载失败时拒绝启动。DSP 示例默认不启用，只有明确配置 audioDSP 后参与处理。两者均不参与普通角色自动发现。\n\n" +
+		"容器只能使用 Linux 安装包；其中的容器配置已固定 Linux SQLite Worker 路径和本次摘要。Windows 包保留源码中的兼容容器示例，不能直接用作 Linux 容器安装。\n\n" +
 		"安装包不包含 docs 目录；安装部署、配置、运行扫描及备份恢复说明请在对应 revision 的 Server 私有源仓库 docs 目录查阅。\n\n" +
 		"release.json 记录版本、构建平台与依赖许可证；SHA256SUMS 校验文件一致性。Go 工具链许可证位于 licenses/go。\n\n" +
 		"该制品仅供私有安装验证，不自动上传或公开分发。\n"

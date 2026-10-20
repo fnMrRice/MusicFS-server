@@ -5,10 +5,10 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/src/config"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
+	"github.com/fnMrRice/MusicFS-server/src/storage"
 )
 
-func configureMedia(ctx context.Context, c config.Config, store *sqlite.Store) (*mediastore.Files, *mediastore.Service, func(), error) {
+func configureMedia(ctx context.Context, c config.Config, store storage.Backend) (*mediastore.Files, *mediastore.Service, func(), error) {
 	files, err := mediastore.OpenFiles(c.MediaRoot)
 	if err != nil {
 		return nil, nil, nil, err

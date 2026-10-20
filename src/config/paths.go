@@ -13,6 +13,12 @@ func resolvePaths(c *Config, base string) {
 		}
 	}
 	resolve(&c.PluginBundle)
+	resolve(&c.Storage.Executable)
+	c.Storage.SHA256 = strings.ToLower(c.Storage.SHA256)
+	for i := range c.AudioDSP.Plugins {
+		resolve(&c.AudioDSP.Plugins[i].Executable)
+		c.AudioDSP.Plugins[i].SHA256 = strings.ToLower(c.AudioDSP.Plugins[i].SHA256)
+	}
 	for _, field := range []*string{&c.DataRoot, &c.MediaRoot, &c.CacheRoot, &c.WebRoot, &c.TLSCert, &c.TLSKey, &c.Fingerprinting.FpcalcPath} {
 		resolve(field)
 	}

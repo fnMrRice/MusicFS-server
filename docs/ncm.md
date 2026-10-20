@@ -11,7 +11,7 @@
 
 ## 2. 运行
 
-运行 `scripts/build.ps1`（Linux为 `sh scripts/build.sh`）构建 `musicfs` 与 `musicfs-plugins` 两个程序；其中 `musicfs-plugins --plugin ncm` 是本功能入口。配置增加：
+运行 `scripts/build.ps1`（Linux为 `sh scripts/build.sh`）构建程序；其中 `musicfs-plugins --plugin ncm` 是本功能入口，其余存储和 DSP 程序见[部署清单](deployment.md)。配置增加：
 
 ```yaml
 # Under the top-level plugins sequence:

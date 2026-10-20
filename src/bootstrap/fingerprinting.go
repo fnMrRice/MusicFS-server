@@ -13,10 +13,10 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
+	"github.com/fnMrRice/MusicFS-server/src/storage"
 )
 
-func configureFingerprinting(ctx context.Context, c config.Config, log *slog.Logger, store *sqlite.Store, lib *library.Service, audio *audioffmpeg.Processor, media *mediastore.Service) (*fingerprintworker.Service, func()) {
+func configureFingerprinting(ctx context.Context, c config.Config, log *slog.Logger, store storage.Backend, lib *library.Service, audio *audioffmpeg.Processor, media *mediastore.Service) (*fingerprintworker.Service, func()) {
 	noop := func() {}
 	if !c.Fingerprinting.Enabled {
 		return nil, noop

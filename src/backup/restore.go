@@ -10,7 +10,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/src/config"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
+	"github.com/fnMrRice/MusicFS-server/src/storage"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -74,7 +74,7 @@ func Restore(ctx context.Context, directory, destination string) (RestoreResult,
 		}
 		return nil
 	}
-	if err = copyChecked("db.sqlite", "data/musicfs.sqlite", File{Size: b.Media.Database.Size, SHA256: b.Media.Database.SHA256}); err != nil {
+	if err = copyChecked(b.Media.Database.Name, "data/musicfs.sqlite", File{Size: b.Media.Database.Size, SHA256: b.Media.Database.SHA256}); err != nil {
 		return result, err
 	}
 	for _, file := range b.Manifest.Files {
@@ -107,7 +107,9 @@ func Restore(ctx context.Context, directory, destination string) (RestoreResult,
 			return result, err
 		}
 	}
-	store, err := sqlite.OpenMaintenance(ctx, filepath.Join(destination, "data", "musicfs.sqlite"))
+	// Contract v1 restores portable snapshots into the built-in backend. A
+	// backed-up executable must never gain execution during verify or restore.
+	store, err := storage.OpenMaintenance(ctx, "sqlite", storage.Options{DataRoot: filepath.Join(destination, "data")})
 	if err != nil {
 		return result, err
 	}
@@ -158,6 +160,8 @@ func restoredConfig(ctx context.Context, dst *os.Root, destination string) error
 		return domain.Fail("INVALID_ARGUMENT", "Invalid backed-up configuration")
 	}
 	c.NormalizeIdentities()
+	c.Storage = config.StorageConfig{Backend: "sqlite"}
+	c.AudioDSP = config.AudioDSPConfig{}
 	c.DataRoot = filepath.Join(destination, "data")
 	c.MediaRoot = filepath.Join(destination, "media")
 	c.CacheRoot = filepath.Join(destination, "cache")

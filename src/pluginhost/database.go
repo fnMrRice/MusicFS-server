@@ -26,7 +26,7 @@ func (w *Worker) database(ctx context.Context, method string, raw json.RawMessag
 	if path == "" {
 		path = filepath.Join(w.config.StateDir, "plugin-config.sqlite")
 	}
-	db, err := plugindb.Open(ctx, path, "musicfs.plugin.source.localfiles", w.config.InstanceID)
+	db, err := plugindb.OpenBackend(ctx, w.config.DatabaseBackend, path, "musicfs.plugin.source.localfiles", w.config.InstanceID)
 	if err != nil {
 		return nil, pluginproto.Failure("TEMPORARY_FAILURE", "Plugin database is unavailable")
 	}

@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"go.yaml.in/yaml/v3"
 )
 
 func copyRegular(source, dest string, limit int64) error {
@@ -60,7 +62,73 @@ func (b builder) configuration() error {
 	if b.web != "" {
 		text = strings.Replace(text, "webRoot: ''", "webRoot: '../web'", 1)
 	}
-	return os.WriteFile(filepath.Join(b.out, "configs", "server.example.yaml"), []byte(text), 0600)
+	data, err = b.requiredStorageConfiguration(text, "")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(b.out, "configs", "server.example.yaml"), data, 0600)
+}
+
+func (b builder) requiredStorageConfiguration(text, executablePath string) ([]byte, error) {
+	program := "musicfs-plugin-storage-sqlite"
+	if b.target == "windows" {
+		program += ".exe"
+	}
+	if executablePath == "" {
+		executablePath = "../bin/" + program
+	}
+	file, err := os.Open(filepath.Join(b.out, "bin", program))
+	if err != nil {
+		return nil, fmt.Errorf("required SQLite worker is missing: %w", err)
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil || !info.Mode().IsRegular() || info.Size() == 0 {
+		return nil, errors.New("required SQLite worker is not a nonempty regular file")
+	}
+	digest := sha256.New()
+	if _, err = io.Copy(digest, file); err != nil {
+		return nil, err
+	}
+	var document yaml.Node
+	if err = yaml.Unmarshal([]byte(text), &document); err != nil || len(document.Content) != 1 || document.Content[0].Kind != yaml.MappingNode {
+		return nil, errors.New("release configuration is not a YAML mapping")
+	}
+	var storage yaml.Node
+	if err = storage.Encode(map[string]string{
+		"backend": "plugin", "executable": executablePath, "sha256": hex.EncodeToString(digest.Sum(nil)),
+	}); err != nil {
+		return nil, err
+	}
+	mapping := document.Content[0]
+	found := false
+	for i := 0; i+1 < len(mapping.Content); i += 2 {
+		if mapping.Content[i].Value == "storage" {
+			mapping.Content[i+1] = &storage
+			found = true
+			break
+		}
+	}
+	if !found {
+		mapping.Content = append(mapping.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "storage"}, &storage)
+	}
+	return yaml.Marshal(&document)
+}
+
+func (b builder) containerConfiguration() error {
+	if b.target != "linux" {
+		return nil
+	}
+	path := filepath.Join(b.out, "deploy", "server.container.example.yaml")
+	source, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	data, err := b.requiredStorageConfiguration(string(source), "/opt/musicfs/bin/musicfs-plugin-storage-sqlite")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0600)
 }
 
 func (b builder) copyWeb() error {

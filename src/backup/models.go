@@ -30,6 +30,7 @@ type Manifest struct {
 	OS                  string       `json:"os"`
 	Architecture        string       `json:"architecture"`
 	SchemaVersion       int          `json:"schemaVersion"`
+	StorageBackend      string       `json:"storageBackend,omitempty"`
 	Files               []File       `json:"files"`
 	Dependencies        []Dependency `json:"dependencies"`
 	ExternalCredentials []string     `json:"externalCredentials"`

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -25,6 +27,17 @@ func TestPackagedConfigurationStartsWithoutImportDirectories(t *testing.T) {
 			if err := os.Mkdir(filepath.Join(output, "configs"), 0700); err != nil {
 				t.Fatal(err)
 			}
+			program := "musicfs-plugin-storage-sqlite"
+			if target == "windows" {
+				program += ".exe"
+			}
+			if err := os.Mkdir(filepath.Join(output, "bin"), 0700); err != nil {
+				t.Fatal(err)
+			}
+			worker := []byte("required SQLite worker fixture")
+			if err := os.WriteFile(filepath.Join(output, "bin", program), worker, 0700); err != nil {
+				t.Fatal(err)
+			}
 			b := builder{root: repository, out: output, target: target, web: "fixture-web"}
 			if err := b.configuration(); err != nil {
 				t.Fatal(err)
@@ -37,6 +50,13 @@ func TestPackagedConfigurationStartsWithoutImportDirectories(t *testing.T) {
 			var supplied config.Config
 			if err := yaml.Unmarshal(raw, &supplied); err != nil {
 				t.Fatal(err)
+			}
+			hash := sha256.Sum256(worker)
+			if supplied.Storage.Backend != "plugin" || supplied.Storage.Executable != "../bin/"+program || supplied.Storage.SHA256 != hex.EncodeToString(hash[:]) {
+				t.Fatal("packaged defaults do not require the exact bundled SQLite worker")
+			}
+			if len(supplied.AudioDSP.Chain) != 0 || len(supplied.AudioDSP.Plugins) != 0 {
+				t.Fatal("packaged defaults unexpectedly enable a DSP plugin")
 			}
 			found := false
 			for _, plugin := range supplied.Plugins {
@@ -74,5 +94,20 @@ func TestPackagedConfigurationStartsWithoutImportDirectories(t *testing.T) {
 				t.Fatalf("configuration created an unsolicited music directory: %v", err)
 			}
 		})
+	}
+}
+
+func TestPackagedConfigurationRejectsMissingRequiredStorage(t *testing.T) {
+	repository, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	output := t.TempDir()
+	if err := os.Mkdir(filepath.Join(output, "configs"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	b := builder{root: repository, out: output, target: "windows"}
+	if err := b.configuration(); err == nil {
+		t.Fatal("release configuration accepted a missing mandatory SQLite worker")
 	}
 }

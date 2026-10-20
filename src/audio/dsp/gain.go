@@ -45,6 +45,7 @@ func (g *Gain) Reset() error       { return nil }
 func (g *Gain) Drain() error       { return nil }
 func (g *Gain) Close() error       { g.configured = false; return nil }
 func (g *Gain) DelayFrames() int64 { return 0 }
+func (g *Gain) Stateless() bool    { return true }
 func Register(r *audio.Registry) error {
 	if err := r.Register("gain", func(p map[string]float64) (audio.Node, error) {
 		if len(p) != 1 {

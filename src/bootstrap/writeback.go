@@ -8,7 +8,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
 	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
+	"github.com/fnMrRice/MusicFS-server/src/storage"
 	"github.com/fnMrRice/MusicFS-server/src/writeback"
 	"github.com/fnMrRice/MusicFS-server/src/writebackhost"
 )
@@ -72,7 +72,7 @@ func writeBackPolicy(c config.Config, runtimes []library.Runtime, _ bool) writeb
 	return policy
 }
 
-func configureWriteBack(ctx context.Context, c config.Config, store *sqlite.Store, lib *library.Service, content *mediastore.ContentService, runtimes []library.Runtime, policy writeback.Policy, probe library.Probe, probeSessions ...library.ProbeSession) (*writebackhost.Service, func(), error) {
+func configureWriteBack(ctx context.Context, c config.Config, store storage.Backend, lib *library.Service, content *mediastore.ContentService, runtimes []library.Runtime, policy writeback.Policy, probe library.Probe, probeSessions ...library.ProbeSession) (*writebackhost.Service, func(), error) {
 	journal, err := writeback.OpenJournal(filepath.Join(c.DataRoot, "writeback"))
 	if err != nil {
 		return nil, nil, err

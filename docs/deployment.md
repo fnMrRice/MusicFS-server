@@ -15,9 +15,15 @@
 sh scripts/release.sh --os linux --output ./build/releases/linux-amd64 --web-root ../web/dist
 ```
 
-Web 先在独立仓库按自己的工具链构建。`--web-root` 可省略；只复制静态制品，拒绝隐藏文件、链接、源码映射和超限文件，不复制 Web 源码或 Git。制品中的 `bin` 包含 `musicfs` 与 `musicfs-plugins` 两个程序（Windows 带 `.exe`）；发布构建移除调试信息，七种插件的启动参数记录在 `components[].args`；`release.json` 记录源提交、脏树状态、平台、版本/协议和实际编译依赖，`SHA256SUMS` 覆盖所有交付文件。存在 `.incomplete` 表示失败，不可当成完成的制品。校验清单证明文件一致性，不代表有发布者签名。
+Web 先在独立仓库按自己的工具链构建。`--web-root` 可省略；只复制静态制品，拒绝隐藏文件、链接、源码映射和超限文件，不复制 Web 源码或 Git。制品中的 `bin` 包含四个程序（Windows 带 `.exe`）：`musicfs`、`musicfs-plugins`、`musicfs-plugin-storage-sqlite`、`musicfs-plugin-dsp-gain`。发布构建移除调试信息；统一插件程序的七种角色通过 `components[].args` 选择，存储和 DSP 程序使用各自入口。`release.json` 记录源提交、脏树状态、平台、版本/协议和实际编译依赖，`SHA256SUMS` 覆盖所有交付文件。存在 `.incomplete` 表示失败，不可当成完成的制品。校验清单证明文件一致性，不代表有发布者签名。
 
 安装包不包含 `docs/` 目录，运行、配置和协议文档保留在对应版本的源码仓库中。
+
+新安装包将 SQLite 独立存储程序作为必需基础设施，`release.json` 标记为 `required: true`；生成的配置固定 `storage.backend: plugin`、`../bin/musicfs-plugin-storage-sqlite(.exe)` 及本次打包文件的实际 SHA-256，缺少文件时打包失败。它不进入普通插件启停列表、不提供禁用开关；程序缺失、校验失败或加载失败时拒绝启动。源仓库示例和未声明 storage 的旧配置保留内置 SQLite 兼容，迁移说明见[存储插件](storage-plugins.md)。
+
+存储与可选 DSP 程序均不加入 `musicfs-plugins` 的角色自动发现，直接使用各自入口。默认 `audioDSP.chain/plugins` 均为空；需要 DSP 时，在部署 YAML 的 `audioDSP` 中指定 `../bin/musicfs-plugin-dsp-gain(.exe)` 及实际 SHA-256，再重启，详见[DSP 插件](dsp-plugins.md)。更新二进制后须同步固定摘要。
+
+本版官方 FFmpeg Worker 为 `0.2.0`，Server 要求精确匹配，因此 `musicfs` 与 `musicfs-plugins` 须同时升级；不能把旧版统一插件程序与新版 Server 混用，即使尚未启用额外 DSP。其他插件角色的实现版本保持各自记录值。
 
 配置示例自动改为 `../bin`，Windows 保留 `.exe`；内置插件默认自动发现，本地音乐默认没有选定的导入目录。允许访问的范围采用当前运行用户的 Music 目录及 Windows 首次探测结果，也可通过 `permissions.readDirectories` 显式覆盖；缺配置的插件显示待配置。复制为 `configs/server.yaml`，需要禁用时设置插件或实例 enabled: false，然后创建管理员令牌并启动。实际导入目录启动后从 Web 管理页面选择，保存不会自动扫描：
 
@@ -50,6 +56,8 @@ docker build -f deploy/Dockerfile -t musicfs-server:local build/releases/linux-a
 ```
 
 Dockerfile 默认基础镜像为 `debian:bookworm-slim`；正式使用前将 `BASE_IMAGE` 固定到审核的镜像摘要，记录 FFmpeg 的实际包版本/配置并运行同样的音频验收。本仓库未拉取或验证该镜像。镜像只复制程序、发布清单和许可证，不复制开发库、音乐、测试目录或凭据；不包含 Web，需要时把单独 Web 制品以只读卷挂载，并设置 `webRoot`。受限用户为 UID/GID 10001，Docker 的 USER/HEALTHCHECK/停止信号语义参考[官方文档](https://docs.docker.com/reference/dockerfile/)。
+
+Linux 发布流程会将包内 `deploy/server.container.example.yaml` 改为 `storage.backend: plugin`，程序为 `/opt/musicfs/bin/musicfs-plugin-storage-sqlite`，摘要取该 Linux 包的实际 Worker 文件；缺少文件时拒绝打包。源码与 Windows 包内的容器示例保留内置 SQLite 兼容，不能替代 Linux 发布配置。这里的生成与摘要测试不代表已经运行 Docker。
 
 把 `deploy/compose.example.yaml` 复制到独立安装目录。创建 `configuration/server.yaml`（取自容器 YAML 示例）、`music` 和 `tls` 目录；配置目录须允许 10001 写入，私钥只授予服务用户读取。`musicfs.env` 由管理员在该安装目录创建，只包含自己的 `MUSICFS_ADMIN_TOKEN`，不要加入 Git。TLS 证书须匹配浏览器使用的名字；示例健康检查使用 `localhost`，其证书也须包含该名称，CA 放 `tls/ca.pem`。端口仅发布到宿主 loopback。
 

@@ -16,6 +16,8 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/fnMrRice/MusicFS-server/src/audio"
+	"github.com/fnMrRice/MusicFS-server/src/audio/dspworker"
 	"github.com/fnMrRice/MusicFS-server/src/instanceid"
 	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
@@ -26,6 +28,8 @@ type Config struct {
 	WorkerArgs                                                 []string
 	FFmpegPath, FFprobePath, WorkerPath, WorkerSHA256, WorkDir string
 	MaxConcurrent                                              int
+	DSPChain                                                   []audio.NodeSpec
+	DSPPlugins                                                 []dspworker.Config
 }
 type Processor struct {
 	gate          atomic.Pointer[lifecycleBinding]
@@ -38,6 +42,14 @@ type Processor struct {
 
 func NewProcessor(ctx context.Context, cfg Config) (*Processor, error) {
 	cfg.WorkerArgs = slices.Clone(cfg.WorkerArgs)
+	cfg.DSPChain = CloneDSPChain(cfg.DSPChain)
+	cfg.DSPPlugins = slices.Clone(cfg.DSPPlugins)
+	for i := range cfg.DSPPlugins {
+		cfg.DSPPlugins[i] = cfg.DSPPlugins[i].Clone()
+	}
+	if err := ValidateDSP(cfg.DSPChain, cfg.DSPPlugins); err != nil {
+		return nil, err
+	}
 	if cfg.InstanceID == "" {
 		cfg.InstanceID = uuid.NewString()
 	}
@@ -57,11 +69,16 @@ func NewProcessor(ctx context.Context, cfg Config) (*Processor, error) {
 	if cfg.WorkerSHA256 == "" || hash != cfg.WorkerSHA256 {
 		return nil, fmt.Errorf("ACCESS_DENIED: audio worker checksum mismatch")
 	}
+	chain, err := buildDSP(ctx, 0, cfg.DSPChain, cfg.DSPPlugins)
+	if err != nil {
+		return nil, err
+	}
+	chain.Close()
 	capabilities, err := Probe(ctx, cfg.FFmpegPath, cfg.FFprobePath)
 	if err != nil {
 		return nil, err
 	}
-	return &Processor{config: cfg, Capabilities: capabilities, slots: make(chan struct{}, cfg.MaxConcurrent), normalizeSlot: make(chan struct{}, 1), identity: ProcessingIdentity{WorkerSHA256: hash, FFmpegSHA256: capabilities.FFmpegSHA256, PluginVersion: audioPluginVersion, PipelineRevision: "gain-v1"}}, nil
+	return &Processor{config: cfg, Capabilities: capabilities, slots: make(chan struct{}, cfg.MaxConcurrent), normalizeSlot: make(chan struct{}, 1), identity: ProcessingIdentity{WorkerSHA256: hash, FFmpegSHA256: capabilities.FFmpegSHA256, PluginVersion: audioPluginVersion, PipelineRevision: dspRevision(cfg, hash)}}, nil
 }
 
 type bootstrap struct {
@@ -95,7 +112,7 @@ func (p *Processor) Process(ctx context.Context, plan Plan, input io.ReadSeeker,
 		return fmt.Errorf("RATE_LIMITED: audio processing is busy")
 	}
 	return p.run(ctx, plan.TaskID, readerAt, size, output, func(peer *pluginproto.Peer, inputURL, outputURL string) error {
-		request := StartRequest{Plan: plan, FFmpegPath: p.config.FFmpegPath, FFmpegSHA256: p.Capabilities.FFmpegSHA256, InputURL: inputURL, OutputURL: outputURL}
+		request := StartRequest{Plan: plan, FFmpegPath: p.config.FFmpegPath, FFmpegSHA256: p.Capabilities.FFmpegSHA256, InputURL: inputURL, OutputURL: outputURL, DSPChain: p.config.DSPChain, DSPPlugins: p.config.DSPPlugins}
 		if err := peer.Call(ctx, "audio.prepare", request, nil); err != nil {
 			return err
 		}

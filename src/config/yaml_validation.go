@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 
 	"go.yaml.in/yaml/v3"
@@ -19,7 +20,7 @@ func validateNodes(node *yaml.Node, depth int) error {
 		return nodeError(node, "document", "anchors and aliases are not supported")
 	}
 	switch node.Tag {
-	case "!!str", "!!int", "!!bool", "!!map", "!!seq":
+	case "!!str", "!!int", "!!float", "!!bool", "!!map", "!!seq":
 	default:
 		return nodeError(node, "document", "null, merge keys and unsupported tags or scalar types are not allowed")
 	}
@@ -48,6 +49,7 @@ type fieldShape struct {
 	tag      string
 	fields   map[string]fieldShape
 	items    *fieldShape
+	values   *fieldShape
 	required []string
 }
 
@@ -61,6 +63,16 @@ func mappingShape(fields map[string]fieldShape, required ...string) fieldShape {
 }
 
 func validateShape(node *yaml.Node, shape fieldShape, path string) error {
+	if shape.tag == "number" {
+		if node.Tag != "!!int" && node.Tag != "!!float" {
+			return nodeError(node, path, "expected a finite number")
+		}
+		value, err := strconv.ParseFloat(node.Value, 64)
+		if err != nil || math.IsNaN(value) || math.IsInf(value, 0) {
+			return nodeError(node, path, "expected a finite number")
+		}
+		return nil
+	}
 	if node.Tag != shape.tag {
 		return nodeError(node, path, "invalid field type")
 	}
@@ -99,6 +111,13 @@ func validateShape(node *yaml.Node, shape fieldShape, path string) error {
 			}
 		}
 	}
+	if shape.tag == "!!map" && shape.values != nil {
+		for i := 0; i < len(node.Content); i += 2 {
+			if err := validateShape(node.Content[i+1], *shape.values, path+"."+node.Content[i].Value); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
@@ -123,6 +142,7 @@ func validateDocumentShape(root *yaml.Node) error {
 		"enabled": boolShape, "instances": sequenceShape(instance),
 	}, "pluginId", "instances")
 	shape := mappingShape(map[string]fieldShape{
+		"storage": storageShape(), "audioDSP": audioDSPShape(),
 		"pluginBundle":  stringShape,
 		"configVersion": intShape, "listen": stringShape, "dataRoot": stringShape,
 		"mediaRoot": stringShape, "cacheRoot": stringShape, "webRoot": stringShape,

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"slices"
 	"sync"
 
 	"github.com/fnMrRice/MusicFS-server/src/domain"
@@ -54,7 +55,17 @@ type Store struct {
 
 // OpenStore shares parsing with startup. It does not start or reconfigure plugins.
 func OpenStore(ctx context.Context, path string, overrides map[string]string, journal Journal) (*Store, error) {
-	doc, err := ReadDocument(path, overrides)
+	return openStore(ctx, path, overrides, journal, nil)
+}
+
+// OpenStoreForStartup rejects deployment drift before reading database settings
+// or invoking an executable named by a newly edited configuration.
+func OpenStoreForStartup(ctx context.Context, path string, overrides map[string]string, journal Journal, expected Config) (*Store, error) {
+	return openStore(ctx, path, overrides, journal, &expected)
+}
+
+func openStore(ctx context.Context, path string, overrides map[string]string, journal Journal, expected *Config) (*Store, error) {
+	doc, err := readDocument(path, overrides, expected)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +81,7 @@ func OpenStore(ctx context.Context, path string, overrides map[string]string, jo
 		return nil, domain.Fail("CONFLICT", "Configuration is being written; retry reading")
 	}
 	defer unlock()
-	doc, err = ReadDocument(path, overrides)
+	doc, err = readDocument(path, overrides, expected)
 	if err != nil {
 		return nil, err
 	}
@@ -87,6 +98,10 @@ func (s *Store) Snapshot() Snapshot {
 	defer s.mu.Unlock()
 	c := cloneConfig(s.document.Config)
 	c.AdminToken = ""
+	c.SourceOverrides = nil
+	c.Storage.Options, c.Storage.Args = nil, nil
+	c.Storage.Executable, c.Storage.SHA256 = "", ""
+	c.AudioDSP.Plugins = nil
 	diskChanged := s.checkDisk() != nil
 	return Snapshot{Config: c, Revision: s.document.Revision, AppliedRevision: s.applied,
 		EnabledSource: "yaml", Writable: s.journal != nil && canWriteConfig(s.document.Path),
@@ -101,6 +116,16 @@ func (s *Store) Current() Config {
 }
 
 func cloneConfig(c Config) Config {
+	c.Storage.Options = maps.Clone(c.Storage.Options)
+	c.Storage.Args = slices.Clone(c.Storage.Args)
+	c.AudioDSP.Chain = append(c.AudioDSP.Chain[:0:0], c.AudioDSP.Chain...)
+	for i := range c.AudioDSP.Chain {
+		c.AudioDSP.Chain[i].Params = maps.Clone(c.AudioDSP.Chain[i].Params)
+	}
+	c.AudioDSP.Plugins = append(c.AudioDSP.Plugins[:0:0], c.AudioDSP.Plugins...)
+	for i := range c.AudioDSP.Plugins {
+		c.AudioDSP.Plugins[i].Args = slices.Clone(c.AudioDSP.Plugins[i].Args)
+	}
 	c.SourceOverrides = maps.Clone(c.SourceOverrides)
 	c.WriteBack.Roots = append([]WriteBackRoot(nil), c.WriteBack.Roots...)
 	for i := range c.WriteBack.Roots {
@@ -145,7 +170,7 @@ func (s *Store) Reload(ctx context.Context) error {
 		return domain.Fail("CONFIG_READ_ONLY", "Configuration reload cannot acquire the coordination lock")
 	}
 	defer unlock()
-	doc, err := ReadDocument(s.document.Path, s.overrides)
+	doc, err := readDocument(s.document.Path, s.overrides, &s.document.Config)
 	if err != nil {
 		return err
 	}

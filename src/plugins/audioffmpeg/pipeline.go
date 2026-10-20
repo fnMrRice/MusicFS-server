@@ -3,6 +3,7 @@ package audioffmpeg
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -12,7 +13,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/audio"
-	"github.com/fnMrRice/MusicFS-server/src/audio/dsp"
+	"github.com/fnMrRice/MusicFS-server/src/audio/dspworker"
 )
 
 type Plan struct {
@@ -23,11 +24,13 @@ type Plan struct {
 	PositionMs int64   `json:"positionMs"`
 }
 type StartRequest struct {
-	Plan         Plan   `json:"plan"`
-	FFmpegPath   string `json:"ffmpegPath"`
-	FFmpegSHA256 string `json:"ffmpegSHA256"`
-	InputURL     string `json:"inputUrl"`
-	OutputURL    string `json:"outputUrl"`
+	Plan         Plan               `json:"plan"`
+	FFmpegPath   string             `json:"ffmpegPath"`
+	FFmpegSHA256 string             `json:"ffmpegSHA256"`
+	InputURL     string             `json:"inputUrl"`
+	OutputURL    string             `json:"outputUrl"`
+	DSPChain     []audio.NodeSpec   `json:"dspChain,omitempty"`
+	DSPPlugins   []dspworker.Config `json:"dspPlugins,omitempty"`
 }
 
 const inputFormats = "wav,mp3,flac,aiff,ogg,mov,matroska,webm,aac"
@@ -51,18 +54,11 @@ func Pipeline(ctx context.Context, r StartRequest, output io.Writer) error {
 	if err != nil || hash != r.FFmpegSHA256 {
 		return fmt.Errorf("ACCESS_DENIED: audio executable changed")
 	}
-	registry := audio.NewRegistry()
-	if err = dsp.Register(registry); err != nil {
-		return err
-	}
-	node, err := registry.Create("gain", map[string]float64{"gainDB": r.Plan.GainDB})
+	node, err := buildDSP(ctx, r.Plan.GainDB, r.DSPChain, r.DSPPlugins)
 	if err != nil {
 		return err
 	}
 	defer node.Close()
-	if err = node.Configure(audio.Canonical); err != nil {
-		return err
-	}
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	decodeArgs := []string{"-hide_banner", "-nostdin", "-v", "error", "-protocol_whitelist", "http,tcp", "-format_whitelist", inputFormats, "-i", r.InputURL, "-ss", strconv.FormatFloat(float64(r.Plan.PositionMs)/1000, 'f', 3, 64), "-map", "0:a:0", "-vn", "-ac", "2", "-ar", "48000", "-f", "f32le", "-acodec", "pcm_f32le", "pipe:1"}
@@ -100,11 +96,14 @@ func Pipeline(ctx context.Context, r StartRequest, output io.Writer) error {
 		cancel()
 	}
 	encodeErr := encoder.Wait()
-	if ctx.Err() != nil {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return fmt.Errorf("CANCELED: audio processing stopped")
 	}
 	if err != nil {
 		return err
+	}
+	if ctx.Err() != nil {
+		return fmt.Errorf("CANCELED: audio processing stopped")
 	}
 	if decodeErr != nil || encodeErr != nil {
 		return fmt.Errorf("TEMPORARY_FAILURE: audio processing failed")

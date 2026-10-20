@@ -92,7 +92,7 @@ func loadPluginSettings(ctx context.Context, doc *Document) error {
 		}
 		for ii := range p.Instances {
 			i := &p.Instances[ii]
-			v, err := plugindb.Read(ctx, PluginDatabasePath(doc.Config), p.PluginID, i.InstanceID, plugindb.ConfigurationKey)
+			v, err := plugindb.ReadBackend(ctx, PluginDatabaseBackend(doc.Config), PluginDatabasePath(doc.Config), p.PluginID, i.InstanceID, plugindb.ConfigurationKey)
 			if err != nil {
 				return err
 			}

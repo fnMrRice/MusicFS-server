@@ -11,10 +11,10 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/scraperlocal"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
+	"github.com/fnMrRice/MusicFS-server/src/storage"
 )
 
-func configureEnrichment(ctx context.Context, c config.Config, log *slog.Logger, store *sqlite.Store, lib *library.Service, content *mediastore.ContentService) (*enrichmentworker.Service, error) {
+func configureEnrichment(ctx context.Context, c config.Config, log *slog.Logger, store storage.Backend, lib *library.Service, content *mediastore.ContentService) (*enrichmentworker.Service, error) {
 	runtimes := []enrichmentworker.Runtime{}
 	available := false
 	for _, plugin := range c.Plugins {

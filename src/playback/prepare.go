@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/domain"
@@ -101,7 +102,7 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 		return nil, domain.Fail("RATE_LIMITED", "Representation exceeds the cache budget")
 	}
 	p.reserved = size
-	processed := r.Preferences.ForceProcessing || r.Preferences.GainDB != 0 || !originalCandidate(t) || !supports(r.Capabilities, t.MIME)
+	processed := s.config.RequireDSP || r.Preferences.ForceProcessing || r.Preferences.GainDB != 0 || p.processor.HasDSP() || !originalCandidate(t) || !supports(r.Capabilities, t.MIME)
 	if processed && (p.processor == nil || !supports(r.Capabilities, "audio/mpeg")) {
 		return nil, domain.Fail("UNSUPPORTED", "No compatible audio processing profile is available")
 	}
@@ -190,6 +191,13 @@ func (p *preparedInput) describe(id string, gain float64, expiry time.Time) Desc
 			d.SeekableRange.EndMs = min(d.SeekableRange.EndMs, timeline.MaxPositionMs)
 		}
 		d.EffectiveProcessing = append(d.EffectiveProcessing, Processing{Type: "gain", GainDB: gain, Version: "1", Execution: "server"})
+		for _, node := range p.processor.DSPChain() {
+			step := Processing{Type: node.Name, Version: strconv.Itoa(node.Version), Execution: "server", Parameters: node.Params}
+			if node.Name == "gain" {
+				step.GainDB = node.Params["gainDB"]
+			}
+			d.EffectiveProcessing = append(d.EffectiveProcessing, step)
+		}
 	}
 	return d
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/auth"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/timeline"
 )
 
@@ -23,9 +24,16 @@ func (s *Service) timelineRepo() (timeline.Repository, error) {
 func (s *Service) RecoveryProfile() (timeline.Profile, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return recoveryProfile(s.processor)
+}
+
+func recoveryProfile(processor *audioffmpeg.Processor) (timeline.Profile, error) {
 	p := timeline.Profile{OutputProfile: "mp3-128", ProcessingRevision: "gain-v1"}
-	if s.processor != nil {
-		p.DecoderSHA256 = s.processor.Capabilities.FFmpegSHA256
+	if processor != nil {
+		p.DecoderSHA256 = processor.Capabilities.FFmpegSHA256
+		if revision := processor.ProcessingIdentity().PipelineRevision; revision != "" {
+			p.ProcessingRevision = revision
+		}
 	}
 	if err := p.Validate(); err != nil {
 		return p, domain.Fail("UNSUPPORTED", "A verified recovery processing profile is unavailable")

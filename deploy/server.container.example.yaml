@@ -7,6 +7,9 @@ tlsKey: '/etc/musicfs/tls/server.key'
 dataRoot: '/var/lib/musicfs/data'
 mediaRoot: '/var/lib/musicfs/media'
 cacheRoot: '/var/cache/musicfs'
+# 源码示例保留内置 SQLite 兼容；Linux 发布包会写入必需 Worker 路径与实际摘要。
+storage:
+  backend: sqlite
 webRoot: ''
 pluginBundle: '/opt/musicfs/bin/musicfs-plugins'
 plugins:

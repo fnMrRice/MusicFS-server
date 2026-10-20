@@ -12,7 +12,9 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/config"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
+	"github.com/fnMrRice/MusicFS-server/src/storage"
+	_ "github.com/fnMrRice/MusicFS-server/src/storage/rpcbackend"
+	_ "github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -60,19 +62,23 @@ func Create(ctx context.Context, doc *config.Document, parent string) (Result, e
 	if err = lockFile(lock); err != nil {
 		return result, domain.Fail("CONFLICT", "Stop the server before creating a backup")
 	}
-	store, err := sqlite.OpenMaintenance(ctx, filepath.Join(c.DataRoot, "musicfs.sqlite"))
+	driver, err := storage.Lookup(c.Storage.Backend)
+	if err != nil {
+		return result, err
+	}
+	store, err := storage.OpenMaintenance(ctx, driver.Name, storage.Options{
+		DataRoot: c.DataRoot, Values: c.Storage.Options,
+		Executable: c.Storage.Executable, Args: c.Storage.Args, SHA256: c.Storage.SHA256,
+	})
 	if err != nil {
 		return result, err
 	}
 	defer store.Close()
-	var pages, pageSize int64
-	if err = store.DB.QueryRowContext(ctx, "PRAGMA page_count").Scan(&pages); err != nil {
+	databaseSize, err := store.DatabaseSize(ctx)
+	if err != nil {
 		return result, err
 	}
-	if err = store.DB.QueryRowContext(ctx, "PRAGMA page_size").Scan(&pageSize); err != nil {
-		return result, err
-	}
-	if pageSize < 1 || pages > maxDatabaseBytes/pageSize {
+	if databaseSize < 0 || databaseSize > maxDatabaseBytes {
 		return result, domain.Fail("RATE_LIMITED", "Backup database exceeds its size limit")
 	}
 	files, err := mediastore.OpenFiles(c.MediaRoot)
@@ -80,7 +86,7 @@ func Create(ctx context.Context, doc *config.Document, parent string) (Result, e
 		return result, err
 	}
 	defer files.Close()
-	media, err := mediastore.NewBackups(store, files).Create(ctx, parent)
+	media, err := mediastore.NewNamedBackups(store, files, driver.SnapshotName).Create(ctx, parent)
 	if err != nil {
 		return result, err
 	}
@@ -92,11 +98,11 @@ func Create(ctx context.Context, doc *config.Document, parent string) (Result, e
 		return result, err
 	}
 	defer root.Close()
-	version, err := sqlite.BackupSchemaVersion()
+	version, err := driver.BackupSchemaVersion()
 	if err != nil {
 		return result, err
 	}
-	m := Manifest{Version: 1, BackupID: media.Backup.ID, CreatedAt: time.Now().UTC(), OS: runtime.GOOS, Architecture: runtime.GOARCH, SchemaVersion: version, Files: []File{}, MissingMedia: media.Manifest.MissingCount, ExternalCredentials: []string{"MUSICFS_ADMIN_TOKEN", "TLS private key and certificate (when configured)"}}
+	m := Manifest{Version: 1, BackupID: media.Backup.ID, CreatedAt: time.Now().UTC(), OS: runtime.GOOS, Architecture: runtime.GOARCH, SchemaVersion: version, StorageBackend: driver.Name, Files: []File{}, MissingMedia: media.Manifest.MissingCount, ExternalCredentials: []string{"MUSICFS_ADMIN_TOKEN", "TLS private key and certificate (when configured)"}}
 	appendFile := func(file File, err error) error {
 		if err == nil {
 			m.Files = append(m.Files, file)
@@ -176,6 +182,12 @@ func dependencies(ctx context.Context, c config.Config) []Dependency {
 	}
 	if c.Fingerprinting.FpcalcPath != "" {
 		add("fpcalc", c.Fingerprinting.FpcalcPath)
+	}
+	if c.Storage.Backend == "plugin" {
+		add("storage", c.Storage.Executable)
+	}
+	for _, dsp := range c.AudioDSP.Plugins {
+		add("dsp/"+dsp.Name, dsp.Executable)
 	}
 	return items
 }

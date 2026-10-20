@@ -51,6 +51,7 @@ func TestActualInstallationBundleScanAudioWebAndExit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	assertInstallationPersistence(t, installed, cfg)
 	for _, p := range cfg.Plugins {
 		if filepath.Base(p.Executable) != "musicfs-plugins"+suffix || len(p.Args) != 2 || p.Args[0] != "--plugin" {
 			t.Fatal("installation does not use the shared plugin executable")

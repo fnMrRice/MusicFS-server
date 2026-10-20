@@ -4,11 +4,13 @@
 
 启动见[运行说明](running.md)；正式[示例配置](../configs/server.example.yaml)和[编辑器 Schema](../configs/server.schema.json)随代码维护，实际验证见[配置验收](validation/configuration.md)。HTTP JSON、JSON-RPC、JSON Schema 和媒体清单继续使用各自格式。
 
+2026-10-20 增量：顶层 `storage` 选择内置 SQLite 或受信任的独立持久化插件，顶层 `audioDSP` 配置有序 DSP 链及外部节点；两者为启动配置，修改后重启生效。配置、构建和兼容边界见[存储插件](storage-plugins.md)与[DSP 插件](dsp-plugins.md)。非空 DSP 链要求启用且成功初始化音频处理器，不可因插件缺失静默直放。
+
 ## 1. 文件与严格校验
 
 配置路径必须为 `.yaml` / `.yml`，建议复制示例为 `configs/server.local.yaml` 后编辑。只接受一个顶层 mapping 文档，`configVersion` 必须为整数 `1`；大小为1字节至1 MiB，嵌套最多32层。解析器拒绝未知字段、重复键、额外文档、anchor/alias、merge、自定义标签、null及不匹配的类型。
 
-布尔值只接受未加引号的小写 `true` / `false`；`"false"`、`yes`、`on`不替代布尔值。整数须为规范十进制，不接受浮点、十六进制、前导零或数值字符串。允许中文、注释、空格及带反斜线的Windows路径；Windows路径建议用单引号，如 `'D:\Music Files'`。语法和字段错误只返回位置与安全说明，不回显原始敏感值。
+布尔值只接受未加引号的小写 `true` / `false`；`"false"`、`yes`、`on`不替代布尔值。整数字段须为规范十进制，不接受浮点、十六进制、前导零或数值字符串；DSP `params` 单独允许有限数值，拒绝 NaN、Inf 和数值字符串。允许中文、注释、空格及带反斜线的Windows路径；Windows路径建议用单引号，如 `'D:\Music Files'`。语法和字段错误只返回位置与安全说明，不回显原始敏感值。
 
 相对路径以配置文件所在目录为基准，包括默认目录以及环境/命令行覆盖的相对路径。`dataRoot`、`mediaRoot`、`cacheRoot` 必须彼此分离，音乐根不得与任一可写根重叠。数据库仍放本地文件系统；音乐可来自已挂载目录。
 
@@ -153,7 +155,7 @@ Linux保留文件所有者/组与权限，同步文件及目录后rename；Windo
 
 ## 内置插件程序与自动发现
 
-默认构建仅生成 `musicfs` 和 `musicfs-plugins`。七种内置角色为 `local`、`audio-ffmpeg`、`ncm`、`scraper-local`、`netease`、`qqmusic`、`applemusic`。插件配置以 `executable` 指向统一程序，以 `args: ['--plugin', '角色']` 固定角色；不通过 shell 解释参数。`args` 最多 64 项，每项最多 4096 UTF-8 字节，不得包含 NUL；参数中不应保存凭据。
+默认构建生成 `musicfs`、`musicfs-plugins`、独立 SQLite 插件 `musicfs-plugin-storage-sqlite` 和 DSP 示例 `musicfs-plugin-dsp-gain`。统一插件程序中的七种内置角色为 `local`、`audio-ffmpeg`、`ncm`、`scraper-local`、`netease`、`qqmusic`、`applemusic`。这些角色的插件配置以 `executable` 指向统一程序，以 `args: ['--plugin', '角色']` 固定角色；不通过 shell 解释参数。`args` 最多 64 项，每项最多 4096 UTF-8 字节，不得包含 NUL；参数中不应保存凭据。SQLite 由顶层 `storage` 配置选定，是必需组件，不属于可禁用的普通插件；DSP 示例只有加入 `audioDSP` 处理链才会启用。
 
 启动读取配置时检查 `pluginBundle` 指定的文件；省略该字段则检查 Server 程序同目录的 `musicfs-plugins[.exe]`。仅发现本版本内置的七种角色，不扫描 PATH、不自动执行目录中的任意 EXE。显式指定的其他可执行文件及其参数保持原义，旧独立插件入口仍可单独编译。
 
@@ -171,4 +173,4 @@ plugins:
 
 多个插件共用文件，但仍按实例或任务分别启动独立进程，保留原来的协议、工作目录、用户绑定和取消回收；公共文件的升级需先停机。此改动减少磁盘重复代码，不把进程内存或权限合并。旧安装配置的 `musicfs-plugin-*.exe` 路径不会自动改写：升级时改为统一程序并补充对应 args；旧 `enabled: false` 不会被覆盖。第三方入口沿用已有受支持的协议与身份校验，不表示任意第三方插件 ID 已开放。
 
-发布打包启用 `-ldflags="-s -w"`，去掉调试符号；开发构建保留调试信息。`release.json` 列出两个程序和七个插件角色的参数，许可证按实际链接依赖生成。
+发布打包启用 `-ldflags="-s -w"`，去掉调试符号；开发构建保留调试信息。`release.json` 列出四个程序、七个普通插件角色的参数及独立 SQLite/DSP 入口，SQLite 标为必需组件。发布配置默认选择独立 SQLite 插件，并写入包内程序的实际 SHA256；许可证按实际链接依赖生成。

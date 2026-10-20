@@ -30,10 +30,11 @@ type Range struct {
 	EndMs   int64 `json:"endMs"`
 }
 type Processing struct {
-	Type      string  `json:"type"`
-	GainDB    float64 `json:"gainDb"`
-	Version   string  `json:"version"`
-	Execution string  `json:"execution"`
+	Type       string             `json:"type"`
+	GainDB     float64            `json:"gainDb"`
+	Version    string             `json:"version"`
+	Execution  string             `json:"execution"`
+	Parameters map[string]float64 `json:"parameters,omitempty"`
 }
 type Description struct {
 	SessionID           string        `json:"sessionId"`

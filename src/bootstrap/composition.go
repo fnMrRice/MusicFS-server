@@ -7,7 +7,6 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -27,7 +26,9 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/sourcedisplay"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
+	"github.com/fnMrRice/MusicFS-server/src/storage"
+	_ "github.com/fnMrRice/MusicFS-server/src/storage/rpcbackend"
+	_ "github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 )
 
 func checksum(path string) string {
@@ -55,12 +56,11 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	if err := checkLegacyWritebackJournals(ctx, c.DataRoot); err != nil {
 		return nil, nil, err
 	}
-	store, err := sqlite.Open(ctx, filepath.Join(c.DataRoot, "musicfs.sqlite"))
+	store, err := storage.Open(ctx, c.Storage.Backend, storage.Options{
+		DataRoot: c.DataRoot, Values: c.Storage.Options,
+		Executable: c.Storage.Executable, Args: c.Storage.Args, SHA256: c.Storage.SHA256,
+	})
 	if err != nil {
-		return nil, nil, err
-	}
-	if err := store.MigratePluginInstanceIDs(ctx); err != nil {
-		store.Close()
 		return nil, nil, err
 	}
 	c, err = config.InitializeLocalDirectories(ctx, c)
@@ -70,14 +70,19 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	}
 	var configuration *config.Store
 	if c.SourcePath != "" {
-		configuration, err = config.OpenStore(ctx, c.SourcePath, c.SourceOverrides, store)
+		configuration, err = config.OpenStoreForStartup(ctx, c.SourcePath, c.SourceOverrides, store, c)
 		if err != nil {
 			store.Close()
 			return nil, nil, err
 		}
 	}
 	if configuration != nil {
-		c = configuration.Current()
+		current := configuration.Current()
+		if !config.SameStartupSettings(current, c) {
+			store.Close()
+			return nil, nil, fmt.Errorf("Storage configuration changed during startup; restart with the current configuration")
+		}
+		c = current
 	}
 	pluginManager, err := plugincontrol.New(ctx, c, configuration, store)
 	if err != nil {
@@ -106,6 +111,10 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 		}
 		closeMedia()
 		store.Close()
+	}
+	if len(c.AudioDSP.Chain) > 0 && processor == nil {
+		cleanup()
+		return nil, nil, fmt.Errorf("Configured DSP pipeline is unavailable")
 	}
 	policy := writeBackPolicy(c, runtimes, ffprobe != "")
 	probeState := &managedProbe{}
@@ -162,7 +171,11 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	closeBeforeRemotePlaylists := cleanup
 	cleanup = func() { remotePlaylists.Close(); closeBeforeRemotePlaylists() }
 	sessions := auth.New(store, c.AdminToken, c.AllowedOrigins, time.Duration(c.SessionTTLSeconds)*time.Second)
-	handler := api.New(api.Options{Auth: sessions, InstanceID: instance, Ready: ready, SecureCookie: c.TLSCert != "", Logger: log})
+	availability, hasAvailability := store.(storage.Availability)
+	isReady := func() bool {
+		return (ready == nil || ready()) && (!hasAvailability || availability.Available())
+	}
+	handler := api.New(api.Options{Auth: sessions, InstanceID: instance, Ready: isReady, SecureCookie: c.TLSCert != "", Logger: log})
 	handler.RegisterLibrary(lib)
 	handler.RegisterCatalog(catalog.New(store))
 	handler.RegisterPersonal(personal.New(store))
@@ -184,7 +197,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 		fingerprintDetails = fingerprints
 	}
 	handler.RegisterMatching(matching.New(store, fingerprintDetails))
-	player, err := playback.New(ctx, store, lib, processor, playback.Config{CacheRoot: c.CacheRoot, MaxSessions: c.MaxSessions, MaxCacheBytes: c.MaxCacheBytes, NCMDecoder: decoder})
+	player, err := playback.New(ctx, store, lib, processor, playback.Config{CacheRoot: c.CacheRoot, MaxSessions: c.MaxSessions, MaxCacheBytes: c.MaxCacheBytes, NCMDecoder: decoder, RequireDSP: len(c.AudioDSP.Chain) > 0})
 	if err != nil {
 		cleanup()
 		return nil, nil, err

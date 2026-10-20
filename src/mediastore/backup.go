@@ -34,12 +34,18 @@ type BackupResult struct {
 }
 
 type Backups struct {
-	repo  BackupRepository
-	files *Files
+	repo         BackupRepository
+	files        *Files
+	databaseName string
 }
 
 func NewBackups(repo BackupRepository, files *Files) *Backups {
-	return &Backups{repo: repo, files: files}
+	return &Backups{repo: repo, files: files, databaseName: "db.sqlite"}
+}
+
+// NewNamedBackups selects the registered backend's local snapshot artifact.
+func NewNamedBackups(repo BackupRepository, files *Files, databaseName string) *Backups {
+	return &Backups{repo: repo, files: files, databaseName: databaseName}
 }
 
 // Create uses a new private directory. The final manifest is the completeness
@@ -48,6 +54,9 @@ func (b *Backups) Create(ctx context.Context, parent string) (BackupResult, erro
 	var result BackupResult
 	if !filepath.IsAbs(parent) {
 		return result, domain.Fail("INVALID_ARGUMENT", "Backup parent must be absolute")
+	}
+	if b.databaseName == "" || !filepath.IsLocal(b.databaseName) || filepath.Base(b.databaseName) != b.databaseName || b.databaseName == "." {
+		return result, domain.Fail("INVALID_ARGUMENT", "Invalid backup database name")
 	}
 	if err := ctx.Err(); err != nil {
 		return result, err
@@ -76,7 +85,7 @@ func (b *Backups) Create(ctx context.Context, parent string) (BackupResult, erro
 		return result, err
 	}
 	defer root.Close()
-	backup, err := b.repo.CreateMediaBackup(ctx, id, filepath.Join(result.Directory, "db.sqlite"))
+	backup, err := b.repo.CreateMediaBackup(ctx, id, filepath.Join(result.Directory, b.databaseName))
 	if err != nil {
 		return result, err
 	}
@@ -89,7 +98,7 @@ func (b *Backups) Create(ctx context.Context, parent string) (BackupResult, erro
 	}
 	defer dest.Close()
 	manifest := BackupManifest{Version: 1, BackupID: id, CreatedAt: backup.CreatedAt, Objects: []BackupObject{}}
-	manifest.Database, err = backupDatabase(ctx, root)
+	manifest.Database, err = backupDatabase(ctx, root, b.databaseName)
 	if err != nil {
 		return result, err
 	}

@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-var programs = []string{"musicfs", "musicfs-plugins"}
+var programs = []string{"musicfs", "musicfs-plugins", "musicfs-plugin-storage-sqlite", "musicfs-plugin-dsp-gain"}
 
 type builder struct {
 	root, out, target, arch, web string

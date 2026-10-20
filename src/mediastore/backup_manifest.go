@@ -23,8 +23,8 @@ func verifyBackupBytes(ctx context.Context, in io.Reader, size int64, expected s
 	return nil
 }
 
-func backupDatabase(ctx context.Context, root *os.Root) (BackupFile, error) {
-	result := BackupFile{Name: "db.sqlite"}
+func backupDatabase(ctx context.Context, root *os.Root, name string) (BackupFile, error) {
+	result := BackupFile{Name: name}
 	info, err := root.Lstat(result.Name)
 	if err != nil || !info.Mode().IsRegular() {
 		return result, domain.Fail("RESOURCE_CHANGED", "Backup database is not a regular file")

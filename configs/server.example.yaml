@@ -8,6 +8,11 @@ allowedOrigins:
 dataRoot: '../data'
 mediaRoot: '../media'
 cacheRoot: '../cache'
+storage:
+  backend: 'sqlite'
+audioDSP:
+  chain: []
+  plugins: []
 webRoot: ''
 pluginBundle: '../build/windows/musicfs-plugins.exe'
 plugins:

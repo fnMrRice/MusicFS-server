@@ -2,7 +2,7 @@
 
 平台账号后续增量见[登录与客户端接口](platform-login.md)：三平台登录适配及 Web 入口已接入，网易/QQ 二维码创建已实测，完整用户授权仍待验收。下文长期架构和原阶段状态不等于该增量已通过全部验收。
 
-状态：长期架构与实现约束；2026-10-11。当前已实现本地扫描与受限读取、原流/处理/NCM播放、资产识别与人工关联、内容刮削和受限写回、在线资料与歌单、处理输出缓存、备份部署、Server生命周期，以及插件启用与配置管理；插件停用保存后重启生效。逐项功能、所测环境和限制见[实施记录](validation/progress.md)；平台账号增量以上方专项说明为准，在线完整音频与其他长期设计不能因此视为完成。跨端行为、公共API与事件契约以[总体架构](../../docs/architecture.md)为准；Server在本仓库`docs/contracts`维护OpenAPI与JSON Schema，不在内部设计中另立一套接口。本次插件职责、原生开发与接入缺口细化见[插件化设计](plugin-architecture.md)，不新增已实现能力。
+状态：长期架构与实现约束；2026-10-20。当前已实现本地扫描与受限读取、原流/处理/NCM播放、资产识别与人工关联、内容刮削和受限写回、在线资料与歌单、处理输出缓存、备份部署、Server生命周期，以及插件启用与配置管理；插件停用保存后重启生效。新增有序 DSP 链、独立 DSP 节点和可替换持久化后端，具体限制见[DSP 插件](dsp-plugins.md)与[存储插件](storage-plugins.md)。逐项功能、所测环境和限制见[实施记录](validation/progress.md)；平台账号增量以上方专项说明为准，在线完整音频与其他长期设计不能因此视为完成。跨端行为、公共API与事件契约以[总体架构](../../docs/architecture.md)为准；Server在本仓库`docs/contracts`维护OpenAPI与JSON Schema，不在内部设计中另立一套接口。后续插件职责、原生开发与接入缺口见[插件化设计](plugin-architecture.md)。
 
 ## 1. 范围与模块
 
@@ -19,7 +19,7 @@ Server 管理音乐来源、统一音乐库、歌单、信息刮削和音频流�
 | Audio Pipeline | 解复用、解码、PCM DSP、编码与封装，见[音频处理](audio-processing.md) |
 | Stream Gateway | 会话鉴权、原始字节/处理输出交付，以及真实的 Range/时间定位 |
 | Scheduler | 扫描、探测、摘要、指纹、同步、刮削、写回和恢复 |
-| Storage | SQLite WAL、单写入队列、Media Store、可重建缓存和独立密钥保护 |
+| Storage | 可替换的可信 Backend 与独立持久化 Worker；默认 SQLite WAL，Media Store、可重建缓存和独立密钥保护 |
 
 第一阶段采用 Go 实现模块化单体服务，SQLite 为当前存储方案。源码在 `src/`，Server 和官方插件程序入口在 `src/app/`，模块实现按职责分目录，测试统一在根 `tests/`；Go module 与包边界见 [P0 工程布局](implementation/00-project-layout.md)。首版官方插件为 Go 独立进程；后续需要 C++ 的插件使用 CMake / C++23 构建独立 Worker，经版本化 IPC 接入，不要求重写现有 Go 插件或为每种语言另建宿主。Client 使用单进程 DLL 插件，其播放器、主题和桌面框架由 Client 仓库设计；Server 与之分别构建和验收。内部依赖见[组件图](diagrams/components.puml)。
 
@@ -88,7 +88,7 @@ TimelineEvidence 单独记录跨资产映射、有效区间及验证版本，纳
 
 三类 Server 插件独立注册、安装、启停、配置和授权；同包多角色不能隐式共用凭据或实例状态。Server 与 Client 分别拥有宿主 SDK，可共享模型，不承诺二进制跨运行端通用。
 
-现有代码只接入固定身份的官方 Provider、Scraper 和 Audio Worker，不是任意 manifest 即可安装的通用 SDK。来源、媒体算法、内容转换与可选策略优先保留扩展点；新增角色、可替换指纹/匹配算法和通用音频节点需先补协议与 Host 适配。职责矩阵、不能外包的授权/数据/事务边界及实施顺序见[插件化细化设计](plugin-architecture.md)。
+Provider、Scraper 和 Audio Worker 仍按固定身份接入，不是任意 manifest 即可安装的通用 SDK。2026-10-20 增加专用的[DSP 节点插件](dsp-plugins.md)和[持久化后端插件](storage-plugins.md)：DSP 支持有序无状态节点及独立二进制 PCM Worker，存储支持内置 SQLite 和独立 SQLite Worker，保留完整业务事务。新增来源角色、指纹/匹配算法和任意音频拓扑仍需补协议与 Host 适配。职责矩阵见[插件化设计](plugin-architecture.md)。
 
 统一插件管理器区分插件总开关、实例开关与当前运行状态。停用只保存配置，当前 Worker、播放、任务及新工作准入保持，重启 Server 后才停用；旧 drain/force 参数只保留兼容，不再触发热排空或取消。启用和实例配置仍可动态应用，配置重建继续使用工作租约。禁用保留库、账号引用、人工结果与媒体文件；保存开关、运行开关、待重启状态及应用修订分别报告，详见[插件管理](implementation/plugin-management.md)。
 

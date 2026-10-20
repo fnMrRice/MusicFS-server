@@ -5,7 +5,7 @@ $env:GOOS = $TargetOS
 $env:GOARCH = 'amd64'
 $env:CGO_ENABLED = '0'
 $suffix = if ($TargetOS -eq 'windows') { '.exe' } else { '' }
-$programs = @('musicfs', 'musicfs-plugins')
+$programs = @('musicfs', 'musicfs-plugins', 'musicfs-plugin-storage-sqlite', 'musicfs-plugin-dsp-gain')
 foreach ($program in $programs) {
     go build -mod=readonly -trimpath -o "build/$TargetOS/$program$suffix" "./src/app/$program"
     if ($LASTEXITCODE) { throw "Build failed: $program" }

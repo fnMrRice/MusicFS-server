@@ -64,7 +64,7 @@ func configurePlugins(ctx context.Context, c config.Config, log *slog.Logger) ([
 						var stateDir string
 						stateDir, err = instanceid.StateDirectory(filepath.Join(c.DataRoot, "providers"), instance.InstanceID)
 						if err == nil {
-							r.Worker, err = pluginhost.Start(ctx, pluginhost.Config{Executable: plugin.Executable, Args: plugin.Args, SHA256: binaryHash, InstanceID: instance.InstanceID, UserID: "admin", Roots: roots, StateDir: stateDir, DatabasePath: config.PluginDatabasePath(c)})
+							r.Worker, err = pluginhost.Start(ctx, pluginhost.Config{Executable: plugin.Executable, Args: plugin.Args, SHA256: binaryHash, InstanceID: instance.InstanceID, UserID: "admin", Roots: roots, StateDir: stateDir, DatabasePath: config.PluginDatabasePath(c), DatabaseBackend: config.PluginDatabaseBackend(c)})
 						}
 					}
 					if err == nil {
@@ -82,7 +82,7 @@ func configurePlugins(ctx context.Context, c config.Config, log *slog.Logger) ([
 				runtimes = append(runtimes, r)
 			case "musicfs.plugin.decoder.ffmpeg":
 				if enabled {
-					processor, err = audioffmpeg.NewProcessor(ctx, audioffmpeg.Config{InstanceID: instance.InstanceID, FFmpegPath: instance.Config.FFmpegPath, FFprobePath: instance.Config.FFprobePath, WorkerPath: plugin.Executable, WorkerArgs: plugin.Args, WorkerSHA256: expectedChecksum(plugin.SHA256, plugin.Executable), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing})
+					processor, err = audioffmpeg.NewProcessor(ctx, audioffmpeg.Config{InstanceID: instance.InstanceID, FFmpegPath: instance.Config.FFmpegPath, FFprobePath: instance.Config.FFprobePath, WorkerPath: plugin.Executable, WorkerArgs: plugin.Args, WorkerSHA256: expectedChecksum(plugin.SHA256, plugin.Executable), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing, DSPChain: c.AudioDSP.Chain, DSPPlugins: c.AudioDSP.Plugins})
 					if err == nil {
 						ffprobe = instance.Config.FFprobePath
 					}

@@ -7,6 +7,28 @@
   "additionalProperties": false,
   "required": ["configVersion", "allowedOrigins"],
   "properties": {
+    "storage": {
+      "type": "object", "additionalProperties": false,
+      "description": "必需且不可禁用的存储后端；默认 sqlite，plugin 使用独立持久化进程。没有 enabled 开关。变更需重启，未知后端拒绝启动。",
+      "properties": {
+        "backend": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$", "default": "sqlite"},
+        "options": {"type": "object", "maxProperties": 32, "additionalProperties": {"type": "string", "maxLength": 4096}},
+        "executable": {"$ref": "#/$defs/NonemptyPath"},
+        "sha256": {"type": "string", "pattern": "^[a-fA-F0-9]{64}$"},
+        "args": {"type": "array", "maxItems": 64, "items": {"type": "string", "maxLength": 4096}}
+      },
+      "if": {"required": ["backend"], "properties": {"backend": {"const": "plugin"}}},
+      "then": {"required": ["executable", "sha256"]},
+      "else": {"not": {"anyOf": [{"required": ["executable"]}, {"required": ["sha256"]}, {"required": ["args"]}]}}
+    },
+    "audioDSP": {
+      "type": "object", "additionalProperties": false,
+      "description": "用户增益之后按顺序执行的必需 DSP；非空链要求已启用的 FFmpeg 实例。配置重启生效。",
+      "properties": {
+        "chain": {"type": "array", "maxItems": 15, "items": {"$ref": "#/$defs/DSPNode"}},
+        "plugins": {"type": "array", "maxItems": 16, "items": {"$ref": "#/$defs/DSPPlugin"}}
+      }
+    },
     "pluginBundle": {"$ref": "#/$defs/Path"},
     "configVersion": {"const": 1},
     "listen": {"type": "string", "minLength": 1, "default": "127.0.0.1:8080"},
@@ -175,6 +197,24 @@
     }
   ],
   "$defs": {
+    "DSPNode": {
+      "type": "object", "additionalProperties": false, "required": ["name", "version"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,63}$"},
+        "version": {"const": 1},
+        "params": {"type": "object", "maxProperties": 64, "propertyNames": {"minLength": 1, "maxLength": 64}, "additionalProperties": {"type": "number"}}
+      }
+    },
+    "DSPPlugin": {
+      "type": "object", "additionalProperties": false, "required": ["name", "executable", "sha256"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,63}$", "not": {"enum": ["gain", "bypass"]}},
+        "executable": {"$ref": "#/$defs/NonemptyPath"},
+        "sha256": {"type": "string", "pattern": "^[a-fA-F0-9]{64}$"},
+        "args": {"type": "array", "maxItems": 32, "items": {"type": "string", "maxLength": 4096}},
+        "timeoutMs": {"type": "integer", "anyOf": [{"const": 0}, {"minimum": 10, "maximum": 30000}], "default": 5000}
+      }
+    },
     "OnlinePlugin": {"allOf": [{"$ref": "#/$defs/Plugin"}], "description": "匿名固定平台适配；加载器额外限制三平台总共最多16实例。禁止配置URL、Cookie、token或导入选项。", "properties": {"pluginId": {"enum": ["musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic"]}, "instances": {"type": "array", "maxItems": 16, "items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"config": {"type": "object", "additionalProperties": false}, "importDefaults": false}}}}},
     "ImportOverrides": {
       "type": "object",

@@ -12,13 +12,23 @@ import (
 )
 
 type Framer struct {
-	reader *bufio.Reader
-	writer io.Writer
-	mu     sync.Mutex
+	reader          *bufio.Reader
+	writer          io.Writer
+	mu              sync.Mutex
+	maxMessageBytes int
 }
 
 func NewFramer(r io.Reader, w io.Writer) *Framer {
-	return &Framer{reader: bufio.NewReaderSize(r, 4096), writer: w}
+	return NewFramerWithLimit(r, w, MaxMessageBytes)
+}
+
+// NewFramerWithLimit is reserved for explicitly versioned internal transports.
+// Provider and audio control channels continue using the default SDK bound.
+func NewFramerWithLimit(r io.Reader, w io.Writer, limit int) *Framer {
+	if limit < 1 {
+		limit = MaxMessageBytes
+	}
+	return &Framer{reader: bufio.NewReaderSize(r, 4096), writer: w, maxMessageBytes: limit}
 }
 
 func (f *Framer) Read() (Envelope, error) {
@@ -45,7 +55,7 @@ func (f *Framer) Read() (Envelope, error) {
 			return e, fmt.Errorf("PROTOCOL_MISMATCH: invalid content length header")
 		}
 		length, err = strconv.Atoi(strings.TrimSpace(value))
-		if err != nil || length <= 0 || length > MaxMessageBytes {
+		if err != nil || length <= 0 || length > f.maxMessageBytes {
 			return e, fmt.Errorf("PROTOCOL_MISMATCH: invalid message size")
 		}
 	}
@@ -74,7 +84,7 @@ func (f *Framer) Write(e Envelope) error {
 	if err != nil {
 		return err
 	}
-	if len(body) > MaxMessageBytes {
+	if len(body) > f.maxMessageBytes {
 		return fmt.Errorf("PROTOCOL_MISMATCH: message too large")
 	}
 	f.mu.Lock()

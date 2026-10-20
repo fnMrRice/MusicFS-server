@@ -62,6 +62,8 @@ func (s *Service) RecoverSource(ctx context.Context, who auth.Session, id string
 	unlink := context.AfterFunc(a.ctx, cancel)
 	s.preparing[who.ID] = cancel
 	from, capabilities, gain := target(a.track), a.capabilities, a.gain
+	fromProfile, fromProfileErr := recoveryProfile(a.processor)
+	fromProfile.GainDB = gain
 	s.mu.Unlock()
 	defer func() { unlink(); cancel(); s.mu.Lock(); delete(s.preparing, who.ID); s.mu.Unlock() }()
 	t, err := s.library.Track(ctx, who.User.ID, r.TargetSourceTrackID)
@@ -99,9 +101,9 @@ func (s *Service) RecoverSource(ctx context.Context, who auth.Session, id string
 	if r.EvidenceID == nil {
 		reason = "TIMELINE_EVIDENCE_REQUIRED"
 	}
-	if profileErr != nil || !supports(capabilities, "audio/mpeg") {
+	if profileErr != nil || fromProfileErr != nil || profile != fromProfile || !supports(capabilities, "audio/mpeg") {
 		reason = "OUTPUT_PROFILE_UNAVAILABLE"
-		checkErr = domain.Fail("RESTART_REQUIRED", "A locatable recovery profile is unavailable")
+		checkErr = domain.Fail("RESTART_REQUIRED", "A matching recovery processing profile is unavailable")
 	}
 	result := RecoveryResult{Decision: "promptRestart", Reason: reason, TargetSourceTrackID: r.TargetSourceTrackID}
 	var prepared *preparedInput
@@ -123,7 +125,9 @@ func (s *Service) RecoverSource(ctx context.Context, who auth.Session, id string
 		if target(prepared.track) != check.To || prepared.track.DurationMs == nil || position >= *prepared.track.DurationMs {
 			return empty, domain.Fail("RESOURCE_CHANGED", "Recovery target changed during preparation")
 		}
-		if prepared.processor == nil || prepared.processor.Capabilities.FFmpegSHA256 != profile.DecoderSHA256 {
+		preparedProfile, preparedProfileErr := recoveryProfile(prepared.processor)
+		preparedProfile.GainDB = gain
+		if preparedProfileErr != nil || preparedProfile != profile {
 			return empty, domain.Fail("RESOURCE_CHANGED", "Recovery processor changed during preparation")
 		}
 		result.Decision, result.Reason = "continue", "MANUAL_ALIGNMENT"

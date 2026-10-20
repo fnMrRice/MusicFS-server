@@ -32,6 +32,12 @@ Host 的 `host.entries` 返回固定根身份的 Entry 页；`host.state.get/com
 
 音频 Worker 的 hello 额外接收已由 Host 探测的 capabilities。`audio.describe` 返回实际工具摘要、profile 和 PCM；`audio.prepare/start` 接收固定计划与 loopback input/output 任务通道。音频二进制由任务限定的 loopback HTTP 传输，不写入控制面。宿主注入的 FFmpeg 绝对路径和可执行文件摘要仅在受信任配置边界使用，不发送给 Web。取消仍使用统一取消通知；具体字段是插件内的 `gainDB`，HTTP 用户偏好是 `gainDb`，两者在边界显式转换。
 
+`audio.prepare/start` 还可接收 `dspChain`（最多 15 个 `{name,version:1,params}` 节点）与 `dspPlugins`（最多 16 个外部可执行节点注册配置）。用户 gain 位于首位，配置链按数组顺序执行。内建 `gain` 接受唯一的 `gainDB` 参数，范围 -96—12 dB；`bypass` 不接受参数。外部节点配置包含 `name/executable/sha256` 和可选 `args/timeoutMs`，宿主解析绝对路径并验证摘要，名称不能覆盖内建节点；这些执行配置属于受信任部署边界，不发送给 Web。
+
+支持该扩展的官方 FFmpeg Worker 实现版本为 `0.2.0`，Host 对其 pluginId 与 pluginVersion 作精确匹配。旧 `0.1.0` 在握手后、发送 `audio.prepare/start/normalize` 前即被拒绝；不因配置链为空而放宽。Server 与音频 Worker 必须配套升级，防止旧程序忽略新字段后静默漏执行效果。其他 Provider/NCM/Scraper 的实现版本不因本扩展改变。
+
+外部 DSP 使用独立的 [DSP v1 二进制帧协议](../../../dsp-plugins.md)，不是 JSON-RPC 子方法；PCM 不进入本控制协议。节点必须声明并遵守 `f32le/48000/stereo`、无状态、保持帧数和时标、零延迟与无尾音。宿主检查握手版本、节点身份、有限数值与每块时标，超时或取消回收进程树。此扩展没有引入任意 DSP 图、动态库加载、自动旁路或有状态 seek 能力；普通音频任务不带新字段时保持原 gain 路径。
+
 Capabilities 的 `normalization` 明确报告是否具备指纹 PCM 规范化能力。`audio.normalize` 使用单独计划 `taskId/assetId/startMs/durationMs` 与宿主限定的输入、输出通道；起点范围为0—86400000毫秒，请求长度10000—120000毫秒，拒绝增益或其他 DSP 参数。输出固定为11025 Hz、单声道、s16le，规范化版本为 `s16le-mono-11025-floor-range-v1`，两端点按绝对样本位置向下量化。控制响应只含实际格式、样本起点/数量和解码器版本/摘要，不含 PCM 字节；宿主复核实际字节数、范围和工具身份。尾部不足请求长度不能补零扩窗，后续指纹质量判断与实际覆盖分开记录。
 
 独立 NCM Worker 使用 `musicfs.plugin.decoder.ncm` 标识、`audio` 角色与 `audio.decrypt` 能力，不依赖 FFmpeg。`host.hello` 的 instanceId 为配置实例 UUID，configRevision 为 `1`；nonce 是 24 个随机字节的 48 位小写十六进制串。一个 Worker 只接受一次 `ncm.open`，绑定 taskId、assetId、nonce、inputUrl 和加密输入 size，拒绝重新绑定。返回同一任务身份、outputUrl、解密后的 size 与 metadata；format/MIME 由解密正文确认，仅支持 MP3/FLAC，未知标签省略，不下载封面或任何外部资源。请求中没有源路径、原始音频或密钥。

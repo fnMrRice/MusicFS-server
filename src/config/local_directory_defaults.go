@@ -39,7 +39,7 @@ func initializeLocalDirectories(ctx context.Context, c Config, discover func() [
 			if !i.Enabled || i.Permissions != nil && !i.defaultReadDirectories {
 				continue
 			}
-			db, err := plugindb.Open(ctx, PluginDatabasePath(c), p.PluginID, i.InstanceID)
+			db, err := plugindb.OpenBackend(ctx, PluginDatabaseBackend(c), PluginDatabasePath(c), p.PluginID, i.InstanceID)
 			if err != nil {
 				return Config{}, err
 			}
@@ -91,7 +91,7 @@ func loadLocalDirectoryDefaults(ctx context.Context, c *Config) error {
 			var v pluginproto.StateValue
 			if statErr == nil {
 				var err error
-				v, err = plugindb.Read(ctx, PluginDatabasePath(*c), p.PluginID, i.InstanceID, defaultDirectoriesKey)
+				v, err = plugindb.ReadBackend(ctx, PluginDatabaseBackend(*c), PluginDatabasePath(*c), p.PluginID, i.InstanceID, defaultDirectoriesKey)
 				if err != nil {
 					return err
 				}

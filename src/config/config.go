@@ -63,6 +63,8 @@ type MetadataConfig struct {
 }
 
 type Config struct {
+	Storage           StorageConfig        `yaml:"storage,omitempty" json:"storage,omitempty"`
+	AudioDSP          AudioDSPConfig       `yaml:"audioDSP,omitempty" json:"audioDSP,omitempty"`
 	PluginBundle      string               `yaml:"pluginBundle,omitempty" json:"pluginBundle,omitempty"`
 	SourcePath        string               `yaml:"-" json:"-"`
 	SourceOverrides   map[string]string    `yaml:"-" json:"-"`

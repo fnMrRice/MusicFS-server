@@ -33,6 +33,7 @@ type Config struct {
 	CacheRoot     string
 	MaxSessions   int
 	MaxCacheBytes int64
+	RequireDSP    bool
 }
 type session struct {
 	description             Description

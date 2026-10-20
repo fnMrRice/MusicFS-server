@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/src/plugindb"
 	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
 )
 
@@ -21,6 +22,7 @@ type Config struct {
 	Roots               []sourceaccess.RootConfig
 	StateDir            string
 	DatabasePath        string
+	DatabaseBackend     plugindb.BackendConfig
 	Disabled            bool
 	SnapshotIdleTimeout time.Duration
 	SnapshotMaxLifetime time.Duration
