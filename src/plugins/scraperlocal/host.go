@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/instanceid"
+	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
@@ -50,7 +52,7 @@ func NewHost(config Config) (*Host, error) {
 	if config.MaxConcurrent == 0 {
 		config.MaxConcurrent = 2
 	}
-	if config.MaxConcurrent < 1 || config.MaxConcurrent > 4 || len(config.InstanceID) < 1 || len(config.InstanceID) > 128 {
+	if config.MaxConcurrent < 1 || config.MaxConcurrent > 4 || !instanceid.Valid(config.InstanceID) {
 		return nil, fmt.Errorf("INVALID_ARGUMENT: invalid scraper host configuration")
 	}
 	if config.WorkDir != "" {
@@ -176,7 +178,7 @@ func (h *Host) Open(parent context.Context, scope pluginproto.Context, target en
 	if err = peer.Call(startup, "host.hello", hello, &ready); err != nil {
 		return nil, err
 	}
-	if ready.Manifest.Validate("scraper") != nil || ready.Manifest.PluginID != PluginID || !slices.Contains(ready.Manifest.Capabilities, "scrape.search") || !slices.Contains(ready.Manifest.Capabilities, "scrape.fetch") || ready.Nonce != nonce || ready.InstanceID != scope.InstanceID {
+	if pluginconfig.ValidateManifest(ready.Manifest, "scraper") != nil || ready.Manifest.PluginID != PluginID || !slices.Contains(ready.Manifest.Capabilities, "scrape.search") || !slices.Contains(ready.Manifest.Capabilities, "scrape.fetch") || ready.Nonce != nonce || ready.InstanceID != scope.InstanceID {
 		return nil, fmt.Errorf("PROTOCOL_MISMATCH: scraper worker identity mismatch")
 	}
 	if err = ctx.Err(); err != nil {

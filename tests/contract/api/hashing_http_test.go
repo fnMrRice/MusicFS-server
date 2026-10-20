@@ -62,8 +62,8 @@ func TestHashHTTPAuthorizationIdempotencyAndCancel(t *testing.T) {
 		source[owner+"/"+track.ID] = target
 		return target
 	}
-	mine := publish("admin", "mine", "version-1")
-	other := publish("other", "private", "version-1")
+	mine := publish("admin", "316664dc-7106-5acd-8df7-88c9d0d9baef", "version-1")
+	other := publish("other", "843558e1-a158-56ac-834a-baffd12bb5c5", "version-1")
 	service, err := hashworker.New(store, source, hashworker.Config{MaxConcurrent: 1, BytesPerSecond: 4194304})
 	if err != nil {
 		t.Fatal(err)
@@ -185,7 +185,7 @@ func TestHashHTTPAuthorizationIdempotencyAndCancel(t *testing.T) {
 		}
 		previous = job
 	}
-	publish("admin", "mine", "version-2")
+	publish("admin", "316664dc-7106-5acd-8df7-88c9d0d9baef", "version-2")
 	if w := request("POST", createPath, "{}", "hash-key-0001", nil); w.Code != 409 {
 		t.Fatalf("changed asset reused an idempotency key: %d %s", w.Code, w.Body.String())
 	}

@@ -4,13 +4,14 @@
   "title": "MusicFS JSON-RPC 2.0 控制面 1.0",
   "oneOf": [{"$ref": "#/$defs/Request"}, {"$ref": "#/$defs/Success"}, {"$ref": "#/$defs/Failure"}, {"$ref": "#/$defs/Cancel"}],
   "$defs": {
+    "InstanceID": {"type": "string", "format": "uuid", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", "not": {"const": "00000000-0000-0000-0000-000000000000"}},
     "PluginIdentity": {"type":"object","additionalProperties":false,"required":["id","name","localizedNames","features"],"properties":{"id":{"type":"string","minLength":1,"maxLength":128},"name":{"type":"string","minLength":1,"maxLength":128},"localizedNames":{"type":"object","maxProperties":64,"propertyNames":{"type":"string","maxLength":63,"pattern":"^[A-Za-z]{1,8}(-[A-Za-z0-9]{1,8})*$"},"additionalProperties":{"type":"string","minLength":1,"maxLength":128}},"features":{"type":"array","maxItems":32,"uniqueItems":true,"items":{"type":"string","minLength":1,"maxLength":64,"pattern":"^[a-z][a-z0-9]*([.-][a-z0-9]+)*$"}}}},
     "ScrapeRef": {"type": "string", "pattern": "^[0-9a-f]{48}$"},
     "ScrapeTarget": {"type": "object", "additionalProperties": false, "required": ["sourceTrackId", "assetId", "assetVersion", "revision"], "properties": {"sourceTrackId": {"type": "string", "minLength": 1, "maxLength": 128}, "assetId": {"type": "string", "minLength": 1, "maxLength": 128}, "assetVersion": {"type": "string", "minLength": 1, "maxLength": 1024}, "revision": {"type": "integer", "minimum": 0}}},
-    "ScrapeContext": {"type": "object", "additionalProperties": false, "required": ["instanceId", "userId", "taskId", "timeoutMs"], "properties": {"instanceId": {"type": "string", "minLength": 1, "maxLength": 128}, "userId": {"type": "string", "minLength": 1, "maxLength": 128}, "taskId": {"type": "string", "minLength": 1, "maxLength": 128}, "accountRef": {"const": ""}, "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000}}},
+    "ScrapeContext": {"type": "object", "additionalProperties": false, "required": ["instanceId", "userId", "taskId", "timeoutMs"], "properties": {"instanceId": {"$ref": "#/$defs/InstanceID"}, "userId": {"type": "string", "minLength": 1, "maxLength": 128}, "taskId": {"type": "string", "minLength": 1, "maxLength": 128}, "accountRef": {"const": ""}, "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000}}},
     "ScrapeQuery": {"type": "object", "additionalProperties": false, "required": ["title", "artists"], "properties": {"title": {"type": "string", "minLength": 0, "maxLength": 4096}, "artists": {"type": "array", "minItems": 0, "maxItems": 32, "items": {"type": "string", "minLength": 0, "maxLength": 1024}}}},
     "ScrapeResource": {"type": "object", "additionalProperties": false, "required": ["resourceRef", "version", "kind", "sizeBytes", "match"], "properties": {"resourceRef": {"$ref": "#/$defs/ScrapeRef"}, "version": {"type": "string", "minLength": 1, "maxLength": 1024}, "kind": {"enum": ["audio", "lyrics", "artwork"]}, "sizeBytes": {"type": "integer", "minimum": 1, "maximum": 8796093022208}, "match": {"enum": ["embedded", "exactStem", "directoryCover"]}}, "allOf": [{"if": {"properties": {"kind": {"const": "audio"}}}, "then": {"properties": {"match": {"const": "embedded"}}}, "else": {"properties": {"match": {"enum": ["exactStem", "directoryCover"]}}}}, {"if": {"properties": {"kind": {"const": "lyrics"}}}, "then": {"properties": {"match": {"const": "exactStem"}}}}]},
-    "ScrapeHello": {"type": "object", "additionalProperties": false, "required": ["protocolVersion", "instanceId", "nonce", "configRevision", "context", "target", "baseUrl"], "properties": {"protocolVersion": {"const": "1.0"}, "instanceId": {"type": "string", "minLength": 1, "maxLength": 128}, "nonce": {"$ref": "#/$defs/ScrapeRef"}, "configRevision": {"const": "1"}, "context": {"$ref": "#/$defs/ScrapeContext"}, "target": {"$ref": "#/$defs/ScrapeTarget"}, "baseUrl": {"type": "string", "pattern": "^http://127\\.0\\.0\\.1:[1-9][0-9]{0,4}/[0-9a-f]{48}$"}}},
+    "ScrapeHello": {"type": "object", "additionalProperties": false, "required": ["protocolVersion", "instanceId", "nonce", "configRevision", "context", "target", "baseUrl"], "properties": {"protocolVersion": {"const": "1.0"}, "instanceId": {"$ref": "#/$defs/InstanceID"}, "nonce": {"$ref": "#/$defs/ScrapeRef"}, "configRevision": {"const": "1"}, "context": {"$ref": "#/$defs/ScrapeContext"}, "target": {"$ref": "#/$defs/ScrapeTarget"}, "baseUrl": {"type": "string", "pattern": "^http://127\\.0\\.0\\.1:[1-9][0-9]{0,4}/[0-9a-f]{48}$"}}},
     "ScrapeSearch": {"type": "object", "additionalProperties": false, "required": ["context", "target", "fields", "languages", "resources"], "properties": {"context": {"$ref": "#/$defs/ScrapeContext"}, "target": {"$ref": "#/$defs/ScrapeTarget"}, "fields": {"type": "array", "minItems": 1, "maxItems": 2, "items": {"enum": ["lyrics", "artwork"]}, "uniqueItems": true}, "languages": {"type": "array", "minItems": 0, "maxItems": 16, "items": {"type": "string", "minLength": 1, "maxLength": 35}}, "query": {"$ref": "#/$defs/ScrapeQuery"}, "resources": {"type": "array", "minItems": 0, "maxItems": 32, "items": {"$ref": "#/$defs/ScrapeResource"}}}},
     "ScrapeCandidate": {"type": "object", "additionalProperties": false, "required": ["candidateId", "target", "field", "language", "format", "mime", "sizeBytes", "sha256", "origin", "resourceRef", "resourceVersion", "basis", "status", "failureCode"], "properties": {"candidateId": {"$ref": "#/$defs/ScrapeRef"}, "target": {"$ref": "#/$defs/ScrapeTarget"}, "field": {"enum": ["lyrics", "artwork"]}, "language": {"type": "string", "minLength": 0, "maxLength": 35}, "format": {"enum": ["", "text", "lrc", "png", "jpeg"]}, "mime": {"enum": ["", "text/plain; charset=utf-8", "image/png", "image/jpeg"]}, "sizeBytes": {"type": "integer", "minimum": 0, "maximum": 8388608}, "sha256": {"type": "string", "pattern": "^(?:[0-9a-f]{64})?$"}, "origin": {"enum": ["embedded", "sidecar"]}, "resourceRef": {"$ref": "#/$defs/ScrapeRef"}, "resourceVersion": {"type": "string", "minLength": 1, "maxLength": 1024}, "basis": {"type": "string", "minLength": 0, "maxLength": 64}, "status": {"enum": ["available", "unavailable"]}, "failureCode": {"enum": [null, "UNSUPPORTED"]}}, "allOf": [{"if": {"properties": {"status": {"const": "unavailable"}}}, "then": {"properties": {"format": {"const": ""}, "mime": {"const": ""}, "sha256": {"const": ""}, "sizeBytes": {"const": 0}, "failureCode": {"const": "UNSUPPORTED"}}}, "else": {"properties": {"sizeBytes": {"minimum": 1}, "sha256": {"$ref": "#/$defs/SHA256"}, "failureCode": {"type": "null"}}, "oneOf": [{"properties": {"field": {"const": "lyrics"}, "format": {"enum": ["text", "lrc"]}, "mime": {"const": "text/plain; charset=utf-8"}, "sizeBytes": {"maximum": 1048576}}}, {"properties": {"field": {"const": "artwork"}, "format": {"const": "png"}, "mime": {"const": "image/png"}}}, {"properties": {"field": {"const": "artwork"}, "format": {"const": "jpeg"}, "mime": {"const": "image/jpeg"}}}]}}]},
     "ScrapeIssue": {"type": "object", "additionalProperties": false, "required": ["resourceRef", "code"], "properties": {"resourceRef": {"$ref": "#/$defs/ScrapeRef"}, "code": {"enum": ["UNSUPPORTED", "RESOURCE_CHANGED"]}}},
@@ -529,6 +530,8 @@
     "Manifest": {
       "type": "object",
       "required": [
+        "plugin",
+        "supportsMultipleInstances",
         "pluginId",
         "pluginVersion",
         "protocolVersion",
@@ -542,6 +545,7 @@
       ],
       "properties": {
         "plugin": {"$ref": "#/$defs/PluginIdentity"},
+        "supportsMultipleInstances": {"type": "boolean", "default": false},
         "pluginId": {
           "$ref": "#/$defs/ID"
         },
@@ -622,15 +626,16 @@
     },
     "Context": {
       "type": "object", "additionalProperties": false, "required": ["instanceId", "userId", "taskId", "timeoutMs"],
-      "properties": {"instanceId": {"$ref": "#/$defs/ID"}, "userId": {"$ref": "#/$defs/ID"}, "taskId": {"$ref": "#/$defs/ID"}, "accountRef": {"$ref": "#/$defs/ID"}, "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 3600000}}
+      "properties": {"instanceId": {"$ref": "#/$defs/InstanceID"}, "userId": {"$ref": "#/$defs/ID"}, "taskId": {"$ref": "#/$defs/ID"}, "accountRef": {"$ref": "#/$defs/ID"}, "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 3600000}}
     },
     "Hello": {
       "type": "object", "additionalProperties": false, "required": ["protocolVersion", "instanceId", "nonce", "configRevision"],
-      "properties": {"protocolVersion": {"const": "1.0"}, "instanceId": {"$ref": "#/$defs/ID"}, "nonce": {"$ref": "#/$defs/ID"}, "configRevision": {"$ref": "#/$defs/ID"}, "capabilities": {"$ref": "#/$defs/AudioCapabilities"}}
+      "properties": {"protocolVersion": {"const": "1.0"}, "instanceId": {"$ref": "#/$defs/InstanceID"}, "nonce": {"$ref": "#/$defs/ID"}, "configRevision": {"$ref": "#/$defs/ID"}, "taskId": {"$ref": "#/$defs/ID", "description": "单次解码器任务握手必填；独立于配置实例 UUID。"}, "capabilities": {"$ref": "#/$defs/AudioCapabilities"}}
     },
+    "DecoderHello": {"allOf": [{"$ref": "#/$defs/Hello"}], "required": ["taskId"]},
     "Ready": {
       "type": "object", "required": ["manifest", "instanceId", "nonce"],
-      "properties": {"manifest": {"$ref": "#/$defs/Manifest"}, "instanceId": {"$ref": "#/$defs/ID"}, "nonce": {"$ref": "#/$defs/ID"}}
+      "properties": {"manifest": {"$ref": "#/$defs/Manifest"}, "instanceId": {"$ref": "#/$defs/InstanceID"}, "nonce": {"$ref": "#/$defs/ID"}}
     },
     "ScanRequest": {
       "type": "object",

@@ -56,14 +56,14 @@ func createFingerprintExtractor(ctx context.Context, c config.Config, audio *aud
 // occupy the only foreground NCM playback slot when maxProcessing is one.
 func fingerprintNCMDecoder(c config.Config, log *slog.Logger) *ncmdecoder.Processor {
 	for _, plugin := range c.Plugins {
-		if plugin.PluginID != "musicfs.ncm" || !plugin.Enabled {
+		if plugin.PluginID != "musicfs.plugin.decoder.ncm" || !plugin.Enabled {
 			continue
 		}
 		for _, instance := range plugin.Instances {
-			if !instance.Enabled || instance.Role != "audio" {
+			if !instance.Enabled {
 				continue
 			}
-			decoder, err := ncmdecoder.NewProcessor(ncmdecoder.Config{WorkerPath: plugin.Executable, WorkerArgs: plugin.Args, WorkerSHA256: expectedChecksum(plugin.SHA256, plugin.Executable), WorkDir: c.DataRoot, MaxConcurrent: 1})
+			decoder, err := ncmdecoder.NewProcessor(ncmdecoder.Config{InstanceID: instance.InstanceID, WorkerPath: plugin.Executable, WorkerArgs: plugin.Args, WorkerSHA256: expectedChecksum(plugin.SHA256, plugin.Executable), WorkDir: c.DataRoot, MaxConcurrent: 1})
 			if err != nil {
 				log.Warn("fingerprint NCM decoding unavailable", "errorCode", pluginproto.ErrorCode(err))
 				return nil

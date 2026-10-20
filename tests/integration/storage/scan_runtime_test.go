@@ -30,7 +30,7 @@ func TestQueuedScanRejectsChangedRuntimeBeforeOpeningWorker(t *testing.T) {
 				t.Fatal(err)
 			}
 			declaration := pluginconfig.LocalFiles()
-			r := library.Runtime{ID: "local", Name: "Local", Owner: "admin", ConfigRevision: "config-v1", Configuration: declaration, ImportDefaults: declaration.ImportDefaults, RootNames: map[string]string{"music": "Music"}, Worker: &pluginhost.Worker{Access: access, Manifest: pluginproto.Manifest{PluginID: "musicfs.localfiles", PluginVersion: "0.2.0"}}}
+			r := library.Runtime{ID: "local", Name: "Local", Owner: "admin", ConfigRevision: "config-v1", Configuration: declaration, ImportDefaults: declaration.ImportDefaults, RootNames: map[string]string{"music": "Music"}, Worker: &pluginhost.Worker{Access: access, Manifest: pluginproto.Manifest{PluginID: "musicfs.plugin.source.localfiles", PluginVersion: "0.2.0"}}}
 			queue := jobs.New(s)
 			planner := library.New(s, queue, []library.Runtime{r}, nil)
 			plan, err := planner.BuildScanPlan(ctx, "admin", "local", library.ScanInput{Mode: "full", SchemaRevision: declaration.SchemaRevision, RootIDs: []string{"music"}})

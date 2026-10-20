@@ -55,7 +55,7 @@ func TestActualInstallationBundleScanAudioWebAndExit(t *testing.T) {
 		if filepath.Base(p.Executable) != "musicfs-plugins"+suffix || len(p.Args) != 2 || p.Args[0] != "--plugin" {
 			t.Fatal("installation does not use the shared plugin executable")
 		}
-		if p.PluginID == "musicfs.localfiles" {
+		if p.PluginID == "musicfs.plugin.source.localfiles" {
 			for _, instance := range p.Instances {
 				if len(instance.Config.MusicRoots) != 0 || !instance.PendingConfiguration {
 					t.Fatal("installation must start without selected import directories")
@@ -98,16 +98,16 @@ func TestActualInstallationBundleScanAudioWebAndExit(t *testing.T) {
 	for i := range cfg.Plugins {
 		p := &cfg.Plugins[i]
 		switch p.PluginID {
-		case "musicfs.localfiles", "musicfs.ncm", "musicfs.scraper.local":
+		case "musicfs.plugin.source.localfiles", "musicfs.plugin.decoder.ncm", "musicfs.scraper.local":
 			p.Enabled = true
 			for j := range p.Instances {
 				p.Instances[j].Enabled = true
-				if p.PluginID == "musicfs.localfiles" {
+				if p.PluginID == "musicfs.plugin.source.localfiles" {
 					p.Instances[j].Permissions = &config.Permissions{ReadDirectories: []string{music}}
 					p.Instances[j].Config.MusicRoots = []config.MusicRoot{{ID: "local", Name: "Installation fixtures", Path: music}}
 				}
 			}
-		case "musicfs.audio.ffmpeg":
+		case "musicfs.plugin.decoder.ffmpeg":
 			p.Enabled = true
 			p.Instances[0].Enabled = true
 			p.Instances[0].Config = config.InstanceConfig{FFmpegPath: ffmpeg, FFprobePath: ffprobe}

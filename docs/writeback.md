@@ -10,7 +10,7 @@ writeBack:
   allowOverwrite: false
   maxFileBytes: 8589934592
   roots:
-    - instanceId: local
+    - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51
       rootId: local
       fields: [lyrics, artwork]
 ```

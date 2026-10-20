@@ -33,19 +33,19 @@ func TestYAMLScanExclusionsRealWorkerAndSafeReconciliation(t *testing.T) {
 	}
 	rules := []string{"private", "**/skip?.wav"}
 	cfg, base := yamlServiceConfig(t)
-	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.localfiles", Executable: worker, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Name: "Local", Role: "provider", Enabled: true, ImportDefaults: &pluginproto.ImportOverrides{ExcludePatterns: &rules}, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "root", Name: "Music", Path: music}}}}}}}
+	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: worker, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Name: "Local", Enabled: true, ImportDefaults: &pluginproto.ImportOverrides{ExcludePatterns: &rules}, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "root", Name: "Music", Path: music}}}}}}}
 	var before map[string]library.Track
 	t.Run("scan", func(t *testing.T) {
 		startNCMServer(t, cfg, base)
 		c := login(t, base, cfg.AdminToken)
-		request := providerScanRequest(t, c, "local")
+		request := providerScanRequest(t, c, "b1548e96-3081-5c9c-8376-bf290e369d51")
 		sequence := 0
 		submit := func(options map[string]any) jobs.Job {
 			sequence++
 			request["options"] = options
 			accepted := albumRequest[struct {
 				JobID string `json:"jobId"`
-			}](t, c, "POST", "/provider-instances/local/scan-jobs", request, fmt.Sprintf("exclude-scan-%04d", sequence), 202, "ScanAccepted")
+			}](t, c, "POST", "/provider-instances/b1548e96-3081-5c9c-8376-bf290e369d51/scan-jobs", request, fmt.Sprintf("exclude-scan-%04d", sequence), 202, "ScanAccepted")
 			return waitScanOptions(t, c, accepted.JobID)
 		}
 		list := func() map[string]library.Track {
@@ -78,30 +78,30 @@ func TestYAMLScanExclusionsRealWorkerAndSafeReconciliation(t *testing.T) {
 		request["options"] = map[string]any{"excludePatterns": []string{"private", "**/skip?.wav"}}
 		first := albumRequest[struct {
 			JobID string `json:"jobId"`
-		}](t, c, "POST", "/provider-instances/local/scan-jobs", request, "exclude-order-key", 202, "ScanAccepted")
+		}](t, c, "POST", "/provider-instances/b1548e96-3081-5c9c-8376-bf290e369d51/scan-jobs", request, "exclude-order-key", 202, "ScanAccepted")
 		request["options"] = map[string]any{"excludePatterns": []string{"**/skip?.wav", "private"}}
 		second := albumRequest[struct {
 			JobID string `json:"jobId"`
-		}](t, c, "POST", "/provider-instances/local/scan-jobs", request, "exclude-order-key", 202, "ScanAccepted")
+		}](t, c, "POST", "/provider-instances/b1548e96-3081-5c9c-8376-bf290e369d51/scan-jobs", request, "exclude-order-key", 202, "ScanAccepted")
 		if first.JobID != second.JobID {
 			t.Fatal("same exclusion set failed idempotent replay")
 		}
 		request["options"] = map[string]any{"excludePatterns": []string{}}
-		albumRequest[json.RawMessage](t, c, "POST", "/provider-instances/local/scan-jobs", request, "exclude-order-key", 409, "Error")
+		albumRequest[json.RawMessage](t, c, "POST", "/provider-instances/b1548e96-3081-5c9c-8376-bf290e369d51/scan-jobs", request, "exclude-order-key", 409, "Error")
 		waitScanOptions(t, c, first.JobID)
 		for index, invalid := range []any{nil, "private", []string{"../private"}, []string{"a", "a"}, []string{"C:/private"}, []string{`a\b`}} {
 			request["options"] = map[string]any{"excludePatterns": invalid}
-			albumRequest[json.RawMessage](t, c, "POST", "/provider-instances/local/scan-jobs", request, fmt.Sprintf("bad-exclude-%04d", index), 400, "Error")
+			albumRequest[json.RawMessage](t, c, "POST", "/provider-instances/b1548e96-3081-5c9c-8376-bf290e369d51/scan-jobs", request, fmt.Sprintf("bad-exclude-%04d", index), 400, "Error")
 		}
 	})
 	t.Run("restart-and-remove-exclusion", func(t *testing.T) {
 		startNCMServer(t, cfg, base)
 		c := login(t, base, cfg.AdminToken)
-		request := providerScanRequest(t, c, "local")
+		request := providerScanRequest(t, c, "b1548e96-3081-5c9c-8376-bf290e369d51")
 		request["options"] = map[string]any{"excludePatterns": []string{}}
 		accepted := albumRequest[struct {
 			JobID string `json:"jobId"`
-		}](t, c, "POST", "/provider-instances/local/scan-jobs", request, "exclude-after-restart", 202, "ScanAccepted")
+		}](t, c, "POST", "/provider-instances/b1548e96-3081-5c9c-8376-bf290e369d51/scan-jobs", request, "exclude-after-restart", 202, "ScanAccepted")
 		waitScanOptions(t, c, accepted.JobID)
 		page := albumRequest[library.Page](t, c, "GET", "/source-tracks", nil, "", 200, "SourceTracks")
 		for _, track := range page.Items {

@@ -25,7 +25,7 @@ func (c Config) validateWriteBack() error {
 	}
 	instances := map[string]instanceGrant{}
 	for _, plugin := range c.Plugins {
-		if plugin.PluginID != "musicfs.localfiles" {
+		if plugin.PluginID != "musicfs.plugin.source.localfiles" {
 			continue
 		}
 		for _, instance := range plugin.Instances {

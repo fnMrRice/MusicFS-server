@@ -24,7 +24,7 @@ func TestOnlineHTTPAccountRevisionFollowsValidatedLogin(t *testing.T) {
 	server, _, _ := libraryHTTP(t)
 	cookie, _ := login(t, server)
 	p := &revisionOnlineProvider{view: online.AccountView{State: "signedIn", AccountID: "12345", Revision: "login-1"}}
-	r := onlinehost.Runtime{Owner: "admin", InstanceID: "net", Platform: online.Netease, ConfigRevision: "r1", Enabled: true, Provider: p}
+	r := onlinehost.Runtime{Owner: "admin", InstanceID: "7fe223d0-a3bd-5e87-87f8-305dc26d9041", Platform: online.Netease, ConfigRevision: "r1", Enabled: true, Provider: p}
 	service, err := onlinehost.New([]onlinehost.Runtime{r})
 	if err != nil {
 		t.Fatal(err)

@@ -28,9 +28,6 @@ func resolvePaths(c *Config, base string) {
 					resolve(&instance.Permissions.ReadDirectories[k])
 				}
 			}
-			if instance.Name == "" {
-				instance.Name = instance.InstanceID
-			}
 			resolve(&instance.Config.FFmpegPath)
 			resolve(&instance.Config.FFprobePath)
 			for k := range instance.Config.MusicRoots {

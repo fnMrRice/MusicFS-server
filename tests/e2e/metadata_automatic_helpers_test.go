@@ -12,9 +12,9 @@ import (
 
 func automaticScan(t *testing.T, c *client, options map[string]any, key string) (string, map[string]library.Track) {
 	t.Helper()
-	input := providerScanRequest(t, c, "local")
+	input := providerScanRequest(t, c, "b1548e96-3081-5c9c-8376-bf290e369d51")
 	input["options"] = options
-	code, raw, _ := c.request(t, "POST", "/api/v1/provider-instances/local/scan-jobs", input, key)
+	code, raw, _ := c.request(t, "POST", "/api/v1/provider-instances/b1548e96-3081-5c9c-8376-bf290e369d51/scan-jobs", input, key)
 	var accepted struct {
 		JobID string `json:"jobId"`
 	}

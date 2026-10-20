@@ -9,7 +9,9 @@ import (
 	"path/filepath"
 
 	"github.com/fnMrRice/MusicFS-server/src/config"
+	"github.com/fnMrRice/MusicFS-server/src/instanceid"
 	"github.com/fnMrRice/MusicFS-server/src/onlinehost"
+	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
@@ -31,7 +33,7 @@ func configureOnline(ctx context.Context, c config.Config, log *slog.Logger) (*o
 			enabled := plugin.CanStart(instance)
 			name := instance.Name
 			if name == "" {
-				name = instance.InstanceID
+				name = pluginconfig.Identity(plugin.PluginID).Name
 			}
 			hash := ""
 			if enabled {
@@ -40,7 +42,11 @@ func configureOnline(ctx context.Context, c config.Config, log *slog.Logger) (*o
 			binding, _ := json.Marshal(struct{ Plugin, Instance, Binary, Schema string }{plugin.PluginID, instance.InstanceID, hash, pluginproto.OnlineRevision})
 			r := onlinehost.Runtime{Owner: "admin", InstanceID: instance.InstanceID, Name: name, Platform: platform, ConfigRevision: fmt.Sprintf("%x", sha256.Sum256(binding)), Enabled: enabled}
 			if enabled {
-				worker, err := pluginhost.StartOnline(ctx, pluginhost.OnlineConfig{Executable: plugin.Executable, Args: plugin.Args, SHA256: hash, StateDir: filepath.Join(c.DataRoot, "online", instance.InstanceID), Platform: platform, UserID: "admin", InstanceID: instance.InstanceID})
+				stateDir, err := instanceid.StateDirectory(filepath.Join(c.DataRoot, "online"), instance.InstanceID)
+				var worker *pluginhost.OnlineWorker
+				if err == nil {
+					worker, err = pluginhost.StartOnline(ctx, pluginhost.OnlineConfig{Executable: plugin.Executable, Args: plugin.Args, SHA256: hash, StateDir: stateDir, Platform: platform, UserID: "admin", InstanceID: instance.InstanceID})
+				}
 				if err != nil {
 					log.Warn("online plugin instance unavailable", "pluginId", plugin.PluginID, "instanceId", instance.InstanceID, "errorCode", pluginproto.ErrorCode(err))
 				} else {

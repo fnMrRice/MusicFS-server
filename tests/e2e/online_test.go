@@ -18,9 +18,9 @@ import (
 func onlinePlugin(platform, program string, ids ...string) config.Plugin {
 	instances := []config.Instance{}
 	for _, id := range ids {
-		instances = append(instances, config.Instance{InstanceID: id, Role: "provider", Enabled: true})
+		instances = append(instances, config.Instance{InstanceID: id, Enabled: true})
 	}
-	return config.Plugin{PluginID: "musicfs." + platform, Executable: program, Enabled: true, Instances: instances}
+	return config.Plugin{PluginID: "musicfs.plugin.source." + platform, Executable: program, Enabled: true, Instances: instances}
 }
 
 func TestOnlineActualServerRequiresPlatformLoginAndDisabledRestart(t *testing.T) {
@@ -44,8 +44,8 @@ func TestOnlineActualServerRequiresPlatformLoginAndDisabledRestart(t *testing.T)
 		t.Fatal(err)
 	}
 	cfg, base := yamlServiceConfig(t)
-	cfg.Plugins = []config.Plugin{onlinePlugin(online.Netease, fixture, "net", "net2"), onlinePlugin(online.QQMusic, qqFixture, "qq"), onlinePlugin(online.AppleMusic, build(t, "musicfs-plugin-applemusic"), "apple")}
-	cfg.Plugins[0].Instances = append(cfg.Plugins[0].Instances, config.Instance{InstanceID: "disabled", Role: "provider"})
+	cfg.Plugins = []config.Plugin{onlinePlugin(online.Netease, fixture, "7fe223d0-a3bd-5e87-87f8-305dc26d9041", "db019d81-1fbb-528c-a9f7-9c47006844a2"), onlinePlugin(online.QQMusic, qqFixture, "b5e86bbe-524b-53fc-bde9-bbe3cbb02a80"), onlinePlugin(online.AppleMusic, build(t, "musicfs-plugin-applemusic"), "2e2b7962-89d2-5815-9804-0d395497f906")}
+	cfg.Plugins[0].Instances = append(cfg.Plugins[0].Instances, config.Instance{InstanceID: "9d986e6a-04fd-522e-b5b5-eb9f28ac4ce6"})
 	t.Run("authenticated-source-scope", func(t *testing.T) {
 		startNCMServer(t, cfg, base)
 		c := login(t, base, cfg.AdminToken)
@@ -57,38 +57,38 @@ func TestOnlineActualServerRequiresPlatformLoginAndDisabledRestart(t *testing.T)
 		}
 		for _, instance := range instances.Items {
 			want := "loginRequired"
-			if instance.InstanceID == "disabled" {
+			if instance.InstanceID == "9d986e6a-04fd-522e-b5b5-eb9f28ac4ce6" {
 				want = "offline"
 			}
 			if instance.Availability != want || instance.AccountID != "" {
 				t.Fatalf("incorrect runtime availability: %+v", instance)
 			}
 		}
-		for _, id := range []string{"net", "net2", "qq", "apple"} {
+		for _, id := range []string{"7fe223d0-a3bd-5e87-87f8-305dc26d9041", "db019d81-1fbb-528c-a9f7-9c47006844a2", "b5e86bbe-524b-53fc-bde9-bbe3cbb02a80", "2e2b7962-89d2-5815-9804-0d395497f906"} {
 			code, raw, _ := c.request(t, "GET", "/api/v1/online-instances/"+id+"/search?q=sample", nil, "")
 			if code != 403 {
 				t.Fatalf("anonymous query allowed: %s %d %s", id, code, raw)
 			}
 		}
-		code, raw, _ := c.request(t, "POST", "/api/v1/online-instances/net/account", map[string]string{"action": "begin"}, "")
+		code, raw, _ := c.request(t, "POST", "/api/v1/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/account", map[string]string{"action": "begin"}, "")
 		var begin online.AccountView
 		if code != 200 || json.Unmarshal(raw, &begin) != nil {
 			t.Fatalf("begin: %d %s", code, raw)
 		}
 		time.Sleep(3100 * time.Millisecond)
-		code, raw, _ = c.request(t, "POST", "/api/v1/online-instances/net/account", map[string]string{"action": "poll", "loginId": begin.LoginID}, "")
+		code, raw, _ = c.request(t, "POST", "/api/v1/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/account", map[string]string{"action": "poll", "loginId": begin.LoginID}, "")
 		if code != 200 {
 			t.Fatalf("poll: %d %s", code, raw)
 		}
 		time.Sleep(1010 * time.Millisecond)
-		page := albumRequest[online.SearchPage](t, c, "GET", "/online-instances/net/search?q=Synthetic&limit=1", nil, "", 200, "OnlineSearchPage")
+		page := albumRequest[online.SearchPage](t, c, "GET", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/search?q=Synthetic&limit=1", nil, "", 200, "OnlineSearchPage")
 		if len(page.Tracks) != 1 || page.Tracks[0].ExternalID != "42" {
 			t.Fatal("real worker metadata was not delivered")
 		}
 		for _, tc := range []struct {
 			path   string
 			status int
-		}{{"net/search?q=Synthetic&limit=1", 429}, {"disabled/search?q=Synthetic", 503}, {"apple/search?q=Synthetic", 403}, {"qq/search?q=Synthetic", 403}} {
+		}{{"7fe223d0-a3bd-5e87-87f8-305dc26d9041/search?q=Synthetic&limit=1", 429}, {"9d986e6a-04fd-522e-b5b5-eb9f28ac4ce6/search?q=Synthetic", 503}, {"2e2b7962-89d2-5815-9804-0d395497f906/search?q=Synthetic", 403}, {"b5e86bbe-524b-53fc-bde9-bbe3cbb02a80/search?q=Synthetic", 403}} {
 			code, raw, _ := c.request(t, "GET", "/api/v1/online-instances/"+tc.path, nil, "")
 			if code != tc.status {
 				t.Fatalf("bounded platform failure %s: %d %s", tc.path, code, raw)
@@ -96,35 +96,35 @@ func TestOnlineActualServerRequiresPlatformLoginAndDisabledRestart(t *testing.T)
 			testkit.ValidateHTTP(t, "Error", raw)
 		}
 		time.Sleep(1050 * time.Millisecond)
-		track := albumRequest[online.Track](t, c, "GET", "/online-instances/net/tracks/42", nil, "", 200, "OnlineTrack")
+		track := albumRequest[online.Track](t, c, "GET", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/tracks/42", nil, "", 200, "OnlineTrack")
 		if track.PlaybackAvailability != "unknown" || track.MetadataDigest == "" {
 			t.Fatal("metadata was incorrectly advertised as audio")
 		}
 		time.Sleep(1050 * time.Millisecond)
-		recommendations := albumRequest[online.RecommendationPage](t, c, "GET", "/online-instances/net/recommendations?limit=1", nil, "", 200, "OnlineRecommendationPage")
+		recommendations := albumRequest[online.RecommendationPage](t, c, "GET", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/recommendations?limit=1", nil, "", 200, "OnlineRecommendationPage")
 		if recommendations.Personalized || recommendations.NextCursor != nil {
 			t.Fatal("recommendation personalization is not verified")
 		}
 		time.Sleep(1050 * time.Millisecond)
-		observation := albumRequest[online.PlaylistObservation](t, c, "GET", "/online-instances/net/playlists/91", nil, "", 200, "OnlineObservation")
+		observation := albumRequest[online.PlaylistObservation](t, c, "GET", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/playlists/91", nil, "", 200, "OnlineObservation")
 		if !observation.Complete || observation.Consistency != online.Unversioned || len(observation.Entries) != 3 || observation.Entries[0].ExternalTrackID != observation.Entries[1].ExternalTrackID {
 			t.Fatal("playlist occurrences or observation semantics changed")
 		}
-		for _, id := range []string{"net", "qq", "apple"} {
+		for _, id := range []string{"7fe223d0-a3bd-5e87-87f8-305dc26d9041", "b5e86bbe-524b-53fc-bde9-bbe3cbb02a80", "2e2b7962-89d2-5815-9804-0d395497f906"} {
 			code, raw, _ := c.request(t, "POST", "/api/v1/online-instances/"+id+"/tracks/42/resolve", struct{}{}, "")
 			want := 403
-			if id == "net" {
+			if id == "7fe223d0-a3bd-5e87-87f8-305dc26d9041" {
 				want = 415
 			}
 			if code != want {
 				t.Fatalf("unsupported audio resolve: %d %s", code, raw)
 			}
 		}
-		code, raw, _ = c.request(t, "POST", "/api/v1/online-instances/net/account", map[string]string{"action": "logout"}, "")
+		code, raw, _ = c.request(t, "POST", "/api/v1/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/account", map[string]string{"action": "logout"}, "")
 		if code != 200 {
 			t.Fatalf("logout: %d %s", code, raw)
 		}
-		code, raw, _ = c.request(t, "GET", "/api/v1/online-instances/net/search?q=sample", nil, "")
+		code, raw, _ = c.request(t, "GET", "/api/v1/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/search?q=sample", nil, "")
 		if code != 403 {
 			t.Fatalf("query after logout: %d %s", code, raw)
 		}
@@ -136,7 +136,7 @@ func TestOnlineActualServerRequiresPlatformLoginAndDisabledRestart(t *testing.T)
 		}
 		startNCMServer(t, cfg, base)
 		c := login(t, base, cfg.AdminToken)
-		code, raw, _ := c.request(t, "GET", "/api/v1/online-instances/net/search?q=Synthetic", nil, "")
+		code, raw, _ := c.request(t, "GET", "/api/v1/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/search?q=Synthetic", nil, "")
 		if code != 503 {
 			t.Fatalf("disabled provider was used: %d %s", code, raw)
 		}

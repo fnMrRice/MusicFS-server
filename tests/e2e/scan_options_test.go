@@ -86,10 +86,10 @@ func TestYAMLPluginImportOptionsHTTPAndScopedLibrary(t *testing.T) {
 	}
 	disabled := false
 	cfg, base := yamlServiceConfig(t)
-	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Name: "Safe display name", Role: "provider", Enabled: true, ImportDefaults: &pluginproto.ImportOverrides{Recursive: &disabled}, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "one", Name: "第一目录", Path: first}, {ID: "two", Name: "第二目录", Path: second}}}}}}}
+	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Name: "Safe display name", Enabled: true, ImportDefaults: &pluginproto.ImportOverrides{Recursive: &disabled}, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "one", Name: "第一目录", Path: first}, {ID: "two", Name: "第二目录", Path: second}}}}}}}
 	startNCMServer(t, cfg, base)
 	c := login(t, base, cfg.AdminToken)
-	request := providerScanRequest(t, c, "local")
+	request := providerScanRequest(t, c, "b1548e96-3081-5c9c-8376-bf290e369d51")
 	_, raw, _ := c.request(t, "GET", "/api/v1/provider-instances", nil, "")
 	for _, secret := range []string{first, second, provider, cfg.AdminToken, "rootIdentity", "configRevision", "stateDir"} {
 		encoded, _ := json.Marshal(secret)
@@ -107,7 +107,7 @@ func TestYAMLPluginImportOptionsHTTPAndScopedLibrary(t *testing.T) {
 	sequence := 0
 	submit := func(body map[string]any) jobs.Job {
 		sequence++
-		code, bodyRaw, _ := c.request(t, "POST", "/api/v1/provider-instances/local/scan-jobs", body, fmt.Sprintf("scope-scan-%04d", sequence))
+		code, bodyRaw, _ := c.request(t, "POST", "/api/v1/provider-instances/b1548e96-3081-5c9c-8376-bf290e369d51/scan-jobs", body, fmt.Sprintf("scope-scan-%04d", sequence))
 		if code != 202 {
 			t.Fatalf("submit scope: %d %s", code, bodyRaw)
 		}
@@ -174,22 +174,22 @@ func TestYAMLPluginImportOptionsHTTPAndScopedLibrary(t *testing.T) {
 		{map[string]any{"options": map[string]any{"privatePath": "private"}}, 400, "INVALID_ARGUMENT"},
 		{map[string]any{"options": nil}, 400, "INVALID_ARGUMENT"},
 	} {
-		body := providerScanRequest(t, c, "local")
+		body := providerScanRequest(t, c, "b1548e96-3081-5c9c-8376-bf290e369d51")
 		for k, v := range tc.patch {
 			body[k] = v
 		}
-		status, bodyRaw, _ := c.request(t, "POST", "/api/v1/provider-instances/local/scan-jobs", body, fmt.Sprintf("invalid-scope-%04d", i))
+		status, bodyRaw, _ := c.request(t, "POST", "/api/v1/provider-instances/b1548e96-3081-5c9c-8376-bf290e369d51/scan-jobs", body, fmt.Sprintf("invalid-scope-%04d", i))
 		if status != tc.status || !strings.Contains(string(bodyRaw), `"code":"`+tc.code+`"`) {
 			t.Fatalf("invalid case %d: %d %s", i, status, bodyRaw)
 		}
 		testkit.ValidateHTTP(t, "Error", bodyRaw)
 	}
-	request = providerScanRequest(t, c, "local")
-	status, firstRaw, _ := c.request(t, "POST", "/api/v1/provider-instances/local/scan-jobs", request, "scope-idempotency-0001")
+	request = providerScanRequest(t, c, "b1548e96-3081-5c9c-8376-bf290e369d51")
+	status, firstRaw, _ := c.request(t, "POST", "/api/v1/provider-instances/b1548e96-3081-5c9c-8376-bf290e369d51/scan-jobs", request, "scope-idempotency-0001")
 	if status != 202 {
 		t.Fatal(status)
 	}
-	status, replayed, _ := c.request(t, "POST", "/api/v1/provider-instances/local/scan-jobs", request, "scope-idempotency-0001")
+	status, replayed, _ := c.request(t, "POST", "/api/v1/provider-instances/b1548e96-3081-5c9c-8376-bf290e369d51/scan-jobs", request, "scope-idempotency-0001")
 	var firstAccepted, replayAccepted struct {
 		JobID string `json:"jobId"`
 	}
@@ -199,7 +199,7 @@ func TestYAMLPluginImportOptionsHTTPAndScopedLibrary(t *testing.T) {
 		t.Fatalf("same effective plan was not replayed: %d %s", status, replayed)
 	}
 	request["options"] = map[string]any{"recursive": true}
-	status, raw, _ = c.request(t, "POST", "/api/v1/provider-instances/local/scan-jobs", request, "scope-idempotency-0001")
+	status, raw, _ = c.request(t, "POST", "/api/v1/provider-instances/b1548e96-3081-5c9c-8376-bf290e369d51/scan-jobs", request, "scope-idempotency-0001")
 	if status != 409 {
 		t.Fatalf("changed plan reused key: %d %s", status, raw)
 	}

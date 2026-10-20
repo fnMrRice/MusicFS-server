@@ -103,7 +103,7 @@ func TestManagedLocalDisableRequiresRestartAndSettingsRebuildWatch(t *testing.T)
 	}
 	cfg, base := yamlServiceConfig(t)
 	watch := &config.WatchConfig{Enabled: true, DebounceMs: 100, MaxDelayMs: 300, FullRescanSeconds: 30}
-	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.localfiles", Enabled: true, Executable: provider, Instances: []config.Instance{{InstanceID: "local", Name: "Music", Role: "provider", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "music", Name: "Music", Path: music}}, Watch: watch}}}}}
+	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Enabled: true, Executable: provider, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Name: "Music", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "music", Name: "Music", Path: music}}, Watch: watch}}}}}
 	path := writeYAMLConfiguration(t, cfg)
 	stop := startAudioYAMLServer(t, path, cfg, base)
 	defer func() { stop() }()
@@ -116,7 +116,7 @@ func TestManagedLocalDisableRequiresRestartAndSettingsRebuildWatch(t *testing.T)
 	if code != 201 || json.Unmarshal(raw, &playing) != nil {
 		t.Fatalf("playback before saved disable: %d %s", code, raw)
 	}
-	operation := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/local/state", map[string]any{"enabled": false, "mode": "drain"})
+	operation := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/b1548e96-3081-5c9c-8376-bf290e369d51/state", map[string]any{"enabled": false, "mode": "drain"})
 	waitLibraryOperation(t, c, operation.ID)
 	if !operation.RestartRequired {
 		t.Fatal("saved instance disable omitted restart requirement")
@@ -165,7 +165,7 @@ func TestManagedLocalDisableRequiresRestartAndSettingsRebuildWatch(t *testing.T)
 		t.Fatal(err)
 	}
 	tracks = waitManagedLibraryTracks(t, c, 2)
-	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/local/state", map[string]any{"enabled": true, "mode": "drain"})
+	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/b1548e96-3081-5c9c-8376-bf290e369d51/state", map[string]any{"enabled": true, "mode": "drain"})
 	waitLibraryOperation(t, c, operation.ID)
 	if operation.RestartRequired {
 		t.Fatal("undoing pending disable still required restart")
@@ -173,12 +173,12 @@ func TestManagedLocalDisableRequiresRestartAndSettingsRebuildWatch(t *testing.T)
 	if tracks["first.wav"].ID != first.ID {
 		t.Fatal("pending disable changed source identity")
 	}
-	if tracks = scanProvider(t, c, "local", "managed-explicit-rescan"); len(tracks) != 2 {
+	if tracks = scanProvider(t, c, "b1548e96-3081-5c9c-8376-bf290e369d51", "managed-explicit-rescan"); len(tracks) != 2 {
 		t.Fatal("explicit scan after undoing disable lost tracks", tracks)
 	}
-	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/local/configuration", map[string]any{"name": "Updated music", "watch": watch})
+	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/b1548e96-3081-5c9c-8376-bf290e369d51/configuration", map[string]any{"name": "Updated music", "watch": watch})
 	waitLibraryOperation(t, c, operation.ID)
-	code, raw, _ = c.request(t, "GET", "/api/v1/admin/plugin-instances/local/configuration", nil, "")
+	code, raw, _ = c.request(t, "GET", "/api/v1/admin/plugin-instances/b1548e96-3081-5c9c-8376-bf290e369d51/configuration", nil, "")
 	if code != 200 || !bytes.Contains(raw, []byte("Updated music")) || bytes.Contains(raw, []byte(music)) {
 		t.Fatalf("configuration read leaked path or lost settings: %d %s", code, raw)
 	}
@@ -195,12 +195,12 @@ func TestManagedLocalDisableRequiresRestartAndSettingsRebuildWatch(t *testing.T)
 	if err != nil || strings.Contains(string(stored), "Updated music") {
 		t.Fatal("runtime settings changed deployment YAML", err)
 	}
-	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/local/state", map[string]any{"enabled": false, "mode": "force"})
+	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/b1548e96-3081-5c9c-8376-bf290e369d51/state", map[string]any{"enabled": false, "mode": "force"})
 	waitLibraryOperation(t, c, operation.ID)
 	stop()
 	stop = startAudioYAMLServer(t, path, cfg, base)
 	c = login(t, base, cfg.AdminToken)
-	code, raw, _ = c.request(t, "GET", "/api/v1/admin/plugin-instances/local/configuration", nil, "")
+	code, raw, _ = c.request(t, "GET", "/api/v1/admin/plugin-instances/b1548e96-3081-5c9c-8376-bf290e369d51/configuration", nil, "")
 	if code != 200 || !bytes.Contains(raw, []byte("Updated music")) {
 		t.Fatalf("database configuration was not restored: %d %s", code, raw)
 	}
@@ -208,9 +208,9 @@ func TestManagedLocalDisableRequiresRestartAndSettingsRebuildWatch(t *testing.T)
 	if code != 503 || !bytes.Contains(raw, []byte("PLUGIN_DISABLED")) {
 		t.Fatalf("server restart did not apply saved disable: %d %s", code, raw)
 	}
-	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/local/state", map[string]any{"enabled": true})
+	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/b1548e96-3081-5c9c-8376-bf290e369d51/state", map[string]any{"enabled": true})
 	waitLibraryOperation(t, c, operation.ID)
-	tracks = scanProvider(t, c, "local", "database-restart-rescan")
+	tracks = scanProvider(t, c, "b1548e96-3081-5c9c-8376-bf290e369d51", "database-restart-rescan")
 	if len(tracks) != 3 || tracks["first.wav"].ID != first.ID {
 		t.Fatal("restart lost configured roots or stable identity")
 	}

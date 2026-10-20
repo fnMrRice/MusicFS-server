@@ -13,6 +13,8 @@ import (
 	"strings"
 
 	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/instanceid"
+	"github.com/fnMrRice/MusicFS-server/src/pluginid"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 	_ "modernc.org/sqlite"
 )
@@ -48,7 +50,11 @@ func Open(ctx context.Context, path, plugin, instance string) (*Store, error) {
 		db.Close()
 		return nil, err
 	}
-	return &Store{db: db, scope: plugin + "\x00" + instance}, nil
+	if err := migratePluginScopes(ctx, db); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return &Store{db: db, scope: pluginid.Canonical(plugin) + "\x00" + instanceid.Canonical(instance)}, nil
 }
 
 func (s *Store) Close() error { return s.db.Close() }

@@ -17,8 +17,8 @@ func TestScanRetryHTTPProjectionAndOriginalOperation(t *testing.T) {
 		t.Run(code, func(t *testing.T) {
 			server, store, cookie := libraryHTTP(t)
 			ctx := context.Background()
-			plan := testkit.ScanPlan("mine")
-			queued, _, err := store.Enqueue(ctx, "admin", "mine", plan, "http-retry-request")
+			plan := testkit.ScanPlan("316664dc-7106-5acd-8df7-88c9d0d9baef")
+			queued, _, err := store.Enqueue(ctx, "admin", "316664dc-7106-5acd-8df7-88c9d0d9baef", plan, "http-retry-request")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -64,7 +64,7 @@ func TestScanRetryHTTPProjectionAndOriginalOperation(t *testing.T) {
 			if current.Status != want || current.Error == nil || current.Error.RequestID == "" || current.AttemptCount != 1 || current.RetryCount != 0 {
 				t.Fatal("wrong public transition", current)
 			}
-			if store.ProviderScanState(ctx, "admin", "mine") != want {
+			if store.ProviderScanState(ctx, "admin", "316664dc-7106-5acd-8df7-88c9d0d9baef") != want {
 				t.Fatal("provider state hid retry/pause")
 			}
 			persisted, err := store.GetJob(ctx, "admin", queued.ID)
@@ -74,7 +74,7 @@ func TestScanRetryHTTPProjectionAndOriginalOperation(t *testing.T) {
 			if persisted.Error.RequestID != "" {
 				t.Fatal("HTTP request identity polluted persistent error")
 			}
-			replayed, merged, err := store.Enqueue(ctx, "admin", "mine", plan, "http-retry-request")
+			replayed, merged, err := store.Enqueue(ctx, "admin", "316664dc-7106-5acd-8df7-88c9d0d9baef", plan, "http-retry-request")
 			if err != nil || !merged || !reflect.DeepEqual(replayed, persisted) {
 				t.Fatal("original operation replenished retry budget", err)
 			}

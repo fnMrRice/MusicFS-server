@@ -19,7 +19,7 @@ func (c Config) validateMetadata() error {
 					active++
 				}
 			}
-			if plugin.PluginID == "musicfs.localfiles" && enabled {
+			if plugin.PluginID == "musicfs.plugin.source.localfiles" && enabled {
 				defaults, err := EffectiveImportDefaults(plugin.PluginID, instance)
 				if err != nil {
 					return err

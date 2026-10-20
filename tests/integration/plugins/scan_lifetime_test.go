@@ -28,7 +28,7 @@ func TestRealWorkerScanSnapshotLifetime(t *testing.T) {
 			wave(t, filepath.Join(root.Path, fmt.Sprintf("track-%02d.wav", i)))
 		}
 	}
-	base := pluginhost.Config{Executable: executable, SHA256: fmt.Sprintf("%x", sum), InstanceID: "snapshot-test", UserID: "owner", Roots: roots}
+	base := pluginhost.Config{Executable: executable, SHA256: fmt.Sprintf("%x", sum), InstanceID: "5f751e43-6592-5801-9c14-9f8cd2f1cc33", UserID: "owner", Roots: roots}
 	start := func(t *testing.T, cfg pluginhost.Config) (*pluginhost.Worker, context.Context) {
 		t.Helper()
 		cfg.StateDir = t.TempDir()

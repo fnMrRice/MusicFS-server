@@ -71,8 +71,8 @@ func TestNCMServerRoundTripAndDisabledPlugin(t *testing.T) {
 			cfg := config.Config{ConfigVersion: 1, Listen: address, AllowLoopbackHTTP: true, AllowedOrigins: []string{base}, AdminToken: domain.NewID(), DataRoot: filepath.Join(dir, "data"), MediaRoot: filepath.Join(dir, "media"), CacheRoot: filepath.Join(dir, "cache"), MaxSessions: 8, MaxProcessing: 2, MaxCacheBytes: cacheBudget, SessionTTLSeconds: 3600,
 				Hashing: config.HashingConfig{MaxConcurrent: 1, BytesPerSecond: 4 << 20},
 				Plugins: []config.Plugin{
-					{PluginID: "musicfs.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Name: "NCM test", Role: "provider", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "NCM test", Path: music}}}}}},
-					{PluginID: "musicfs.ncm", Executable: decoder, Enabled: enabled, Instances: []config.Instance{{InstanceID: "ncm-default", Role: "audio", Enabled: true}}},
+					{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Name: "NCM test", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "NCM test", Path: music}}}}}},
+					{PluginID: "musicfs.plugin.decoder.ncm", Executable: decoder, Enabled: enabled, Instances: []config.Instance{{InstanceID: "96412f52-9ff4-5a82-9eaa-7644a5837cda", Enabled: true}}},
 				}}
 			startNCMServer(t, cfg, base)
 			c := login(t, base, cfg.AdminToken)
@@ -185,7 +185,7 @@ func startNCMServer(t *testing.T, cfg config.Config, base string) {
 
 func scanNCM(t *testing.T, c *client) map[string]library.Track {
 	t.Helper()
-	return scanProvider(t, c, "local", "ncm-scan-0001")
+	return scanProvider(t, c, "b1548e96-3081-5c9c-8376-bf290e369d51", "ncm-scan-0001")
 }
 
 func scanProvider(t *testing.T, c *client, provider, key string) map[string]library.Track {

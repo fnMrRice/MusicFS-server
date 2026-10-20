@@ -23,9 +23,9 @@ func TestPlaylistsHTTPProvenanceHiddenConfirmationPrivacyAndRevisions(t *testing
 	ctx := context.Background()
 	tracks := map[string]library.Track{}
 	for _, owner := range []string{"admin", "other"} {
-		provider, names := "mine", []string{"a", "b", "c"}
+		provider, names := "316664dc-7106-5acd-8df7-88c9d0d9baef", []string{"a", "b", "c"}
 		if owner == "other" {
-			provider, names = "private", []string{"private"}
+			provider, names = "843558e1-a158-56ac-834a-baffd12bb5c5", []string{"private"}
 		}
 		if _, _, err := store.Enqueue(ctx, owner, provider, testkit.ScanPlan(provider), "playlist-fixture"); err != nil {
 			t.Fatal(err)

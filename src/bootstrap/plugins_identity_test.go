@@ -26,7 +26,7 @@ func TestConfiguredLocalProviderHasPluginIdentityWithoutStartingWorker(t *testin
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			cfg := config.Config{DataRoot: t.TempDir(), Plugins: []config.Plugin{{
-				PluginID: "musicfs.localfiles", Enabled: scenario.plugin,
+				PluginID: "musicfs.plugin.source.localfiles", Enabled: scenario.plugin,
 				// Disabled and unconfigured providers must not require an executable.
 				Executable: "missing-worker", Instances: []config.Instance{{
 					InstanceID: "renamed-local-instance", Name: "Administrator alias",
@@ -44,7 +44,7 @@ func TestConfiguredLocalProviderHasPluginIdentityWithoutStartingWorker(t *testin
 					t.Fatal("inactive local provider lost its plugin declaration", attempt)
 				}
 				provider := providers[0]
-				if provider.Plugin.ID != "musicfs.localfiles" || provider.Plugin.Name != "Local Music" || provider.Plugin.LocalizedNames["zh-Hans"] != "本地音乐" || provider.Availability != "offline" || len(provider.Capabilities) != 0 {
+				if provider.Plugin.ID != "musicfs.plugin.source.localfiles" || provider.Plugin.Name != "Local Music" || provider.Plugin.LocalizedNames["zh-Hans"] != "本地音乐" || provider.Availability != "offline" || len(provider.Capabilities) != 0 {
 					t.Fatalf("invalid inactive provider: %+v", provider)
 				}
 				if provider.Name != "Administrator alias" {

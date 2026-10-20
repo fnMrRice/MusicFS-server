@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"reflect"
 	"runtime"
 	"slices"
 	"sync"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/src/accountstore"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
@@ -26,13 +28,14 @@ type OnlineConfig struct {
 }
 
 type OnlineWorker struct {
-	accountMu    sync.Mutex
-	accountStore *accountstore.Store
-	config       OnlineConfig
-	peer         *pluginproto.Peer
-	cancel       context.CancelFunc
-	done         chan struct{}
-	descriptor   pluginproto.OnlineDescriptor
+	accountMu      sync.Mutex
+	accountDisplay accountDisplaySnapshot
+	accountStore   *accountstore.Store
+	config         OnlineConfig
+	peer           *pluginproto.Peer
+	cancel         context.CancelFunc
+	done           chan struct{}
+	descriptor     pluginproto.OnlineDescriptor
 }
 
 func StartOnline(parent context.Context, config OnlineConfig) (*OnlineWorker, error) {
@@ -129,12 +132,15 @@ func StartOnline(parent context.Context, config OnlineConfig) (*OnlineWorker, er
 		return nil, onlineError(startup, err)
 	}
 	var ready pluginproto.Ready
-	if pluginproto.DecodeOnline(raw, &ready) != nil || ready.Nonce != nonce || ready.InstanceID != config.InstanceID || pluginproto.ValidateOnlineManifest(ready.Manifest, config.Platform) != nil || !slices.Contains(ready.Manifest.Systems, runtime.GOOS) || !slices.Contains(ready.Manifest.Architectures, runtime.GOARCH) {
+	if pluginproto.DecodeOnline(raw, &ready) != nil || ready.Nonce != nonce || ready.InstanceID != config.InstanceID || pluginconfig.ValidateManifest(ready.Manifest, "provider") != nil || pluginproto.ValidateOnlineManifest(ready.Manifest, config.Platform) != nil || !slices.Contains(ready.Manifest.Systems, runtime.GOOS) || !slices.Contains(ready.Manifest.Architectures, runtime.GOARCH) {
 		return nil, domain.Fail("PROTOCOL_MISMATCH", "Online worker handshake mismatch")
 	}
 	w.descriptor, err = w.Describe(startup)
 	if err != nil {
 		return nil, err
+	}
+	if !reflect.DeepEqual(ready.Manifest.Plugin, w.descriptor.Plugin) {
+		return nil, domain.Fail("PROTOCOL_MISMATCH", "Online plugin display identity changed during startup")
 	}
 	if err = w.initializeAccount(startup); err != nil {
 		return nil, err
@@ -167,6 +173,10 @@ func (w *OnlineWorker) Close() error {
 func (w *OnlineWorker) Done() <-chan struct{} { return w.done }
 func (w *OnlineWorker) Descriptor() pluginproto.OnlineDescriptor {
 	return w.descriptor.Clone()
+}
+
+func (w *OnlineWorker) PluginIdentity() *pluginproto.PluginIdentity {
+	return w.descriptor.Plugin.Clone()
 }
 
 // Keep paths private; only identity and verified capabilities are public.

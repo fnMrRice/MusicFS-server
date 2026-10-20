@@ -97,7 +97,7 @@ func badWorker(mode string) {
 			if err := pluginproto.DecodeOnline(raw, &hello); err != nil {
 				return nil, err
 			}
-			return pluginproto.Ready{InstanceID: hello.InstanceID, Nonce: hello.Nonce, Manifest: pluginproto.Manifest{PluginID: "musicfs.netease", PluginVersion: "0.1.0", ProtocolVersion: "1.0", Roles: []string{"provider"}, Capabilities: pluginproto.OnlineCapabilities(online.Netease), Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems}}, nil
+			return pluginproto.Ready{InstanceID: hello.InstanceID, Nonce: hello.Nonce, Manifest: pluginproto.Manifest{PluginID: "musicfs.plugin.source.netease", Plugin: provideronline.Describe(online.Netease).Plugin, SupportsMultipleInstances: true, PluginVersion: "0.1.0", ProtocolVersion: "1.0", Roles: []string{"provider"}, Capabilities: pluginproto.OnlineCapabilities(online.Netease), Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems}}, nil
 		}
 		if method == "provider.online.describe" {
 			var r pluginproto.OnlineScope

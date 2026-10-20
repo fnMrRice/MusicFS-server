@@ -113,10 +113,10 @@ func yamlField(node *yaml.Node, key string) *yaml.Node {
 
 func validateDocumentShape(root *yaml.Node) error {
 	instance := mappingShape(map[string]fieldShape{
-		"instanceId": stringShape, "name": stringShape, "role": stringShape,
+		"instanceId": stringShape, "name": stringShape,
 		"enabled": boolShape, "config": {tag: "!!map"}, "importDefaults": importDefaultsShape(),
 		"permissions": mappingShape(map[string]fieldShape{"readDirectories": sequenceShape(stringShape)}, "readDirectories"),
-	}, "instanceId", "role", "config")
+	}, "instanceId", "config")
 	plugin := mappingShape(map[string]fieldShape{
 		"pluginId": stringShape, "executable": stringShape, "sha256": stringShape,
 		"args":    sequenceShape(stringShape),
@@ -165,11 +165,11 @@ func validateDocumentShape(root *yaml.Node) error {
 		id := yamlField(plugin, "pluginId")
 		var settings fieldShape
 		switch id.Value {
-		case "musicfs.localfiles":
+		case "musicfs.plugin.source.localfiles":
 			settings = mappingShape(map[string]fieldShape{"musicRoots": sequenceShape(musicRoot), "watch": watchShape()})
-		case "musicfs.audio.ffmpeg":
+		case "musicfs.plugin.decoder.ffmpeg":
 			settings = mappingShape(map[string]fieldShape{"ffmpegPath": stringShape, "ffprobePath": stringShape})
-		case "musicfs.ncm", "musicfs.scraper.local", "musicfs.netease", "musicfs.qqmusic", "musicfs.applemusic":
+		case "musicfs.plugin.decoder.ncm", "musicfs.scraper.local", "musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic":
 			settings = mappingShape(map[string]fieldShape{})
 		default:
 			return nodeError(id, "config.plugins[].pluginId", "unsupported plugin")

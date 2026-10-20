@@ -28,9 +28,9 @@ func TestAlbumsHTTPIdentityCoverRevisionPrivacyAndPagination(t *testing.T) {
 	ctx := context.Background()
 	tracks := map[string][]library.Track{}
 	for _, owner := range []string{"admin", "other"} {
-		provider := "mine"
+		provider := "316664dc-7106-5acd-8df7-88c9d0d9baef"
 		if owner == "other" {
-			provider = "private"
+			provider = "843558e1-a158-56ac-834a-baffd12bb5c5"
 		}
 		if _, _, err := store.Enqueue(ctx, owner, provider, testkit.ScanPlan(provider), "album-fixture-scan"); err != nil {
 			t.Fatal(err)
@@ -63,7 +63,7 @@ func TestAlbumsHTTPIdentityCoverRevisionPrivacyAndPagination(t *testing.T) {
 	t.Cleanup(func() { files.Close() })
 	content := mediastore.NewContent(store, store, files)
 	server.RegisterMedia(content)
-	providers := library.New(store, jobs.New(store), []library.Runtime{{ID: "mine", Owner: "admin"}, {ID: "private", Owner: "other"}}, nil)
+	providers := library.New(store, jobs.New(store), []library.Runtime{{ID: "316664dc-7106-5acd-8df7-88c9d0d9baef", Owner: "admin"}, {ID: "843558e1-a158-56ac-834a-baffd12bb5c5", Owner: "other"}}, nil)
 	server.RegisterAlbums(albums.New(store, content, providers))
 	var pngBytes bytes.Buffer
 	if err := png.Encode(&pngBytes, image.NewRGBA(image.Rect(0, 0, 2, 2))); err != nil {
@@ -79,7 +79,7 @@ func TestAlbumsHTTPIdentityCoverRevisionPrivacyAndPagination(t *testing.T) {
 		return object
 	}
 	art, outside, privateArt := artwork("admin", 0, "album-art-1"), artwork("admin", 1, "album-art-2"), artwork("other", 0, "album-art-private")
-	private, err := store.CreateSourceAlbum(ctx, "other", albums.CreateSourceAlbumRequest{ProviderInstanceID: "private", Name: "Private album", SourceTrackIDs: []string{tracks["other"][0].ID}}, "private-album-create")
+	private, err := store.CreateSourceAlbum(ctx, "other", albums.CreateSourceAlbumRequest{ProviderInstanceID: "843558e1-a158-56ac-834a-baffd12bb5c5", Name: "Private album", SourceTrackIDs: []string{tracks["other"][0].ID}}, "private-album-create")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +151,7 @@ func TestAlbumsHTTPIdentityCoverRevisionPrivacyAndPagination(t *testing.T) {
 	}
 	create := func(source, key string) albums.SourceAlbum {
 		t.Helper()
-		w := request("POST", "/source-albums", map[string]any{"providerInstanceId": "mine", "name": " 同名专辑 ", "sourceTrackIds": []string{source}}, key, nil)
+		w := request("POST", "/source-albums", map[string]any{"providerInstanceId": "316664dc-7106-5acd-8df7-88c9d0d9baef", "name": " 同名专辑 ", "sourceTrackIds": []string{source}}, key, nil)
 		var a albums.SourceAlbum
 		if w.Code != 201 || json.Unmarshal(w.Body.Bytes(), &a) != nil {
 			t.Fatalf("create album: %d %s", w.Code, w.Body.String())
@@ -167,7 +167,7 @@ func TestAlbumsHTTPIdentityCoverRevisionPrivacyAndPagination(t *testing.T) {
 	if again := create(tracks["admin"][0].ID, "album-one-create"); again.ID != one.ID {
 		t.Fatal("create replay changed identity")
 	}
-	valid := map[string]any{"providerInstanceId": "mine", "name": "Another", "sourceTrackIds": []string{tracks["admin"][0].ID}}
+	valid := map[string]any{"providerInstanceId": "316664dc-7106-5acd-8df7-88c9d0d9baef", "name": "Another", "sourceTrackIds": []string{tracks["admin"][0].ID}}
 	for _, tc := range []struct {
 		name   string
 		body   any
@@ -177,13 +177,13 @@ func TestAlbumsHTTPIdentityCoverRevisionPrivacyAndPagination(t *testing.T) {
 		{"auth", valid, 401, func(r *http.Request) { r.Header.Del("Cookie") }},
 		{"csrf", valid, 403, func(r *http.Request) { r.Header.Del("X-CSRF-Token") }},
 		{"origin", valid, 403, func(r *http.Request) { r.Header.Set("Origin", "https://untrusted.invalid") }},
-		{"null-members", map[string]any{"providerInstanceId": "mine", "name": "x", "sourceTrackIds": nil}, 400, nil},
-		{"missing-members", map[string]any{"providerInstanceId": "mine", "name": "x"}, 400, nil},
-		{"private-member", map[string]any{"providerInstanceId": "mine", "name": "x", "sourceTrackIds": []string{tracks["other"][0].ID}}, 404, nil},
-		{"private-empty-provider", map[string]any{"providerInstanceId": "private", "name": "x", "sourceTrackIds": []string{}}, 404, nil},
-		{"unknown-empty-provider", map[string]any{"providerInstanceId": "absent", "name": "x", "sourceTrackIds": []string{}}, 404, nil},
-		{"duplicate", map[string]any{"providerInstanceId": "mine", "name": "x", "sourceTrackIds": []string{tracks["admin"][0].ID, tracks["admin"][0].ID}}, 400, nil},
-		{"path", map[string]any{"providerInstanceId": "mine", "name": "x", "sourceTrackIds": []string{}, "path": "bad"}, 400, nil},
+		{"null-members", map[string]any{"providerInstanceId": "316664dc-7106-5acd-8df7-88c9d0d9baef", "name": "x", "sourceTrackIds": nil}, 400, nil},
+		{"missing-members", map[string]any{"providerInstanceId": "316664dc-7106-5acd-8df7-88c9d0d9baef", "name": "x"}, 400, nil},
+		{"private-member", map[string]any{"providerInstanceId": "316664dc-7106-5acd-8df7-88c9d0d9baef", "name": "x", "sourceTrackIds": []string{tracks["other"][0].ID}}, 404, nil},
+		{"private-empty-provider", map[string]any{"providerInstanceId": "843558e1-a158-56ac-834a-baffd12bb5c5", "name": "x", "sourceTrackIds": []string{}}, 404, nil},
+		{"unknown-empty-provider", map[string]any{"providerInstanceId": "ffe1a974-bec2-5351-b78f-6062ea893b84", "name": "x", "sourceTrackIds": []string{}}, 404, nil},
+		{"duplicate", map[string]any{"providerInstanceId": "316664dc-7106-5acd-8df7-88c9d0d9baef", "name": "x", "sourceTrackIds": []string{tracks["admin"][0].ID, tracks["admin"][0].ID}}, 400, nil},
+		{"path", map[string]any{"providerInstanceId": "316664dc-7106-5acd-8df7-88c9d0d9baef", "name": "x", "sourceTrackIds": []string{}, "path": "bad"}, 400, nil},
 	} {
 		w := request("POST", "/source-albums", tc.body, "album-test-"+tc.name, tc.change)
 		if w.Code != tc.status {

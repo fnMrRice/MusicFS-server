@@ -18,8 +18,8 @@ import (
 
 func directoryManager(t *testing.T, paths []string) *plugincontrol.Manager {
 	t.Helper()
-	i := config.Instance{InstanceID: "local", Role: "provider", Enabled: true, PendingConfiguration: true, Permissions: &config.Permissions{ReadDirectories: paths}}
-	m, err := plugincontrol.New(context.Background(), config.Config{Plugins: []config.Plugin{{PluginID: "musicfs.localfiles", Enabled: true, Instances: []config.Instance{i}}}}, nil, nil)
+	i := config.Instance{InstanceID: localInstanceID, Name: "Local", Enabled: true, PendingConfiguration: true, Permissions: &config.Permissions{ReadDirectories: paths}}
+	m, err := plugincontrol.New(context.Background(), config.Config{Plugins: []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Enabled: true, Instances: []config.Instance{i}}}}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestDirectoryHTTPPendingRootsPermissionsAndQueries(t *testing.T) {
 	}
 	m := directoryManager(t, []string{music, missing})
 	server, cookies := managementHTTP(t, m)
-	const route = "/admin/plugin-instances/local/directories"
+	const route = "/admin/plugin-instances/" + localInstanceID + "/directories"
 	for role, status := range map[string]int{"": 401, "user": 403} {
 		requireHTTP(t, managementRequest(server, cookies[role], "GET", route, "", "", ""), status, "")
 	}
@@ -73,7 +73,7 @@ func TestDirectoryHTTPPendingRootsPermissionsAndQueries(t *testing.T) {
 			requireHTTP(t, managementRequest(server, cookies["admin"], "GET", route+"?path="+url.QueryEscape(path), "", "", ""), 400, "INVALID_ARGUMENT")
 		}
 	}
-	projection, err := m.Configuration("local")
+	projection, err := m.Configuration(localInstanceID)
 	if err != nil || len(projection.Roots) != 0 {
 		t.Fatal("browsing changed selected roots", err)
 	}
@@ -98,7 +98,7 @@ func TestDirectoryPaginationAndCursorScope(t *testing.T) {
 		if pages > 5 {
 			t.Fatal("pagination did not finish")
 		}
-		page, err := m.Directories(context.Background(), "local", music, cursor)
+		page, err := m.Directories(context.Background(), localInstanceID, music, cursor)
 		if err != nil || len(page.Items) > 100 {
 			t.Fatalf("invalid directory page: %+v %v", page, err)
 		}
@@ -116,12 +116,12 @@ func TestDirectoryPaginationAndCursorScope(t *testing.T) {
 	if len(seen) != 215 {
 		t.Fatal("pagination lost directories", len(seen))
 	}
-	_, err := m.Directories(context.Background(), "local", "", cursor)
+	_, err := m.Directories(context.Background(), localInstanceID, "", cursor)
 	code(t, err, "CURSOR_EXPIRED")
 	if err := os.Mkdir(filepath.Join(music, "added"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	_, err = m.Directories(context.Background(), "local", music, cursor)
+	_, err = m.Directories(context.Background(), localInstanceID, music, cursor)
 	code(t, err, "CURSOR_EXPIRED")
 }
 
@@ -132,11 +132,11 @@ func TestDirectoryHTTPSelectionPersistsChildWithoutExpandingAuthority(t *testing
 		t.Fatal(err)
 	}
 	server, cookies := managementHTTP(t, m)
-	const route = "/admin/plugin-instances/local/configuration"
+	const route = "/admin/plugin-instances/" + localInstanceID + "/configuration"
 	body, _ := json.Marshal(map[string]any{"musicRoots": []config.MusicRoot{{ID: "collection", Name: "Collection", Path: selected}}})
 	w := managementRequest(server, cookies["admin"], "PUT", route, string(body), m.Snapshot().Revision, "select-child")
 	requireHTTP(t, w, 202, "")
-	_, instance, err := m.InstanceConfig("local")
+	_, instance, err := m.InstanceConfig(localInstanceID)
 	if err != nil || len(instance.Config.MusicRoots) != 1 || instance.Config.MusicRoots[0].Path != selected {
 		t.Fatal("child directory was not selected", err)
 	}
@@ -148,11 +148,11 @@ func TestDirectoryHTTPSelectionPersistsChildWithoutExpandingAuthority(t *testing
 	if strings.Contains(w.Body.String(), "private-music-root") {
 		t.Fatal("configuration projection leaked absolute paths")
 	}
-	page, err := m.Directories(context.Background(), "local", allowed, "")
+	page, err := m.Directories(context.Background(), localInstanceID, allowed, "")
 	if err != nil || len(page.Items) != 1 || page.Items[0].ConfiguredRootID == nil || *page.Items[0].ConfiguredRootID != "collection" || page.ConfiguredRootID != nil {
 		t.Fatal("selected child identity missing", page, err)
 	}
-	page, err = m.Directories(context.Background(), "local", selected, "")
+	page, err = m.Directories(context.Background(), localInstanceID, selected, "")
 	if err != nil || page.ConfiguredRootID == nil || *page.ConfiguredRootID != "collection" {
 		t.Fatal("current directory identity missing", page, err)
 	}

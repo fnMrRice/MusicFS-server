@@ -99,7 +99,7 @@ func TestYAMLHashJobsOriginalBytesCancelAndPlayback(t *testing.T) {
 	}
 	cfg, base := yamlServiceConfig(t)
 	cfg.Hashing.BytesPerSecond = 1 << 20
-	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Role: "provider", Enabled: true,
+	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true,
 		Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "music", Name: "Hash fixtures", Path: music}}}}}}}
 	startNCMServer(t, cfg, base)
 	c := login(t, base, cfg.AdminToken)
@@ -174,7 +174,7 @@ func TestYAMLHashJobsOriginalBytesCancelAndPlayback(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(music, "original.wav"), changed, 0600); err != nil {
 		t.Fatal(err)
 	}
-	updated := scanProvider(t, c, "local", "hash-rescan-0001")["original.wav"]
+	updated := scanProvider(t, c, "b1548e96-3081-5c9c-8376-bf290e369d51", "hash-rescan-0001")["original.wav"]
 	if updated.ID != tracks["original.wav"].ID || updated.AssetID == tracks["original.wav"].AssetID || updated.Asset.FileSHA512 != nil || updated.Asset.HashStatus != "unknown" {
 		t.Fatal("same-size source replacement retained old verification")
 	}

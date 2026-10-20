@@ -14,7 +14,7 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
-const writeBackGrant = "[{instanceId: local, rootId: root, fields: [lyrics, artwork]}]"
+const writeBackGrant = "[{instanceId: b1548e96-3081-5c9c-8376-bf290e369d51, rootId: root, fields: [lyrics, artwork]}]"
 
 func TestWriteBackConfigurationStrictGrantsAndDefaults(t *testing.T) {
 	doc, err := parse(t, minimalYAML)
@@ -44,11 +44,11 @@ func TestWriteBackConfigurationStrictGrantsAndDefaults(t *testing.T) {
 		"null-grants":        {"{roots: null}", false},
 		"unknown":            {"{privatePath: forbidden}", false},
 		"bad-bool":           {"{enabled: 'true'}", false},
-		"missing-fields":     {"{roots: [{instanceId: local, rootId: root}]}", false},
-		"empty-fields":       {"{roots: [{instanceId: local, rootId: root, fields: []}]}", false},
-		"duplicate-fields":   {"{roots: [{instanceId: local, rootId: root, fields: [lyrics,lyrics]}]}", false},
-		"unsupported-fields": {"{roots: [{instanceId: local, rootId: root, fields: [title]}]}", false},
-		"root-path":          {"{roots: [{instanceId: local, rootId: root, fields: [lyrics], path: forbidden}]}", false},
+		"missing-fields":     {"{roots: [{instanceId: b1548e96-3081-5c9c-8376-bf290e369d51, rootId: root}]}", false},
+		"empty-fields":       {"{roots: [{instanceId: b1548e96-3081-5c9c-8376-bf290e369d51, rootId: root, fields: []}]}", false},
+		"duplicate-fields":   {"{roots: [{instanceId: b1548e96-3081-5c9c-8376-bf290e369d51, rootId: root, fields: [lyrics,lyrics]}]}", false},
+		"unsupported-fields": {"{roots: [{instanceId: b1548e96-3081-5c9c-8376-bf290e369d51, rootId: root, fields: [title]}]}", false},
+		"root-path":          {"{roots: [{instanceId: b1548e96-3081-5c9c-8376-bf290e369d51, rootId: root, fields: [lyrics], path: forbidden}]}", false},
 	} {
 		t.Run(name, func(t *testing.T) {
 			raw := minimalYAML + pluginYAML + "writeBack: " + tc.value + "\n"
@@ -75,9 +75,9 @@ func TestWriteBackReferencesEnablementAndClone(t *testing.T) {
 	base := minimalYAML + pluginYAML
 	for name, raw := range map[string]string{
 		"unknown-instance":  base + "writeBack: {roots: [{instanceId: missing, rootId: root, fields: [lyrics]}]}\n",
-		"nonlocal-instance": base + "writeBack: {roots: [{instanceId: audio, rootId: root, fields: [lyrics]}]}\n",
-		"unknown-root":      base + "writeBack: {roots: [{instanceId: local, rootId: missing, fields: [lyrics]}]}\n",
-		"duplicate-root":    base + "writeBack: {roots: [{instanceId: local, rootId: root, fields: [lyrics]}, {instanceId: local, rootId: root, fields: [artwork]}]}\n",
+		"nonlocal-instance": base + "writeBack: {roots: [{instanceId: 7edbaa88-7094-5657-ac43-37c118ef4f77, rootId: root, fields: [lyrics]}]}\n",
+		"unknown-root":      base + "writeBack: {roots: [{instanceId: b1548e96-3081-5c9c-8376-bf290e369d51, rootId: missing, fields: [lyrics]}]}\n",
+		"duplicate-root":    base + "writeBack: {roots: [{instanceId: b1548e96-3081-5c9c-8376-bf290e369d51, rootId: root, fields: [lyrics]}, {instanceId: b1548e96-3081-5c9c-8376-bf290e369d51, rootId: root, fields: [artwork]}]}\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			if _, err := parse(t, raw); err == nil {

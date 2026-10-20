@@ -63,14 +63,14 @@ func TestImportOverridesNormalizeEachLayer(t *testing.T) {
 
 func TestInstanceImportDefaultsStrictAndCloned(t *testing.T) {
 	withDefaults := func(value string) string {
-		return strings.Replace(minimalYAML+pluginYAML, "        role: provider\n", "        role: provider\n        importDefaults: "+value+"\n", 1)
+		return strings.Replace(minimalYAML+pluginYAML, "      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n", "      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n        importDefaults: "+value+"\n", 1)
 	}
 	for _, value := range []string{"{recursive: false}", "{recursive: true, maxDepth: 0}", "{recursive: true, maxDepth: 1}", "{maxDepth: 0}", "{maxDepth: 64}", "{}"} {
 		doc, err := parse(t, withDefaults(value))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err = config.EffectiveImportDefaults("musicfs.localfiles", doc.Config.Plugins[0].Instances[0]); err != nil {
+		if _, err = config.EffectiveImportDefaults("musicfs.plugin.source.localfiles", doc.Config.Plugins[0].Instances[0]); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -80,7 +80,7 @@ func TestInstanceImportDefaultsStrictAndCloned(t *testing.T) {
 			t.Fatalf("invalid import defaults accepted or disclosed: %s %v", value, err)
 		}
 	}
-	wrong := strings.Replace(minimalYAML+pluginYAML, "      - instanceId: ncm\n", "      - instanceId: ncm\n        importDefaults: {}\n", 1)
+	wrong := strings.Replace(minimalYAML+pluginYAML, "      - instanceId: d1971de9-e153-57c6-ac53-82dfb631da0b\n", "      - instanceId: d1971de9-e153-57c6-ac53-82dfb631da0b\n        importDefaults: {}\n", 1)
 	if _, err := parse(t, wrong); err == nil {
 		t.Fatal("audio plugin accepted import defaults")
 	}

@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/instanceid"
+	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
@@ -46,7 +48,7 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 	}
 	if method == "host.hello" {
 		var hello helloRequest
-		if decode(raw, &hello) != nil || w.hello.Nonce != "" || hello.ProtocolVersion != pluginproto.ProtocolVersion || hello.ConfigRevision != "1" || hello.InstanceID != hello.Context.InstanceID {
+		if decode(raw, &hello) != nil || w.hello.Nonce != "" || hello.ProtocolVersion != pluginproto.ProtocolVersion || hello.ConfigRevision != "1" || !instanceid.Valid(hello.InstanceID) || hello.InstanceID != hello.Context.InstanceID {
 			return nil, fmt.Errorf("PROTOCOL_MISMATCH: invalid scraper handshake")
 		}
 		u, err := validateBaseURL(hello.BaseURL, hello.Nonce)
@@ -59,7 +61,7 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 		}
 		w.hello = hello
 		w.client = localClient(u.Host)
-		return pluginproto.Ready{InstanceID: hello.InstanceID, Nonce: hello.Nonce, Manifest: pluginproto.Manifest{PluginID: PluginID, PluginVersion: "0.1.0", ProtocolVersion: pluginproto.ProtocolVersion, Roles: []string{"scraper"}, Capabilities: []string{"scrape.search", "scrape.fetch", "lyrics", "artwork"}, Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: enrichment.MaxCandidates}}, nil
+		return pluginproto.Ready{InstanceID: hello.InstanceID, Nonce: hello.Nonce, Manifest: pluginproto.Manifest{PluginID: PluginID, Plugin: pluginconfig.Identity(PluginID), PluginVersion: "0.1.0", ProtocolVersion: pluginproto.ProtocolVersion, SupportsMultipleInstances: pluginconfig.SupportsMultipleInstances("musicfs.scraper.local"), Roles: []string{pluginconfig.Role("musicfs.scraper.local")}, Capabilities: []string{"scrape.search", "scrape.fetch", "lyrics", "artwork"}, Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: enrichment.MaxCandidates}}, nil
 	}
 	if w.hello.Nonce == "" {
 		return nil, fmt.Errorf("PROTOCOL_MISMATCH: scraper handshake required")

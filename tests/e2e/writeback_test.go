@@ -47,8 +47,8 @@ func TestWriteBackActualServerPlaybackGateSelectionAndRestart(t *testing.T) {
 	}
 	cfg, base := yamlServiceConfig(t)
 	cfg.Plugins = []config.Plugin{
-		{PluginID: "musicfs.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Role: "provider", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Synthetic writeback", Path: music}, {ID: "read-only-policy", Name: "No write grant", Path: ungranted}}}}}},
-		{PluginID: "musicfs.audio.ffmpeg", Executable: audio, Enabled: true, Instances: []config.Instance{{InstanceID: "audio-default", Role: "audio", Enabled: true, Config: config.InstanceConfig{FFmpegPath: ffmpeg, FFprobePath: ffprobe}}}},
+		{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Synthetic writeback", Path: music}, {ID: "read-only-policy", Name: "No write grant", Path: ungranted}}}}}},
+		{PluginID: "musicfs.plugin.decoder.ffmpeg", Executable: audio, Enabled: true, Instances: []config.Instance{{InstanceID: "16b003e5-1bab-52bb-be10-0e83ec1c40ea", Enabled: true, Config: config.InstanceConfig{FFmpegPath: ffmpeg, FFprobePath: ffprobe}}}},
 	}
 	var target mediastore.ContentTarget
 	var request writebackhost.Request
@@ -105,7 +105,7 @@ func TestWriteBackActualServerPlaybackGateSelectionAndRestart(t *testing.T) {
 	if target.SourceTrackID == "" {
 		t.Fatal("initial phase failed")
 	}
-	cfg.WriteBack = config.WriteBackConfig{Enabled: true, MaxFileBytes: 8 << 30, Roots: []config.WriteBackRoot{{InstanceID: "local", RootID: "local", Fields: []string{"lyrics", "artwork"}}}}
+	cfg.WriteBack = config.WriteBackConfig{Enabled: true, MaxFileBytes: 8 << 30, Roots: []config.WriteBackRoot{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", RootID: "local", Fields: []string{"lyrics", "artwork"}}}}
 	t.Run("explicit-grant-and-playback-gate", func(t *testing.T) {
 		startNCMServer(t, cfg, base)
 		c := login(t, base, cfg.AdminToken)
@@ -277,7 +277,7 @@ func writeBackCapability(t *testing.T, c *client) library.RootWriteBack {
 	}
 	testkit.ValidateHTTP(t, "Providers", raw)
 	for _, p := range page.Items {
-		if p.ID == "local" {
+		if p.ID == "b1548e96-3081-5c9c-8376-bf290e369d51" {
 			for _, r := range p.Roots {
 				if r.ID == "local" && r.WriteBack != nil {
 					return *r.WriteBack

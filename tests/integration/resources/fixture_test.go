@@ -72,10 +72,10 @@ func startServer(t *testing.T) fixture {
 		"hashing":        map[string]any{"auto": false, "maxConcurrent": 1, "bytesPerSecond": 4 << 20},
 		"fingerprinting": map[string]any{"enabled": true, "fpcalcPath": os.Getenv("MUSICFS_FPCALC"), "fpcalcSha256": fmt.Sprintf("%x", sha256.Sum256(fpbytes)), "maxConcurrent": 1, "timeoutSeconds": 30},
 		"plugins": []any{
-			map[string]any{"pluginId": "musicfs.localfiles", "executable": provider, "enabled": true, "instances": []any{
+			map[string]any{"pluginId": "musicfs.plugin.source.localfiles", "executable": provider, "enabled": true, "instances": []any{
 				map[string]any{"instanceId": "local", "role": "provider", "enabled": true, "config": map[string]any{"musicRoots": []any{map[string]any{"id": "local", "name": "Synthetic audio", "path": music}}}},
 			}},
-			map[string]any{"pluginId": "musicfs.audio.ffmpeg", "executable": audio, "enabled": true, "instances": []any{
+			map[string]any{"pluginId": "musicfs.plugin.decoder.ffmpeg", "executable": audio, "enabled": true, "instances": []any{
 				map[string]any{"instanceId": "audio", "role": "audio", "enabled": true, "config": map[string]any{"ffmpegPath": os.Getenv("MUSICFS_FFMPEG"), "ffprobePath": os.Getenv("MUSICFS_FFPROBE")}},
 			}},
 		},

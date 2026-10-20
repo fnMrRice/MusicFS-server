@@ -87,17 +87,12 @@ func loadPluginSettings(ctx context.Context, doc *Document) error {
 	}
 	for pi := range doc.Config.Plugins {
 		p := &doc.Config.Plugins[pi]
-		if p.PluginID != "musicfs.localfiles" {
+		if p.PluginID != "musicfs.plugin.source.localfiles" {
 			continue
 		}
 		for ii := range p.Instances {
 			i := &p.Instances[ii]
-			db, err := plugindb.Open(ctx, PluginDatabasePath(doc.Config), p.PluginID, i.InstanceID)
-			if err != nil {
-				return err
-			}
-			v, err := db.Get(ctx, plugindb.ConfigurationKey)
-			db.Close()
+			v, err := plugindb.Read(ctx, PluginDatabasePath(doc.Config), p.PluginID, i.InstanceID, plugindb.ConfigurationKey)
 			if err != nil {
 				return err
 			}

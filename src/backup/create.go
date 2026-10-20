@@ -168,7 +168,7 @@ func dependencies(ctx context.Context, c config.Config) []Dependency {
 	for _, plugin := range c.Plugins {
 		add(plugin.PluginID, plugin.Executable)
 		for _, instance := range plugin.Instances {
-			if plugin.PluginID == "musicfs.audio.ffmpeg" {
+			if plugin.PluginID == "musicfs.plugin.decoder.ffmpeg" {
 				add(instance.InstanceID+"/ffmpeg", instance.Config.FFmpegPath)
 				add(instance.InstanceID+"/ffprobe", instance.Config.FFprobePath)
 			}

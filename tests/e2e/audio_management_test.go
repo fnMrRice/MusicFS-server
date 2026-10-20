@@ -45,10 +45,10 @@ func TestManagedAudioPendingDisableSeekAndServerRestart(t *testing.T) {
 	}
 	cfg, base := yamlServiceConfig(t)
 	cfg.Plugins = []config.Plugin{
-		{PluginID: "musicfs.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Role: "provider", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Music", Path: music}}}}}},
-		{PluginID: "musicfs.audio.ffmpeg", Executable: audio, Enabled: true, Instances: []config.Instance{{InstanceID: "audio-default", Role: "audio", Enabled: true, Config: config.InstanceConfig{FFmpegPath: ffmpeg, FFprobePath: ffprobe}}}},
-		{PluginID: "musicfs.ncm", Executable: decoder, Enabled: true, Instances: []config.Instance{{InstanceID: "ncm-default", Role: "audio", Enabled: true}}},
-		{PluginID: "musicfs.scraper.local", Executable: scraper, Enabled: true, Instances: []config.Instance{{InstanceID: "scraper-local", Role: "scraper", Enabled: true}}},
+		{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Music", Path: music}}}}}},
+		{PluginID: "musicfs.plugin.decoder.ffmpeg", Executable: audio, Enabled: true, Instances: []config.Instance{{InstanceID: "16b003e5-1bab-52bb-be10-0e83ec1c40ea", Enabled: true, Config: config.InstanceConfig{FFmpegPath: ffmpeg, FFprobePath: ffprobe}}}},
+		{PluginID: "musicfs.plugin.decoder.ncm", Executable: decoder, Enabled: true, Instances: []config.Instance{{InstanceID: "96412f52-9ff4-5a82-9eaa-7644a5837cda", Enabled: true}}},
+		{PluginID: "musicfs.scraper.local", Executable: scraper, Enabled: true, Instances: []config.Instance{{InstanceID: "d248bf34-1780-59d3-a557-9cf5d889e977", Enabled: true}}},
 	}
 	path := writeYAMLConfiguration(t, cfg)
 	stop := startAudioYAMLServer(t, path, cfg, base)
@@ -61,8 +61,8 @@ func TestManagedAudioPendingDisableSeekAndServerRestart(t *testing.T) {
 	}
 
 	first := createYAMLProcessedPlayback(t, c, flacTrack.ID, "managed-audio-initial")
-	audioGeneration := managedAudioInstance(t, c, "audio-default").Generation
-	pending := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/audio-default/state", map[string]any{"enabled": false, "mode": "drain"})
+	audioGeneration := managedAudioInstance(t, c, "16b003e5-1bab-52bb-be10-0e83ec1c40ea").Generation
+	pending := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/16b003e5-1bab-52bb-be10-0e83ec1c40ea/state", map[string]any{"enabled": false, "mode": "drain"})
 	waitLibraryOperation(t, c, pending.ID)
 	request := playback.CreateRequest{SourceTrackID: flacTrack.ID, Capabilities: playback.Capabilities{HTMLAudio: true, Formats: []playback.Format{{MIME: "audio/mpeg", CanPlay: "probably"}}}}
 	code, raw, _ := c.request(t, "POST", "/api/v1/playback/sessions", request, "managed-audio-pending")
@@ -70,7 +70,7 @@ func TestManagedAudioPendingDisableSeekAndServerRestart(t *testing.T) {
 	if code != 201 || json.Unmarshal(raw, &admitted) != nil {
 		t.Fatalf("pending disable rejected new audio playback: %d %s", code, raw)
 	}
-	state := managedAudioInstance(t, c, "audio-default")
+	state := managedAudioInstance(t, c, "16b003e5-1bab-52bb-be10-0e83ec1c40ea")
 	if !state.AcceptingNewWork || !state.EffectiveEnabled || state.ActiveLeases < 2 || state.RuntimeState != "ready" || state.Generation != audioGeneration || state.Reason == nil || *state.Reason != "RESTART_REQUIRED" {
 		t.Fatalf("pending disable changed the audio runtime: %+v", state)
 	}
@@ -89,13 +89,13 @@ func TestManagedAudioPendingDisableSeekAndServerRestart(t *testing.T) {
 	assertYAMLAudioDuration(t, segment, 2000)
 	assertYAMLAudioTone(t, segment, 250, 1250, 660)
 	stopManagedAudioPlayback(t, c, first.SessionID)
-	state = managedAudioInstance(t, c, "audio-default")
+	state = managedAudioInstance(t, c, "16b003e5-1bab-52bb-be10-0e83ec1c40ea")
 	if !state.EffectiveEnabled || state.ActiveLeases != 0 || state.RuntimeState != "ready" || state.Generation != audioGeneration {
 		t.Fatalf("audio plugin stopped when pending-disable work completed: %+v", state)
 	}
-	restarting := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/audio-default/state", map[string]any{"enabled": true, "mode": "drain"})
+	restarting := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/16b003e5-1bab-52bb-be10-0e83ec1c40ea/state", map[string]any{"enabled": true, "mode": "drain"})
 	waitLibraryOperation(t, c, restarting.ID)
-	if state = managedAudioInstance(t, c, "audio-default"); state.Generation != audioGeneration || state.Reason != nil {
+	if state = managedAudioInstance(t, c, "16b003e5-1bab-52bb-be10-0e83ec1c40ea"); state.Generation != audioGeneration || state.Reason != nil {
 		t.Fatalf("undoing audio disable replaced the runtime: %+v", state)
 	}
 	restarted := createYAMLProcessedPlayback(t, c, flacTrack.ID, "managed-audio-restarted")
@@ -114,23 +114,23 @@ func TestManagedAudioPendingDisableSeekAndServerRestart(t *testing.T) {
 		t.Fatalf("NCM fixture did not produce a decrypted proxy session: %d %s", code, raw)
 	}
 	verifyRanges(t, c, decrypted, mp3)
-	state = managedAudioInstance(t, c, "ncm-default")
+	state = managedAudioInstance(t, c, "96412f52-9ff4-5a82-9eaa-7644a5837cda")
 	if state.ActiveLeases < 1 {
 		t.Fatalf("active NCM session has no lifecycle lease: %+v", state)
 	}
 	ncmGeneration := state.Generation
-	forced := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/ncm-default/state", map[string]any{"enabled": false, "mode": "force"})
+	forced := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/96412f52-9ff4-5a82-9eaa-7644a5837cda/state", map[string]any{"enabled": false, "mode": "force"})
 	waitLibraryOperation(t, c, forced.ID)
-	state = managedAudioInstance(t, c, "ncm-default")
+	state = managedAudioInstance(t, c, "96412f52-9ff4-5a82-9eaa-7644a5837cda")
 	if !state.EffectiveEnabled || !state.AcceptingNewWork || state.ActiveLeases < 1 || state.RuntimeState != "ready" || state.Generation != ncmGeneration || state.Reason == nil || *state.Reason != "RESTART_REQUIRED" {
 		t.Fatalf("legacy force mode changed the NCM runtime: %+v", state)
 	}
 	verifyRanges(t, c, decrypted, mp3)
 	// Updating another audio plugin must keep the pending-disable NCM runtime
 	// available to both playback and background metadata workers.
-	configured := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/audio-default/configuration", map[string]any{"name": "Updated audio"})
+	configured := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/16b003e5-1bab-52bb-be10-0e83ec1c40ea/configuration", map[string]any{"name": "Updated audio"})
 	waitLibraryOperation(t, c, configured.ID)
-	if state = managedAudioInstance(t, c, "ncm-default"); state.Generation != ncmGeneration || !state.AcceptingNewWork {
+	if state = managedAudioInstance(t, c, "96412f52-9ff4-5a82-9eaa-7644a5837cda"); state.Generation != ncmGeneration || !state.AcceptingNewWork {
 		t.Fatalf("FFmpeg configuration applied the pending NCM disable: %+v", state)
 	}
 	code, raw, _ = c.request(t, "POST", "/api/v1/playback/sessions", request, "managed-ncm-after-audio-settings")
@@ -145,12 +145,12 @@ func TestManagedAudioPendingDisableSeekAndServerRestart(t *testing.T) {
 	}
 	stopManagedAudioPlayback(t, c, recovered.SessionID)
 	stopManagedAudioPlayback(t, c, decrypted.SessionID)
-	pending = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/audio-default/state", map[string]any{"enabled": false})
+	pending = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/16b003e5-1bab-52bb-be10-0e83ec1c40ea/state", map[string]any{"enabled": false})
 	waitLibraryOperation(t, c, pending.ID)
 	stop()
 	stop = startAudioYAMLServer(t, path, cfg, base)
 	c = login(t, base, cfg.AdminToken)
-	for _, id := range []string{"audio-default", "ncm-default"} {
+	for _, id := range []string{"16b003e5-1bab-52bb-be10-0e83ec1c40ea", "96412f52-9ff4-5a82-9eaa-7644a5837cda"} {
 		state = managedAudioInstance(t, c, id)
 		if state.EffectiveEnabled || state.AcceptingNewWork || state.ActiveLeases != 0 || state.RuntimeState != "disabled" {
 			t.Fatalf("server restart did not apply disable for %s: %+v", id, state)
@@ -160,7 +160,7 @@ func TestManagedAudioPendingDisableSeekAndServerRestart(t *testing.T) {
 	if code != 415 && (code != 503 || !bytes.Contains(raw, []byte("PLUGIN_DISABLED"))) {
 		t.Fatalf("new NCM session accepted after disabled server restart: %d %s", code, raw)
 	}
-	for _, id := range []string{"audio-default", "ncm-default"} {
+	for _, id := range []string{"16b003e5-1bab-52bb-be10-0e83ec1c40ea", "96412f52-9ff4-5a82-9eaa-7644a5837cda"} {
 		enabled := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/"+id+"/state", map[string]any{"enabled": true})
 		waitLibraryOperation(t, c, enabled.ID)
 	}

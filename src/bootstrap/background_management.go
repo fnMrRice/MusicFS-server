@@ -33,10 +33,10 @@ func backgroundAudioUpdate(manager *plugincontrol.Manager, probe *managedProbe, 
 			metadataDecoder = fingerprintNCMDecoder(c, log)
 			fingerprintDecoder = fingerprintNCMDecoder(c, log)
 			if metadataDecoder != nil {
-				metadataDecoder.SetGate(audioGate(manager, "musicfs.ncm"))
+				metadataDecoder.SetGate(audioGate(manager, "musicfs.plugin.decoder.ncm"))
 			}
 			if fingerprintDecoder != nil {
-				fingerprintDecoder.SetGate(audioGate(manager, "musicfs.ncm"))
+				fingerprintDecoder.SetGate(audioGate(manager, "musicfs.plugin.decoder.ncm"))
 			}
 		}
 		if fingerprints != nil {
@@ -44,10 +44,10 @@ func backgroundAudioUpdate(manager *plugincontrol.Manager, probe *managedProbe, 
 			if err != nil {
 				log.Warn("fingerprinting dependency unavailable", "errorCode", "UNSUPPORTED")
 			}
-			fingerprints.UpdateRuntime(extractor, fingerprintDecoder, audioGate(manager, "musicfs.audio.ffmpeg"))
+			fingerprints.UpdateRuntime(extractor, fingerprintDecoder, audioGate(manager, "musicfs.plugin.decoder.ffmpeg"))
 		}
 		metadata.UpdateDecoder(metadataDecoder)
-		probe.update(ffprobe, ncm, audioGate(manager, "musicfs.audio.ffmpeg"), audioGate(manager, "musicfs.ncm"))
+		probe.update(ffprobe, ncm, audioGate(manager, "musicfs.plugin.decoder.ffmpeg"), audioGate(manager, "musicfs.plugin.decoder.ncm"))
 		return nil
 	}
 }

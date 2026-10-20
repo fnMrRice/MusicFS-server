@@ -16,8 +16,8 @@ func TestDisplayNameFallbackDoesNotRejectValidRuntimeIdentity(t *testing.T) {
 		r.Name = name
 		s := service(t, recommendations.Config{}, r)
 		got := list(t, s, "owner", recommendations.Request{Limit: 1}).Sources[0]
-		if got.Name != "stable-instance" || got.InstanceID != "stable-instance" {
-			t.Fatal("invalid display name did not fall back without changing identity")
+		if got.Name != "NetEase Cloud Music" || got.InstanceID != "stable-instance" {
+			t.Fatal("invalid display name did not fall back to the plugin alias")
 		}
 	}
 }

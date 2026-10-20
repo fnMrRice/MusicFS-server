@@ -77,7 +77,7 @@ func (s *Store) saveLocalSettings(ctx context.Context, change Change) (Operation
 func (s *Store) localNextRevision(ctx context.Context, change Change, revision int64) (string, error) {
 	result := localDirectoryRevision(s.document.Config, fmt.Sprintf("%x", sha256.Sum256(s.document.Raw)))
 	for _, p := range s.document.Config.Plugins {
-		if p.PluginID != "musicfs.localfiles" {
+		if p.PluginID != "musicfs.plugin.source.localfiles" {
 			continue
 		}
 		for _, i := range p.Instances {

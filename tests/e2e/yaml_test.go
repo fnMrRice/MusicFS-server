@@ -36,7 +36,7 @@ func writeYAMLConfiguration(t *testing.T, cfg config.Config) string {
 func TestYAMLCLIStartsWithDisabledPlugin(t *testing.T) {
 	server, provider := build(t, "musicfs"), build(t, "musicfs-plugin-local")
 	cfg, base := yamlServiceConfig(t)
-	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.localfiles", Executable: provider, Enabled: false, Instances: []config.Instance{{InstanceID: "local", Role: "provider", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "music", Name: "Music", Path: t.TempDir()}}}}}}}
+	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: false, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "music", Name: "Music", Path: t.TempDir()}}}}}}}
 	ctx, cancel := context.WithCancel(context.Background())
 	cmd := exec.CommandContext(ctx, server, "serve", "--config", writeYAMLConfiguration(t, cfg))
 	cmd.Stdout, cmd.Stderr = io.Discard, io.Discard
@@ -90,7 +90,7 @@ func TestYAMLCLIStartsWithDisabledPlugin(t *testing.T) {
 	if code != 200 || json.Unmarshal(raw, &providers) != nil || len(providers.Items) != 1 || providers.Items[0].Availability != "offline" {
 		t.Fatalf("CLI disabled provider state: %d %s", code, raw)
 	}
-	if _, err := os.Stat(filepath.Join(cfg.DataRoot, "providers", "local")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(cfg.DataRoot, "providers", "b1548e96-3081-5c9c-8376-bf290e369d51")); !os.IsNotExist(err) {
 		t.Fatalf("disabled CLI provider initialized runtime state: %v", err)
 	}
 }
@@ -116,8 +116,8 @@ func TestYAMLAudioPluginEnableBoundaries(t *testing.T) {
 			}
 			cfg, base := yamlServiceConfig(t)
 			cfg.Plugins = []config.Plugin{
-				{PluginID: "musicfs.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Role: "provider", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Music", Path: music}}}}}},
-				{PluginID: "musicfs.audio.ffmpeg", Executable: audio, Enabled: test.plugin, Instances: []config.Instance{{InstanceID: "audio-default", Role: "audio", Enabled: test.instance, Config: config.InstanceConfig{FFmpegPath: ffmpeg, FFprobePath: ffprobe}}}},
+				{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Music", Path: music}}}}}},
+				{PluginID: "musicfs.plugin.decoder.ffmpeg", Executable: audio, Enabled: test.plugin, Instances: []config.Instance{{InstanceID: "16b003e5-1bab-52bb-be10-0e83ec1c40ea", Enabled: test.instance, Config: config.InstanceConfig{FFmpegPath: ffmpeg, FFprobePath: ffprobe}}}},
 			}
 			startNCMServer(t, cfg, base)
 			c := login(t, base, cfg.AdminToken)
@@ -162,7 +162,7 @@ func yamlServiceConfig(t *testing.T) (config.Config, string) {
 	return config.Config{ConfigVersion: 1, Listen: address, AllowLoopbackHTTP: true, AllowedOrigins: []string{base}, AdminToken: domain.NewID(), DataRoot: filepath.Join(dir, "data"), MediaRoot: filepath.Join(dir, "media"), CacheRoot: filepath.Join(dir, "cache"), MaxSessions: 8, MaxProcessing: 2, MaxCacheBytes: 8 << 20, SessionTTLSeconds: 3600, Hashing: config.HashingConfig{MaxConcurrent: 1, BytesPerSecond: 4 << 20}}, base
 }
 
-func TestYAMLProviderInstancesAndMultipleRoots(t *testing.T) {
+func TestYAMLProviderSingleInstanceWithMultipleRoots(t *testing.T) {
 	provider := build(t, "musicfs-plugin-local")
 	payload, err := os.ReadFile(filepath.Join("..", "testdata", "audio", "markers.wav"))
 	if err != nil {
@@ -176,20 +176,16 @@ func TestYAMLProviderInstancesAndMultipleRoots(t *testing.T) {
 		}
 		roots = append(roots, config.MusicRoot{ID: id, Name: id, Path: path})
 	}
-	secondary := t.TempDir()
-	if err := os.WriteFile(filepath.Join(secondary, "secondary.wav"), payload, 0600); err != nil {
-		t.Fatal(err)
-	}
 	cfg, base := yamlServiceConfig(t)
-	cfg.Plugins = []config.Plugin{
-		{PluginID: "musicfs.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{
-			{InstanceID: "local", Name: "Two roots", Role: "provider", Enabled: true, Config: config.InstanceConfig{MusicRoots: roots}},
-			{InstanceID: "secondary", Name: "Separate instance", Role: "provider", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "root-one", Name: "Independent root ID", Path: secondary}}}},
-			{InstanceID: "offline", Name: "Disabled instance", Role: "provider", Enabled: false, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "absent", Name: "Absent", Path: filepath.Join(t.TempDir(), "missing")}}}},
-			{InstanceID: "failed", Name: "Unavailable enabled root", Role: "provider", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "absent", Name: "Absent", Path: filepath.Join(t.TempDir(), "missing")}}}},
-		}},
-		{PluginID: "musicfs.audio.ffmpeg", Executable: filepath.Join(t.TempDir(), "missing-audio"), Enabled: false, Instances: []config.Instance{{InstanceID: "audio-disabled", Role: "audio", Enabled: true, Config: config.InstanceConfig{FFmpegPath: filepath.Join(t.TempDir(), "missing-ffmpeg"), FFprobePath: filepath.Join(t.TempDir(), "missing-ffprobe")}}}},
-		{PluginID: "musicfs.ncm", Executable: filepath.Join(t.TempDir(), "missing-ncm"), Enabled: true, Instances: []config.Instance{{InstanceID: "ncm-disabled", Role: "audio", Enabled: false}}},
+	const id = "b1548e96-3081-5c9c-8376-bf290e369d51"
+	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true,
+		Instances: []config.Instance{{InstanceID: id, Enabled: true, Config: config.InstanceConfig{MusicRoots: roots}}}}}
+	// Even a disabled second instance violates the plugin declaration.
+	duplicate := cfg
+	duplicate.Plugins = append([]config.Plugin{}, cfg.Plugins...)
+	duplicate.Plugins[0].Instances = append(append([]config.Instance{}, cfg.Plugins[0].Instances...), config.Instance{InstanceID: "c6007445-c664-49bd-b697-c8af9b606d04"})
+	if _, err := config.Load(writeYAMLConfiguration(t, duplicate), map[string]string{"ADMIN_TOKEN": cfg.AdminToken}); err == nil {
+		t.Fatal("local music accepted a second configured instance")
 	}
 	startNCMServer(t, cfg, base)
 	c := login(t, base, cfg.AdminToken)
@@ -197,34 +193,16 @@ func TestYAMLProviderInstancesAndMultipleRoots(t *testing.T) {
 	var providers struct {
 		Items []library.Provider `json:"items"`
 	}
-	if code != 200 || json.Unmarshal(raw, &providers) != nil || len(providers.Items) != 4 {
+	if code != 200 || json.Unmarshal(raw, &providers) != nil || len(providers.Items) != 1 || providers.Items[0].ID != id || providers.Items[0].Availability != "available" {
 		t.Fatalf("provider identity mismatch: %d %s", code, raw)
-	}
-	states := map[string]string{}
-	for _, p := range providers.Items {
-		states[p.ID] = p.Availability
-	}
-	if states["local"] != "available" || states["secondary"] != "available" || states["offline"] != "offline" || states["failed"] != "offline" {
-		t.Fatalf("provider enable states ignored: %s", raw)
-	}
-	if code, _, _ := c.request(t, "POST", "/api/v1/provider-instances/offline/scan-jobs", providerScanRequest(t, c, "offline"), "offline-scan-001"); code != 503 {
-		t.Fatalf("disabled instance started: %d", code)
 	}
 	tracks := scanNCM(t, c)
 	if len(tracks) != 2 {
 		t.Fatalf("multi-root scan omitted tracks: %+v", tracks)
 	}
-	tracks = scanProvider(t, c, "secondary", "secondary-scan-001")
-	if len(tracks) != 3 {
-		t.Fatalf("second instance replaced another library: %+v", tracks)
-	}
-	for _, name := range []string{"root-one.wav", "root-two.wav", "secondary.wav"} {
+	for _, name := range []string{"root-one.wav", "root-two.wav"} {
 		track, ok := tracks[name]
-		providerID := "local"
-		if name == "secondary.wav" {
-			providerID = "secondary"
-		}
-		if !ok || track.ProviderID != providerID {
+		if !ok || track.ProviderID != id {
 			t.Fatalf("root changed provider identity: %+v", track)
 		}
 		request := playback.CreateRequest{SourceTrackID: track.ID, Capabilities: playback.Capabilities{HTMLAudio: true, Formats: []playback.Format{{MIME: "audio/wav", CanPlay: "probably"}}}}

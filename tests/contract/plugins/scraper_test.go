@@ -13,7 +13,7 @@ import (
 func TestScraperWireDTOsAndRestrictedChannel(t *testing.T) {
 	ref := strings.Repeat("a", 48)
 	target := enrichment.Target{SourceTrackID: "source", AssetID: "asset", AssetVersion: "version", Revision: 3}
-	scope := pluginproto.Context{InstanceID: "scraper", UserID: "owner", TaskID: "task", TimeoutMs: 30000}
+	scope := pluginproto.Context{InstanceID: "16107a0a-24d2-5c96-8a8a-c7111a798bcf", UserID: "owner", TaskID: "task", TimeoutMs: 30000}
 	request := enrichment.SearchRequest{Context: scope, Target: target, Fields: []string{"lyrics", "artwork"}, Languages: []string{}, Resources: []enrichment.Resource{{ResourceRef: ref, Version: "version", Kind: "lyrics", SizeBytes: 128, Match: "exactStem"}}}
 	candidate := enrichment.Candidate{CandidateID: strings.Repeat("b", 48), Target: target, Field: "lyrics", Language: "und", Format: "lrc", MIME: "text/plain; charset=utf-8", SizeBytes: 128, SHA256: strings.Repeat("c", 64), Origin: "sidecar", ResourceRef: ref, ResourceVersion: "version", Basis: "exactStem", Status: "available"}
 	result := enrichment.SearchResult{Candidates: []enrichment.Candidate{candidate}, Issues: []enrichment.Issue{}}
@@ -28,7 +28,7 @@ func TestScraperWireDTOsAndRestrictedChannel(t *testing.T) {
 	for _, value := range []any{result, fetched} {
 		testkit.ValidatePlugin(t, "", map[string]any{"jsonrpc": "2.0", "id": "h-1", "result": value})
 	}
-	hello := map[string]any{"protocolVersion": "1.0", "instanceId": "scraper", "nonce": ref, "configRevision": "1", "context": scope, "target": target, "baseUrl": "http://127.0.0.1:12345/" + ref}
+	hello := map[string]any{"protocolVersion": "1.0", "instanceId": "16107a0a-24d2-5c96-8a8a-c7111a798bcf", "nonce": ref, "configRevision": "1", "context": scope, "target": target, "baseUrl": "http://127.0.0.1:12345/" + ref}
 	testkit.ValidatePlugin(t, "ScrapeHello", hello)
 	testkit.ValidatePlugin(t, "", map[string]any{"jsonrpc": "2.0", "id": "h-1", "method": "host.hello", "params": hello})
 	for _, base := range []string{"https://example.invalid/" + ref, "http://localhost:12345/" + ref, "http://127.0.0.1:12345/" + ref + "?secret=x", "http://user@127.0.0.1:12345/" + ref} {

@@ -6,7 +6,7 @@
     "value": {
       "sources": [
         {
-          "instanceId": "offline",
+          "instanceId": "7a202030-76d0-5655-b70e-aa3833cc17de",
           "name": "Offline",
           "platform": "netease",
           "accountId": "",
@@ -30,7 +30,7 @@
     "schema": "RecommendationSource",
     "valid": false,
     "value": {
-      "instanceId": "net",
+      "instanceId": "7fe223d0-a3bd-5e87-87f8-305dc26d9041",
       "name": "Net",
       "platform": "netease",
       "accountId": "",
@@ -48,7 +48,7 @@
     "schema": "RecommendationSource",
     "valid": true,
     "value": {
-      "instanceId": "net",
+      "instanceId": "7fe223d0-a3bd-5e87-87f8-305dc26d9041",
       "name": "Net",
       "platform": "netease",
       "accountId": "other",
@@ -66,7 +66,7 @@
     "schema": "RecommendationSource",
     "valid": false,
     "value": {
-      "instanceId": "net",
+      "instanceId": "7fe223d0-a3bd-5e87-87f8-305dc26d9041",
       "name": "Net",
       "platform": "netease",
       "accountId": "",
@@ -84,7 +84,7 @@
     "schema": "RecommendationSource",
     "valid": true,
     "value": {
-      "instanceId": "net",
+      "instanceId": "7fe223d0-a3bd-5e87-87f8-305dc26d9041",
       "name": "Net",
       "platform": "netease",
       "accountId": "",
@@ -102,7 +102,7 @@
     "schema": "RecommendationSource",
     "valid": false,
     "value": {
-      "instanceId": "net",
+      "instanceId": "7fe223d0-a3bd-5e87-87f8-305dc26d9041",
       "name": "Net",
       "platform": "netease",
       "accountId": "",

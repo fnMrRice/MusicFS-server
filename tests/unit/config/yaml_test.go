@@ -46,10 +46,11 @@ func TestStrictYAMLRejectsUnsafeDocuments(t *testing.T) {
 		"settings null":         strings.Replace(minimalYAML+pluginYAML, "config: {}", "config: null", 1),
 		"wrong settings":        strings.Replace(minimalYAML+pluginYAML, "config: {}", "config: {ffmpegPath: private}", 1),
 		"unknown nested":        strings.Replace(minimalYAML+pluginYAML, "ffmpegPath:", "PRIVATE-SENTINEL:", 1),
-		"duplicate nested":      strings.Replace(minimalYAML+pluginYAML, "config: {}", "config: {}\n        role: audio", 1),
+		"duplicate nested":      strings.Replace(minimalYAML+pluginYAML, "config: {}", "config: {}\n        enabled: true", 1),
+		"configured role":       strings.Replace(minimalYAML+pluginYAML, "config: {}", "config: {}\n        role: audio", 1),
 		"missing config":        strings.Replace(minimalYAML+pluginYAML, "        config: {}\n", "", 1),
-		"missing instance ID":   strings.Replace(minimalYAML+pluginYAML, "      - instanceId: ncm\n", "      - name: NCM\n", 1),
-		"unknown plugin":        strings.Replace(minimalYAML+pluginYAML, "musicfs.ncm", "PRIVATE-SENTINEL", 1),
+		"missing instance ID":   strings.Replace(minimalYAML+pluginYAML, "      - instanceId: d1971de9-e153-57c6-ac53-82dfb631da0b\n", "      - name: NCM\n", 1),
+		"unknown plugin":        strings.Replace(minimalYAML+pluginYAML, "musicfs.plugin.decoder.ncm", "PRIVATE-SENTINEL", 1),
 	}
 	for name, raw := range cases {
 		t.Run(name, func(t *testing.T) {

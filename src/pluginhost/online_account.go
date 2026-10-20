@@ -17,7 +17,7 @@ func (w *OnlineWorker) initializeAccount(ctx context.Context) error {
 		return domain.Fail("TEMPORARY_FAILURE", "Platform credential store is unavailable")
 	}
 	w.accountStore = store
-	secret, err := store.Load()
+	secret, err := w.loadAccount(store)
 	if err != nil {
 		return domain.Fail("TEMPORARY_FAILURE", "Platform credential store cannot be read")
 	}
@@ -28,11 +28,20 @@ func (w *OnlineWorker) initializeAccount(ctx context.Context) error {
 }
 
 func (w *OnlineWorker) accountCall(ctx context.Context, request online.AccountRequest) (online.AccountResult, error) {
+	if request.Action == "logout" || (request.Action == "signalCancel" && request.LoginID == "*") {
+		w.accountDisplay.invalidate()
+	}
 	scope, err := w.newScope(ctx)
 	if err != nil {
 		return online.AccountResult{}, err
 	}
-	return onlineCall[online.AccountResult](ctx, w, "provider.online.account", scope, pluginproto.OnlineAccount{Context: scope, Request: request})
+	mutation := request.Action != "state" && request.Action != "signalCancel"
+	generation := w.accountDisplay.begin(mutation)
+	result, err := onlineCall[online.AccountResult](ctx, w, "provider.online.account", scope, pluginproto.OnlineAccount{Context: scope, Request: request})
+	if request.Action != "signalCancel" {
+		w.accountDisplay.finish(generation, mutation, result.View, err == nil)
+	}
+	return result, err
 }
 
 // PlatformAccount strips private state before returning to the HTTP service.

@@ -41,12 +41,14 @@ func ncmTestPeer(t *testing.T, executable, nonce string) (*pluginproto.Peer, con
 	peer := pluginproto.NewPeer(ctx, stdout, stdin, "h-", nil)
 	t.Cleanup(func() { _ = peer.Close(); cancel(); _ = cmd.Wait() })
 	var ready pluginproto.Ready
-	err = peer.Call(ctx, "host.hello", pluginproto.Hello{ProtocolVersion: "1.0", InstanceID: "ncm-task", Nonce: nonce, ConfigRevision: "1"}, &ready)
+	hello := pluginproto.Hello{ProtocolVersion: "1.0", InstanceID: "f46385a2-e358-55e2-bde8-07b7808f3e32", TaskID: "task", Nonce: nonce, ConfigRevision: "1"}
+	testkit.ValidatePlugin(t, "DecoderHello", hello)
+	err = peer.Call(ctx, "host.hello", hello, &ready)
 	if err != nil {
 		t.Fatal(err)
 	}
 	testkit.ValidatePlugin(t, "Ready", ready)
-	if ready.Manifest.PluginID != "musicfs.ncm" || ready.Nonce != nonce {
+	if ready.Manifest.PluginID != "musicfs.plugin.decoder.ncm" || ready.Nonce != nonce {
 		t.Fatal("invalid NCM worker identity")
 	}
 	return peer, ctx

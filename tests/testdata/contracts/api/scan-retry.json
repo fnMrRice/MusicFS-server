@@ -5,7 +5,7 @@
     "valid": true,
     "value": {
       "jobId": "job-1",
-      "providerInstanceId": "local",
+      "providerInstanceId": "b1548e96-3081-5c9c-8376-bf290e369d51",
       "status": "retry_wait",
       "progress": {
         "observed": 3,
@@ -44,7 +44,7 @@
     "valid": false,
     "value": {
       "jobId": "job-1",
-      "providerInstanceId": "local",
+      "providerInstanceId": "b1548e96-3081-5c9c-8376-bf290e369d51",
       "status": "retry_wait",
       "progress": {
         "observed": 3,
@@ -83,7 +83,7 @@
     "valid": false,
     "value": {
       "jobId": "job-1",
-      "providerInstanceId": "local",
+      "providerInstanceId": "b1548e96-3081-5c9c-8376-bf290e369d51",
       "status": "retry_wait",
       "progress": {
         "observed": 3,
@@ -122,7 +122,7 @@
     "valid": false,
     "value": {
       "jobId": "job-1",
-      "providerInstanceId": "local",
+      "providerInstanceId": "b1548e96-3081-5c9c-8376-bf290e369d51",
       "status": "retry_wait",
       "progress": {
         "observed": 3,
@@ -161,7 +161,7 @@
     "valid": true,
     "value": {
       "jobId": "job-1",
-      "providerInstanceId": "local",
+      "providerInstanceId": "b1548e96-3081-5c9c-8376-bf290e369d51",
       "status": "paused",
       "progress": {
         "observed": 3,
@@ -200,7 +200,7 @@
     "valid": false,
     "value": {
       "jobId": "job-1",
-      "providerInstanceId": "local",
+      "providerInstanceId": "b1548e96-3081-5c9c-8376-bf290e369d51",
       "status": "paused",
       "progress": {
         "observed": 3,
@@ -239,7 +239,7 @@
     "valid": false,
     "value": {
       "jobId": "job-1",
-      "providerInstanceId": "local",
+      "providerInstanceId": "b1548e96-3081-5c9c-8376-bf290e369d51",
       "status": "retry_wait",
       "progress": {
         "observed": 3,
@@ -278,7 +278,7 @@
     "valid": true,
     "value": {
       "jobId": "job-1",
-      "providerInstanceId": "local",
+      "providerInstanceId": "b1548e96-3081-5c9c-8376-bf290e369d51",
       "status": "running",
       "progress": {
         "observed": 3,

@@ -42,16 +42,16 @@ func TestWindowsScanHiddenAndNoMediaKeepExcludedLibraryEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg, base := yamlServiceConfig(t)
-	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.localfiles", Executable: worker, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Role: "provider", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "root", Name: "Music", Path: root}}}}}}}
+	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: worker, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "root", Name: "Music", Path: root}}}}}}}
 	startNCMServer(t, cfg, base)
 	c := login(t, base, cfg.AdminToken)
 	submit := func(key string, options map[string]any) {
 		t.Helper()
-		request := providerScanRequest(t, c, "local")
+		request := providerScanRequest(t, c, "b1548e96-3081-5c9c-8376-bf290e369d51")
 		request["options"] = options
 		accepted := albumRequest[struct {
 			JobID string `json:"jobId"`
-		}](t, c, "POST", "/provider-instances/local/scan-jobs", request, key, 202, "ScanAccepted")
+		}](t, c, "POST", "/provider-instances/b1548e96-3081-5c9c-8376-bf290e369d51/scan-jobs", request, key, 202, "ScanAccepted")
 		waitScanOptions(t, c, accepted.JobID)
 	}
 	list := func() map[string]library.Track {
@@ -118,7 +118,7 @@ func TestWindowsWatchNoMediaMarkerRemovalAndPreservedLibrary(t *testing.T) {
 	watch := config.DefaultWatch()
 	watch.Enabled, watch.DebounceMs, watch.MaxDelayMs, watch.FullRescanSeconds = true, 100, 300, 30
 	cfg, base := yamlServiceConfig(t)
-	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.localfiles", Executable: worker, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Role: "provider", Enabled: true, Config: config.InstanceConfig{Watch: &watch, MusicRoots: []config.MusicRoot{{ID: "root", Name: "Music", Path: root}}}}}}}
+	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: worker, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{Watch: &watch, MusicRoots: []config.MusicRoot{{ID: "root", Name: "Music", Path: root}}}}}}}
 	startNCMServer(t, cfg, base)
 	c := login(t, base, cfg.AdminToken)
 	if err := os.Remove(marker); err != nil {

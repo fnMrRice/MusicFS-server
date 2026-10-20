@@ -4,7 +4,7 @@
 
 ## 1. 边界与参考
 
-- 独立进程：`musicfs-plugins --plugin ncm`；插件标识 `musicfs.ncm`，角色 `audio`，能力 `audio.decrypt`。
+- 独立进程：`musicfs-plugins --plugin ncm`；插件标识 `musicfs.plugin.decoder.ncm`，角色 `audio`，能力 `audio.decrypt`。
 - 核心采用 Go 标准库重写；参考 [taurusxin/ncmdump-go 的 MIT 实现](https://git.taurusxin.com/taurusxin/ncmdump-go/src/branch/main/ncmcrypt/ncmcrypt.go)及 [ncmdump.rs 的 MIT 实现](https://github.com/iqiziqi/ncmdump.rs/blob/master/crates/ncmdump/src/ncmdump.rs)。未引入这两个项目的运行依赖，也未移植 GPL 的 keuin/ncm 源码。
 - NCM 是外层加密容器。解密结果保持内部编码字节，不将 MP3/FLAC 解码再压缩；后续仅在终端不兼容或用户要求 DSP 时进入已有 FFmpeg 管线。
 - 原始文件只读，封面 URL 不下载，元数据不写回。封面数据跳过；曲名/艺术家可取自容器，时长/码率以内部音频的实际 ffprobe 结果为准。
@@ -15,13 +15,12 @@
 
 ```yaml
 # Under the top-level plugins sequence:
-- pluginId: 'musicfs.ncm'
+- pluginId: 'musicfs.plugin.decoder.ncm'
   executable: '../build/windows/musicfs-plugins.exe'
   args: ['--plugin', 'ncm']
   enabled: true
   instances:
-    - instanceId: 'ncm-default'
-      role: 'audio'
+    - instanceId: '96412f52-9ff4-5a82-9eaa-7644a5837cda'
       enabled: true
       config: {}
 ```
@@ -30,7 +29,7 @@
 
 配置后重启 Server，对音乐目录重新扫描。列表容器显示 `ncm`，codec 显示内部音频格式。点击播放无需额外选项：内部 MP3 可交付固定解密表示并提供 Range；内部 FLAC 按当前播放策略转为 MP3。勾选服务端处理时解密后照常应用 Go DSP。
 
-需要 FLAC 转码和准确的媒体参数时，启用 `musicfs.audio.ffmpeg` 插件及其音频实例，在实例 `config` 中配置 `ffmpegPath`、`ffprobePath`。仅有 NCM Worker 时可读取 MP3，未探测到的时长/码率保持未知。损坏或不支持的 NCM 返回明确错误，不作为一轮扫描成功空库。
+需要 FLAC 转码和准确的媒体参数时，启用 `musicfs.plugin.decoder.ffmpeg` 插件及其音频实例，在实例 `config` 中配置 `ffmpegPath`、`ffprobePath`。仅有 NCM Worker 时可读取 MP3，未探测到的时长/码率保持未知。损坏或不支持的 NCM 返回明确错误，不作为一轮扫描成功空库。
 
 ## 3. 数据与接口
 
@@ -79,4 +78,4 @@ go test -mod=readonly ./tests/e2e -run '^TestNCMServerRoundTripAndDisabledPlugin
 2. 登录 Web、刷新来源列表，确认 NCM 条目的容器为 `ncm`、codec 来自内部 MP3/FLAC；未配置 ffprobe 时，时长和码率可以未知。
 3. 播放内部 MP3：页面应显示“服务端解密输出”，可以暂停、继续和停止；有时长时检查定位。开发者工具中输出为音频 MIME，Range 长度与解密表示一致。
 4. 配齐 FFmpeg/ffprobe 后播放内部 FLAC：页面应显示“服务端解密并转码输出”。输入目标位置并定位，确认新片段开始；勾选既有 -6 dB 选项并重新选曲后再检查增益处理。
-5. 验证损坏样本或暂时将 `musicfs.ncm` 插件的 `enabled` 改为false并重启：播放 NCM 应明确失败，普通 WAV 仍能播放。恢复配置后重新扫描、播放，核对源文件摘要未被修改。
+5. 验证损坏样本或暂时将 `musicfs.plugin.decoder.ncm` 插件的 `enabled` 改为false并重启：播放 NCM 应明确失败，普通 WAV 仍能播放。恢复配置后重新扫描、播放，核对源文件摘要未被修改。

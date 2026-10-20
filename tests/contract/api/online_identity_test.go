@@ -32,15 +32,15 @@ func TestOnlineHTTPRelaysWorkerOwnedPluginIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	worker, err := pluginhost.StartOnline(context.Background(), pluginhost.OnlineConfig{Executable: path, SHA256: fmt.Sprintf("%x", sha256.Sum256(body)), StateDir: t.TempDir(), Platform: online.Netease, UserID: "admin", InstanceID: "custom"})
+	worker, err := pluginhost.StartOnline(context.Background(), pluginhost.OnlineConfig{Executable: path, SHA256: fmt.Sprintf("%x", sha256.Sum256(body)), StateDir: t.TempDir(), Platform: online.Netease, UserID: "admin", InstanceID: "ba8e4265-7617-542b-8ac7-fa5fbdff5c2e"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = worker.Close() })
 	server, _, _ := libraryHTTP(t)
 	cookie, _ := login(t, server)
-	r := onlinehost.Runtime{Owner: "admin", InstanceID: "custom", Name: "Operator instance label", Platform: online.Netease, ConfigRevision: "r1", Enabled: true, Provider: worker}
-	service, err := onlinehost.New([]onlinehost.Runtime{r, {Owner: "admin", InstanceID: "never-started", Platform: online.Netease, ConfigRevision: "r1"}})
+	r := onlinehost.Runtime{Owner: "admin", InstanceID: "ba8e4265-7617-542b-8ac7-fa5fbdff5c2e", Name: "Operator instance label", Platform: online.Netease, ConfigRevision: "r1", Enabled: true, Provider: worker}
+	service, err := onlinehost.New([]onlinehost.Runtime{r, {Owner: "admin", InstanceID: "5c49ff37-ff10-5500-837a-93479e4d7528", Platform: online.Netease, ConfigRevision: "r1"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,12 +64,22 @@ func TestOnlineHTTPRelaysWorkerOwnedPluginIdentity(t *testing.T) {
 		if len(payload.Items) != 2 {
 			t.Fatal("unexpected instances", payload)
 		}
-		plugin := payload.Items[0].Plugin
-		if plugin == nil || plugin.ID != "musicfs.netease" || plugin.Name != "Fixture Music" || plugin.LocalizedNames["zh-Hans"] != "测试音乐" || plugin.LocalizedNames["fr"] != "Musique de test" || len(plugin.Features) != 1 || plugin.Features[0] != "music-source" || payload.Items[0].Name != r.Name {
-			t.Fatal("worker metadata was not preserved", payload.Items[0])
+		found := false
+		for _, item := range payload.Items {
+			if item.InstanceID != r.InstanceID {
+				if item.Plugin != nil {
+					t.Fatal("never-started instance invented plugin metadata")
+				}
+				continue
+			}
+			found = true
+			plugin := item.Plugin
+			if plugin == nil || plugin.ID != "musicfs.plugin.source.netease" || plugin.Name != "Fixture Music" || plugin.LocalizedNames["zh-Hans"] != "测试音乐" || plugin.LocalizedNames["fr"] != "Musique de test" || len(plugin.Features) != 1 || plugin.Features[0] != "music-source" || item.Name != plugin.Name {
+				t.Fatal("worker metadata was not preserved", item)
+			}
 		}
-		if payload.Items[1].Plugin != nil {
-			t.Fatal("never-started instance invented plugin metadata")
+		if !found {
+			t.Fatal("worker instance missing")
 		}
 	}
 	verify()

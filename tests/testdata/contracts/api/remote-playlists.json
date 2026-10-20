@@ -4,7 +4,7 @@
     "schema": "ImportRemotePlaylistRequest",
     "valid": false,
     "value": {
-      "instanceId": "net",
+      "instanceId": "7fe223d0-a3bd-5e87-87f8-305dc26d9041",
       "accountId": "",
       "externalId": "91"
     }
@@ -14,7 +14,7 @@
     "schema": "ImportRemotePlaylistRequest",
     "valid": true,
     "value": {
-      "instanceId": "net",
+      "instanceId": "7fe223d0-a3bd-5e87-87f8-305dc26d9041",
       "accountId": "private",
       "externalId": "91"
     }
@@ -24,7 +24,7 @@
     "schema": "ImportRemotePlaylistRequest",
     "valid": false,
     "value": {
-      "instanceId": "net",
+      "instanceId": "7fe223d0-a3bd-5e87-87f8-305dc26d9041",
       "accountId": "",
       "externalId": "https://private.invalid/list"
     }
@@ -34,7 +34,7 @@
     "schema": "ImportRemotePlaylistRequest",
     "valid": false,
     "value": {
-      "instanceId": "net",
+      "instanceId": "7fe223d0-a3bd-5e87-87f8-305dc26d9041",
       "accountId": "",
       "externalId": "91",
       "configRevision": "forged"
@@ -60,7 +60,7 @@
     "valid": false,
     "value": {
       "remoteSourceId": "source",
-      "instanceId": "net",
+      "instanceId": "7fe223d0-a3bd-5e87-87f8-305dc26d9041",
       "accountId": "",
       "externalId": "42",
       "playbackAvailability": "available"

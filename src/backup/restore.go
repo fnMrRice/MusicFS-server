@@ -157,6 +157,7 @@ func restoredConfig(ctx context.Context, dst *os.Root, destination string) error
 	if err = decoder.Decode(&c); err != nil {
 		return domain.Fail("INVALID_ARGUMENT", "Invalid backed-up configuration")
 	}
+	c.NormalizeIdentities()
 	c.DataRoot = filepath.Join(destination, "data")
 	c.MediaRoot = filepath.Join(destination, "media")
 	c.CacheRoot = filepath.Join(destination, "cache")

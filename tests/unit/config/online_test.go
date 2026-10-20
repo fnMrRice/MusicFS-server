@@ -13,15 +13,15 @@ import (
 func TestOnlineConfigurationAggregateInstanceLimit(t *testing.T) {
 	raw := "plugins:\n"
 	for p, platform := range []string{"netease", "qqmusic"} {
-		raw += "  - pluginId: musicfs." + platform + "\n    instances:\n"
+		raw += "  - pluginId: musicfs.plugin.source." + platform + "\n    instances:\n"
 		for i := range 8 {
-			raw += fmt.Sprintf("      - instanceId: online-%d-%d\n        role: provider\n        config: {}\n", p, i)
+			raw += fmt.Sprintf("      - instanceId: online-%d-%d\n        config: {}\n", p, i)
 		}
 	}
 	if _, err := parse(t, minimalYAML+raw); err != nil {
 		t.Fatal("sixteen disabled instances rejected", err)
 	}
-	raw += "      - instanceId: excess\n        role: provider\n        config: {}\n"
+	raw += "      - instanceId: excess\n        config: {}\n"
 	if _, err := parse(t, minimalYAML+raw); err == nil {
 		t.Fatal("aggregate online instance budget was exceeded")
 	}
@@ -30,15 +30,14 @@ func TestOnlineConfigurationAggregateInstanceLimit(t *testing.T) {
 func TestOnlineConfigurationFixedPlatformsAndEmptySettings(t *testing.T) {
 	schema := configurationSchema(t)
 	for _, platform := range []string{"netease", "qqmusic", "applemusic"} {
-		raw := strings.ReplaceAll(scraperYAML, "musicfs.scraper.local", "musicfs."+platform)
-		raw = strings.ReplaceAll(raw, "role: scraper", "role: provider")
+		raw := strings.ReplaceAll(scraperYAML, "musicfs.scraper.local", "musicfs.plugin.source."+platform)
 		for name, tc := range map[string]struct {
 			value string
 			valid bool
 		}{
 			"enabled":         {raw, true},
 			"disabled":        {strings.ReplaceAll(raw, "enabled: true", "enabled: false"), true},
-			"wrong-role":      {strings.Replace(raw, "role: provider", "role: audio", 1), false},
+			"configured-role": {strings.Replace(raw, "config: {}", "role: provider\n        config: {}", 1), false},
 			"url":             {strings.Replace(raw, "config: {}", "config: {url: 'http://127.0.0.1/private'}", 1), false},
 			"token":           {strings.Replace(raw, "config: {}", "config: {token: secret}", 1), false},
 			"account":         {strings.Replace(raw, "config: {}", "config: {accountId: someone}", 1), false},

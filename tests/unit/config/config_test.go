@@ -11,39 +11,37 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/src/config"
+	"github.com/fnMrRice/MusicFS-server/src/instanceid"
 	"go.yaml.in/yaml/v3"
 )
 
 const minimalYAML = "configVersion: 1\nallowLoopbackHttp: true\nallowedOrigins: ['http://127.0.0.1:8080']\n"
 const pluginYAML = `plugins:
-  - pluginId: musicfs.localfiles
+  - pluginId: musicfs.plugin.source.localfiles
     executable: '../workers/local files'
     enabled: true
     instances:
-      - instanceId: local
-        role: provider
+      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51
         enabled: true
         config:
           musicRoots:
             - id: root
               name: 中文音乐
               path: '../中文 音乐'
-  - pluginId: musicfs.audio.ffmpeg
+  - pluginId: musicfs.plugin.decoder.ffmpeg
     executable: '../workers/audio'
     enabled: true
     instances:
-      - instanceId: audio
-        role: audio
+      - instanceId: 7edbaa88-7094-5657-ac43-37c118ef4f77
         enabled: true
         config:
           ffmpegPath: '../tools/ffmpeg'
           ffprobePath: '../tools/ffprobe'
-  - pluginId: musicfs.ncm
+  - pluginId: musicfs.plugin.decoder.ncm
     executable: '../workers/ncm'
     enabled: true
     instances:
-      - instanceId: ncm
-        role: audio
+      - instanceId: d1971de9-e153-57c6-ac53-82dfb631da0b
         enabled: true
         config: {}
 `
@@ -79,8 +77,8 @@ func TestConfigPrecedencePathsRevisionAndRedaction(t *testing.T) {
 	if c.Plugins[0].Executable != filepath.Join(dir, "..", "workers", "local files") || c.Plugins[0].Instances[0].Config.MusicRoots[0].Path != filepath.Join(dir, "..", "中文 音乐") || c.Plugins[1].Instances[0].Config.FFmpegPath != filepath.Join(dir, "..", "tools", "ffmpeg") || !c.Plugins[0].Enabled {
 		t.Fatal("plugin configuration changed through environment or path resolution")
 	}
-	if c.Plugins[0].Instances[0].Name != "local" {
-		t.Fatal("missing display name was not defaulted")
+	if c.Plugins[0].Instances[0].Name != "" {
+		t.Fatal("instance identity was used as a display name")
 	}
 	if doc.Path != file || !bytes.Equal(doc.Raw, raw) || doc.Revision != fmt.Sprintf("%x", sha256.Sum256(raw)) || doc.Root.Kind != yaml.DocumentNode {
 		t.Fatal("document identity or raw bytes changed")
@@ -114,52 +112,40 @@ func TestConfigPrecedencePathsRevisionAndRedaction(t *testing.T) {
 	}
 }
 
-func TestDisabledPluginsAndMultipleLocalInstances(t *testing.T) {
+func TestDisabledPluginsAndSingleLocalInstance(t *testing.T) {
 	raw := minimalYAML + `plugins:
-  - pluginId: musicfs.localfiles
+  - pluginId: musicfs.plugin.source.localfiles
     instances:
       - instanceId: first
-        role: provider
         config: {}
-      - instanceId: second
-        role: provider
-        enabled: false
-        config: {}
-  - pluginId: musicfs.audio.ffmpeg
+  - pluginId: musicfs.plugin.decoder.ffmpeg
     executable: missing-worker
     instances:
       - instanceId: audio-one
-        role: audio
         enabled: true
         config: {}
-      - instanceId: audio-two
-        role: audio
-        enabled: true
-        config: {}
-  - pluginId: musicfs.ncm
+  - pluginId: musicfs.plugin.decoder.ncm
     instances:
       - instanceId: decoder
-        role: audio
         config: {}
 `
 	doc, err := parse(t, raw)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if doc.Config.Plugins[0].Enabled || doc.Config.Plugins[0].Instances[0].Enabled || doc.Config.Plugins[0].Instances[1].Enabled {
+	if doc.Config.Plugins[0].Enabled || doc.Config.Plugins[0].Instances[0].Enabled {
 		t.Fatal("enabled defaults or explicit false changed")
 	}
-	multi := strings.Replace(minimalYAML+pluginYAML, "  - pluginId: musicfs.audio.ffmpeg", `      - instanceId: local-other
-        role: provider
+	multi := strings.Replace(minimalYAML+pluginYAML, "  - pluginId: musicfs.plugin.decoder.ffmpeg", `      - instanceId: local-other
         enabled: true
         config:
           musicRoots:
             - id: root
               name: Other
               path: ../other-music
-  - pluginId: musicfs.audio.ffmpeg`, 1)
-	if _, err := parse(t, multi); err != nil {
-		t.Fatalf("same root ID in independent instances rejected: %v", err)
+  - pluginId: musicfs.plugin.decoder.ffmpeg`, 1)
+	if _, err := parse(t, multi); err == nil {
+		t.Fatal("multiple local music instances were accepted")
 	}
 }
 
@@ -185,8 +171,7 @@ func TestConfigSemanticBoundaries(t *testing.T) {
 			c.Plugins[0].Instances[0].Config.MusicRoots = append(roots, roots[0])
 		},
 		"duplicate plugins":   func(c *config.Config) { c.Plugins = append(c.Plugins, c.Plugins[0]) },
-		"duplicate instances": func(c *config.Config) { c.Plugins[1].Instances[0].InstanceID = "local" },
-		"role":                func(c *config.Config) { c.Plugins[1].Instances[0].Role = "provider" },
+		"duplicate instances": func(c *config.Config) { c.Plugins[1].Instances[0].InstanceID = c.Plugins[0].Instances[0].InstanceID },
 		"checksum":            func(c *config.Config) { c.Plugins[0].SHA256 = "not-a-checksum" },
 		"missing executable":  func(c *config.Config) { c.Plugins[0].Executable = "" },
 		"missing roots":       func(c *config.Config) { c.Plugins[0].Instances[0].Config.MusicRoots = nil },
@@ -194,7 +179,7 @@ func TestConfigSemanticBoundaries(t *testing.T) {
 		"cross-role settings": func(c *config.Config) { c.Plugins[2].Instances[0].Config.FFmpegPath = "tool" },
 		"multiple active audio": func(c *config.Config) {
 			extra := c.Plugins[1].Instances[0]
-			extra.InstanceID = "audio-extra"
+			extra.InstanceID = instanceid.Canonical("audio-extra")
 			c.Plugins[1].Instances = append(c.Plugins[1].Instances, extra)
 		},
 	} {
@@ -230,28 +215,25 @@ func TestLoaderRejectsCaseCollidingInstanceIDs(t *testing.T) {
 	t.Setenv("MUSICFS_ADMIN_TOKEN", "case-collision-test-credential-only")
 	path := filepath.Join(t.TempDir(), "server.yaml")
 	raw := minimalYAML + `plugins:
-  - pluginId: musicfs.localfiles
+  - pluginId: musicfs.plugin.source.localfiles
     instances:
       - instanceId: Local
-        role: provider
         config: {}
 `
 	if err := os.WriteFile(path, []byte(raw), 0600); err != nil {
 		t.Fatal(err)
 	}
 	loaded, err := config.Load(path, nil)
-	if err != nil || loaded.Plugins[0].Instances[0].InstanceID != "Local" {
-		t.Fatalf("single uppercase instance identity was changed or rejected: %v", err)
+	if err != nil || loaded.Plugins[0].Instances[0].InstanceID != instanceid.Canonical("Local") {
+		t.Fatalf("legacy instance identity was not upgraded to a stable UUID: %v", err)
 	}
 	for name, suffix := range map[string]string{
-		"same plugin": `      - instanceId: local
-        role: provider
+		"same plugin": `      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51
         config: {}
 `,
-		"different plugin": `  - pluginId: musicfs.ncm
+		"different plugin": `  - pluginId: musicfs.plugin.decoder.ncm
     instances:
-      - instanceId: local
-        role: audio
+      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51
         config: {}
 `,
 	} {

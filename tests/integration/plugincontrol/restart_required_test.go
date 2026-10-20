@@ -12,10 +12,10 @@ func TestEnableDoesNotApplyPendingDisableAtTheOtherLevel(t *testing.T) {
 	for _, initiallyDisabled := range []string{"plugin", "instance"} {
 		t.Run(initiallyDisabled, func(t *testing.T) {
 			raw := document
-			pendingTarget, enableTarget := "", "ncm"
+			pendingTarget, enableTarget := "", ncmInstanceID
 			if initiallyDisabled == "plugin" {
 				raw = strings.Replace(raw, "    enabled: true", "    enabled: false", 1)
-				pendingTarget, enableTarget = "ncm", ""
+				pendingTarget, enableTarget = ncmInstanceID, ""
 			} else {
 				raw = strings.Replace(raw, "        enabled: true", "        enabled: false", 1)
 			}
@@ -40,7 +40,7 @@ func TestEnableDoesNotApplyPendingDisableAtTheOtherLevel(t *testing.T) {
 }
 
 func TestSettingsApplyWithoutApplyingPendingDisable(t *testing.T) {
-	for _, instance := range []string{"", "ncm"} {
+	for _, instance := range []string{"", ncmInstanceID} {
 		t.Run("instance="+instance, func(t *testing.T) {
 			h := setup(t)
 			initial := waitApplied(t, h.manager)
@@ -49,7 +49,7 @@ func TestSettingsApplyWithoutApplyingPendingDisable(t *testing.T) {
 			name := "Updated while restart pending"
 			op, err := h.manager.Change(context.Background(), "admin", config.Change{
 				ExpectedRevision: h.manager.Snapshot().Revision, IdempotencyKey: "settings-after-disable",
-				PluginID: "musicfs.ncm", InstanceID: "ncm", Settings: &config.InstanceSettings{Name: &name},
+				PluginID: "musicfs.plugin.decoder.ncm", InstanceID: ncmInstanceID, Settings: &config.InstanceSettings{Name: &name},
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -60,7 +60,7 @@ func TestSettingsApplyWithoutApplyingPendingDisable(t *testing.T) {
 			if !snapshot.RestartRequired || snapshot.AppliedRevision != initial.AppliedRevision || state.RuntimeState != "ready" || !state.AcceptingNewWork || !state.EffectiveEnabled || state.Name != name {
 				t.Fatal("settings applied a pending disable or lost the restart requirement", snapshot)
 			}
-			p, i, err := h.manager.InstanceConfig("ncm")
+			p, i, err := h.manager.InstanceConfig(ncmInstanceID)
 			if err != nil || !p.Enabled || !i.Enabled || i.Name != name || h.starts.Load() != 1 || h.stops.Load() != 1 {
 				t.Fatal("settings were not applied to the current worker configuration", err)
 			}
@@ -69,7 +69,7 @@ func TestSettingsApplyWithoutApplyingPendingDisable(t *testing.T) {
 				t.Fatal("runtime composition received saved disable switches", active)
 			}
 			saved := h.store.Current().Plugins[0]
-			if instance == "" && saved.Enabled || instance == "ncm" && saved.Instances[0].Enabled {
+			if instance == "" && saved.Enabled || instance == ncmInstanceID && saved.Instances[0].Enabled {
 				t.Fatal("runtime configuration projection changed the saved disable")
 			}
 			if !h.manager.Snapshot().RestartRequired {
@@ -81,7 +81,7 @@ func TestSettingsApplyWithoutApplyingPendingDisable(t *testing.T) {
 
 func TestDisableDoesNotSupersedeAnInFlightSettingsApplication(t *testing.T) {
 	h := setup(t)
-	lease, err := h.manager.Gate("ncm").Acquire(context.Background())
+	lease, err := h.manager.Gate(ncmInstanceID).Acquire(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func TestDisableDoesNotSupersedeAnInFlightSettingsApplication(t *testing.T) {
 	name := "Settings still apply"
 	op, err := h.manager.Change(context.Background(), "admin", config.Change{
 		ExpectedRevision: h.manager.Snapshot().Revision, IdempotencyKey: "inflight-settings",
-		PluginID: "musicfs.ncm", InstanceID: "ncm", Settings: &config.InstanceSettings{Name: &name},
+		PluginID: "musicfs.plugin.decoder.ncm", InstanceID: ncmInstanceID, Settings: &config.InstanceSettings{Name: &name},
 	})
 	if err != nil {
 		t.Fatal(err)

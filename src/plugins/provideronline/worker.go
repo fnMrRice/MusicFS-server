@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/online"
+	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
@@ -206,6 +207,6 @@ func (w *worker) handshake(raw json.RawMessage) (pluginproto.Ready, error) {
 		return pluginproto.Ready{}, err
 	}
 	w.hello, w.client = hello, client
-	manifest := pluginproto.Manifest{PluginID: Describe(w.platform).Plugin.ID, PluginVersion: "0.1.0", ProtocolVersion: pluginproto.ProtocolVersion, Roles: []string{"provider"}, Capabilities: pluginproto.OnlineCapabilities(w.platform), Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems}
+	manifest := pluginproto.Manifest{PluginID: Describe(w.platform).Plugin.ID, Plugin: Describe(w.platform).Plugin, PluginVersion: "0.1.0", ProtocolVersion: pluginproto.ProtocolVersion, SupportsMultipleInstances: pluginconfig.SupportsMultipleInstances(Describe(w.platform).Plugin.ID), Roles: []string{pluginconfig.Role(Describe(w.platform).Plugin.ID)}, Capabilities: pluginproto.OnlineCapabilities(w.platform), Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems}
 	return pluginproto.Ready{Manifest: manifest, InstanceID: hello.InstanceID, Nonce: hello.Nonce}, nil
 }

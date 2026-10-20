@@ -24,12 +24,12 @@ func (p accountFake) PlatformAccount(_ context.Context, r online.AccountRequest)
 func TestPlatformAccountHTTPIsolationAndCSRF(t *testing.T) {
 	server, _, _ := libraryHTTP(t)
 	cookie, session := login(t, server)
-	c, err := online.New(online.Netease, online.Scope{UserID: "admin", InstanceID: "net"}, online.Options{})
+	c, err := online.New(online.Netease, online.Scope{UserID: "admin", InstanceID: "7fe223d0-a3bd-5e87-87f8-305dc26d9041"}, online.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
-	service, err := onlinehost.New([]onlinehost.Runtime{{Owner: "admin", InstanceID: "net", Name: "Netease", Platform: online.Netease, Enabled: true, ConfigRevision: "1", Provider: accountFake{c}}, {Owner: "other", InstanceID: "private", Platform: online.Netease, Enabled: true, ConfigRevision: "1", Provider: accountFake{c}}})
+	service, err := onlinehost.New([]onlinehost.Runtime{{Owner: "admin", InstanceID: "7fe223d0-a3bd-5e87-87f8-305dc26d9041", Name: "Netease", Platform: online.Netease, Enabled: true, ConfigRevision: "1", Provider: accountFake{c}}, {Owner: "other", InstanceID: "843558e1-a158-56ac-834a-baffd12bb5c5", Platform: online.Netease, Enabled: true, ConfigRevision: "1", Provider: accountFake{c}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,18 +39,18 @@ func TestPlatformAccountHTTPIsolationAndCSRF(t *testing.T) {
 		csrf               bool
 		status             int
 	}{
-		{"GET", "net/account", "", false, 200},
-		{"GET", "net/search?q=sample", "", false, 403},
-		{"GET", "net/tracks/42", "", false, 403},
-		{"GET", "net/playlists/42", "", false, 403},
-		{"GET", "net/recommendations?limit=1", "", false, 403},
-		{"POST", "net/tracks/42/resolve", "{}", true, 403},
-		{"GET", "private/account", "", false, 404},
-		{"POST", "net/account", `{"action":"logout"}`, false, 403},
-		{"POST", "net/account", `{"action":"restore","secret":{}}`, true, 400},
-		{"POST", "net/account", `{"action":"signalCancel"}`, true, 400},
-		{"POST", "net/account", `{"action":"begin"}`, true, 403},
-		{"POST", "net/account", `{"action":"logout"}`, true, 200},
+		{"GET", "7fe223d0-a3bd-5e87-87f8-305dc26d9041/account", "", false, 200},
+		{"GET", "7fe223d0-a3bd-5e87-87f8-305dc26d9041/search?q=sample", "", false, 403},
+		{"GET", "7fe223d0-a3bd-5e87-87f8-305dc26d9041/tracks/42", "", false, 403},
+		{"GET", "7fe223d0-a3bd-5e87-87f8-305dc26d9041/playlists/42", "", false, 403},
+		{"GET", "7fe223d0-a3bd-5e87-87f8-305dc26d9041/recommendations?limit=1", "", false, 403},
+		{"POST", "7fe223d0-a3bd-5e87-87f8-305dc26d9041/tracks/42/resolve", "{}", true, 403},
+		{"GET", "843558e1-a158-56ac-834a-baffd12bb5c5/account", "", false, 404},
+		{"POST", "7fe223d0-a3bd-5e87-87f8-305dc26d9041/account", `{"action":"logout"}`, false, 403},
+		{"POST", "7fe223d0-a3bd-5e87-87f8-305dc26d9041/account", `{"action":"restore","secret":{}}`, true, 400},
+		{"POST", "7fe223d0-a3bd-5e87-87f8-305dc26d9041/account", `{"action":"signalCancel"}`, true, 400},
+		{"POST", "7fe223d0-a3bd-5e87-87f8-305dc26d9041/account", `{"action":"begin"}`, true, 403},
+		{"POST", "7fe223d0-a3bd-5e87-87f8-305dc26d9041/account", `{"action":"logout"}`, true, 200},
 	} {
 		r := httptest.NewRequest(tc.method, "/api/v1/online-instances/"+tc.path, strings.NewReader(tc.body))
 		r.AddCookie(cookie)

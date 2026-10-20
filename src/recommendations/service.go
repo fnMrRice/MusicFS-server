@@ -59,9 +59,7 @@ func New(runtimes []Runtime, config Config) (*Service, error) {
 		if !pluginproto.OnlineIdentity(r.Owner) || !pluginproto.OnlineIdentity(r.InstanceID) || !pluginproto.OnlineIdentity(r.ConfigRevision) || pluginproto.OnlinePluginID(r.Platform) == "" {
 			return nil, domain.Fail("INVALID_ARGUMENT", "Invalid recommendation runtime scope")
 		}
-		if !pluginproto.OnlineIdentity(r.Name) {
-			r.Name = r.InstanceID
-		}
+		r.Name = runtimeName(r)
 		key := runtimeKey{r.Owner, r.InstanceID}
 		if _, ok := s.runtimes[key]; ok {
 			return nil, domain.Fail("INVALID_ARGUMENT", "Duplicate recommendation runtime")
@@ -127,7 +125,15 @@ func (s *Service) List(ctx context.Context, owner string, request Request) (Resp
 	}
 	results := make(chan result, len(runtimes))
 	for i, r := range runtimes {
-		go func() { results <- result{i, s.get(ctx, r, request)} }()
+		go func() {
+			source := s.get(ctx, r, request)
+			if r.InstanceName != nil {
+				if name := r.InstanceName(ctx); name != "" {
+					source.Name = name
+				}
+			}
+			results <- result{i, source}
+		}()
 	}
 	response := Response{Sources: make([]Source, len(runtimes))}
 	for range runtimes {

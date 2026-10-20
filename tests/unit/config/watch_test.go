@@ -77,23 +77,24 @@ func TestWatchYAMLStrictDefaultsAndSnapshot(t *testing.T) {
 	}
 }
 
-func TestWatchInstanceBudgetAndDisabledValidation(t *testing.T) {
+func TestWatchSingleInstanceAndDisabledValidation(t *testing.T) {
 	doc, err := parse(t, watchYAML("{enabled: true}"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	c := doc.Config
-	base := c.Plugins[0].Instances[0]
 	c.Plugins = c.Plugins[:1]
-	for i := 1; i < config.MaxWatchedInstances+1; i++ {
-		item := base
-		item.InstanceID = string(rune('a' + i))
-		c.Plugins[0].Instances = append(c.Plugins[0].Instances, item)
-	}
+	item := c.Plugins[0].Instances[0]
+	item.InstanceID = "a13edb4c-d1d6-4222-adc5-7ff4de31f45e"
+	c.Plugins[0].Instances = append(c.Plugins[0].Instances, item)
 	if err = c.Validate(); err == nil {
-		t.Fatal("watch instance budget exceeded")
+		t.Fatal("multiple local watchers were accepted")
 	}
 	c.Plugins[0].Enabled = false
+	if err = c.Validate(); err == nil {
+		t.Fatal("disabled plugins bypassed the single instance declaration")
+	}
+	c.Plugins[0].Instances = c.Plugins[0].Instances[:1]
 	if err = c.Validate(); err != nil {
 		t.Fatal("disabled listeners consume live budget", err)
 	}

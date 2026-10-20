@@ -10,33 +10,29 @@ cacheRoot: '/var/cache/musicfs'
 webRoot: ''
 pluginBundle: '/opt/musicfs/bin/musicfs-plugins'
 plugins:
-  - pluginId: 'musicfs.localfiles'
+  - pluginId: 'musicfs.plugin.source.localfiles'
     executable: '/opt/musicfs/bin/musicfs-plugins'
     args: ['--plugin', 'local']
     enabled: true
     instances:
-      - instanceId: 'local'
-        name: '本地音乐'
-        role: 'provider'
+      - instanceId: 'b1548e96-3081-5c9c-8376-bf290e369d51'
         enabled: true
         permissions: {readDirectories: ['/music']}
         config: {}
-  - pluginId: 'musicfs.audio.ffmpeg'
+  - pluginId: 'musicfs.plugin.decoder.ffmpeg'
     executable: '/opt/musicfs/bin/musicfs-plugins'
     args: ['--plugin', 'audio-ffmpeg']
     enabled: false
     instances:
-      - instanceId: 'audio-default'
-        role: 'audio'
+      - instanceId: '16b003e5-1bab-52bb-be10-0e83ec1c40ea'
         enabled: false
         config: {ffmpegPath: '/usr/bin/ffmpeg', ffprobePath: '/usr/bin/ffprobe'}
-  - pluginId: 'musicfs.ncm'
+  - pluginId: 'musicfs.plugin.decoder.ncm'
     executable: '/opt/musicfs/bin/musicfs-plugins'
     args: ['--plugin', 'ncm']
     enabled: true
     instances:
-      - instanceId: 'ncm-default'
-        role: 'audio'
+      - instanceId: '96412f52-9ff4-5a82-9eaa-7644a5837cda'
         enabled: true
         config: {}
   - pluginId: 'musicfs.scraper.local'
@@ -44,8 +40,7 @@ plugins:
     args: ['--plugin', 'scraper-local']
     enabled: true
     instances:
-      - instanceId: 'scraper-local'
-        role: 'scraper'
+      - instanceId: 'd248bf34-1780-59d3-a557-9cf5d889e977'
         enabled: true
         config: {}
 hashing: {auto: false, maxConcurrent: 1, bytesPerSecond: 4194304}

@@ -52,7 +52,7 @@ func (w *Worker) RebindLocalTrack(ctx context.Context, r LocalRebind) (pluginpro
 	if err := ctx.Err(); err != nil {
 		return pluginproto.Observation{}, err
 	}
-	if w.Manifest.PluginID != "musicfs.localfiles" || w.Access == nil || w.state == nil {
+	if w.Manifest.PluginID != "musicfs.plugin.source.localfiles" || w.Access == nil || w.state == nil {
 		return pluginproto.Observation{}, fmt.Errorf("UNSUPPORTED: provider cannot rebind local identities")
 	}
 	scope := pluginproto.ScanScope{RootID: r.RootID, RootIdentity: r.RootIdentity, Recursive: true, MaxDepth: 0}

@@ -85,9 +85,9 @@ func TestYAMLFingerprintsActualToolsMediaAuthorizationAndPlayback(t *testing.T) 
 	configuration := func(t *testing.T) (config.Config, string) {
 		cfg, base := yamlServiceConfig(t)
 		cfg.Plugins = []config.Plugin{
-			{PluginID: "musicfs.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Role: "provider", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Synthetic audio", Path: music}}}}}},
-			{PluginID: "musicfs.audio.ffmpeg", Executable: audio, Enabled: true, Instances: []config.Instance{{InstanceID: "audio-default", Role: "audio", Enabled: true, Config: config.InstanceConfig{FFmpegPath: ffmpeg, FFprobePath: ffprobe}}}},
-			{PluginID: "musicfs.ncm", Executable: ncm, Enabled: true, Instances: []config.Instance{{InstanceID: "ncm-default", Role: "audio", Enabled: true}}},
+			{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Synthetic audio", Path: music}}}}}},
+			{PluginID: "musicfs.plugin.decoder.ffmpeg", Executable: audio, Enabled: true, Instances: []config.Instance{{InstanceID: "16b003e5-1bab-52bb-be10-0e83ec1c40ea", Enabled: true, Config: config.InstanceConfig{FFmpegPath: ffmpeg, FFprobePath: ffprobe}}}},
+			{PluginID: "musicfs.plugin.decoder.ncm", Executable: ncm, Enabled: true, Instances: []config.Instance{{InstanceID: "96412f52-9ff4-5a82-9eaa-7644a5837cda", Enabled: true}}},
 		}
 		cfg.Fingerprinting = config.FingerprintingConfig{Enabled: true, FpcalcPath: fpcalc, FpcalcSHA256: pin, MaxConcurrent: 1, TimeoutSeconds: 30}
 		return cfg, base

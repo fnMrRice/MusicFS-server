@@ -12,14 +12,14 @@ import (
 
 func TestExclusionYAMLValidationAndSnapshotIsolation(t *testing.T) {
 	withRules := func(value string) string {
-		return strings.Replace(minimalYAML+pluginYAML, "        role: provider\n", "        role: provider\n        importDefaults: {excludePatterns: "+value+"}\n", 1)
+		return strings.Replace(minimalYAML+pluginYAML, "      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n", "      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n        importDefaults: {excludePatterns: "+value+"}\n", 1)
 	}
 	for _, value := range []string{`['**/cache', '*.tmp']`, `[]`} {
 		doc, err := parse(t, withRules(value))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err = config.EffectiveImportDefaults("musicfs.localfiles", doc.Config.Plugins[0].Instances[0]); err != nil {
+		if _, err = config.EffectiveImportDefaults("musicfs.plugin.source.localfiles", doc.Config.Plugins[0].Instances[0]); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -12,7 +12,7 @@ import (
 )
 
 func metadataRequest(ids []string, fields ...string) map[string]any {
-	return map[string]any{"sourceTrackIds": ids, "fields": fields, "instanceIds": []string{"scraper-local"}}
+	return map[string]any{"sourceTrackIds": ids, "fields": fields, "instanceIds": []string{"d248bf34-1780-59d3-a557-9cf5d889e977"}}
 }
 
 func metadataJob(t *testing.T, c *client, input map[string]any, key string) enrichment.Job {

@@ -45,10 +45,10 @@ func TestAutomaticMetadataActualServerImportDepthLocksAndRestart(t *testing.T) {
 	}
 	cfg, base := yamlServiceConfig(t)
 	cfg.Plugins = []config.Plugin{
-		{PluginID: "musicfs.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Role: "provider", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Automatic fixtures", Path: music}}}}}},
-		{PluginID: "musicfs.scraper.local", Executable: scraper, Enabled: true, Instances: []config.Instance{{InstanceID: "scraper-local", Role: "scraper", Enabled: true}}},
+		{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Automatic fixtures", Path: music}}}}}},
+		{PluginID: "musicfs.scraper.local", Executable: scraper, Enabled: true, Instances: []config.Instance{{InstanceID: "d248bf34-1780-59d3-a557-9cf5d889e977", Enabled: true}}},
 	}
-	cfg.Metadata.Automatic = enrichment.AutomaticPolicy{InstancePriority: []string{"scraper-local"}, Fields: []string{"lyrics", "artwork"}, Languages: []string{"en"}}
+	cfg.Metadata.Automatic = enrichment.AutomaticPolicy{InstancePriority: []string{"d248bf34-1780-59d3-a557-9cf5d889e977"}, Fields: []string{"lyrics", "artwork"}, Languages: []string{"en"}}
 	var rootID, taggedID, lockedObject string
 	var savedScan string
 	completed := false

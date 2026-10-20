@@ -14,10 +14,15 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
+
+	"github.com/fnMrRice/MusicFS-server/src/instanceid"
+	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
 type Config struct {
+	InstanceID                                                 string
 	WorkerArgs                                                 []string
 	FFmpegPath, FFprobePath, WorkerPath, WorkerSHA256, WorkDir string
 	MaxConcurrent                                              int
@@ -33,6 +38,12 @@ type Processor struct {
 
 func NewProcessor(ctx context.Context, cfg Config) (*Processor, error) {
 	cfg.WorkerArgs = slices.Clone(cfg.WorkerArgs)
+	if cfg.InstanceID == "" {
+		cfg.InstanceID = uuid.NewString()
+	}
+	if !instanceid.Valid(cfg.InstanceID) {
+		return nil, fmt.Errorf("invalid plugin instance UUID")
+	}
 	if cfg.MaxConcurrent == 0 {
 		cfg.MaxConcurrent = 2
 	}
@@ -189,17 +200,17 @@ func (p *Processor) run(ctx context.Context, taskID string, readerAt io.ReaderAt
 	startup, startupCancel := context.WithTimeout(ctx, 5*time.Second)
 	defer startupCancel()
 	var ready pluginproto.Ready
-	err = peer.Call(startup, "host.hello", bootstrap{Hello: pluginproto.Hello{ProtocolVersion: pluginproto.ProtocolVersion, InstanceID: "audio-" + taskID, Nonce: token, ConfigRevision: "1"}, Capabilities: p.Capabilities}, &ready)
+	err = peer.Call(startup, "host.hello", bootstrap{Hello: pluginproto.Hello{ProtocolVersion: pluginproto.ProtocolVersion, InstanceID: p.config.InstanceID, TaskID: taskID, Nonce: token, ConfigRevision: "1"}, Capabilities: p.Capabilities}, &ready)
 	if err != nil {
 		return err
 	}
-	if err = ready.Manifest.Validate("audio"); err != nil {
+	if err = pluginconfig.ValidateManifest(ready.Manifest, "audio"); err != nil {
 		return err
 	}
-	if ready.Nonce != token || ready.InstanceID != "audio-"+taskID {
+	if ready.Nonce != token || ready.InstanceID != p.config.InstanceID {
 		return fmt.Errorf("PROTOCOL_MISMATCH: audio worker identity mismatch")
 	}
-	if ready.Manifest.PluginID != "musicfs.audioffmpeg" || ready.Manifest.PluginVersion != audioPluginVersion {
+	if ready.Manifest.PluginID != "musicfs.plugin.decoder.ffmpeg" || ready.Manifest.PluginVersion != audioPluginVersion {
 		return fmt.Errorf("PROTOCOL_MISMATCH: audio worker implementation differs")
 	}
 	if err = operation(peer, base+"/input", base+"/output"); err != nil {

@@ -13,7 +13,7 @@ func stateChange(t *testing.T, h *harness, instance, key string, enabled bool, m
 	t.Helper()
 	op, err := h.manager.Change(context.Background(), "admin", config.Change{
 		ExpectedRevision: h.manager.Snapshot().Revision, IdempotencyKey: key,
-		PluginID: "musicfs.ncm", InstanceID: instance, Enabled: enabled, Mode: mode,
+		PluginID: "musicfs.plugin.decoder.ncm", InstanceID: instance, Enabled: enabled, Mode: mode,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -41,7 +41,7 @@ func TestDisableSavesIntentWithoutChangingRuntimeUntilServerRestart(t *testing.T
 			t.Run(target+"-"+mode, func(t *testing.T) {
 				h := setup(t)
 				initial := waitApplied(t, h.manager)
-				gate := h.manager.Gate("ncm")
+				gate := h.manager.Gate(ncmInstanceID)
 				epoch := gate.Epoch()
 				lease, err := gate.Acquire(context.Background())
 				if err != nil {
@@ -50,7 +50,7 @@ func TestDisableSavesIntentWithoutChangingRuntimeUntilServerRestart(t *testing.T
 				defer lease.Close()
 				instance := ""
 				if target == "instance" {
-					instance = "ncm"
+					instance = ncmInstanceID
 				}
 				op := stateChange(t, h, instance, "save-disable", false, mode)
 				waitStatus(t, h, op, "succeeded")
@@ -98,7 +98,7 @@ func TestDisableSavesIntentWithoutChangingRuntimeUntilServerRestart(t *testing.T
 					t.Fatal(err)
 				}
 				defer restarted.Close()
-				if err = restarted.Register("ncm", plugincontrol.Hooks{}, false); err != nil {
+				if err = restarted.Register(ncmInstanceID, plugincontrol.Hooks{}, false); err != nil {
 					t.Fatal(err)
 				}
 				restarted.Start()
@@ -107,7 +107,7 @@ func TestDisableSavesIntentWithoutChangingRuntimeUntilServerRestart(t *testing.T
 				if after.RestartRequired || state.RuntimeState != "disabled" || state.EffectiveEnabled || state.AcceptingNewWork {
 					t.Fatal("server restart did not apply saved disable", after)
 				}
-				code(t, restarted.Gate("ncm").Check(context.Background()), "PLUGIN_DISABLED")
+				code(t, restarted.Gate(ncmInstanceID).Check(context.Background()), "PLUGIN_DISABLED")
 				persisted, err = restarted.Operation(context.Background(), "admin", op.ID)
 				if err != nil || persisted.Status != "succeeded" || !persisted.RestartRequired {
 					t.Fatal("restart lost the saved operation outcome", persisted, err)
@@ -118,11 +118,11 @@ func TestDisableSavesIntentWithoutChangingRuntimeUntilServerRestart(t *testing.T
 }
 
 func TestUndoDisableKeepsTheCurrentWorkerAndGeneration(t *testing.T) {
-	for _, instance := range []string{"", "ncm"} {
+	for _, instance := range []string{"", ncmInstanceID} {
 		t.Run("instance="+instance, func(t *testing.T) {
 			h := setup(t)
 			initial := waitApplied(t, h.manager)
-			gate := h.manager.Gate("ncm")
+			gate := h.manager.Gate(ncmInstanceID)
 			epoch := gate.Epoch()
 			lease, err := gate.Acquire(context.Background())
 			if err != nil {

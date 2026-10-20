@@ -1,7 +1,7 @@
 [
-  {"name":"create-explicit-empty-album","schema":"CreateSourceAlbumRequest","valid":true,"value":{"providerInstanceId":"local","name":"同名不合并","sourceTrackIds":[]}},
-  {"name":"album-members-not-null","schema":"CreateSourceAlbumRequest","valid":false,"value":{"providerInstanceId":"local","name":"专辑","sourceTrackIds":null}},
-  {"name":"album-members-unique","schema":"CreateSourceAlbumRequest","valid":false,"value":{"providerInstanceId":"local","name":"专辑","sourceTrackIds":["one","one"]}},
+  {"name":"create-explicit-empty-album","schema":"CreateSourceAlbumRequest","valid":true,"value":{"providerInstanceId":"b1548e96-3081-5c9c-8376-bf290e369d51","name":"同名不合并","sourceTrackIds":[]}},
+  {"name":"album-members-not-null","schema":"CreateSourceAlbumRequest","valid":false,"value":{"providerInstanceId":"b1548e96-3081-5c9c-8376-bf290e369d51","name":"专辑","sourceTrackIds":null}},
+  {"name":"album-members-unique","schema":"CreateSourceAlbumRequest","valid":false,"value":{"providerInstanceId":"b1548e96-3081-5c9c-8376-bf290e369d51","name":"专辑","sourceTrackIds":["one","one"]}},
   {"name":"cover-independent-revisions","schema":"SelectAlbumCoverRequest","valid":true,"value":{"objectId":"object-1","expectedRevision":0,"expectedTargetRevision":1}},
   {"name":"cover-target-revision-required","schema":"SelectAlbumCoverRequest","valid":false,"value":{"objectId":"object-1","expectedRevision":0}},
   {"name":"cover-not-arbitrary-path","schema":"SelectAlbumCoverRequest","valid":false,"value":{"objectId":"object-1","expectedRevision":0,"expectedTargetRevision":1,"path":"private.png"}},

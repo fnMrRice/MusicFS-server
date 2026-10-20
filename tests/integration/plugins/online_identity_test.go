@@ -13,7 +13,7 @@ func TestOnlineWorkerCachesPluginIdentityAndRejectsUntrustedDescriptors(t *testi
 	cfg := onlineConfig(t, path, online.Netease)
 	w := onlineStart(t, cfg)
 	d := w.Descriptor()
-	if d.Plugin == nil || d.Plugin.ID != "musicfs.netease" || d.Plugin.Name != "Fixture Music" || d.Plugin.LocalizedNames["zh-Hans"] != "测试音乐" {
+	if d.Plugin == nil || d.Plugin.ID != "musicfs.plugin.source.netease" || d.Plugin.Name != "Fixture Music" || d.Plugin.LocalizedNames["zh-Hans"] != "测试音乐" {
 		t.Fatal("worker display metadata was replaced by host defaults", d)
 	}
 	d.Plugin.Name = "Changed copy"
@@ -30,7 +30,7 @@ func TestOnlineWorkerCachesPluginIdentityAndRejectsUntrustedDescriptors(t *testi
 	if after := w.Descriptor(); after.Plugin.Name != "Fixture Music" {
 		t.Fatal("offline worker lost its verified identity")
 	}
-	for _, mode := range []string{"bad-id", "bad-name", "bad-locale", "stale-revision", "missing-plugin", "missing-source-feature"} {
+	for _, mode := range []string{"bad-id", "bad-name", "bad-locale", "stale-revision", "missing-plugin", "missing-source-feature", "changed-display", "wrong-multiplicity"} {
 		t.Run(mode, func(t *testing.T) {
 			cfg := onlineConfig(t, path, online.Netease)
 			cfg.Args = []string{mode}

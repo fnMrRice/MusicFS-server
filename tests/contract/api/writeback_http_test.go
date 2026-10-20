@@ -40,7 +40,7 @@ func TestWriteBackHTTPExplicitInputOwnerAndNaturalCancellation(t *testing.T) {
 	server.RegisterWriteBack(service)
 	queued := map[string]writebackhost.Job{}
 	for _, owner := range []string{"admin", "other"} {
-		if _, _, err := store.Enqueue(ctx, owner, owner, testkit.ScanPlan(owner), "writeback-seed-scan"); err != nil {
+		if _, _, err := store.Enqueue(ctx, owner, fixtureInstanceID(owner), testkit.ScanPlan(owner), "writeback-seed-scan"); err != nil {
 			t.Fatal(err)
 		}
 		scan, err := store.Claim(ctx)
@@ -54,7 +54,7 @@ func TestWriteBackHTTPExplicitInputOwnerAndNaturalCancellation(t *testing.T) {
 		if err := store.Finish(ctx, scan, 1, nil); err != nil {
 			t.Fatal(err)
 		}
-		page, err := store.ListTracks(ctx, owner, owner, "", 10)
+		page, err := store.ListTracks(ctx, owner, fixtureInstanceID(owner), "", 10)
 		if err != nil || len(page.Items) != 1 {
 			t.Fatal("missing source", err)
 		}
@@ -69,7 +69,7 @@ func TestWriteBackHTTPExplicitInputOwnerAndNaturalCancellation(t *testing.T) {
 			t.Fatal(err)
 		}
 		input := writebackhost.Request{SourceTrackID: track.ID, AssetID: track.AssetID, AssetVersion: track.Asset.Version, ExpectedRevision: selection.Revision, Fields: []writebackhost.Field{{Name: "lyrics", Language: "und"}}}
-		job, _, err := store.QueueWriteback(ctx, owner, input, writeback.Target{SourceTrackID: track.ID, AssetID: track.AssetID, AssetVersion: track.Asset.Version, InstanceID: owner, RootID: owner, RelativePath: item.RelativePath, FileIdentity: "file-identity"}, "writeback-seed-job")
+		job, _, err := store.QueueWriteback(ctx, owner, input, writeback.Target{SourceTrackID: track.ID, AssetID: track.AssetID, AssetVersion: track.Asset.Version, InstanceID: fixtureInstanceID(owner), RootID: owner, RelativePath: item.RelativePath, FileIdentity: "file-identity"}, "writeback-seed-job")
 		if err != nil {
 			t.Fatal(err)
 		}

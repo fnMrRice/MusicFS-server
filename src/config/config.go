@@ -25,7 +25,6 @@ type Instance struct {
 	PendingConfiguration bool                         `yaml:"-" json:"-"`
 	InstanceID           string                       `yaml:"instanceId" json:"instanceId"`
 	Name                 string                       `yaml:"name,omitempty" json:"name,omitempty"`
-	Role                 string                       `yaml:"role" json:"role"`
 	Enabled              bool                         `yaml:"enabled" json:"enabled"`
 	Config               InstanceConfig               `yaml:"config" json:"config"`
 	ImportDefaults       *pluginproto.ImportOverrides `yaml:"importDefaults,omitempty" json:"importDefaults,omitempty"`

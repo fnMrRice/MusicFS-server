@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/fnMrRice/MusicFS-server/src/instanceid"
 	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
@@ -32,13 +33,13 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 		w.mu.Lock()
 		defer w.mu.Unlock()
 		var hello pluginproto.Hello
-		if json.Unmarshal(raw, &hello) != nil || hello.ProtocolVersion != pluginproto.ProtocolVersion || hello.InstanceID == "" || hello.Nonce == "" || w.ready {
+		if json.Unmarshal(raw, &hello) != nil || hello.ProtocolVersion != pluginproto.ProtocolVersion || !instanceid.Valid(hello.InstanceID) || hello.TaskID != "" || hello.Nonce == "" || w.ready {
 			return nil, fmt.Errorf("PROTOCOL_MISMATCH: invalid handshake")
 		}
 		w.ready = true
 		w.instance = hello.InstanceID
 		identity := Identity()
-		return pluginproto.Ready{InstanceID: hello.InstanceID, Nonce: hello.Nonce, Manifest: pluginproto.Manifest{PluginID: identity.ID, Plugin: identity, PluginVersion: "0.3.0", ProtocolVersion: pluginproto.ProtocolVersion, Roles: []string{"provider"}, Capabilities: []string{"library.scan", "metadata.read", "stream.resolve"}, Configuration: pluginconfig.LocalFiles(), Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}}, nil
+		return pluginproto.Ready{InstanceID: hello.InstanceID, Nonce: hello.Nonce, Manifest: pluginproto.Manifest{PluginID: identity.ID, Plugin: identity, PluginVersion: "0.3.0", ProtocolVersion: pluginproto.ProtocolVersion, SupportsMultipleInstances: pluginconfig.SupportsMultipleInstances("musicfs.plugin.source.localfiles"), Roles: []string{pluginconfig.Role("musicfs.plugin.source.localfiles")}, Capabilities: []string{"library.scan", "metadata.read", "stream.resolve"}, Configuration: pluginconfig.LocalFiles(), Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}}, nil
 	}
 	w.mu.Lock()
 	ready := w.ready

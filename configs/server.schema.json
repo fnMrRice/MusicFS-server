@@ -32,7 +32,7 @@
         "roots": {"type": "array", "maxItems": 256, "uniqueItems": true, "default": [], "items": {
           "type": "object", "additionalProperties": false, "required": ["instanceId", "rootId", "fields"],
           "properties": {
-            "instanceId": {"$ref": "#/$defs/ID"}, "rootId": {"$ref": "#/$defs/ID"},
+            "instanceId": {"$ref": "#/$defs/InstanceID"}, "rootId": {"$ref": "#/$defs/ID"},
             "fields": {"type": "array", "minItems": 1, "maxItems": 2, "uniqueItems": true, "items": {"enum": ["lyrics", "artwork"]}}
           }
         }}
@@ -48,7 +48,7 @@
           "description": "成功扫描后的独立自动补缺策略，默认关闭。单次导入歌词另由 importLyrics 控制。实例优先级按声明顺序，人工锁不可覆盖。",
           "properties": {
             "enabled": {"type": "boolean", "default": false},
-            "instancePriority": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9_-]+$"}},
+            "instancePriority": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/InstanceID"}},
             "fields": {"type": "array", "maxItems": 2, "uniqueItems": true, "items": {"enum": ["lyrics", "artwork"]}, "default": ["lyrics", "artwork"]},
             "languages": {"type": "array", "maxItems": 16, "uniqueItems": true, "items": {"type": "string", "minLength": 2, "maxLength": 35, "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"}}
           },
@@ -157,19 +157,14 @@
               ],
               "properties": {
                 "pluginId": {
-                  "const": "musicfs.audio.ffmpeg"
+                  "const": "musicfs.plugin.decoder.ffmpeg"
                 },
                 "instances": {
                   "contains": {
                     "required": [
-                      "role",
                       "enabled"
                     ],
-                    "properties": {
-                      "role": {
-                        "const": "audio"
-                      }
-                    }
+                    "properties": {}
                   }
                 }
               }
@@ -180,7 +175,7 @@
     }
   ],
   "$defs": {
-    "OnlinePlugin": {"allOf": [{"$ref": "#/$defs/Plugin"}], "description": "匿名固定平台适配；加载器额外限制三平台总共最多16实例。禁止配置URL、Cookie、token或导入选项。", "properties": {"pluginId": {"enum": ["musicfs.netease", "musicfs.qqmusic", "musicfs.applemusic"]}, "instances": {"type": "array", "maxItems": 16, "items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"role": {"const": "provider"}, "config": {"type": "object", "additionalProperties": false}, "importDefaults": false}}}}},
+    "OnlinePlugin": {"allOf": [{"$ref": "#/$defs/Plugin"}], "description": "匿名固定平台适配；加载器额外限制三平台总共最多16实例。禁止配置URL、Cookie、token或导入选项。", "properties": {"pluginId": {"enum": ["musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic"]}, "instances": {"type": "array", "maxItems": 16, "items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"config": {"type": "object", "additionalProperties": false}, "importDefaults": false}}}}},
     "ImportOverrides": {
       "type": "object",
       "additionalProperties": false,
@@ -245,6 +240,7 @@
       "description": "部分覆盖；关闭且未给深度规范为 0；从关闭切换开启且未给深度恢复 0；开启递归时 0 表示不限深度，1—64 表示子目录层数。null 与未知字段拒绝。importLyrics 在成功扫描后按资产版本补齐缺失且未人工锁定的歌词；需启用本地 Scraper。"
     },
     "ID": {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,128}$"},
+    "InstanceID": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", "not": {"const": "00000000-0000-0000-0000-000000000000"}},
     "Path": {"type": "string", "not": {"pattern": "\u0000"}},
     "NonemptyPath": {"$ref": "#/$defs/Path", "minLength": 1},
     "Enabled": {"type": "object", "required": ["enabled"], "properties": {"enabled": {"const": true}}},
@@ -252,7 +248,7 @@
     "Plugin": {
       "type": "object", "additionalProperties": false, "required": ["pluginId"],
       "properties": {
-        "pluginId": {"enum": ["musicfs.localfiles", "musicfs.audio.ffmpeg", "musicfs.ncm", "musicfs.scraper.local", "musicfs.netease", "musicfs.qqmusic", "musicfs.applemusic"]},
+        "pluginId": {"enum": ["musicfs.plugin.source.localfiles", "musicfs.plugin.decoder.ffmpeg", "musicfs.plugin.decoder.ncm", "musicfs.scraper.local", "musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic"]},
         "executable": {"$ref": "#/$defs/Path"},
         "args": {"type": "array", "maxItems": 64, "items": {"type": "string", "maxLength": 4096, "pattern": "^[^\u0000]*$"}},
         "sha256": {"type": "string", "pattern": "^(?:[a-fA-F0-9]{64})?$"},
@@ -267,23 +263,15 @@
       "additionalProperties": false,
       "required": [
         "instanceId",
-        "role",
         "config"
       ],
       "properties": {
         "instanceId": {
-          "$ref": "#/$defs/ID"
+          "$ref": "#/$defs/InstanceID"
         },
         "permissions": {"type": "object", "additionalProperties": false, "required": ["readDirectories"], "properties": {"readDirectories": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/NonemptyPath"}}}},
         "name": {
           "type": "string"
-        },
-        "role": {
-          "enum": [
-            "provider",
-            "audio",
-            "scraper"
-          ]
         },
         "enabled": {
           "type": "boolean",
@@ -322,8 +310,8 @@
     "LocalPlugin": {
       "allOf": [{"$ref": "#/$defs/Plugin"}],
       "properties": {
-        "pluginId": {"const": "musicfs.localfiles"},
-        "instances": {"items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"role": {"const": "provider"}, "config": {"$ref": "#/$defs/LocalSettings"}}}}
+        "pluginId": {"const": "musicfs.plugin.source.localfiles"},
+        "instances": {"maxItems": 1, "items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"config": {"$ref": "#/$defs/LocalSettings"}}}}
       },
       "description": "permissions 限定可浏览和选择的目录范围；未选择 musicRoots 时处于待配置状态，可通过管理员目录接口选择授权根或子目录。"
     },
@@ -335,9 +323,9 @@
       ],
       "properties": {
         "pluginId": {
-          "const": "musicfs.audio.ffmpeg"
+          "const": "musicfs.plugin.decoder.ffmpeg"
         },
-        "instances": {
+        "instances": {"maxItems": 1,
           "items": {
             "allOf": [
               {
@@ -345,9 +333,6 @@
               }
             ],
             "properties": {
-              "role": {
-                "const": "audio"
-              },
               "config": {
                 "$ref": "#/$defs/FFmpegSettings"
               },
@@ -392,7 +377,7 @@
         }
       }
     },
-    "LocalScraperPlugin": {"allOf": [{"$ref": "#/$defs/Plugin"}], "properties": {"pluginId": {"const": "musicfs.scraper.local"}, "instances": {"items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"role": {"const": "scraper"}, "config": {"type": "object", "additionalProperties": false}, "importDefaults": false}}, "maxItems": 16}}},
+    "LocalScraperPlugin": {"allOf": [{"$ref": "#/$defs/Plugin"}], "properties": {"pluginId": {"const": "musicfs.scraper.local"}, "instances": {"items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"config": {"type": "object", "additionalProperties": false}, "importDefaults": false}}, "maxItems": 16}}},
     "NCMPlugin": {
       "allOf": [
         {
@@ -401,9 +386,9 @@
       ],
       "properties": {
         "pluginId": {
-          "const": "musicfs.ncm"
+          "const": "musicfs.plugin.decoder.ncm"
         },
-        "instances": {
+        "instances": {"maxItems": 1,
           "items": {
             "allOf": [
               {
@@ -411,9 +396,6 @@
               }
             ],
             "properties": {
-              "role": {
-                "const": "audio"
-              },
               "config": {
                 "type": "object",
                 "maxProperties": 0

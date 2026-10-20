@@ -9,7 +9,7 @@ import (
 // ScanPlan is an explicit complete-range fixture for repository tests. Real
 // worker tests obtain their root identity bindings from the authorized runtime.
 func ScanPlan(rootIDs ...string) pluginproto.ScanPlan {
-	p := pluginproto.ScanPlan{PlanVersion: 1, Mode: "full", PluginID: "musicfs.localfiles", PluginVersion: "0.1.0", SchemaRevision: "localfiles-import-v1", ConfigRevision: "test-config-v1", Options: pluginproto.ImportOptions{Recursive: true, MaxDepth: 64}}
+	p := pluginproto.ScanPlan{PlanVersion: 1, Mode: "full", PluginID: "musicfs.plugin.source.localfiles", PluginVersion: "0.1.0", SchemaRevision: "localfiles-import-v1", ConfigRevision: "test-config-v1", Options: pluginproto.ImportOptions{Recursive: true, MaxDepth: 64}}
 	for _, id := range rootIDs {
 		p.Roots = append(p.Roots, pluginproto.ScanRoot{RootID: id, RootIdentity: "test-" + id})
 	}

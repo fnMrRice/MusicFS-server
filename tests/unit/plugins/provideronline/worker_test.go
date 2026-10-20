@@ -45,7 +45,7 @@ func worker(t *testing.T, roundTripper http.RoundTripper) *pluginproto.Peer {
 }
 func hello(t *testing.T, peer *pluginproto.Peer) pluginproto.OnlineHello {
 	t.Helper()
-	request := pluginproto.OnlineHello{Hello: pluginproto.Hello{ProtocolVersion: "1.0", InstanceID: "instance", Nonce: strings.Repeat("a", 48), ConfigRevision: pluginproto.OnlineRevision}, UserID: "owner", TimeoutMs: 3000}
+	request := pluginproto.OnlineHello{Hello: pluginproto.Hello{ProtocolVersion: "1.0", InstanceID: "1463118e-e2d1-564a-ab70-05a357c1b9bf", Nonce: strings.Repeat("a", 48), ConfigRevision: pluginproto.OnlineRevision}, UserID: "owner", TimeoutMs: 3000}
 	var ready pluginproto.Ready
 	if err := peer.Call(context.Background(), "host.hello", request, &ready); err != nil {
 		t.Fatal(err)
@@ -56,7 +56,7 @@ func hello(t *testing.T, peer *pluginproto.Peer) pluginproto.OnlineHello {
 	return request
 }
 func scope() pluginproto.Context {
-	return pluginproto.Context{UserID: "owner", InstanceID: "instance", TaskID: strings.Repeat("b", 48), TimeoutMs: 3000}
+	return pluginproto.Context{UserID: "owner", InstanceID: "1463118e-e2d1-564a-ab70-05a357c1b9bf", TaskID: strings.Repeat("b", 48), TimeoutMs: 3000}
 }
 func assertCode(t *testing.T, err error, code string) {
 	t.Helper()
@@ -146,7 +146,7 @@ func TestOnlineWorkerOversizedResultDoesNotCorruptControlChannel(t *testing.T) {
 
 func authenticate(t *testing.T, peer *pluginproto.Peer) {
 	t.Helper()
-	secret := json.RawMessage(`{"platform":"netease","userId":"owner","instanceId":"instance","accountId":"12345","deviceId":"fixture","cookies":{"MUSIC_U":"fixture-private-token"}}`)
+	secret := json.RawMessage(`{"platform":"netease","userId":"owner","instanceId":"1463118e-e2d1-564a-ab70-05a357c1b9bf","accountId":"12345","deviceId":"fixture","cookies":{"MUSIC_U":"fixture-private-token"}}`)
 	for _, r := range []online.AccountRequest{{Action: "restore", Secret: secret}, {Action: "check"}} {
 		var result pluginproto.OnlineResult[online.AccountResult]
 		if err := peer.Call(context.Background(), "provider.online.account", pluginproto.OnlineAccount{Context: scope(), Request: r}, &result); err != nil {

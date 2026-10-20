@@ -11,9 +11,7 @@ func (s *Service) UpdateRuntime(r Runtime) error {
 	if r.AccountID != "" || !pluginproto.OnlineIdentity(r.ConfigRevision) {
 		return domain.Fail("INVALID_ARGUMENT", "Invalid recommendation runtime")
 	}
-	if !pluginproto.OnlineIdentity(r.Name) {
-		r.Name = r.InstanceID
-	}
+	r.Name = runtimeName(r)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	key := runtimeKey{r.Owner, r.InstanceID}

@@ -29,7 +29,7 @@ func TestAutomaticMetadataConfigurationDefaultsAndStrictPolicy(t *testing.T) {
 	}{
 		"disabled":               {"{enabled: false}", true},
 		"enabled-default-fields": {"{enabled: true}", true},
-		"explicit":               {"{enabled: true, instancePriority: [scraper-local], fields: [lyrics], languages: [zh, und]}", true},
+		"explicit":               {"{enabled: true, instancePriority: [d248bf34-1780-59d3-a557-9cf5d889e977], fields: [lyrics], languages: [zh, und]}", true},
 		"disabled-empty-fields":  {"{enabled: false, fields: []}", true},
 		"enabled-empty-fields":   {"{enabled: true, fields: []}", false},
 		"unknown-field":          {"{enabled: true, privateSetting: true}", false},
@@ -37,7 +37,7 @@ func TestAutomaticMetadataConfigurationDefaultsAndStrictPolicy(t *testing.T) {
 		"null-priority":          {"{instancePriority: null}", false},
 		"null-languages":         {"{languages: null}", false},
 		"quoted-enabled":         {"{enabled: 'true'}", false},
-		"duplicate-priority":     {"{instancePriority: [scraper-local, scraper-local]}", false},
+		"duplicate-priority":     {"{instancePriority: [d248bf34-1780-59d3-a557-9cf5d889e977, d248bf34-1780-59d3-a557-9cf5d889e977]}", false},
 		"too-many-priority":      {"{instancePriority: [a,b,c,d,e]}", false},
 		"bad-fields":             {"{fields: [title]}", false},
 		"duplicate-fields":       {"{fields: [lyrics, lyrics]}", false},
@@ -67,13 +67,13 @@ func TestAutomaticMetadataConfigurationDefaultsAndStrictPolicy(t *testing.T) {
 
 func TestAutomaticMetadataDependenciesAndSnapshotIsolation(t *testing.T) {
 	combined := minimalYAML + pluginYAML + strings.TrimPrefix(scraperYAML, "plugins:\n")
-	policy := "metadata:\n  automatic: {enabled: true, instancePriority: [scraper-local], fields: [lyrics, artwork], languages: [ZH, und]}\n"
+	policy := "metadata:\n  automatic: {enabled: true, instancePriority: [d248bf34-1780-59d3-a557-9cf5d889e977], fields: [lyrics, artwork], languages: [ZH, und]}\n"
 	for name, raw := range map[string]string{
 		"no-scraper":              minimalYAML + policy,
-		"wrong-priority":          combined + strings.Replace(policy, "[scraper-local]", "[local]", 1),
-		"unknown-priority":        combined + strings.Replace(policy, "[scraper-local]", "[missing]", 1),
+		"wrong-priority":          combined + strings.Replace(policy, "[d248bf34-1780-59d3-a557-9cf5d889e977]", "[local]", 1),
+		"unknown-priority":        combined + strings.Replace(policy, "[d248bf34-1780-59d3-a557-9cf5d889e977]", "[missing]", 1),
 		"case-duplicate-language": combined + strings.Replace(policy, "[ZH, und]", "[ZH, zh]", 1),
-		"import-without-scraper":  strings.Replace(minimalYAML+pluginYAML, "role: provider\n", "role: provider\n        importDefaults: {importLyrics: true}\n", 1),
+		"import-without-scraper":  strings.Replace(minimalYAML+pluginYAML, "instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n", "instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n        importDefaults: {importLyrics: true}\n", 1),
 	} {
 		t.Run(name, func(t *testing.T) {
 			if _, err := parse(t, raw); err == nil {
@@ -81,7 +81,7 @@ func TestAutomaticMetadataDependenciesAndSnapshotIsolation(t *testing.T) {
 			}
 		})
 	}
-	importOnly := strings.Replace(combined, "role: provider\n", "role: provider\n        importDefaults: {importLyrics: true}\n", 1)
+	importOnly := strings.Replace(combined, "instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n", "instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n        importDefaults: {importLyrics: true}\n", 1)
 	if _, err := parse(t, importOnly); err != nil {
 		t.Fatalf("explicit lyrics import requires no global automatic switch: %v", err)
 	}

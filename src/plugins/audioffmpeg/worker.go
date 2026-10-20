@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/audio/dsp"
+	"github.com/fnMrRice/MusicFS-server/src/instanceid"
+	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
@@ -20,6 +22,7 @@ type audioWorker struct {
 	capabilities      Capabilities
 	active            bool
 	instanceID, nonce string
+	taskID            string
 }
 
 func RunWorker(ctx context.Context, input io.ReadCloser, output io.WriteCloser) error {
@@ -34,21 +37,23 @@ func (w *audioWorker) handle(ctx context.Context, method string, raw json.RawMes
 		w.mu.Lock()
 		defer w.mu.Unlock()
 		var b bootstrap
-		if json.Unmarshal(raw, &b) != nil || b.ProtocolVersion != pluginproto.ProtocolVersion || b.InstanceID == "" || b.Nonce == "" || w.ready {
+		if json.Unmarshal(raw, &b) != nil || b.ProtocolVersion != pluginproto.ProtocolVersion || !instanceid.Valid(b.InstanceID) || b.TaskID == "" || b.Nonce == "" || w.ready {
 			return nil, fmt.Errorf("PROTOCOL_MISMATCH: invalid audio handshake")
 		}
 		w.ready = true
 		w.capabilities = b.Capabilities
 		w.instanceID, w.nonce = b.InstanceID, b.Nonce
+		w.taskID = b.TaskID
 		capabilities := []string{"audio.decode", "audio.dsp", "audio.encode", "audio.mux"}
 		if b.Capabilities.Normalization {
 			capabilities = append(capabilities, "audio.normalize")
 		}
-		return pluginproto.Ready{InstanceID: b.InstanceID, Nonce: b.Nonce, Manifest: pluginproto.Manifest{PluginID: "musicfs.audioffmpeg", PluginVersion: audioPluginVersion, ProtocolVersion: pluginproto.ProtocolVersion, Roles: []string{"audio"}, Capabilities: capabilities, Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}}, nil
+		return pluginproto.Ready{InstanceID: b.InstanceID, Nonce: b.Nonce, Manifest: pluginproto.Manifest{PluginID: "musicfs.plugin.decoder.ffmpeg", Plugin: pluginconfig.Identity("musicfs.plugin.decoder.ffmpeg"), PluginVersion: audioPluginVersion, ProtocolVersion: pluginproto.ProtocolVersion, SupportsMultipleInstances: pluginconfig.SupportsMultipleInstances("musicfs.plugin.decoder.ffmpeg"), Roles: []string{pluginconfig.Role("musicfs.plugin.decoder.ffmpeg")}, Capabilities: capabilities, Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}}, nil
 	}
 	w.mu.Lock()
 	ready := w.ready
 	capabilities := w.capabilities
+	taskID := w.taskID
 	w.mu.Unlock()
 	if !ready {
 		return nil, fmt.Errorf("PROTOCOL_MISMATCH: handshake required")
@@ -66,7 +71,7 @@ func (w *audioWorker) handle(ctx context.Context, method string, raw json.RawMes
 	if json.Unmarshal(raw, &r) != nil {
 		return nil, fmt.Errorf("ACCESS_DENIED: invalid audio request")
 	}
-	if r.Plan.Profile != "mp3-128" || r.Plan.PositionMs < 0 || r.Plan.TaskID == "" || r.Plan.AssetID == "" {
+	if r.Plan.Profile != "mp3-128" || r.Plan.PositionMs < 0 || r.Plan.TaskID != taskID || r.Plan.AssetID == "" {
 		return nil, fmt.Errorf("UNSUPPORTED: invalid audio plan")
 	}
 	if err := validateLoopback(r.InputURL); err != nil {

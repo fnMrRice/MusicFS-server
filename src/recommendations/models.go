@@ -16,15 +16,18 @@ type Provider interface {
 	PublicRecommendations(context.Context, int) (online.RecommendationPage, error)
 }
 
-// Runtime is trusted composition data. Provider must already be bound to Owner
-// and InstanceID. Composition leaves AccountID empty; AccountScope supplies the
-// validated account and login generation for each cache access.
+// Runtime is trusted composition data. Name is the plugin-owned alias; Provider
+// must already be bound to Owner and InstanceID. Composition leaves AccountID
+// empty; AccountScope supplies the validated login generation for cache access.
 type Runtime struct {
 	Owner, InstanceID, Name, Platform, AccountID, ConfigRevision string
 	Provider                                                     Provider
-	Gate                                                         *plugincontrol.Gate
-	generation                                                   uint64
-	epoch                                                        uint64
+	// InstanceName resolves the current account display name or plugin alias.
+	// It runs outside the service lock for every response, including cache hits.
+	InstanceName func(context.Context) string
+	Gate         *plugincontrol.Gate
+	generation   uint64
+	epoch        uint64
 }
 
 type Config struct {

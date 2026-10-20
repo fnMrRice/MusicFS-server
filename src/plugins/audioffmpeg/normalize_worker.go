@@ -24,12 +24,12 @@ func (w *audioWorker) normalize(ctx context.Context, raw json.RawMessage) (any, 
 		return nil, err
 	}
 	w.mu.Lock()
-	capabilities, instance, nonce := w.capabilities, w.instanceID, w.nonce
+	capabilities, taskID, nonce := w.capabilities, w.taskID, w.nonce
 	w.mu.Unlock()
 	if !capabilities.Normalization {
 		return nil, fmt.Errorf("UNSUPPORTED: normalization components unavailable")
 	}
-	if instance != "audio-"+r.Plan.TaskID || r.FFmpegSHA256 != capabilities.FFmpegSHA256 {
+	if taskID != r.Plan.TaskID || r.FFmpegSHA256 != capabilities.FFmpegSHA256 {
 		return nil, fmt.Errorf("ACCESS_DENIED: normalization task identity mismatch")
 	}
 	if err := validateLoopback(r.InputURL); err != nil {

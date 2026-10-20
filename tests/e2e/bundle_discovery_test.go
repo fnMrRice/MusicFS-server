@@ -27,10 +27,10 @@ func TestBundledPluginsAutostartPendingAndPersistedDisable(t *testing.T) {
 			valid := len(snapshot.Items) == 7 && snapshot.RestartRequired == restartRequired
 			for _, p := range snapshot.Items {
 				want := "ready"
-				if p.PluginID == "musicfs.localfiles" || p.PluginID == "musicfs.audio.ffmpeg" {
+				if p.PluginID == "musicfs.plugin.source.localfiles" || p.PluginID == "musicfs.plugin.decoder.ffmpeg" {
 					want = "pending_configuration"
 				}
-				if p.PluginID == "musicfs.ncm" {
+				if p.PluginID == "musicfs.plugin.decoder.ncm" {
 					want = ncmState
 					if restartRequired && len(p.Instances) == 1 {
 						i := p.Instances[0]
@@ -53,7 +53,7 @@ func TestBundledPluginsAutostartPendingAndPersistedDisable(t *testing.T) {
 		}
 	}
 	check("ready", false)
-	op := libraryManagementChange(t, c, "/api/v1/admin/plugins/musicfs.ncm/state", map[string]any{"enabled": false, "mode": "drain"})
+	op := libraryManagementChange(t, c, "/api/v1/admin/plugins/musicfs.plugin.decoder.ncm/state", map[string]any{"enabled": false, "mode": "drain"})
 	waitLibraryOperation(t, c, op.ID)
 	if !op.RestartRequired {
 		t.Fatal("saved plugin disable omitted restart requirement")

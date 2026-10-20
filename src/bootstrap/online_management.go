@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/config"
+	"github.com/fnMrRice/MusicFS-server/src/instanceid"
 	"github.com/fnMrRice/MusicFS-server/src/onlinehost"
+	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
@@ -48,7 +50,19 @@ func registerOnlineManagement(ctx context.Context, c config.Config, manager *plu
 		if err := s.updateRecommendations(); err != nil {
 			return closeAll, err
 		}
-		if err := manager.Register(r.InstanceID, plugincontrol.Hooks{Start: s.start, Stop: s.stop, Ready: s.ready, Capabilities: func() []string { return pluginproto.OnlineCapabilities(r.Platform) }}, s.ready()); err != nil {
+		if err := manager.Register(r.InstanceID, plugincontrol.Hooks{Start: s.start, Stop: s.stop, Ready: s.ready, PluginIdentity: func() *pluginproto.PluginIdentity {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if s.worker == nil {
+				return nil
+			}
+			return s.worker.PluginIdentity()
+		}, InstanceName: func(ctx context.Context, owner string) string {
+			if owner != r.Owner {
+				return ""
+			}
+			return host.InstanceName(ctx, owner, r.InstanceID)
+		}, Capabilities: func() []string { return pluginproto.OnlineCapabilities(r.Platform) }}, s.ready()); err != nil {
 			return closeAll, err
 		}
 	}
@@ -71,7 +85,8 @@ func (s *managedOnline) ready() bool {
 
 func (s *managedOnline) updateRecommendations() error {
 	r := s.runtime
-	item := recommendations.Runtime{Owner: r.Owner, InstanceID: r.InstanceID, Name: r.Name, Platform: r.Platform, ConfigRevision: r.ConfigRevision, Gate: r.Gate}
+	item := recommendations.Runtime{Owner: r.Owner, InstanceID: r.InstanceID, Name: pluginconfig.Identity(pluginproto.OnlinePluginID(r.Platform)).Name, Platform: r.Platform, ConfigRevision: r.ConfigRevision, Gate: r.Gate,
+		InstanceName: func(ctx context.Context) string { return s.host.InstanceName(ctx, r.Owner, r.InstanceID) }}
 	// Keep the scoped availability check even without a running worker, so
 	// explicit disable and startup failure retain distinct error semantics.
 	item.Provider = s.host.RecommendationProvider(r.Owner, r.InstanceID)
@@ -92,12 +107,16 @@ func (s *managedOnline) start(ctx context.Context, p config.Plugin, i config.Ins
 	}
 	name := i.Name
 	if name == "" {
-		name = i.InstanceID
+		name = pluginconfig.Identity(p.PluginID).Name
 	}
 	hash := expectedChecksum(p.SHA256, p.Executable)
 	binding, _ := json.Marshal(struct{ Plugin, Instance, Binary, Schema string }{p.PluginID, i.InstanceID, hash, pluginproto.OnlineRevision})
 	r := onlinehost.Runtime{Owner: s.runtime.Owner, InstanceID: i.InstanceID, Name: name, Platform: config.OnlinePlatform(p.PluginID), ConfigRevision: fmt.Sprintf("%x", sha256.Sum256(binding)), Enabled: true, Gate: s.runtime.Gate}
-	w, err := pluginhost.StartOnline(s.run, pluginhost.OnlineConfig{Executable: p.Executable, Args: p.Args, SHA256: hash, StateDir: filepath.Join(s.dataRoot, "online", i.InstanceID), Platform: r.Platform, UserID: r.Owner, InstanceID: r.InstanceID})
+	stateDir, err := instanceid.StateDirectory(filepath.Join(s.dataRoot, "online"), i.InstanceID)
+	if err != nil {
+		return err
+	}
+	w, err := pluginhost.StartOnline(s.run, pluginhost.OnlineConfig{Executable: p.Executable, Args: p.Args, SHA256: hash, StateDir: stateDir, Platform: r.Platform, UserID: r.Owner, InstanceID: r.InstanceID})
 	if err != nil {
 		return err
 	}

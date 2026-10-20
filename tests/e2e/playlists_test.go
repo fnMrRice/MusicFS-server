@@ -40,7 +40,7 @@ func TestPlaylistsActualServerLocalRemoteHiddenMatchingAndRestart(t *testing.T) 
 		}
 	}
 	cfg, base := yamlServiceConfig(t)
-	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Role: "provider", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Synthetic playlist", Path: music}}}}}}, onlinePlugin(online.Netease, program, "net")}
+	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Synthetic playlist", Path: music}}}}}}, onlinePlugin(online.Netease, program, "7fe223d0-a3bd-5e87-87f8-305dc26d9041")}
 	var parent playlists.Playlist
 	var first playlists.AggregatePage
 	var sourceIDs []string
@@ -61,7 +61,7 @@ func TestPlaylistsActualServerLocalRemoteHiddenMatchingAndRestart(t *testing.T) 
 			}
 			return b
 		}
-		remote := albumRequest[remoteImported](t, c, "POST", "/remote-playlists", playlists.RemoteRef{InstanceID: "net", AccountID: accountID, ExternalID: "91"}, "aggregate-import", 201, "RemotePlaylistImported").Playlist
+		remote := albumRequest[remoteImported](t, c, "POST", "/remote-playlists", playlists.RemoteRef{InstanceID: "7fe223d0-a3bd-5e87-87f8-305dc26d9041", AccountID: accountID, ExternalID: "91"}, "aggregate-import", 201, "RemotePlaylistImported").Playlist
 		accepted := albumRequest[remoteAccepted](t, c, "POST", "/remote-playlists/"+remote.ID+"/sync-jobs", map[string]int{"expectedBindingRevision": 1}, "aggregate-remote-sync", 202, "HashAccepted")
 		deadline := time.Now().Add(8 * time.Second)
 		for {

@@ -14,7 +14,7 @@ import (
 func configureWatch(ctx context.Context, c config.Config, lib *library.Service, runtimes []library.Runtime, log *slog.Logger) func() {
 	var watchers []*scanwatch.Watcher
 	for _, plugin := range c.Plugins {
-		if plugin.PluginID != "musicfs.localfiles" || !plugin.Enabled {
+		if plugin.PluginID != "musicfs.plugin.source.localfiles" || !plugin.Enabled {
 			continue
 		}
 		for _, instance := range plugin.Instances {

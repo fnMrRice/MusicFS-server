@@ -8,7 +8,7 @@ import (
 )
 
 func EffectiveImportDefaults(pluginID string, instance Instance) (pluginproto.ImportOptions, error) {
-	if pluginID != "musicfs.localfiles" {
+	if pluginID != "musicfs.plugin.source.localfiles" {
 		if instance.ImportDefaults != nil {
 			return pluginproto.ImportOptions{}, errors.New("importDefaults requires a provider configuration declaration")
 		}

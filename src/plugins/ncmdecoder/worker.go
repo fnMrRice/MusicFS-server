@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/src/instanceid"
+	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
@@ -46,13 +48,13 @@ func (w *ncmWorker) handle(ctx context.Context, method string, raw json.RawMessa
 	}
 	if method == "host.hello" {
 		var hello pluginproto.Hello
-		if decodeRequest(raw, &hello) != nil || hello.ProtocolVersion != pluginproto.ProtocolVersion || !validID(hello.InstanceID) || !validNonce(hello.Nonce) || hello.ConfigRevision != "1" || w.hello.Nonce != "" {
+		if decodeRequest(raw, &hello) != nil || hello.ProtocolVersion != pluginproto.ProtocolVersion || !instanceid.Valid(hello.InstanceID) || !validID(hello.TaskID) || !validNonce(hello.Nonce) || hello.ConfigRevision != "1" || w.hello.Nonce != "" {
 			return nil, fmt.Errorf("PROTOCOL_MISMATCH: invalid NCM handshake")
 		}
 		w.hello = hello
 		return pluginproto.Ready{InstanceID: hello.InstanceID, Nonce: hello.Nonce, Manifest: pluginproto.Manifest{
-			PluginID: "musicfs.ncm", PluginVersion: "0.1.0", ProtocolVersion: pluginproto.ProtocolVersion,
-			Roles: []string{"audio"}, Capabilities: []string{"audio.decrypt"}, Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH},
+			PluginID: "musicfs.plugin.decoder.ncm", Plugin: pluginconfig.Identity("musicfs.plugin.decoder.ncm"), PluginVersion: "0.1.0", ProtocolVersion: pluginproto.ProtocolVersion,
+			SupportsMultipleInstances: pluginconfig.SupportsMultipleInstances("musicfs.plugin.decoder.ncm"), Roles: []string{pluginconfig.Role("musicfs.plugin.decoder.ncm")}, Capabilities: []string{"audio.decrypt"}, Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH},
 			MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems,
 		}}, nil
 	}
@@ -67,7 +69,7 @@ func (w *ncmWorker) handle(ctx context.Context, method string, raw json.RawMessa
 	}
 	w.opened = true
 	var request openRequest
-	if decodeRequest(raw, &request) != nil || !validID(request.TaskID) || !validID(request.AssetID) || request.Nonce != w.hello.Nonce || w.hello.InstanceID != "ncm-"+request.TaskID || request.Size <= 0 {
+	if decodeRequest(raw, &request) != nil || request.TaskID != w.hello.TaskID || !validID(request.AssetID) || request.Nonce != w.hello.Nonce || request.Size <= 0 {
 		return nil, fmt.Errorf("ACCESS_DENIED: invalid NCM task binding")
 	}
 	inputCtx, inputCancel := context.WithCancel(w.ctx)

@@ -47,7 +47,7 @@ Host 遍历、目录通知注册和数据库缺失对账共用上述范围判断
 {"mode":"full","schemaRevision":"local-import-v5","rootIds":["local"],"options":{"excludePatterns":["**/cache"]}}
 ```
 
-每一层的 `excludePatterns` 都整组替换，省略继承、显式 `[]` 清除，不自动追加。`scripts/scan.ps1 -ProviderID local -ExcludePatterns '**/cache','**/*.tmp'` 可提交本次规则；传 `-ExcludePatterns @()` 清除实例继承。登录、Origin/CSRF、幂等键和等待任务由脚本处理。
+每一层的 `excludePatterns` 都整组替换，省略继承、显式 `[]` 清除，不自动追加。`scripts/scan.ps1 -ProviderID b1548e96-3081-5c9c-8376-bf290e369d51 -ExcludePatterns '**/cache','**/*.tmp'` 可提交本次规则；传 `-ExcludePatterns @()` 清除实例继承。登录、Origin/CSRF、幂等键和等待任务由脚本处理。
 
 有效递归、规则、根身份、插件/配置/声明版本共同进入不可变计划及摘要。同一规则集调换顺序可重放相同幂等键，改变有效规则则冲突。Host遍历、返回观测检查和数据库缺失对账使用同一个匹配器；被排除、超深或未选择根的旧记录保持原样，包括已验证摘要和人工内容。清除排除后，完整复核才可以把确实消失的同一来源标为missing。排除不是撤销读取权限，也不是删除曲库操作。
 

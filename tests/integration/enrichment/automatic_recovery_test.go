@@ -41,7 +41,7 @@ func TestAutomaticCommitRecoveryReplaysBeforeChangedSourceGuard(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	repo := &stopAfterAutomaticCommit{Store: f.store, cancel: cancel, stopped: make(chan interruptedAction, 1)}
-	policy := enrichment.AutomaticPolicy{InstancePriority: []string{"scraper"}}
+	policy := enrichment.AutomaticPolicy{InstancePriority: []string{"d248bf34-1780-59d3-a557-9cf5d889e977"}}
 	service, err := enrichmentworker.New(repo, f.lib, f.content, f.runtimes, enrichmentworker.Config{Automatic: policy})
 	if err != nil {
 		t.Fatal(err)

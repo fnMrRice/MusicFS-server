@@ -24,12 +24,11 @@ pluginBundle: ''
 allowLoopbackHttp: true
 allowedOrigins: ['http://127.0.0.1:8080']
 plugins:
-  - pluginId: musicfs.localfiles
+  - pluginId: musicfs.plugin.source.localfiles
     executable: './local-worker'
     enabled: true
     instances:
       - instanceId: local
-        role: provider
         enabled: true
         config: {}
 ` + permissions
@@ -138,7 +137,7 @@ func TestSavedDefaultPermissionsDoNotOverrideRevocationOrEmptySettings(t *testin
 	if _, err := initializeLocalDirectories(context.Background(), doc.Config, func() []string { return []string{music} }); err != nil {
 		t.Fatal(err)
 	}
-	db, err := plugindb.Open(context.Background(), PluginDatabasePath(doc.Config), "musicfs.localfiles", "local")
+	db, err := plugindb.Open(context.Background(), PluginDatabasePath(doc.Config), "musicfs.plugin.source.localfiles", "local")
 	if err != nil {
 		t.Fatal(err)
 	}

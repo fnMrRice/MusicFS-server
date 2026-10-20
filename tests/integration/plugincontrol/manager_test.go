@@ -20,13 +20,12 @@ listen: '127.0.0.1:8080'
 allowLoopbackHttp: true
 allowedOrigins: ['http://127.0.0.1:8080']
 plugins:
-  - pluginId: musicfs.ncm
+  - pluginId: musicfs.plugin.decoder.ncm
     executable: './installed-worker'
     enabled: true
     instances:
-      - instanceId: ncm
+      - instanceId: d1971de9-e153-57c6-ac53-82dfb631da0b
         name: Decoder
-        role: audio
         enabled: true
         config: {}
 `
@@ -74,7 +73,7 @@ func setupDocument(t *testing.T, raw string, wrap ...func(plugincontrol.Reposito
 	initial := store.Current().Plugins[0]
 	enabled := initial.CanStart(initial.Instances[0])
 	h.ready.Store(enabled)
-	if err = manager.Register("ncm", plugincontrol.Hooks{
+	if err = manager.Register(ncmInstanceID, plugincontrol.Hooks{
 		Ready: h.ready.Load,
 		Start: func(context.Context, config.Plugin, config.Instance) error {
 			h.starts.Add(1)
@@ -82,7 +81,7 @@ func setupDocument(t *testing.T, raw string, wrap ...func(plugincontrol.Reposito
 			return nil
 		},
 		Stop: func(ctx context.Context) error {
-			for manager.Gate("ncm").Active() > 0 {
+			for manager.Gate(ncmInstanceID).Active() > 0 {
 				select {
 				case <-ctx.Done():
 					return ctx.Err()
@@ -102,7 +101,7 @@ func setupDocument(t *testing.T, raw string, wrap ...func(plugincontrol.Reposito
 }
 func change(t *testing.T, h *harness, key string, enabled bool, mode string) plugincontrol.Operation {
 	t.Helper()
-	op, err := h.manager.Change(context.Background(), "admin", config.Change{ExpectedRevision: h.manager.Snapshot().Revision, IdempotencyKey: key, PluginID: "musicfs.ncm", Enabled: enabled, Mode: mode})
+	op, err := h.manager.Change(context.Background(), "admin", config.Change{ExpectedRevision: h.manager.Snapshot().Revision, IdempotencyKey: key, PluginID: "musicfs.plugin.decoder.ncm", Enabled: enabled, Mode: mode})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +133,7 @@ func TestPluginManagerIdempotencyRevisionSettingsAndEvents(t *testing.T) {
 	updates, closeUpdates := h.manager.Subscribe()
 	defer closeUpdates()
 	<-updates
-	input := config.Change{ExpectedRevision: h.manager.Snapshot().Revision, IdempotencyKey: "save-name", PluginID: "musicfs.ncm", InstanceID: "ncm", Settings: &config.InstanceSettings{}}
+	input := config.Change{ExpectedRevision: h.manager.Snapshot().Revision, IdempotencyKey: "save-name", PluginID: "musicfs.plugin.decoder.ncm", InstanceID: ncmInstanceID, Settings: &config.InstanceSettings{}}
 	name := "Renamed"
 	input.Settings.Name = &name
 	op, err := h.manager.Change(context.Background(), "admin", input)
@@ -161,7 +160,7 @@ func TestPluginManagerIdempotencyRevisionSettingsAndEvents(t *testing.T) {
 	input.IdempotencyKey = "stale-key"
 	_, err = h.manager.Change(context.Background(), "admin", input)
 	code(t, err, "PRECONDITION_FAILED")
-	view, err := h.manager.Configuration("ncm")
+	view, err := h.manager.Configuration(ncmInstanceID)
 	if err != nil || view.Name != name {
 		t.Fatal("configuration not applied", err)
 	}

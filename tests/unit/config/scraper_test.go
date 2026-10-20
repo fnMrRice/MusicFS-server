@@ -14,9 +14,8 @@ const scraperYAML = `plugins:
     executable: '../workers/local-scraper'
     enabled: true
     instances:
-      - instanceId: scraper-local
+      - instanceId: d248bf34-1780-59d3-a557-9cf5d889e977
         name: 本地内容
-        role: scraper
         enabled: true
         config: {}
 `
@@ -29,7 +28,7 @@ func TestScraperConfigurationRoleEnableAndStrictSettings(t *testing.T) {
 	}{
 		"enabled":             {scraperYAML, true},
 		"disabled-no-program": {strings.ReplaceAll(strings.Replace(scraperYAML, "'../workers/local-scraper'", "''", 1), "enabled: true", "enabled: false"), true},
-		"role-mismatch":       {strings.Replace(scraperYAML, "role: scraper", "role: provider", 1), false},
+		"configured-role":     {strings.Replace(scraperYAML, "config: {}", "role: scraper\n        config: {}", 1), false},
 		"active-no-program":   {strings.Replace(scraperYAML, "'../workers/local-scraper'", "''", 1), false},
 		"unknown-settings":    {strings.Replace(scraperYAML, "config: {}", "config: {network: true}", 1), false},
 		"unauthorized-roots":  {strings.Replace(scraperYAML, "config: {}", "config: {musicRoots: []}", 1), false},
@@ -42,8 +41,8 @@ func TestScraperConfigurationRoleEnableAndStrictSettings(t *testing.T) {
 			if (err == nil) != tc.valid {
 				t.Fatalf("loader: %v", err)
 			}
-			if err == nil && (doc.Config.Plugins[0].PluginID != "musicfs.scraper.local" || doc.Config.Plugins[0].Instances[0].Role != "scraper") {
-				t.Fatal("scraper role changed")
+			if err == nil && doc.Config.Plugins[0].PluginID != "musicfs.scraper.local" {
+				t.Fatal("scraper identity changed")
 			}
 			var value any
 			if err := yaml.Unmarshal([]byte(raw), &value); err != nil {

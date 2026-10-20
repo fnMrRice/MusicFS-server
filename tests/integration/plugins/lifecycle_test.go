@@ -42,7 +42,7 @@ func TestWorkerHelperProcess(t *testing.T) {
 	}
 	var hello pluginproto.Hello
 	json.Unmarshal(request.Params, &hello)
-	ready := pluginproto.Ready{InstanceID: hello.InstanceID, Nonce: hello.Nonce, Manifest: pluginproto.Manifest{PluginID: "musicfs.localfiles", PluginVersion: "0.1.0", ProtocolVersion: "9.0", Roles: []string{"provider"}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}}
+	ready := pluginproto.Ready{InstanceID: hello.InstanceID, Nonce: hello.Nonce, Manifest: pluginproto.Manifest{PluginID: "musicfs.plugin.source.localfiles", PluginVersion: "0.1.0", ProtocolVersion: "9.0", Roles: []string{"provider"}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}}
 	result, _ := json.Marshal(ready)
 	framer.Write(pluginproto.Envelope{ID: request.ID, Result: result})
 	time.Sleep(time.Minute)
@@ -60,7 +60,7 @@ func TestRealWorkerFailuresHaveBoundedCleanup(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 			defer cancel()
 			start := time.Now()
-			cfg := pluginhost.Config{Executable: os.Args[0], Args: []string{"-test.run=TestWorkerHelperProcess", "--", "musicfs-helper=" + mode}, SHA256: fmt.Sprintf("%x", sum), InstanceID: "test", UserID: "owner", StateDir: t.TempDir()}
+			cfg := pluginhost.Config{Executable: os.Args[0], Args: []string{"-test.run=TestWorkerHelperProcess", "--", "musicfs-helper=" + mode}, SHA256: fmt.Sprintf("%x", sum), InstanceID: "76ac344e-a6c3-5343-a04f-56dbe4f03c8b", UserID: "owner", StateDir: t.TempDir()}
 			if w, err := pluginhost.Start(ctx, cfg); err == nil {
 				w.Close()
 				t.Fatal("broken worker accepted")

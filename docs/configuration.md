@@ -48,23 +48,27 @@
 
 `hashing` 可省略或只覆盖部分字段；其默认值会逐项补齐，显式0、超出上限、未知子字段或类型错误均拒绝。哈希使用独立后台队列和上述共享预算，默认自动关闭，以减少启动和扫描后的磁盘竞争。手动创建任务仍受归属、稳定完整读取能力及资源上限约束；它计算包含容器、标签、内嵌封面的原始文件字节，不能当作解码 PCM 或录音相同性证明。修改这些配置后需重启。
 
-`fingerprinting` 同样允许省略或部分覆盖，显式0、null、未知键或类型错误拒绝。启用时同时要求 `musicfs.audio.ffmpeg` 插件和一个音频实例明确启用，复用其 DSP 前规范化能力；不会自动打开音频插件。fpcalc 运行时须校验指定摘要及精确版本 1.6.1，算法固定为 2，不允许请求自选工具路径、算法或版本。禁用时可省略工具路径和摘要，不启动 fpcalc。没有 `auto`、上传、外部识别或远程检索配置项。
+`fingerprinting` 同样允许省略或部分覆盖，显式0、null、未知键或类型错误拒绝。启用时同时要求 `musicfs.plugin.decoder.ffmpeg` 插件和一个音频实例明确启用，复用其 DSP 前规范化能力；不会自动打开音频插件。fpcalc 运行时须校验指定摘要及精确版本 1.6.1，算法固定为 2，不允许请求自选工具路径、算法或版本。禁用时可省略工具路径和摘要，不启动 fpcalc。没有 `auto`、上传、外部识别或远程检索配置项。
 
 本步只提供最长120秒的手动片段请求：起点0—86400000毫秒，请求时长10000—120000毫秒。实际读到的尾段可以更短，须如实记录覆盖样本数和 `short` 质量，不能补零冒充完整片段或当作录音匹配依据。工具不可用或摘要/版本不符时只使指纹能力返回 `UNSUPPORTED`，不使整个服务和普通播放退出。创建、取消和按所有者读取明细见[HTTP 契约](contracts/README.md#s-p5-03-本地片段指纹)，实测范围见[指纹接口验收](validation/fingerprinting-http.md)。
 
 ## 3. 插件与实例
 
-每个插件包含 `pluginId`、`executable`、可选字符串数组 `args`、可选64位十六进制 `sha256`、`enabled` 和 `instances`。每个实例包含全局唯一 `instanceId`、可选 `name`、`role`、`enabled` 与 `config`。实例ID和音乐根ID由1—128个ASCII字母、数字、连字符或下划线组成；身份不由数组位置或显示名生成。实例ID忽略大小写后也不得重复，以免在Windows上共用状态目录；单个ID的原始大小写保持不变。
+每个插件包含 `pluginId`、`executable`、可选字符串数组 `args`、可选64位十六进制 `sha256`、`enabled` 和 `instances`。每个实例包含全局唯一 `instanceId`、可选 `name`、`enabled` 与 `config`。实例 ID 使用规范小写、非零 UUID，不由数组位置或显示名生成；音乐根 ID 继续使用1—128个ASCII字母、数字、连字符或下划线。读取旧配置时将旧实例标识稳定转换为 UUID，并同步转换写回授权与自动补齐优先级引用。
+
+实例配置的 `name` 作为旧管理员备注保留，示例配置与随包插件自动发现均不预填。所有插件必须返回显示别名 `plugin.name`，并可通过 `plugin.localizedNames` 提供译名；在线实例使用已验证账号的用户名，未登录或无用户名时回退插件别名。精确语义见[插件身份与显示名称](plugin-identity.md)。
+
+角色由插件握手的 `Manifest.roles` 声明，宿主校验其满足对应适配器的角色要求后才允许工作。尚未启动的官方插件使用与 Worker 共用的角色声明展示分类；部署配置不接受 `role`，旧配置升级时需删除实例下的该字段。管理 API 响应中的 `role` 保持不变，客户端无需调整。
 
 | `pluginId` | 角色与实例参数 |
 | --- | --- |
-| `musicfs.localfiles` | `provider`；`config.musicRoots`包含`id/name/path`。有效启用时至少一个音乐根；根ID在该实例内唯一；可选`config.watch`配置宿主文件通知与周期复核，默认关闭 |
-| `musicfs.audio.ffmpeg` | `audio`；`config.ffmpegPath`与`config.ffprobePath`。有效启用时两者均必填 |
-| `musicfs.ncm` | `audio`；`config: {}`，具体功能见[NCM说明](ncm.md) |
+| `musicfs.plugin.source.localfiles` | `provider`；`config.musicRoots`包含`id/name/path`。有效启用时至少一个音乐根；根ID在该实例内唯一；可选`config.watch`配置宿主文件通知与周期复核，默认关闭 |
+| `musicfs.plugin.decoder.ffmpeg` | `audio`；`config.ffmpegPath`与`config.ffprobePath`。有效启用时两者均必填 |
+| `musicfs.plugin.decoder.ncm` | `audio`；`config: {}`，具体功能见[NCM说明](ncm.md) |
 | `musicfs.scraper.local` | `scraper`；`config: {}`，最多16个配置实例，只读取目标Provider授权的内嵌/旁置内容；见[补全任务](metadata.md) |
-| `musicfs.netease` / `musicfs.qqmusic` / `musicfs.applemusic` | `provider`；`config: {}`，三平台合计最多16实例，仅匿名资料，禁止URL/Cookie/token/账号/本地根配置；能力差异见[在线接口](online.md) |
+| `musicfs.plugin.source.netease` / `musicfs.plugin.source.qqmusic` / `musicfs.plugin.source.applemusic` | `provider`；`config: {}`，三平台合计最多16实例，仅匿名资料，禁止URL/Cookie/token/账号/本地根配置；能力差异见[在线接口](online.md) |
 
-当前只接受上述四个官方插件ID，插件ID不可重复；每个音频插件最多有一个有效启用实例。插件与实例的 `enabled` 省略时均默认false，只有两层都为true才在启动时启用。禁用不改写兄弟实例或删除已有库。有效启用必须配置可执行路径；禁用对象仍严格检查结构、身份、路径隔离与摘要格式，但不要求其程序或外部工具当前可运行。
+当前只接受上述七个官方插件 ID，插件 ID 不可重复。插件通过 `supportsMultipleInstances` 声明是否支持多实例；本地音乐、FFmpeg、NCM 最多配置一个实例，已禁用实例也计数，多个本地目录放在同一实例中。三个在线来源与本地歌词/封面插件保留多实例。插件与实例的 `enabled` 省略时均默认false，只有两层都为true才在启动时启用。禁用不改写兄弟实例或删除已有库。有效启用必须配置可执行路径；禁用对象仍严格检查结构、身份、路径隔离与摘要格式，但不要求其程序或外部工具当前可运行。
 
 随包内置插件默认启用；缺少音乐目录或音频工具路径时保留为待配置，不阻止服务启动。设置任意一层 `enabled: false` 可禁用；旧配置中的 false 保持有效。Linux将`executable`改为对应Linux构建路径，程序无`.exe`后缀。可选`sha256`用于钉住管理员审核的程序；省略时采用现有显式本机路径信任与本次启动摘要检查，不代表跨重启钉住版本。
 
@@ -104,7 +108,7 @@ Local Files当前声明 `schemaRevision=local-import-v5`，插件版本0.3.0。�
 metadata:
   automatic:
     enabled: false
-    instancePriority: ['scraper-local']
+    instancePriority: ['d248bf34-1780-59d3-a557-9cf5d889e977']
     fields: ['lyrics', 'artwork']
     languages: []
 ```
@@ -157,7 +161,7 @@ Linux保留文件所有者/组与权限，同步文件及目录后rename；Windo
 
 ```yaml
 plugins:
-  - pluginId: musicfs.ncm
+  - pluginId: musicfs.plugin.decoder.ncm
     enabled: false
 ```
 

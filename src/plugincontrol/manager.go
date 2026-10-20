@@ -7,6 +7,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/src/config"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 )
 
 type runtime struct {
@@ -160,12 +161,24 @@ func (m *Manager) Snapshot() Snapshot {
 		s.RestartRequired = s.RestartRequired || v.DiskChanged
 	}
 	for _, p := range m.desired.Plugins {
-		v := Plugin{PluginID: p.PluginID, ConfiguredEnabled: p.Enabled, Instances: []Instance{}}
+		v := Plugin{PluginID: p.PluginID, Plugin: pluginconfig.Identity(p.PluginID), SupportsMultipleInstances: pluginconfig.SupportsMultipleInstances(p.PluginID), ConfiguredEnabled: p.Enabled, Instances: []Instance{}}
 		for _, i := range p.Instances {
+			if r := m.runtimes[i.InstanceID]; r != nil && r.hooks.PluginIdentity != nil {
+				if identity := r.hooks.PluginIdentity(); identity != nil && identity.Validate(p.PluginID) == nil {
+					v.Plugin = identity.Clone()
+					break
+				}
+			}
+		}
+		for _, i := range p.Instances {
+			name := i.Name
+			if v.Plugin != nil && (config.OnlinePlatform(p.PluginID) != "" || name == "" || name == i.InstanceID) {
+				name = v.Plugin.Name
+			}
 			r := m.runtimes[i.InstanceID]
 			if r == nil {
 				code := "RESTART_REQUIRED"
-				v.Instances = append(v.Instances, Instance{PluginID: p.PluginID, InstanceID: i.InstanceID, Name: i.Name, Role: i.Role, Capabilities: []string{}, ConfiguredEnabled: i.Enabled, RuntimeState: "disabled", Generation: 1, Reason: &code})
+				v.Instances = append(v.Instances, Instance{PluginID: p.PluginID, InstanceID: i.InstanceID, Name: name, Role: pluginconfig.Role(p.PluginID), Capabilities: []string{}, ConfiguredEnabled: i.Enabled, RuntimeState: "disabled", Generation: 1, Reason: &code})
 				continue
 			}
 			capabilities := []string{}
@@ -180,7 +193,7 @@ func (m *Manager) Snapshot() Snapshot {
 				code := "PARENT_DISABLED"
 				reason = &code
 			}
-			v.Instances = append(v.Instances, Instance{PluginID: p.PluginID, InstanceID: i.InstanceID, Name: i.Name, Role: i.Role, Capabilities: capabilities, ConfiguredEnabled: i.Enabled, EffectiveEnabled: r.plugin.CanStart(r.instance), AcceptingNewWork: r.gate.Accepting(), RuntimeState: r.state, Generation: r.generation, ActiveLeases: r.gate.Active(), Reason: reason})
+			v.Instances = append(v.Instances, Instance{PluginID: p.PluginID, InstanceID: i.InstanceID, Name: name, Role: pluginconfig.Role(p.PluginID), Capabilities: capabilities, ConfiguredEnabled: i.Enabled, EffectiveEnabled: r.plugin.CanStart(r.instance), AcceptingNewWork: r.gate.Accepting(), RuntimeState: r.state, Generation: r.generation, ActiveLeases: r.gate.Active(), Reason: reason})
 		}
 		s.Items = append(s.Items, v)
 	}

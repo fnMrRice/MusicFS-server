@@ -14,10 +14,15 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
+
+	"github.com/fnMrRice/MusicFS-server/src/instanceid"
+	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
 type Config struct {
+	InstanceID                        string
 	WorkerArgs                        []string
 	WorkerPath, WorkerSHA256, WorkDir string
 	MaxConcurrent                     int
@@ -39,6 +44,12 @@ type Decoded struct {
 
 func NewProcessor(cfg Config) (*Processor, error) {
 	cfg.WorkerArgs = slices.Clone(cfg.WorkerArgs)
+	if cfg.InstanceID == "" {
+		cfg.InstanceID = uuid.NewString()
+	}
+	if !instanceid.Valid(cfg.InstanceID) {
+		return nil, fmt.Errorf("invalid plugin instance UUID")
+	}
 	if cfg.MaxConcurrent == 0 {
 		cfg.MaxConcurrent = 2
 	}
@@ -164,11 +175,11 @@ func (p *Processor) Open(ctx context.Context, taskID, assetID string, input io.R
 	startup, stopStartup := context.WithTimeout(ctx, 5*time.Second)
 	defer stopStartup()
 	var ready pluginproto.Ready
-	hello := pluginproto.Hello{ProtocolVersion: pluginproto.ProtocolVersion, InstanceID: "ncm-" + taskID, Nonce: nonce, ConfigRevision: "1"}
+	hello := pluginproto.Hello{ProtocolVersion: pluginproto.ProtocolVersion, InstanceID: p.config.InstanceID, TaskID: taskID, Nonce: nonce, ConfigRevision: "1"}
 	if err = peer.Call(startup, "host.hello", hello, &ready); err != nil {
 		return nil, err
 	}
-	if ready.Manifest.Validate("audio") != nil || ready.Manifest.PluginID != "musicfs.ncm" || !slices.Contains(ready.Manifest.Capabilities, "audio.decrypt") || ready.Nonce != nonce || ready.InstanceID != hello.InstanceID {
+	if pluginconfig.ValidateManifest(ready.Manifest, "audio") != nil || ready.Manifest.PluginID != "musicfs.plugin.decoder.ncm" || !slices.Contains(ready.Manifest.Capabilities, "audio.decrypt") || ready.Nonce != nonce || ready.InstanceID != hello.InstanceID {
 		return nil, fmt.Errorf("PROTOCOL_MISMATCH: NCM worker identity mismatch")
 	}
 	var result openResult

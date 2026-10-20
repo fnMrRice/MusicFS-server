@@ -22,7 +22,7 @@ func main() {
 	descriptor.Plugin.LocalizedNames = map[string]string{"zh-Hans": "测试音乐", "fr": "Musique de test"}
 	switch mode {
 	case "bad-id":
-		descriptor.Plugin.ID = "musicfs.qqmusic"
+		descriptor.Plugin.ID = "musicfs.plugin.source.qqmusic"
 	case "bad-name":
 		descriptor.Plugin.Name = "Invalid\nName"
 	case "bad-locale":
@@ -40,7 +40,14 @@ func main() {
 			if err := pluginproto.DecodeOnline(raw, &hello); err != nil {
 				return nil, err
 			}
-			manifest := pluginproto.Manifest{PluginID: "musicfs.netease", PluginVersion: "0.1.0", ProtocolVersion: pluginproto.ProtocolVersion, Roles: []string{"provider"}, Capabilities: pluginproto.OnlineCapabilities(online.Netease), Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems}
+			manifest := pluginproto.Manifest{PluginID: "musicfs.plugin.source.netease", Plugin: descriptor.Plugin, SupportsMultipleInstances: true, PluginVersion: "0.1.0", ProtocolVersion: pluginproto.ProtocolVersion, Roles: []string{"provider"}, Capabilities: pluginproto.OnlineCapabilities(online.Netease), Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems}
+			if mode == "changed-display" {
+				manifest.Plugin = descriptor.Plugin.Clone()
+				manifest.Plugin.Name = "Different handshake name"
+			}
+			if mode == "wrong-multiplicity" {
+				manifest.SupportsMultipleInstances = false
+			}
 			return pluginproto.Ready{Manifest: manifest, InstanceID: hello.InstanceID, Nonce: hello.Nonce}, nil
 		}
 		var scope pluginproto.OnlineScope

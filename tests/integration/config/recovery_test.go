@@ -119,7 +119,7 @@ func TestJournalFailureAndInstanceOnlyEdits(t *testing.T) {
 	}
 	s = open(t, path, journal)
 	request := change(s, "instance-only-request")
-	request.InstanceID = "ncm-default"
+	request.InstanceID = ncmDefaultInstanceID
 	if _, err := s.SetEnabled(context.Background(), request); err != nil {
 		t.Fatal(err)
 	}

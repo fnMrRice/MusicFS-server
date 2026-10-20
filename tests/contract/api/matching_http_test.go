@@ -21,10 +21,10 @@ func TestMatchingHTTPManualDecisionsCandidatesPrivacyAndAudit(t *testing.T) {
 	ctx := context.Background()
 	tracks := map[string]library.Track{}
 	for _, owner := range []string{"admin", "other"} {
-		provider := "mine"
+		provider := "316664dc-7106-5acd-8df7-88c9d0d9baef"
 		names := []string{"a", "b", "c"}
 		if owner == "other" {
-			provider, names = "private", []string{"private"}
+			provider, names = "843558e1-a158-56ac-834a-baffd12bb5c5", []string{"private"}
 		}
 		if _, _, err := store.Enqueue(ctx, owner, provider, testkit.ScanPlan(provider), "matching-seed"); err != nil {
 			t.Fatal(err)
@@ -258,7 +258,7 @@ func TestMatchingHTTPManualDecisionsCandidatesPrivacyAndAudit(t *testing.T) {
 	if len(audit.Items) != 7 || audit.NextAfter != nil || audit.Items[0].Sequence != 2 || audit.Items[6].Sequence != 8 {
 		t.Fatalf("audit incomplete: %+v", audit)
 	}
-	page, err := store.ListTracks(ctx, "admin", "mine", "", 50)
+	page, err := store.ListTracks(ctx, "admin", "316664dc-7106-5acd-8df7-88c9d0d9baef", "", 50)
 	if err != nil || len(page.Items) != 3 {
 		t.Fatal("manual decisions removed sources", err)
 	}

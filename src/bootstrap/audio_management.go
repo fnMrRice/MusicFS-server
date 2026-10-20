@@ -21,7 +21,7 @@ func configureAudioManagement(c config.Config, manager *plugincontrol.Manager, p
 	currentAudio, currentDecoder := processor, decoder
 	probePath := ""
 	for _, plugin := range c.Plugins {
-		if plugin.PluginID == "musicfs.audio.ffmpeg" && plugin.Enabled && processor != nil {
+		if plugin.PluginID == "musicfs.plugin.decoder.ffmpeg" && plugin.Enabled && processor != nil {
 			for _, instance := range plugin.Instances {
 				if instance.Enabled {
 					probePath = instance.Config.FFprobePath
@@ -42,12 +42,12 @@ func configureAudioManagement(c config.Config, manager *plugincontrol.Manager, p
 		return nil
 	}
 	for _, plugin := range c.Plugins {
-		if plugin.PluginID != "musicfs.audio.ffmpeg" && plugin.PluginID != "musicfs.ncm" {
+		if plugin.PluginID != "musicfs.plugin.decoder.ffmpeg" && plugin.PluginID != "musicfs.plugin.decoder.ncm" {
 			continue
 		}
 		for _, instance := range plugin.Instances {
 			gate := manager.Gate(instance.InstanceID)
-			isAudio := plugin.PluginID == "musicfs.audio.ffmpeg"
+			isAudio := plugin.PluginID == "musicfs.plugin.decoder.ffmpeg"
 			ready := plugin.CanStart(instance) && (isAudio && processor != nil || !isAudio && decoder != nil)
 			if ready {
 				if isAudio {
@@ -80,7 +80,7 @@ func configureAudioManagement(c config.Config, manager *plugincontrol.Manager, p
 					activeAudio, activeDecoder, activeProbe := currentAudio, currentDecoder, probePath
 					mu.Unlock()
 					if isAudio {
-						audio, err := audioffmpeg.NewProcessor(ctx, audioffmpeg.Config{FFmpegPath: i.Config.FFmpegPath, FFprobePath: i.Config.FFprobePath, WorkerPath: p.Executable, WorkerArgs: p.Args, WorkerSHA256: expectedChecksum(p.SHA256, p.Executable), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing})
+						audio, err := audioffmpeg.NewProcessor(ctx, audioffmpeg.Config{InstanceID: i.InstanceID, FFmpegPath: i.Config.FFmpegPath, FFprobePath: i.Config.FFprobePath, WorkerPath: p.Executable, WorkerArgs: p.Args, WorkerSHA256: expectedChecksum(p.SHA256, p.Executable), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing})
 						if err != nil {
 							return err
 						}
@@ -89,7 +89,7 @@ func configureAudioManagement(c config.Config, manager *plugincontrol.Manager, p
 							return err
 						}
 					} else {
-						ncm, err := ncmdecoder.NewProcessor(ncmdecoder.Config{WorkerPath: p.Executable, WorkerArgs: p.Args, WorkerSHA256: expectedChecksum(p.SHA256, p.Executable), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing})
+						ncm, err := ncmdecoder.NewProcessor(ncmdecoder.Config{InstanceID: i.InstanceID, WorkerPath: p.Executable, WorkerArgs: p.Args, WorkerSHA256: expectedChecksum(p.SHA256, p.Executable), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing})
 						if err != nil {
 							return err
 						}

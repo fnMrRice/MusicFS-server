@@ -5,13 +5,16 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/config"
+	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
 type Hooks struct {
-	Start        func(context.Context, config.Plugin, config.Instance) error
-	Stop         func(context.Context) error
-	Ready        func() bool
-	Capabilities func() []string
+	Start          func(context.Context, config.Plugin, config.Instance) error
+	Stop           func(context.Context) error
+	Ready          func() bool
+	Capabilities   func() []string
+	PluginIdentity func() *pluginproto.PluginIdentity
+	InstanceName   func(context.Context, string) string
 }
 
 type Instance struct {
@@ -29,9 +32,11 @@ type Instance struct {
 	Reason            *string  `json:"reason"`
 }
 type Plugin struct {
-	PluginID          string     `json:"pluginId"`
-	ConfiguredEnabled bool       `json:"configuredEnabled"`
-	Instances         []Instance `json:"instances"`
+	PluginID                  string                      `json:"pluginId"`
+	Plugin                    *pluginproto.PluginIdentity `json:"plugin"`
+	SupportsMultipleInstances bool                        `json:"supportsMultipleInstances"`
+	ConfiguredEnabled         bool                        `json:"configuredEnabled"`
+	Instances                 []Instance                  `json:"instances"`
 }
 type Snapshot struct {
 	Revision        string   `json:"revision"`

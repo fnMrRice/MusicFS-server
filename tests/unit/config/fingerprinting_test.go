@@ -46,8 +46,8 @@ func TestFingerprintConfigurationDefaultsPathsAndSchema(t *testing.T) {
 		"unknown upload":          {minimalYAML + "fingerprinting: {upload: true}\n", false},
 		"unknown algorithm":       {minimalYAML + "fingerprinting: {algorithm: 3}\n", false},
 		"quoted concurrency":      {minimalYAML + "fingerprinting: {maxConcurrent: '1'}\n", false},
-		"audio plugin disabled":   {strings.Replace(valid, "pluginId: musicfs.audio.ffmpeg\n    executable: '../workers/audio'\n    enabled: true", "pluginId: musicfs.audio.ffmpeg\n    executable: '../workers/audio'\n    enabled: false", 1), true},
-		"audio instance disabled": {strings.Replace(valid, "instanceId: audio\n        role: audio\n        enabled: true", "instanceId: audio\n        role: audio\n        enabled: false", 1), true},
+		"audio plugin disabled":   {strings.Replace(valid, "pluginId: musicfs.plugin.decoder.ffmpeg\n    executable: '../workers/audio'\n    enabled: true", "pluginId: musicfs.plugin.decoder.ffmpeg\n    executable: '../workers/audio'\n    enabled: false", 1), true},
+		"audio instance disabled": {strings.Replace(valid, "instanceId: 7edbaa88-7094-5657-ac43-37c118ef4f77\n        enabled: true", "instanceId: 7edbaa88-7094-5657-ac43-37c118ef4f77\n        enabled: false", 1), true},
 		"all disabled":            {strings.ReplaceAll(valid, "enabled: true", "enabled: false"), true},
 		"missing audio":           {minimalYAML + "fingerprinting: {enabled: true, fpcalcPath: 'fpcalc', fpcalcSha256: '" + strings.Repeat("a", 64) + "'}\n", false},
 	} {

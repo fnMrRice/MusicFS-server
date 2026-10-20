@@ -29,7 +29,7 @@ func TestOnlineIdentitySurvivesRuntimeChangesWithDetachedCopies(t *testing.T) {
 	read := func(want string) []onlinehost.Instance {
 		t.Helper()
 		items, err := s.Instances(context.Background(), "owner")
-		if err != nil || len(items) != 1 || items[0].Plugin == nil || items[0].Plugin.Name != want || items[0].Plugin.LocalizedNames["fr"] != "Nom personnalisé" || items[0].Name != "Instance label" {
+		if err != nil || len(items) != 1 || items[0].Plugin == nil || items[0].Plugin.Name != want || items[0].Plugin.LocalizedNames["fr"] != "Nom personnalisé" || items[0].Name != want {
 			t.Fatalf("identity changed: %+v %v", items, err)
 		}
 		return items
@@ -61,7 +61,7 @@ func TestOnlineIdentitySurvivesRuntimeChangesWithDetachedCopies(t *testing.T) {
 		t.Fatal(err)
 	}
 	read("New version")
-	p.descriptor.Plugin.ID = "musicfs.qqmusic"
+	p.descriptor.Plugin.ID = "musicfs.plugin.source.qqmusic"
 	if err := s.UpdateRuntime(r); err == nil {
 		t.Fatal("runtime replacement accepted another plugin identity")
 	}

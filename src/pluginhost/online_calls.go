@@ -37,7 +37,9 @@ func onlineCall[T any](parent context.Context, w *OnlineWorker, method string, s
 	defer cancel()
 	var raw json.RawMessage
 	if err := w.peer.Call(ctx, method, request, &raw); err != nil {
-		return empty, onlineError(ctx, err)
+		failure := onlineError(ctx, err)
+		w.accountDisplay.invalidateOnError(failure)
+		return empty, failure
 	}
 	var response pluginproto.OnlineResult[T]
 	if pluginproto.DecodeOnline(raw, &response) != nil || response.Context != scope {

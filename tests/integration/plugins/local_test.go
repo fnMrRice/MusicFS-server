@@ -61,7 +61,7 @@ func TestRealWorkerScanRestartRenameResolveAndIsolation(t *testing.T) {
 	root := t.TempDir()
 	wave(t, filepath.Join(root, "中文.wav"))
 	wave(t, filepath.Join(root, "copy.wav"))
-	cfg := pluginhost.Config{Executable: executable, SHA256: fmt.Sprintf("%x", sum), InstanceID: "local-a", UserID: "owner", Roots: []sourceaccess.RootConfig{{ID: "music", Path: root}}, StateDir: t.TempDir()}
+	cfg := pluginhost.Config{Executable: executable, SHA256: fmt.Sprintf("%x", sum), InstanceID: "4bac928d-f959-5df3-9077-25730ec700e1", UserID: "owner", Roots: []sourceaccess.RootConfig{{ID: "music", Path: root}}, StateDir: t.TempDir()}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	w, err := pluginhost.Start(ctx, cfg)
@@ -69,7 +69,7 @@ func TestRealWorkerScanRestartRenameResolveAndIsolation(t *testing.T) {
 		t.Fatal(err)
 	}
 	identity := w.PluginIdentity()
-	if identity == nil || identity.ID != "musicfs.localfiles" || identity.Name != "Local Music" || identity.LocalizedNames["zh-Hans"] != "本地音乐" || len(identity.Features) != 1 || identity.Features[0] != "music-source" {
+	if identity == nil || identity.ID != "musicfs.plugin.source.localfiles" || identity.Name != "Local Music" || identity.LocalizedNames["zh-Hans"] != "本地音乐" || len(identity.Features) != 1 || identity.Features[0] != "music-source" {
 		t.Fatal("local plugin did not declare its display identity and music source feature", identity)
 	}
 	page, err := w.Scan(ctx, scopedRequest(w, pluginproto.ScanRequest{RootID: "music", ScanID: "s1", Generation: 1, Limit: 1}))
@@ -91,10 +91,10 @@ func TestRealWorkerScanRestartRenameResolveAndIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = w.Access.Open(ctx, sourceaccess.Scope{UserID: "other", InstanceID: "local-a", TaskID: "provider-resolve"}, resource.ResourceRef); err == nil {
+	if _, err = w.Access.Open(ctx, sourceaccess.Scope{UserID: "other", InstanceID: "4bac928d-f959-5df3-9077-25730ec700e1", TaskID: "provider-resolve"}, resource.ResourceRef); err == nil {
 		t.Fatal("cross-user resource accepted")
 	}
-	handle, err := w.Access.Open(ctx, sourceaccess.Scope{UserID: "owner", InstanceID: "local-a", TaskID: "provider-resolve"}, resource.ResourceRef)
+	handle, err := w.Access.Open(ctx, sourceaccess.Scope{UserID: "owner", InstanceID: "4bac928d-f959-5df3-9077-25730ec700e1", TaskID: "provider-resolve"}, resource.ResourceRef)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +137,7 @@ func TestRealWorkerScanRestartRenameResolveAndIsolation(t *testing.T) {
 }
 
 func TestWorkerRegistryRejectsUntrustedBinary(t *testing.T) {
-	cfg := pluginhost.Config{Executable: os.Args[0], SHA256: "wrong", InstanceID: "a", UserID: "u", StateDir: t.TempDir()}
+	cfg := pluginhost.Config{Executable: os.Args[0], SHA256: "wrong", InstanceID: "2ce25731-bf3a-5a9e-8e59-47b2221feeb0", UserID: "u", StateDir: t.TempDir()}
 	if cfg.Validate() == nil {
 		t.Fatal("wrong checksum accepted")
 	}

@@ -11,67 +11,49 @@ cacheRoot: '../cache'
 webRoot: ''
 pluginBundle: '../build/windows/musicfs-plugins.exe'
 plugins:
-  - pluginId: 'musicfs.localfiles'
+  - pluginId: 'musicfs.plugin.source.localfiles'
     executable: '../build/windows/musicfs-plugins.exe'
     args: ['--plugin', 'local']
     instances:
-      - instanceId: 'local'
-        name: '本地音乐'
-        role: 'provider'
-        # Default access: the server user's Music folder and Windows download folders.
-        # Override access with permissions.readDirectories; this does not select music roots.
-        # Select import directories in Web settings after startup.
+      - instanceId: 'b1548e96-3081-5c9c-8376-bf290e369d51'
         config: {}
-  - pluginId: 'musicfs.audio.ffmpeg'
+  - pluginId: 'musicfs.plugin.decoder.ffmpeg'
     executable: '../build/windows/musicfs-plugins.exe'
     args: ['--plugin', 'audio-ffmpeg']
-    # Starts automatically when both tool paths are configured; enabled: false opts out.
     instances:
-      - instanceId: 'audio-default'
-        role: 'audio'
+      - instanceId: '16b003e5-1bab-52bb-be10-0e83ec1c40ea'
         config:
           ffmpegPath: ''
           ffprobePath: ''
-  - pluginId: 'musicfs.ncm'
+  - pluginId: 'musicfs.plugin.decoder.ncm'
     executable: '../build/windows/musicfs-plugins.exe'
     args: ['--plugin', 'ncm']
     instances:
-      - instanceId: 'ncm-default'
-        role: 'audio'
+      - instanceId: '96412f52-9ff4-5a82-9eaa-7644a5837cda'
         config: {}
   - pluginId: 'musicfs.scraper.local'
     executable: '../build/windows/musicfs-plugins.exe'
     args: ['--plugin', 'scraper-local']
-    # Automatic import still requires importLyrics or metadata.automatic below.
     instances:
-      - instanceId: 'scraper-local'
-        name: '本地歌词与封面'
-        role: 'scraper'
+      - instanceId: 'd248bf34-1780-59d3-a557-9cf5d889e977'
         config: {}
-  - pluginId: 'musicfs.netease'
+  - pluginId: 'musicfs.plugin.source.netease'
     executable: '../build/windows/musicfs-plugins.exe'
     args: ['--plugin', 'netease']
-    # Public metadata only; no login, audio resolution or automatic library import.
     instances:
-      - instanceId: 'netease-public'
-        name: '网易云公开资料'
-        role: 'provider'
+      - instanceId: 'a5e47aac-f949-5e45-9709-f28a0d8443df'
         config: {}
-  - pluginId: 'musicfs.qqmusic'
+  - pluginId: 'musicfs.plugin.source.qqmusic'
     executable: '../build/windows/musicfs-plugins.exe'
     args: ['--plugin', 'qqmusic']
-    # Latest live search failed upstream; no supported capability is advertised.
     instances:
-      - instanceId: 'qq-public'
-        role: 'provider'
+      - instanceId: 'fc2264bd-13bc-5dc6-be83-6c4428cf4d40'
         config: {}
-  - pluginId: 'musicfs.applemusic'
+  - pluginId: 'musicfs.plugin.source.applemusic'
     executable: '../build/windows/musicfs-plugins.exe'
     args: ['--plugin', 'applemusic']
-    # Credential support is not implemented; catalog calls return AUTH_REQUIRED.
     instances:
-      - instanceId: 'apple-public'
-        role: 'provider'
+      - instanceId: '701b805f-494f-5509-897f-17c934b1a8ed'
         config: {}
 maxSessions: 8
 maxProcessing: 2
@@ -79,7 +61,7 @@ maxCacheBytes: 1073741824
 sessionTtlSeconds: 3600
 metadata:
   automatic:
-    instancePriority: ['scraper-local']
+    instancePriority: ['d248bf34-1780-59d3-a557-9cf5d889e977']
     fields: ['lyrics', 'artwork']
     languages: []
 hashing:
@@ -90,11 +72,9 @@ writeBack:
   enabled: false
   allowOverwrite: false
   maxFileBytes: 8589934592
-  # Explicit instance/root/field grants are required before enabling.
   roots: []
 fingerprinting:
   enabled: false
-  # Configure a verified Chromaprint 1.6.1 fpcalc and enable the audio plugin first.
   fpcalcPath: ''
   fpcalcSha256: ''
   maxConcurrent: 1

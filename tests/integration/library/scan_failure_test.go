@@ -73,7 +73,7 @@ func TestScanFailureWorkerProcess(t *testing.T) {
 		os.Exit(4)
 	}
 	ready := pluginproto.Ready{InstanceID: hello.InstanceID, Nonce: hello.Nonce, Manifest: pluginproto.Manifest{
-		PluginID: "musicfs.localfiles", PluginVersion: "retry-test-v1", ProtocolVersion: pluginproto.ProtocolVersion,
+		PluginID: "musicfs.plugin.source.localfiles", Plugin: pluginconfig.Identity("musicfs.plugin.source.localfiles"), PluginVersion: "retry-test-v1", ProtocolVersion: pluginproto.ProtocolVersion,
 		Roles: []string{"provider"}, Capabilities: []string{"library.scan"}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems, Configuration: pluginconfig.LocalFiles(),
 	}}
 	body, err := json.Marshal(ready)
@@ -94,7 +94,19 @@ func TestScanFailureWorkerProcess(t *testing.T) {
 		}
 		scans++
 		if scans == 1 {
-			page := pluginproto.ScanPage{ScanID: scan.ScanID, Generation: scan.Generation, PlanDigest: scan.PlanDigest, Page: 0, Complete: true, RootIdentity: scan.Scope.RootIdentity, Issues: []string{}, Items: []pluginproto.Observation{{ExternalID: "stable-track", RootID: scan.RootID, RelativePath: "existing.wav", ObservedVersion: "fixture-v1", DisplayName: "Existing track", MIME: "audio/wav", SizeBytes: 0}}}
+			// A successful worker result must consume the host's scan grant
+			// and report its exact snapshot before testing a later RPC failure.
+			params, marshalErr := json.Marshal(pluginproto.EntriesRequest{GrantID: scan.GrantID, RootID: scan.RootID, Cursor: scan.Cursor, Limit: scan.Limit})
+			if marshalErr != nil || framer.Write(pluginproto.Envelope{ID: "fixture-entries", Method: "host.entries", Params: params}) != nil {
+				os.Exit(10)
+			}
+			reply, readErr := framer.Read()
+			var entries pluginproto.EntriesPage
+			if readErr != nil || reply.ID != "fixture-entries" || reply.Error != nil || json.Unmarshal(reply.Result, &entries) != nil || len(entries.Items) != 1 || entries.NextCursor != "" || len(entries.Issues) != 0 {
+				os.Exit(11)
+			}
+			entry := entries.Items[0]
+			page := pluginproto.ScanPage{ScanID: scan.ScanID, Generation: scan.Generation, PlanDigest: scan.PlanDigest, Page: 0, Complete: true, RootIdentity: entries.RootIdentity, Issues: entries.Issues, Items: []pluginproto.Observation{{ExternalID: "stable-track", RootID: entry.RootID, RelativePath: entry.RelativePath, ObservedVersion: entry.ObservedVersion, DisplayName: "Existing track", MIME: entry.MIME, SizeBytes: entry.SizeBytes}}}
 			body, err = json.Marshal(page)
 			if err != nil || framer.Write(pluginproto.Envelope{ID: request.ID, Result: body}) != nil {
 				os.Exit(8)
@@ -112,6 +124,7 @@ func TestScanFailureWorkerProcess(t *testing.T) {
 }
 
 func TestLibraryScanFailurePreservesOnlyExplicitSafeRetryMetadata(t *testing.T) {
+	const instanceID = "b1548e96-3081-5c9c-8376-bf290e369d51"
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -140,7 +153,7 @@ func TestLibraryScanFailurePreservesOnlyExplicitSafeRetryMetadata(t *testing.T) 
 			if err = os.WriteFile(filepath.Join(root, "existing.wav"), nil, 0600); err != nil {
 				t.Fatal(err)
 			}
-			worker, err := pluginhost.Start(ctx, pluginhost.Config{Executable: executable, Args: []string{"-test.run=^TestScanFailureWorkerProcess$", "--", "musicfs-scan-failure=" + strconv.Itoa(index)}, SHA256: digest, InstanceID: "local", UserID: "admin", StateDir: t.TempDir(), Roots: []sourceaccess.RootConfig{{ID: "music", Path: root}}})
+			worker, err := pluginhost.Start(ctx, pluginhost.Config{Executable: executable, Args: []string{"-test.run=^TestScanFailureWorkerProcess$", "--", "musicfs-scan-failure=" + strconv.Itoa(index)}, SHA256: digest, InstanceID: instanceID, UserID: "admin", StateDir: t.TempDir(), Roots: []sourceaccess.RootConfig{{ID: "music", Path: root}}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -151,13 +164,13 @@ func TestLibraryScanFailurePreservesOnlyExplicitSafeRetryMetadata(t *testing.T) 
 			}()
 			declaration := worker.Manifest.Configuration
 			queue := jobs.New(store)
-			lib := library.New(store, queue, []library.Runtime{{ID: "local", Name: "Local", Owner: "admin", Worker: worker, ConfigRevision: "retry-test", Configuration: declaration, ImportDefaults: declaration.ImportDefaults, RootNames: map[string]string{"music": "Music"}}}, nil)
+			lib := library.New(store, queue, []library.Runtime{{ID: instanceID, Name: "Local", Owner: "admin", Worker: worker, ConfigRevision: "retry-test", Configuration: declaration, ImportDefaults: declaration.ImportDefaults, RootNames: map[string]string{"music": "Music"}}}, nil)
 			if err = queue.Start(ctx); err != nil {
 				t.Fatal(err)
 			}
 			defer queue.Close()
 			input := library.ScanInput{Mode: "full", SchemaRevision: declaration.SchemaRevision, RootIDs: []string{"music"}}
-			first, _, err := lib.Scan(ctx, "admin", "local", input, "first-success")
+			first, _, err := lib.Scan(ctx, "admin", instanceID, input, "first-success")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -165,11 +178,11 @@ func TestLibraryScanFailurePreservesOnlyExplicitSafeRetryMetadata(t *testing.T) 
 			if first.Status != "succeeded" {
 				t.Fatal("initial scan did not publish", first)
 			}
-			before, err := lib.List(ctx, "admin", "local", "", 20)
+			before, err := lib.List(ctx, "admin", instanceID, "", 20)
 			if err != nil || len(before.Items) != 1 {
 				t.Fatal("initial library missing", err)
 			}
-			second, _, err := lib.Scan(ctx, "admin", "local", input, "failure-request")
+			second, _, err := lib.Scan(ctx, "admin", instanceID, input, "failure-request")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -187,7 +200,7 @@ func TestLibraryScanFailurePreservesOnlyExplicitSafeRetryMetadata(t *testing.T) 
 			} else if result.NextAttemptAt != nil {
 				t.Fatal("non-retry failure was scheduled")
 			}
-			after, err := lib.List(ctx, "admin", "local", "", 20)
+			after, err := lib.List(ctx, "admin", instanceID, "", 20)
 			if err != nil || len(after.Items) != 1 || after.Items[0].ID != before.Items[0].ID || after.LibraryRevision != before.LibraryRevision || result.LastSuccessAt == nil {
 				t.Fatal("failed scan discarded previous library", err)
 			}

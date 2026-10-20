@@ -26,8 +26,8 @@ type remoteAccepted struct {
 
 func authenticatePlaylistFixture(t *testing.T, c *client) string {
 	t.Helper()
-	authenticateManagedOnline(t, c, "net")
-	code, raw, _ := c.request(t, "GET", "/api/v1/online-instances/net/account", nil, "")
+	authenticateManagedOnline(t, c, "7fe223d0-a3bd-5e87-87f8-305dc26d9041")
+	code, raw, _ := c.request(t, "GET", "/api/v1/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/account", nil, "")
 	var account online.AccountView
 	if code != 200 || json.Unmarshal(raw, &account) != nil || account.State != "signedIn" || account.AccountID == "" {
 		t.Fatalf("playlist fixture account was not authenticated: %d %s", code, raw)
@@ -46,14 +46,14 @@ func TestRemotePlaylistsActualServerConservativeSyncAndDisabledRestart(t *testin
 		t.Fatalf("build playlist fixture: %v %s", err, raw)
 	}
 	cfg, base := yamlServiceConfig(t)
-	cfg.Plugins = []config.Plugin{onlinePlugin(online.Netease, program, "net")}
+	cfg.Plugins = []config.Plugin{onlinePlugin(online.Netease, program, "7fe223d0-a3bd-5e87-87f8-305dc26d9041")}
 	var imported playlists.RemotePlaylist
 	var first playlists.SnapshotPage
 	t.Run("explicit-import-and-conservative-sync", func(t *testing.T) {
 		startNCMServer(t, cfg, base)
 		c := login(t, base, cfg.AdminToken)
 		accountID := authenticatePlaylistFixture(t, c)
-		ref := playlists.RemoteRef{InstanceID: "net", AccountID: accountID, ExternalID: "91"}
+		ref := playlists.RemoteRef{InstanceID: "7fe223d0-a3bd-5e87-87f8-305dc26d9041", AccountID: accountID, ExternalID: "91"}
 		created := albumRequest[remoteImported](t, c, "POST", "/remote-playlists", ref, "import-first", 201, "RemotePlaylistImported")
 		imported = created.Playlist
 		if imported.Revision != 0 || imported.Title != "" || !imported.Stale || imported.LastSuccessAt != nil {
@@ -130,7 +130,7 @@ func TestRemotePlaylistsActualServerConservativeSyncAndDisabledRestart(t *testin
 			t.Fatal("old local revision changed")
 		}
 		time.Sleep(1100 * time.Millisecond)
-		slow := albumRequest[remoteImported](t, c, "POST", "/remote-playlists", playlists.RemoteRef{InstanceID: "net", AccountID: accountID, ExternalID: "92"}, "import-cancelled", 201, "RemotePlaylistImported")
+		slow := albumRequest[remoteImported](t, c, "POST", "/remote-playlists", playlists.RemoteRef{InstanceID: "7fe223d0-a3bd-5e87-87f8-305dc26d9041", AccountID: accountID, ExternalID: "92"}, "import-cancelled", 201, "RemotePlaylistImported")
 		accepted := albumRequest[remoteAccepted](t, c, "POST", "/remote-playlists/"+slow.Playlist.ID+"/sync-jobs", map[string]int{"expectedBindingRevision": 1}, "cancelled-sync", 202, "HashAccepted")
 		_ = wait(accepted.JobID, "running")
 		cancelled := albumRequest[playlists.SyncJob](t, c, "POST", "/remote-playlist-sync-jobs/"+accepted.JobID+"/cancel", struct{}{}, "", 200, "RemotePlaylistSyncJob")

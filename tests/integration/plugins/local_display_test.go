@@ -33,7 +33,7 @@ func TestLocalDisplayHelperProcess(t *testing.T) {
 	case "missing":
 		identity = nil
 	case "wrong-id":
-		identity.ID = "musicfs.netease"
+		identity.ID = "musicfs.plugin.source.netease"
 	case "missing-feature":
 		identity.Features = []string{}
 	case "invalid-name":
@@ -44,7 +44,7 @@ func TestLocalDisplayHelperProcess(t *testing.T) {
 		if method != "host.hello" || json.Unmarshal(raw, &hello) != nil {
 			return nil, pluginproto.Failure("UNSUPPORTED", "Unsupported fixture method")
 		}
-		manifest := pluginproto.Manifest{PluginID: "musicfs.localfiles", Plugin: identity, PluginVersion: "0.3.0", ProtocolVersion: pluginproto.ProtocolVersion, Roles: []string{"provider"}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}
+		manifest := pluginproto.Manifest{PluginID: "musicfs.plugin.source.localfiles", Plugin: identity, PluginVersion: "0.3.0", ProtocolVersion: pluginproto.ProtocolVersion, Roles: []string{"provider"}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}
 		return pluginproto.Ready{Manifest: manifest, InstanceID: hello.InstanceID, Nonce: hello.Nonce}, nil
 	})
 	<-peer.Done()
@@ -58,7 +58,7 @@ func localDisplayConfig(t *testing.T, mode string) pluginhost.Config {
 		t.Fatal(err)
 	}
 	sum := sha256.Sum256(b)
-	return pluginhost.Config{Executable: os.Args[0], Args: []string{"-test.run=^TestLocalDisplayHelperProcess$", "--", "local-display=" + mode}, SHA256: fmt.Sprintf("%x", sum), InstanceID: "local", UserID: "owner", StateDir: t.TempDir()}
+	return pluginhost.Config{Executable: os.Args[0], Args: []string{"-test.run=^TestLocalDisplayHelperProcess$", "--", "local-display=" + mode}, SHA256: fmt.Sprintf("%x", sum), InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", UserID: "owner", StateDir: t.TempDir()}
 }
 
 type displayRepository struct{ library.Repository }
@@ -82,7 +82,7 @@ func TestLocalMusicIdentityFlowsFromWorkerAndSurvivesStop(t *testing.T) {
 	read := func(want, availability string) library.Provider {
 		t.Helper()
 		providers := service.Providers(ctx, "owner")
-		if len(providers) != 1 || providers[0].Plugin == nil || providers[0].Plugin.ID != "musicfs.localfiles" || providers[0].Plugin.Name != want || providers[0].Availability != availability || providers[0].Plugin.LocalizedNames["fr"] != "Musique locale" || len(providers[0].Plugin.Features) != 1 || providers[0].Plugin.Features[0] != "music-source" {
+		if len(providers) != 1 || providers[0].Plugin == nil || providers[0].Plugin.ID != "musicfs.plugin.source.localfiles" || providers[0].Plugin.Name != want || providers[0].Availability != availability || providers[0].Plugin.LocalizedNames["fr"] != "Musique locale" || len(providers[0].Plugin.Features) != 1 || providers[0].Plugin.Features[0] != "music-source" {
 			t.Fatalf("plugin identity was not retained: %+v", providers)
 		}
 		return providers[0]

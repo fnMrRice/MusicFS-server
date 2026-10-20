@@ -78,6 +78,7 @@ func ParseDocument(raw []byte, path string, overrides map[string]string) (*Docum
 	if err := validateNodes(root, 1); err != nil {
 		return nil, err
 	}
+	normalizeIdentityNodes(root)
 	if err := discoverBundle(root, filepath.Dir(abs)); err != nil {
 		return nil, err
 	}
@@ -97,7 +98,7 @@ func ParseDocument(raw []byte, path string, overrides map[string]string) (*Docum
 	}
 	markPendingConfiguration(&c, bundlePath(root, filepath.Dir(abs)))
 	for pi := range c.Plugins {
-		if c.Plugins[pi].PluginID != "musicfs.localfiles" {
+		if c.Plugins[pi].PluginID != "musicfs.plugin.source.localfiles" {
 			continue
 		}
 		for ii := range c.Plugins[pi].Instances {

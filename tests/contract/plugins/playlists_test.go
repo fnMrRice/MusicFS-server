@@ -12,7 +12,7 @@ import (
 )
 
 func TestAccountPlaylistsWireContract(t *testing.T) {
-	scope := pluginproto.Context{InstanceID: "instance", UserID: "owner", TaskID: strings.Repeat("a", 48), TimeoutMs: 10000}
+	scope := pluginproto.Context{InstanceID: "1463118e-e2d1-564a-ab70-05a357c1b9bf", UserID: "owner", TaskID: strings.Repeat("a", 48), TimeoutMs: 10000}
 	request := pluginproto.OnlinePlaylists{Context: scope, PlaylistsRequest: online.PlaylistsRequest{Limit: 20}}
 	onlineContract(t, "Playlists", request)
 	onlineContract(t, "", map[string]any{"jsonrpc": "2.0", "id": "h-1", "method": "provider.online.playlists", "params": request})

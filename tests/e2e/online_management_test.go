@@ -34,10 +34,13 @@ func managedOnlineFixture(t *testing.T) string {
 
 func managedRecommendations(t *testing.T, c *client) recommendations.Response {
 	t.Helper()
-	code, raw, _ := c.request(t, "GET", "/api/v1/recommendations?limit=1", nil, "")
+	code, raw, _ := c.request(t, "GET", "/api/v1/recommendations?instanceId=a0462a4b-8754-5747-a8cf-29cf4d0a874f&instanceId=18caca33-4b0c-57b7-8248-2cf8781c2448&limit=1", nil, "")
 	var response recommendations.Response
 	if code != 200 || json.Unmarshal(raw, &response) != nil || len(response.Sources) != 2 {
 		t.Fatalf("recommendations unavailable: %d %s", code, raw)
+	}
+	if response.Sources[0].InstanceID != "a0462a4b-8754-5747-a8cf-29cf4d0a874f" || response.Sources[1].InstanceID != "18caca33-4b0c-57b7-8248-2cf8781c2448" {
+		t.Fatal("recommendations did not preserve the requested instance order", response)
 	}
 	return response
 }
@@ -106,52 +109,55 @@ func managedOnlineInstance(t *testing.T, c *client, id string) plugincontrol.Ins
 func TestManagedOnlineWorkerConfigurationAndRestartRequiredDisable(t *testing.T) {
 	provider := managedOnlineFixture(t)
 	cfg, base := yamlServiceConfig(t)
-	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.netease", Executable: provider, Enabled: true, Instances: []config.Instance{
-		{InstanceID: "online-a", Name: "First", Role: "provider", Enabled: true},
-		{InstanceID: "online-b", Name: "Second", Role: "provider", Enabled: true},
+	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.netease", Executable: provider, Enabled: true, Instances: []config.Instance{
+		{InstanceID: "a0462a4b-8754-5747-a8cf-29cf4d0a874f", Name: "First", Enabled: true},
+		{InstanceID: "18caca33-4b0c-57b7-8248-2cf8781c2448", Name: "Second", Enabled: true},
 	}}}
 	path := writeYAMLConfiguration(t, cfg)
 	stop := startAudioYAMLServer(t, path, cfg, base)
 	defer func() { stop() }()
 	c := login(t, base, cfg.AdminToken)
-	authenticateManagedOnline(t, c, "online-a", "online-b")
+	authenticateManagedOnline(t, c, "a0462a4b-8754-5747-a8cf-29cf4d0a874f", "18caca33-4b0c-57b7-8248-2cf8781c2448")
 	before := managedRecommendations(t, c)
 	for _, source := range before.Sources {
-		if source.Error != nil || len(source.Items) != 1 || source.LastSuccessAt == nil {
+		if source.Error != nil || source.Name != "Fixture listener" || len(source.Items) != 1 || source.LastSuccessAt == nil {
 			t.Fatal("initial online worker was not ready", source)
 		}
 	}
-	operation := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/online-a/state", map[string]any{"enabled": false, "mode": "drain"})
+	operation := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/a0462a4b-8754-5747-a8cf-29cf4d0a874f/state", map[string]any{"enabled": false, "mode": "drain"})
 	waitLibraryOperation(t, c, operation.ID)
 	pending := managedRecommendations(t, c)
 	if pending.Sources[0].Error != nil || len(pending.Sources[0].Items) != 1 || !pending.Sources[0].LastSuccessAt.Equal(*before.Sources[0].LastSuccessAt) || !pending.Sources[1].LastSuccessAt.Equal(*before.Sources[1].LastSuccessAt) {
 		t.Fatal("pending disable changed recommendation caches", pending)
 	}
-	state := managedOnlineInstance(t, c, "online-a")
+	state := managedOnlineInstance(t, c, "a0462a4b-8754-5747-a8cf-29cf4d0a874f")
 	if state.RuntimeState != "ready" || !state.EffectiveEnabled || !state.AcceptingNewWork || state.Reason == nil || *state.Reason != "RESTART_REQUIRED" {
 		t.Fatal("pending disable changed the online runtime", state)
 	}
 	time.Sleep(1050 * time.Millisecond)
-	code, raw, _ := c.request(t, "GET", "/api/v1/online-instances/online-a/search?q=Fixture", nil, "")
+	code, raw, _ := c.request(t, "GET", "/api/v1/online-instances/a0462a4b-8754-5747-a8cf-29cf4d0a874f/search?q=Fixture", nil, "")
 	if code != 200 {
 		t.Fatalf("pending disable rejected a new online query: %d %s", code, raw)
 	}
 	generation := state.Generation
-	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/online-a/state", map[string]any{"enabled": true, "mode": "drain"})
+	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/a0462a4b-8754-5747-a8cf-29cf4d0a874f/state", map[string]any{"enabled": true, "mode": "drain"})
 	waitLibraryOperation(t, c, operation.ID)
 	after := managedRecommendations(t, c)
 	if after.Sources[0].Error != nil || !after.Sources[0].LastSuccessAt.Equal(*before.Sources[0].LastSuccessAt) || !after.Sources[1].LastSuccessAt.Equal(*before.Sources[1].LastSuccessAt) {
 		t.Fatal("reversing a pending disable changed recommendation caches", after)
 	}
-	if state = managedOnlineInstance(t, c, "online-a"); state.Generation != generation || state.Reason != nil {
+	if state = managedOnlineInstance(t, c, "a0462a4b-8754-5747-a8cf-29cf4d0a874f"); state.Generation != generation || state.Reason != nil {
 		t.Fatal("reversing a pending disable replaced the online worker", state)
 	}
-	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/online-a/configuration", map[string]any{"name": "Renamed online"})
+	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/a0462a4b-8754-5747-a8cf-29cf4d0a874f/configuration", map[string]any{"name": "Renamed online"})
 	waitLibraryOperation(t, c, operation.ID)
-	authenticateManagedOnline(t, c, "online-a")
+	authenticateManagedOnline(t, c, "a0462a4b-8754-5747-a8cf-29cf4d0a874f")
 	after = managedRecommendations(t, c)
-	if after.Sources[0].Error != nil || after.Sources[0].Name != "Renamed online" || !after.Sources[1].LastSuccessAt.Equal(*before.Sources[1].LastSuccessAt) {
-		t.Fatal("online configuration was not reflected in replacement runtime", after)
+	if after.Sources[0].Error != nil || after.Sources[0].Name != "Fixture listener" || !after.Sources[1].LastSuccessAt.Equal(*before.Sources[1].LastSuccessAt) {
+		t.Fatal("configuration replacement lost the account name or another instance's cache", after)
+	}
+	if state = managedOnlineInstance(t, c, "a0462a4b-8754-5747-a8cf-29cf4d0a874f"); state.Generation == generation || state.Name != "Fixture listener" {
+		t.Fatal("configuration did not replace the worker while preserving its account name", state)
 	}
 	time.Sleep(1050 * time.Millisecond)
 	type result struct {
@@ -163,7 +169,7 @@ func TestManagedOnlineWorkerConfigurationAndRestartRequiredDisable(t *testing.T)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
-		request, err := http.NewRequestWithContext(ctx, "GET", base+"/api/v1/online-instances/online-a/search?q=slow&limit=1", nil)
+		request, err := http.NewRequestWithContext(ctx, "GET", base+"/api/v1/online-instances/a0462a4b-8754-5747-a8cf-29cf4d0a874f/search?q=slow&limit=1", nil)
 		if err != nil {
 			finished <- result{err: err}
 			return
@@ -178,7 +184,7 @@ func TestManagedOnlineWorkerConfigurationAndRestartRequiredDisable(t *testing.T)
 		finished <- result{code: response.StatusCode, body: string(raw), err: err}
 	}()
 	for deadline := time.Now().Add(3 * time.Second); ; {
-		if state := managedOnlineInstance(t, c, "online-a"); state.ActiveLeases > 0 {
+		if state := managedOnlineInstance(t, c, "a0462a4b-8754-5747-a8cf-29cf4d0a874f"); state.ActiveLeases > 0 {
 			break
 		}
 		if time.Now().After(deadline) {
@@ -186,20 +192,20 @@ func TestManagedOnlineWorkerConfigurationAndRestartRequiredDisable(t *testing.T)
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/online-a/state", map[string]any{"enabled": false, "mode": "drain"})
+	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/a0462a4b-8754-5747-a8cf-29cf4d0a874f/state", map[string]any{"enabled": false, "mode": "drain"})
 	waitLibraryOperation(t, c, operation.ID)
-	state = managedOnlineInstance(t, c, "online-a")
+	state = managedOnlineInstance(t, c, "a0462a4b-8754-5747-a8cf-29cf4d0a874f")
 	if state.ActiveLeases == 0 || !state.AcceptingNewWork || state.RuntimeState != "ready" {
 		t.Fatal("pending disable affected admitted work or new admission", state)
 	}
-	force := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/online-a/state", map[string]any{"enabled": false, "mode": "force"})
+	force := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/a0462a4b-8754-5747-a8cf-29cf4d0a874f/state", map[string]any{"enabled": false, "mode": "force"})
 	waitLibraryOperation(t, c, force.ID)
 	select {
 	case done := <-finished:
 		t.Fatal("legacy force mode canceled admitted work", done)
 	case <-time.After(150 * time.Millisecond):
 	}
-	if state = managedOnlineInstance(t, c, "online-a"); state.RuntimeState != "ready" || state.ActiveLeases == 0 || !state.AcceptingNewWork {
+	if state = managedOnlineInstance(t, c, "a0462a4b-8754-5747-a8cf-29cf4d0a874f"); state.RuntimeState != "ready" || state.ActiveLeases == 0 || !state.AcceptingNewWork {
 		t.Fatal("legacy force mode changed the online runtime", state)
 	}
 	after = managedRecommendations(t, c)
@@ -215,15 +221,15 @@ func TestManagedOnlineWorkerConfigurationAndRestartRequiredDisable(t *testing.T)
 	stop()
 	stop = startAudioYAMLServer(t, path, cfg, base)
 	c = login(t, base, cfg.AdminToken)
-	if state = managedOnlineInstance(t, c, "online-a"); state.RuntimeState != "disabled" || state.EffectiveEnabled || state.AcceptingNewWork || state.ActiveLeases != 0 {
+	if state = managedOnlineInstance(t, c, "a0462a4b-8754-5747-a8cf-29cf4d0a874f"); state.RuntimeState != "disabled" || state.EffectiveEnabled || state.AcceptingNewWork || state.ActiveLeases != 0 {
 		t.Fatal("server restart did not apply persisted disable", state)
 	}
-	code, raw, _ = c.request(t, "GET", "/api/v1/online-instances/online-a/search?q=Fixture", nil, "")
+	code, raw, _ = c.request(t, "GET", "/api/v1/online-instances/a0462a4b-8754-5747-a8cf-29cf4d0a874f/search?q=Fixture", nil, "")
 	var failure struct{ Error domain.Error }
 	if code != 503 || json.Unmarshal(raw, &failure) != nil || failure.Error.Code != "PLUGIN_DISABLED" {
 		t.Fatalf("disabled online worker accepted work after server restart: %d %s", code, raw)
 	}
-	if state = managedOnlineInstance(t, c, "online-b"); state.RuntimeState != "ready" || !state.EffectiveEnabled || !state.AcceptingNewWork {
+	if state = managedOnlineInstance(t, c, "18caca33-4b0c-57b7-8248-2cf8781c2448"); state.RuntimeState != "ready" || !state.EffectiveEnabled || !state.AcceptingNewWork {
 		t.Fatal("server restart disabled another online instance", state)
 	}
 }

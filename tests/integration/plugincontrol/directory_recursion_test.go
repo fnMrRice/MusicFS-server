@@ -13,7 +13,7 @@ import (
 func TestDirectoryManagementSavesRecursiveDefaults(t *testing.T) {
 	manager, _ := configurationManager(t)
 	server, cookies := managementHTTP(t, manager)
-	path := "/admin/plugin-instances/local/configuration"
+	path := "/admin/plugin-instances/" + localInstanceID + "/configuration"
 	for index, options := range []pluginproto.ImportOptions{
 		{Recursive: true, MaxDepth: 2, ExcludePatterns: []string{"cache"}, SkipHidden: true, RespectNoMedia: true},
 		{Recursive: true, MaxDepth: 0, ExcludePatterns: []string{"cache"}},

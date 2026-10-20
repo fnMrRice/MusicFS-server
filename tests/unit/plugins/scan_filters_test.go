@@ -45,7 +45,7 @@ func TestHiddenNoMediaDefaultsAndLegacyPlanDigest(t *testing.T) {
 	if defaults["skipHidden"] != false || defaults["respectNoMedia"] != false {
 		t.Fatal("configuration omitted explicit false filter settings")
 	}
-	const legacy = `{"planVersion":1,"mode":"full","pluginId":"musicfs.localfiles","pluginVersion":"0.3.0","schemaRevision":"local-import-v3","configRevision":"old","roots":[{"rootId":"root","rootIdentity":"identity"}],"options":{"recursive":true,"maxDepth":64,"importLyrics":false,"excludePatterns":[]}}`
+	const legacy = `{"planVersion":1,"mode":"full","pluginId":"musicfs.plugin.source.localfiles","pluginVersion":"0.3.0","schemaRevision":"local-import-v3","configRevision":"old","roots":[{"rootId":"root","rootIdentity":"identity"}],"options":{"recursive":true,"maxDepth":64,"importLyrics":false,"excludePatterns":[]}}`
 	var plan pluginproto.ScanPlan
 	if err := json.Unmarshal([]byte(legacy), &plan); err != nil {
 		t.Fatal(err)

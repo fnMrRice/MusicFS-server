@@ -37,7 +37,7 @@ func TestBundledDiscoveryDefaultsAndPendingConfiguration(t *testing.T) {
 		if !p.Enabled || len(p.Instances) != 1 || !p.Instances[0].Enabled || len(p.Args) != 2 || p.Args[0] != "--plugin" {
 			t.Fatalf("invalid discovery: %+v", p)
 		}
-		wantPending := p.PluginID == "musicfs.localfiles" || p.PluginID == "musicfs.audio.ffmpeg"
+		wantPending := p.PluginID == "musicfs.plugin.source.localfiles" || p.PluginID == "musicfs.plugin.decoder.ffmpeg"
 		if p.Pending(p.Instances[0]) != wantPending || p.CanStart(p.Instances[0]) == wantPending {
 			t.Fatalf("readiness: %+v", p)
 		}
@@ -50,6 +50,12 @@ func TestBundledDiscoveryDefaultsAndPendingConfiguration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if strings.Contains(string(encoded), `"name":`) {
+		t.Fatal("discovery populated an instance alias with a plugin display name")
+	}
+	if strings.Contains(string(encoded), `"role":`) {
+		t.Fatal("discovery persisted plugin roles as deployment configuration")
+	}
 	if err := configurationSchema(t).Validate(testkit.DecodeJSON(t, encoded)); err != nil {
 		t.Fatal(err)
 	}
@@ -57,30 +63,30 @@ func TestBundledDiscoveryDefaultsAndPendingConfiguration(t *testing.T) {
 
 func TestBundledDiscoveryPreservesDisableAndExternalExecutable(t *testing.T) {
 	doc := bundledDocument(t, `plugins:
-  - pluginId: musicfs.ncm
+  - pluginId: musicfs.plugin.decoder.ncm
     enabled: false
-  - pluginId: musicfs.netease
+  - pluginId: musicfs.plugin.source.netease
     instances:
       - instanceId: custom-net
-        role: provider
+        name: Upstairs collection
         enabled: false
         config: {}
-  - pluginId: musicfs.qqmusic
+  - pluginId: musicfs.plugin.source.qqmusic
     executable: './external-worker'
     args: ['literal argument with spaces', '$(not-a-shell)']
     instances: []
 `)
 	for _, p := range doc.Config.Plugins {
 		switch p.PluginID {
-		case "musicfs.ncm":
+		case "musicfs.plugin.decoder.ncm":
 			if p.Enabled || p.CanStart(p.Instances[0]) {
 				t.Fatal("explicit disable ignored")
 			}
-		case "musicfs.netease":
-			if !p.Enabled || p.Instances[0].Enabled {
-				t.Fatal("instance disable ignored")
+		case "musicfs.plugin.source.netease":
+			if !p.Enabled || p.Instances[0].Enabled || p.Instances[0].Name != "Upstairs collection" {
+				t.Fatal("explicit instance settings were changed")
 			}
-		case "musicfs.qqmusic":
+		case "musicfs.plugin.source.qqmusic":
 			if p.Enabled || p.Args[1] != "$(not-a-shell)" || !strings.HasSuffix(p.Executable, "external-worker") {
 				t.Fatal("external executable was changed")
 			}

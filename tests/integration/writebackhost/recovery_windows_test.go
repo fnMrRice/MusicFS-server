@@ -99,7 +99,7 @@ func TestWritebackHostRecoversFileAndDatabaseBoundary(t *testing.T) {
 			if err = os.WriteFile(filepath.Join(music, "track.flac"), audio, 0600); err != nil {
 				t.Fatal(err)
 			}
-			worker, err := pluginhost.Start(ctx, pluginhost.Config{Executable: bin, SHA256: checksum, InstanceID: "local", UserID: "admin", StateDir: filepath.Join(dir, "state"), Roots: []sourceaccess.RootConfig{{ID: "music", Path: music}}})
+			worker, err := pluginhost.Start(ctx, pluginhost.Config{Executable: bin, SHA256: checksum, InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", UserID: "admin", StateDir: filepath.Join(dir, "state"), Roots: []sourceaccess.RootConfig{{ID: "music", Path: music}}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -111,7 +111,7 @@ func TestWritebackHostRecoversFileAndDatabaseBoundary(t *testing.T) {
 			defer store.Close()
 			queue := jobs.New(store)
 			defer queue.Close()
-			runtimes := []library.Runtime{{ID: "local", Owner: "admin", Worker: worker, ConfigRevision: "writeback-fixture-v1", Configuration: pluginconfig.LocalFiles(), ImportDefaults: pluginconfig.LocalFiles().ImportDefaults, RootNames: map[string]string{"music": "Music"}}}
+			runtimes := []library.Runtime{{ID: "b1548e96-3081-5c9c-8376-bf290e369d51", Owner: "admin", Worker: worker, ConfigRevision: "writeback-fixture-v1", Configuration: pluginconfig.LocalFiles(), ImportDefaults: pluginconfig.LocalFiles().ImportDefaults, RootNames: map[string]string{"music": "Music"}}}
 			probe := func(ctx context.Context, in io.ReadSeeker, size int64) (library.Observation, error) {
 				m, e := audioffmpeg.ProbeMetadata(ctx, ffprobe, in, size)
 				return library.Observation{Title: m.Title, Artists: m.Artists, Container: m.Container}, e
@@ -146,7 +146,7 @@ func TestWritebackHostRecoversFileAndDatabaseBoundary(t *testing.T) {
 				fault.entered = make(chan struct{})
 				fault.release = make(chan struct{})
 			}
-			cfg := writebackhost.Config{Policy: writeback.Policy{Enabled: true, Roots: []writeback.Root{{Owner: "admin", InstanceID: "local", RootID: "music", Path: music, Identity: worker.Access.Roots()[0].ExpectedIdentity, Fields: []string{"lyrics"}}}}, Probe: probe}
+			cfg := writebackhost.Config{Policy: writeback.Policy{Enabled: true, Roots: []writeback.Root{{Owner: "admin", InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", RootID: "music", Path: music, Identity: worker.Access.Roots()[0].ExpectedIdentity, Fields: []string{"lyrics"}}}}, Probe: probe}
 			service, err := writebackhost.New(store, lib, media, fault, runtimes, cfg)
 			if err != nil {
 				t.Fatal(err)
@@ -178,7 +178,7 @@ func TestWritebackHostRecoversFileAndDatabaseBoundary(t *testing.T) {
 				if e != nil || final.Status != "succeeded" {
 					t.Fatalf("finalized job: %+v %v", final, e)
 				}
-				read, e := lib.HoldRead(ctx, "admin", "local")
+				read, e := lib.HoldRead(ctx, "admin", "b1548e96-3081-5c9c-8376-bf290e369d51")
 				if e != nil {
 					t.Fatal(e)
 				}
@@ -190,7 +190,7 @@ func TestWritebackHostRecoversFileAndDatabaseBoundary(t *testing.T) {
 			t.Logf("interrupted job: %+v", beforeRecovery)
 			// Both an unfinished file swap and a committed DB with an unfinished
 			// journal must keep the source unavailable until verified recovery.
-			if read, e := lib.HoldRead(ctx, "admin", "local"); e == nil {
+			if read, e := lib.HoldRead(ctx, "admin", "b1548e96-3081-5c9c-8376-bf290e369d51"); e == nil {
 				read.Close()
 				t.Fatal("unfinished journal lost its source barrier")
 			}
@@ -219,7 +219,7 @@ func TestWritebackHostRecoversFileAndDatabaseBoundary(t *testing.T) {
 			if err != nil || final.Status != "succeeded" || final.Result == nil || !final.Result.Changed {
 				t.Fatalf("recovery: %+v %v", final, err)
 			}
-			read, err := lib.HoldRead(ctx, "admin", "local")
+			read, err := lib.HoldRead(ctx, "admin", "b1548e96-3081-5c9c-8376-bf290e369d51")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -246,7 +246,7 @@ func TestWritebackHostRecoversFileAndDatabaseBoundary(t *testing.T) {
 
 func scan(t *testing.T, ctx context.Context, lib *library.Service) library.Track {
 	t.Helper()
-	j, _, err := lib.Scan(ctx, "admin", "local", library.ScanInput{Mode: "full", RootIDs: []string{"music"}, SchemaRevision: pluginconfig.LocalFiles().SchemaRevision}, domain.NewID())
+	j, _, err := lib.Scan(ctx, "admin", "b1548e96-3081-5c9c-8376-bf290e369d51", library.ScanInput{Mode: "full", RootIDs: []string{"music"}, SchemaRevision: pluginconfig.LocalFiles().SchemaRevision}, domain.NewID())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,7 +263,7 @@ func scan(t *testing.T, ctx context.Context, lib *library.Service) library.Track
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	page, err := lib.List(ctx, "admin", "local", "", 10)
+	page, err := lib.List(ctx, "admin", "b1548e96-3081-5c9c-8376-bf290e369d51", "", 10)
 	if err != nil || len(page.Items) != 1 {
 		t.Fatalf("list: %+v %v", page, err)
 	}

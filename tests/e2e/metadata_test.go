@@ -41,9 +41,9 @@ func TestMetadataActualServerCandidatesApplyCancelAndRestart(t *testing.T) {
 	}
 	cfg, base := yamlServiceConfig(t)
 	cfg.Plugins = []config.Plugin{
-		{PluginID: "musicfs.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Role: "provider", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Metadata fixture", Path: music}}}}}},
-		{PluginID: "musicfs.scraper.local", Executable: scraper, Enabled: true, Instances: []config.Instance{{InstanceID: "scraper-local", Name: "Local metadata", Role: "scraper", Enabled: true}, {InstanceID: "scraper-offline", Role: "scraper", Enabled: false}}},
-		{PluginID: "musicfs.ncm", Executable: decoder, Enabled: true, Instances: []config.Instance{{InstanceID: "ncm-default", Role: "audio", Enabled: true}}},
+		{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Metadata fixture", Path: music}}}}}},
+		{PluginID: "musicfs.scraper.local", Executable: scraper, Enabled: true, Instances: []config.Instance{{InstanceID: "d248bf34-1780-59d3-a557-9cf5d889e977", Name: "Local metadata", Enabled: true}, {InstanceID: "4d8409cd-1d37-5e46-8e79-1b8b48e78020", Enabled: false}}},
+		{PluginID: "musicfs.plugin.decoder.ncm", Executable: decoder, Enabled: true, Instances: []config.Instance{{InstanceID: "96412f52-9ff4-5a82-9eaa-7644a5837cda", Enabled: true}}},
 	}
 	var trackID, jobID string
 	completed := false
@@ -65,7 +65,7 @@ func TestMetadataActualServerCandidatesApplyCancelAndRestart(t *testing.T) {
 		}
 		testkit.ValidateHTTP(t, "ScraperInstances", raw)
 		for _, instance := range instances.Items {
-			if instance.QueryCorrectionsSupported || (instance.InstanceID == "scraper-offline" && instance.Availability != "offline") {
+			if instance.QueryCorrectionsSupported || (instance.InstanceID == "4d8409cd-1d37-5e46-8e79-1b8b48e78020" && instance.Availability != "offline") {
 				t.Fatal("unsafe scraper capability declaration")
 			}
 		}
@@ -77,9 +77,9 @@ func TestMetadataActualServerCandidatesApplyCancelAndRestart(t *testing.T) {
 			"missing":          {metadataRequest([]string{"absent-source"}, "lyrics"), 404},
 			"query":            {map[string]any{"sourceTrackIds": []string{trackID}, "fields": []string{"lyrics"}, "query": map[string]any{"title": "Different title"}}, 415},
 			"null-languages":   {map[string]any{"sourceTrackIds": []string{trackID}, "fields": []string{"lyrics"}, "languages": nil}, 400},
-			"offline":          {map[string]any{"sourceTrackIds": []string{trackID}, "fields": []string{"lyrics"}, "instanceIds": []string{"scraper-offline"}}, 503},
-			"unknown-instance": {map[string]any{"sourceTrackIds": []string{trackID}, "fields": []string{"lyrics"}, "instanceIds": []string{"private-instance"}}, 404},
-			"exclude-all":      {map[string]any{"sourceTrackIds": []string{trackID}, "fields": []string{"lyrics"}, "excludeInstanceIds": []string{"scraper-local"}}, 415},
+			"offline":          {map[string]any{"sourceTrackIds": []string{trackID}, "fields": []string{"lyrics"}, "instanceIds": []string{"4d8409cd-1d37-5e46-8e79-1b8b48e78020"}}, 503},
+			"unknown-instance": {map[string]any{"sourceTrackIds": []string{trackID}, "fields": []string{"lyrics"}, "instanceIds": []string{"a1f02476-a49b-58ad-9218-af65aace0ffe"}}, 404},
+			"exclude-all":      {map[string]any{"sourceTrackIds": []string{trackID}, "fields": []string{"lyrics"}, "excludeInstanceIds": []string{"d248bf34-1780-59d3-a557-9cf5d889e977"}}, 415},
 			"fake-scope":       {map[string]any{"sourceTrackIds": []string{trackID}, "fields": []string{"lyrics"}, "resources": []any{}}, 400},
 		} {
 			code, body, _ := c.request(t, "POST", "/api/v1/metadata-jobs", tc.input, "metadata-invalid-"+name)

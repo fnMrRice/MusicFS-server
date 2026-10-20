@@ -31,7 +31,7 @@ func initializeLocalDirectories(ctx context.Context, c Config, discover func() [
 	probed := false
 	for pi := range c.Plugins {
 		p := &c.Plugins[pi]
-		if p.PluginID != "musicfs.localfiles" || !p.Enabled {
+		if p.PluginID != "musicfs.plugin.source.localfiles" || !p.Enabled {
 			continue
 		}
 		for ii := range p.Instances {
@@ -80,7 +80,7 @@ func loadLocalDirectoryDefaults(ctx context.Context, c *Config) error {
 	}
 	for pi := range c.Plugins {
 		p := &c.Plugins[pi]
-		if p.PluginID != "musicfs.localfiles" {
+		if p.PluginID != "musicfs.plugin.source.localfiles" {
 			continue
 		}
 		for ii := range p.Instances {
@@ -90,12 +90,8 @@ func loadLocalDirectoryDefaults(ctx context.Context, c *Config) error {
 			}
 			var v pluginproto.StateValue
 			if statErr == nil {
-				db, err := plugindb.Open(ctx, PluginDatabasePath(*c), p.PluginID, i.InstanceID)
-				if err != nil {
-					return err
-				}
-				v, err = db.Get(ctx, defaultDirectoriesKey)
-				db.Close()
+				var err error
+				v, err = plugindb.Read(ctx, PluginDatabasePath(*c), p.PluginID, i.InstanceID, defaultDirectoriesKey)
 				if err != nil {
 					return err
 				}
@@ -146,7 +142,7 @@ func applyLocalDirectoryDefaults(i *Instance, v pluginproto.StateValue) error {
 func localDirectoryRevision(c Config, revision string) string {
 	for _, p := range c.Plugins {
 		for _, i := range p.Instances {
-			if p.PluginID == "musicfs.localfiles" && i.defaultDirectoryRevision > 0 {
+			if p.PluginID == "musicfs.plugin.source.localfiles" && i.defaultDirectoryRevision > 0 {
 				revision = fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s:%s:%d", revision, p.PluginID, i.InstanceID, defaultDirectoriesKey, i.defaultDirectoryRevision))))
 			}
 		}

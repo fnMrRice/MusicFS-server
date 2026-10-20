@@ -39,7 +39,7 @@ func scraperHost(t *testing.T) *scraperlocal.Host {
 	if err != nil {
 		t.Fatal(err)
 	}
-	host, err := scraperlocal.NewHost(scraperlocal.Config{WorkerPath: path, WorkerSHA256: fmt.Sprintf("%x", sha256.Sum256(b)), WorkDir: t.TempDir(), InstanceID: "scraper-local", MaxConcurrent: 1})
+	host, err := scraperlocal.NewHost(scraperlocal.Config{WorkerPath: path, WorkerSHA256: fmt.Sprintf("%x", sha256.Sum256(b)), WorkDir: t.TempDir(), InstanceID: "d248bf34-1780-59d3-a557-9cf5d889e977", MaxConcurrent: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func scraperHost(t *testing.T) *scraperlocal.Host {
 }
 
 func scraperScope(task string) pluginproto.Context {
-	return pluginproto.Context{UserID: "owner", InstanceID: "scraper-local", TaskID: task, TimeoutMs: 30000}
+	return pluginproto.Context{UserID: "owner", InstanceID: "d248bf34-1780-59d3-a557-9cf5d889e977", TaskID: task, TimeoutMs: 30000}
 }
 func scraperTarget() enrichment.Target {
 	return enrichment.Target{SourceTrackID: "source", AssetID: "asset", AssetVersion: "version", Revision: 7}

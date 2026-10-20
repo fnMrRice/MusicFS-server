@@ -33,10 +33,10 @@ func TestManagedWritebackDisabledStartAndChangedRootFence(t *testing.T) {
 	}
 	cfg, base := yamlServiceConfig(t)
 	cfg.Plugins = []config.Plugin{
-		{PluginID: "musicfs.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Role: "provider", Enabled: false, Permissions: &config.Permissions{ReadDirectories: []string{music, replacement}}, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Music", Path: music}}}}}},
-		{PluginID: "musicfs.audio.ffmpeg", Executable: audio, Enabled: true, Instances: []config.Instance{{InstanceID: "audio-default", Role: "audio", Enabled: false, Config: config.InstanceConfig{FFmpegPath: ffmpeg, FFprobePath: ffprobe}}}},
+		{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: false, Permissions: &config.Permissions{ReadDirectories: []string{music, replacement}}, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Music", Path: music}}}}}},
+		{PluginID: "musicfs.plugin.decoder.ffmpeg", Executable: audio, Enabled: true, Instances: []config.Instance{{InstanceID: "16b003e5-1bab-52bb-be10-0e83ec1c40ea", Enabled: false, Config: config.InstanceConfig{FFmpegPath: ffmpeg, FFprobePath: ffprobe}}}},
 	}
-	cfg.WriteBack = config.WriteBackConfig{Enabled: true, MaxFileBytes: 8 << 30, Roots: []config.WriteBackRoot{{InstanceID: "local", RootID: "local", Fields: []string{"lyrics"}}}}
+	cfg.WriteBack = config.WriteBackConfig{Enabled: true, MaxFileBytes: 8 << 30, Roots: []config.WriteBackRoot{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", RootID: "local", Fields: []string{"lyrics"}}}}
 	path := writeYAMLConfiguration(t, cfg)
 	stop := startAudioYAMLServer(t, path, cfg, base)
 	defer func() { stop() }()
@@ -44,14 +44,14 @@ func TestManagedWritebackDisabledStartAndChangedRootFence(t *testing.T) {
 	if cap := writeBackCapability(t, c); !cap.Enabled || cap.Available {
 		t.Fatalf("disabled source advertised available writeback: %+v", cap)
 	}
-	for _, id := range []string{"audio-default", "local"} {
+	for _, id := range []string{"16b003e5-1bab-52bb-be10-0e83ec1c40ea", "b1548e96-3081-5c9c-8376-bf290e369d51"} {
 		op := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/"+id+"/state", map[string]any{"enabled": true, "mode": "drain"})
 		waitLibraryOperation(t, c, op.ID)
 	}
 	if cap := writeBackCapability(t, c); !cap.Enabled || !cap.Available {
 		t.Fatalf("enabling original roots did not restore writeback: %+v", cap)
 	}
-	track := scanProvider(t, c, "local", "managed-writeback-original-scan")["source.flac"]
+	track := scanProvider(t, c, "b1548e96-3081-5c9c-8376-bf290e369d51", "managed-writeback-original-scan")["source.flac"]
 	request := selectManagedWritebackLyrics(t, c, track, "managed-writeback-first")
 	jobID := submitWriteBack(t, c, request, "managed-writeback-enabled")
 	var job writebackhost.Job
@@ -72,9 +72,9 @@ func TestManagedWritebackDisabledStartAndChangedRootFence(t *testing.T) {
 	if err != nil || !bytes.Contains(written, []byte("Managed writeback lyrics")) {
 		t.Fatal("writeback did not update the authorized original", err)
 	}
-	track = scanProvider(t, c, "local", "managed-writeback-after-write")["source.flac"]
+	track = scanProvider(t, c, "b1548e96-3081-5c9c-8376-bf290e369d51", "managed-writeback-after-write")["source.flac"]
 	request.AssetID, request.AssetVersion = track.AssetID, track.Asset.Version
-	paused := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/audio-default/state", map[string]any{"enabled": false, "mode": "drain"})
+	paused := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/16b003e5-1bab-52bb-be10-0e83ec1c40ea/state", map[string]any{"enabled": false, "mode": "drain"})
 	waitLibraryOperation(t, c, paused.ID)
 	if cap := writeBackCapability(t, c); !paused.RestartRequired || !cap.Available {
 		t.Fatal("pending probe disable removed current writeback availability")
@@ -89,13 +89,13 @@ func TestManagedWritebackDisabledStartAndChangedRootFence(t *testing.T) {
 	if code != 415 || !bytes.Contains(raw, []byte("UNSUPPORTED")) {
 		t.Fatalf("writeback started without validation tools: %d %s", code, raw)
 	}
-	resumed := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/audio-default/state", map[string]any{"enabled": true, "mode": "drain"})
+	resumed := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/16b003e5-1bab-52bb-be10-0e83ec1c40ea/state", map[string]any{"enabled": true, "mode": "drain"})
 	waitLibraryOperation(t, c, resumed.ID)
 	if cap := writeBackCapability(t, c); !cap.Available {
 		t.Fatal("restarted probe did not restore writeback availability")
 	}
 
-	change := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/local/configuration", map[string]any{"musicRoots": []config.MusicRoot{{ID: "local", Name: "Music", Path: music}, {ID: "replacement", Name: "Replacement music", Path: replacement}}})
+	change := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/b1548e96-3081-5c9c-8376-bf290e369d51/configuration", map[string]any{"musicRoots": []config.MusicRoot{{ID: "local", Name: "Music", Path: music}, {ID: "replacement", Name: "Replacement music", Path: replacement}}})
 	waitLibraryOperation(t, c, change.ID)
 	code, raw, _ = c.request(t, "GET", "/api/v1/provider-instances", nil, "")
 	var providers struct {
@@ -111,7 +111,7 @@ func TestManagedWritebackDisabledStartAndChangedRootFence(t *testing.T) {
 			}
 		}
 	}
-	track = scanProvider(t, c, "local", "managed-writeback-replacement-scan")["replacement.flac"]
+	track = scanProvider(t, c, "b1548e96-3081-5c9c-8376-bf290e369d51", "managed-writeback-replacement-scan")["replacement.flac"]
 	request = selectManagedWritebackLyrics(t, c, track, "managed-writeback-replacement")
 	code, raw, _ = c.request(t, "POST", "/api/v1/writeback-jobs", request, "managed-writeback-root-denied")
 	if code != 403 || !bytes.Contains(raw, []byte("ACCESS_DENIED")) {

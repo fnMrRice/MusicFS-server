@@ -26,36 +26,49 @@ func TestRecommendationsActualServerPartialFailuresCacheAndRestart(t *testing.T)
 		t.Fatalf("build recommendation fixture: %v %s", err, raw)
 	}
 	cfg, base := yamlServiceConfig(t)
-	cfg.Plugins = []config.Plugin{onlinePlugin(online.Netease, program, "net"), onlinePlugin(online.QQMusic, build(t, "musicfs-plugin-qqmusic"), "qq"), onlinePlugin(online.AppleMusic, build(t, "musicfs-plugin-applemusic"), "apple")}
+	cfg.Plugins = []config.Plugin{onlinePlugin(online.Netease, program, "7fe223d0-a3bd-5e87-87f8-305dc26d9041"), onlinePlugin(online.QQMusic, build(t, "musicfs-plugin-qqmusic"), "b5e86bbe-524b-53fc-bde9-bbe3cbb02a80"), onlinePlugin(online.AppleMusic, build(t, "musicfs-plugin-applemusic"), "2e2b7962-89d2-5815-9804-0d395497f906")}
 	cfg.Plugins[0].Instances[0].Name = "  display fallback  "
-	cfg.Plugins[0].Instances = append(cfg.Plugins[0].Instances, config.Instance{InstanceID: "offline", Role: "provider"})
+	cfg.Plugins[0].Instances = append(cfg.Plugins[0].Instances, config.Instance{InstanceID: "7a202030-76d0-5655-b70e-aa3833cc17de"})
 	t.Run("grouped-read-cache-refresh", func(t *testing.T) {
 		startNCMServer(t, cfg, base)
 		c := login(t, base, cfg.AdminToken)
-		authenticateManagedOnline(t, c, "net")
+		authenticateManagedOnline(t, c, "7fe223d0-a3bd-5e87-87f8-305dc26d9041")
 		first := albumRequest[recommendations.Response](t, c, "GET", "/recommendations?limit=1", nil, "", 200, "Recommendations")
-		if len(first.Sources) != 4 || first.Sources[0].Error != nil || first.Sources[0].Name != "net" || len(first.Sources[0].Items) != 1 {
+		if len(first.Sources) != 4 {
 			t.Fatalf("grouped sources: %+v", first)
 		}
-		for i, code := range []string{"PLUGIN_DISABLED", "PLATFORM_AUTH_REQUIRED", "PLATFORM_AUTH_REQUIRED"} {
-			if first.Sources[i+1].Error == nil || first.Sources[i+1].Error.Code != code || len(first.Sources[i+1].Items) != 0 || first.Sources[i+1].LastSuccessAt != nil {
-				t.Fatalf("source failure lost: %+v", first.Sources[i+1])
+		byID := make(map[string]recommendations.Source, len(first.Sources))
+		for _, source := range first.Sources {
+			byID[source.InstanceID] = source
+		}
+		initial := byID["7fe223d0-a3bd-5e87-87f8-305dc26d9041"]
+		if initial.Error != nil || initial.Name != "Fixture listener" || len(initial.Items) != 1 || initial.LastSuccessAt == nil {
+			t.Fatalf("account recommendations: %+v", initial)
+		}
+		for id, expected := range map[string]struct{ code, name string }{
+			"7a202030-76d0-5655-b70e-aa3833cc17de": {"PLUGIN_DISABLED", "NetEase Cloud Music"},
+			"b5e86bbe-524b-53fc-bde9-bbe3cbb02a80": {"PLATFORM_AUTH_REQUIRED", "QQ Music"},
+			"2e2b7962-89d2-5815-9804-0d395497f906": {"PLATFORM_AUTH_REQUIRED", "Apple Music"},
+		} {
+			source, ok := byID[id]
+			if !ok || source.Error == nil || source.Error.Code != expected.code || len(source.Items) != 0 || source.LastSuccessAt != nil || source.Name != expected.name {
+				t.Fatalf("source failure or alias lost: %+v", source)
 			}
 		}
-		cached := albumRequest[recommendations.Response](t, c, "GET", "/recommendations?instanceId=net&limit=1", nil, "", 200, "Recommendations").Sources[0]
-		if cached.Error != nil || !cached.LastSuccessAt.Equal(*first.Sources[0].LastSuccessAt) {
+		cached := albumRequest[recommendations.Response](t, c, "GET", "/recommendations?instanceId=7fe223d0-a3bd-5e87-87f8-305dc26d9041&limit=1", nil, "", 200, "Recommendations").Sources[0]
+		if cached.Error != nil || cached.Name != "Fixture listener" || !cached.LastSuccessAt.Equal(*initial.LastSuccessAt) {
 			t.Fatal("cache hit contacted rate-limited worker")
 		}
-		stale := albumRequest[recommendations.Response](t, c, "GET", "/recommendations?instanceId=net&limit=1&refresh=true", nil, "", 200, "Recommendations").Sources[0]
+		stale := albumRequest[recommendations.Response](t, c, "GET", "/recommendations?instanceId=7fe223d0-a3bd-5e87-87f8-305dc26d9041&limit=1&refresh=true", nil, "", 200, "Recommendations").Sources[0]
 		if stale.Error == nil || stale.Error.Code != "RATE_LIMITED" || !stale.Stale || len(stale.Items) != 1 || !stale.LastSuccessAt.Equal(*cached.LastSuccessAt) {
 			t.Fatalf("failed refresh did not retain previous data: %+v", stale)
 		}
-		held := albumRequest[recommendations.Response](t, c, "GET", "/recommendations?instanceId=net&limit=1&refresh=true", nil, "", 200, "Recommendations").Sources[0]
+		held := albumRequest[recommendations.Response](t, c, "GET", "/recommendations?instanceId=7fe223d0-a3bd-5e87-87f8-305dc26d9041&limit=1&refresh=true", nil, "", 200, "Recommendations").Sources[0]
 		if held.Error == nil || held.Error.RetryAfter == nil || !held.Stale {
 			t.Fatal("explicit refresh bypassed cooldown")
 		}
 		time.Sleep(2100 * time.Millisecond)
-		recovered := albumRequest[recommendations.Response](t, c, "GET", "/recommendations?instanceId=net&limit=1&refresh=true", nil, "", 200, "Recommendations").Sources[0]
+		recovered := albumRequest[recommendations.Response](t, c, "GET", "/recommendations?instanceId=7fe223d0-a3bd-5e87-87f8-305dc26d9041&limit=1&refresh=true", nil, "", 200, "Recommendations").Sources[0]
 		if recovered.Error != nil || recovered.Stale || !recovered.LastSuccessAt.After(*cached.LastSuccessAt) {
 			t.Fatal("recommendation recovery failed")
 		}
@@ -83,24 +96,24 @@ func TestRecommendationsActualServerPartialFailuresCacheAndRestart(t *testing.T)
 		c := login(t, base, cfg.AdminToken)
 		check := func(expected string) {
 			t.Helper()
-			source := albumRequest[recommendations.Response](t, c, "GET", "/recommendations?instanceId=net&limit=1", nil, "", 200, "Recommendations").Sources[0]
+			source := albumRequest[recommendations.Response](t, c, "GET", "/recommendations?instanceId=7fe223d0-a3bd-5e87-87f8-305dc26d9041&limit=1", nil, "", 200, "Recommendations").Sources[0]
 			if source.Error == nil || source.Error.Code != expected || len(source.Items) != 0 {
 				t.Fatalf("expected %s for unavailable runtime: %+v", expected, source)
 			}
-			code, raw, _ := c.request(t, "GET", "/api/v1/online-instances/net/search?q=Fixture", nil, "")
+			code, raw, _ := c.request(t, "GET", "/api/v1/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/search?q=Fixture", nil, "")
 			var body struct{ Error struct{ Code string } }
 			if code != 503 || json.Unmarshal(raw, &body) != nil || body.Error.Code != expected {
 				t.Fatalf("online host disagreed with recommendations: %d %s", code, raw)
 			}
 		}
 		check("SOURCE_OFFLINE")
-		disabled := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/net/state", map[string]any{"enabled": false})
+		disabled := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/state", map[string]any{"enabled": false})
 		waitLibraryOperation(t, c, disabled.ID)
 		if !disabled.RestartRequired {
 			t.Fatal("saved disable omitted restart requirement")
 		}
 		check("SOURCE_OFFLINE")
-		enabled := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/net/state", map[string]any{"enabled": true})
+		enabled := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/state", map[string]any{"enabled": true})
 		for deadline := time.Now().Add(3 * time.Second); ; {
 			code, raw, _ := c.request(t, "GET", "/api/v1/admin/plugin-operations/"+enabled.ID, nil, "")
 			var operation plugincontrol.Operation

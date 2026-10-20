@@ -12,6 +12,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/fnMrRice/MusicFS-server/src/instanceid"
 	"github.com/fnMrRice/MusicFS-server/src/online"
 )
 
@@ -59,7 +60,7 @@ type OnlineDescriptor struct {
 func OnlinePluginID(platform string) string {
 	switch platform {
 	case online.Netease, online.QQMusic, online.AppleMusic:
-		return "musicfs." + platform
+		return "musicfs.plugin.source." + platform
 	default:
 		return ""
 	}
@@ -106,7 +107,7 @@ func OnlineCapabilities(platform string) []string {
 }
 
 func ValidateOnlineManifest(m Manifest, platform string) error {
-	if m.Validate("provider") != nil || m.PluginID != OnlinePluginID(platform) || m.PluginVersion != "0.1.0" || !reflect.DeepEqual(m.Roles, []string{"provider"}) || !reflect.DeepEqual(m.Capabilities, OnlineCapabilities(platform)) || m.Configuration != nil || m.MaxPageItems != online.MaxPageItems || m.MaxMessageBytes != MaxMessageBytes {
+	if m.Validate("provider") != nil || !m.SupportsMultipleInstances || m.PluginID != OnlinePluginID(platform) || m.PluginVersion != "0.1.0" || !reflect.DeepEqual(m.Roles, []string{"provider"}) || !reflect.DeepEqual(m.Capabilities, OnlineCapabilities(platform)) || m.Configuration != nil || m.MaxPageItems != online.MaxPageItems || m.MaxMessageBytes != MaxMessageBytes {
 		return Failure("PROTOCOL_MISMATCH", "Online manifest does not match the expected platform")
 	}
 	return nil
@@ -115,7 +116,7 @@ func ValidateOnlineManifest(m Manifest, platform string) error {
 var onlineNonce = regexp.MustCompile(`^[0-9a-f]{48}$`)
 
 func (h OnlineHello) Validate() error {
-	if h.ProtocolVersion != ProtocolVersion || h.ConfigRevision != OnlineRevision || !onlineNonce.MatchString(h.Nonce) || !OnlineIdentity(h.InstanceID) || !OnlineIdentity(h.UserID) || h.TimeoutMs < 1000 || h.TimeoutMs > 30000 {
+	if h.ProtocolVersion != ProtocolVersion || h.ConfigRevision != OnlineRevision || h.TaskID != "" || !onlineNonce.MatchString(h.Nonce) || !instanceid.Valid(h.InstanceID) || !OnlineIdentity(h.UserID) || h.TimeoutMs < 1000 || h.TimeoutMs > 30000 {
 		return Failure("PROTOCOL_MISMATCH", "Invalid online handshake")
 	}
 	return nil

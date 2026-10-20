@@ -40,7 +40,7 @@ func TestPackagedConfigurationStartsWithoutImportDirectories(t *testing.T) {
 			}
 			found := false
 			for _, plugin := range supplied.Plugins {
-				if plugin.PluginID != "musicfs.localfiles" {
+				if plugin.PluginID != "musicfs.plugin.source.localfiles" {
 					continue
 				}
 				found = true
@@ -58,7 +58,7 @@ func TestPackagedConfigurationStartsWithoutImportDirectories(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, plugin := range doc.Config.Plugins {
-				if plugin.PluginID != "musicfs.localfiles" {
+				if plugin.PluginID != "musicfs.plugin.source.localfiles" {
 					continue
 				}
 				for _, instance := range plugin.Instances {

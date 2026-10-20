@@ -27,7 +27,7 @@ func TestPluginOwnsDisplayIdentityAndAcceptsCustomTranslations(t *testing.T) {
 func TestOnlineDescriptorRejectsInvalidIdentityAndPreservesCapabilityPolicy(t *testing.T) {
 	for name, mutate := range map[string]func(*pluginproto.OnlineDescriptor){
 		"missing":                func(d *pluginproto.OnlineDescriptor) { d.Plugin = nil },
-		"identity":               func(d *pluginproto.OnlineDescriptor) { d.Plugin.ID = "musicfs.qqmusic" },
+		"identity":               func(d *pluginproto.OnlineDescriptor) { d.Plugin.ID = "musicfs.plugin.source.qqmusic" },
 		"empty":                  func(d *pluginproto.OnlineDescriptor) { d.Plugin.Name = "" },
 		"whitespace":             func(d *pluginproto.OnlineDescriptor) { d.Plugin.Name = " Name" },
 		"control":                func(d *pluginproto.OnlineDescriptor) { d.Plugin.Name = "Bad\nName" },
@@ -60,7 +60,7 @@ func TestOnlineDescriptorRejectsInvalidIdentityAndPreservesCapabilityPolicy(t *t
 
 func TestOnlineWorkerRejectsPreviousHandshakeRevision(t *testing.T) {
 	peer := worker(t, nil)
-	request := pluginproto.OnlineHello{Hello: pluginproto.Hello{ProtocolVersion: "1.0", InstanceID: "instance", Nonce: strings.Repeat("a", 48), ConfigRevision: "online-authenticated-v2"}, UserID: "owner", TimeoutMs: 3000}
+	request := pluginproto.OnlineHello{Hello: pluginproto.Hello{ProtocolVersion: "1.0", InstanceID: "1463118e-e2d1-564a-ab70-05a357c1b9bf", Nonce: strings.Repeat("a", 48), ConfigRevision: "online-authenticated-v2"}, UserID: "owner", TimeoutMs: 3000}
 	assertCode(t, peer.Call(context.Background(), "host.hello", request, nil), "PROTOCOL_MISMATCH")
 	hello(t, peer)
 }

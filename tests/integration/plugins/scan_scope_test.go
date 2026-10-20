@@ -66,7 +66,7 @@ func TestRealWorkerScopedDepthAndHardlinkIdentity(t *testing.T) {
 	wave(t, filepath.Join(root, "first.wav"))
 	wave(t, filepath.Join(root, "one", "nested.wav"))
 	wave(t, filepath.Join(root, "one", "two", "deep.wav"))
-	cfg := pluginhost.Config{Executable: executable, SHA256: fmt.Sprintf("%x", sha256.Sum256(body)), InstanceID: "local", UserID: "owner", Roots: []sourceaccess.RootConfig{{ID: "music", Path: root}}, StateDir: t.TempDir()}
+	cfg := pluginhost.Config{Executable: executable, SHA256: fmt.Sprintf("%x", sha256.Sum256(body)), InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", UserID: "owner", Roots: []sourceaccess.RootConfig{{ID: "music", Path: root}}, StateDir: t.TempDir()}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	w, err := pluginhost.Start(ctx, cfg)
@@ -159,7 +159,7 @@ func TestRealWorkerCursorBindsTaskGenerationPlanAndDepth(t *testing.T) {
 	root := t.TempDir()
 	wave(t, filepath.Join(root, "a.wav"))
 	wave(t, filepath.Join(root, "b.wav"))
-	w, err := pluginhost.Start(context.Background(), pluginhost.Config{Executable: executable, SHA256: fmt.Sprintf("%x", sha256.Sum256(body)), InstanceID: "local", UserID: "owner", Roots: []sourceaccess.RootConfig{{ID: "music", Path: root}}, StateDir: t.TempDir()})
+	w, err := pluginhost.Start(context.Background(), pluginhost.Config{Executable: executable, SHA256: fmt.Sprintf("%x", sha256.Sum256(body)), InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", UserID: "owner", Roots: []sourceaccess.RootConfig{{ID: "music", Path: root}}, StateDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

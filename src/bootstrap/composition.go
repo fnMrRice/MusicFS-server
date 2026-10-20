@@ -51,12 +51,21 @@ func expectedChecksum(configured, path string) string {
 }
 
 func compose(ctx context.Context, c config.Config, log *slog.Logger, instance string, ready func() bool, lifecycleManagers ...*lifecycle.Manager) (*api.Server, func(), error) {
-	c, err := config.InitializeLocalDirectories(ctx, c)
-	if err != nil {
+	c.NormalizeIdentities()
+	if err := checkLegacyWritebackJournals(ctx, c.DataRoot); err != nil {
 		return nil, nil, err
 	}
 	store, err := sqlite.Open(ctx, filepath.Join(c.DataRoot, "musicfs.sqlite"))
 	if err != nil {
+		return nil, nil, err
+	}
+	if err := store.MigratePluginInstanceIDs(ctx); err != nil {
+		store.Close()
+		return nil, nil, err
+	}
+	c, err = config.InitializeLocalDirectories(ctx, c)
+	if err != nil {
+		store.Close()
 		return nil, nil, err
 	}
 	var configuration *config.Store
@@ -100,7 +109,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	}
 	policy := writeBackPolicy(c, runtimes, ffprobe != "")
 	probeState := &managedProbe{}
-	probeState.update(ffprobe, decoder, audioGate(pluginManager, "musicfs.audio.ffmpeg"), audioGate(pluginManager, "musicfs.ncm"))
+	probeState.update(ffprobe, decoder, audioGate(pluginManager, "musicfs.plugin.decoder.ffmpeg"), audioGate(pluginManager, "musicfs.plugin.decoder.ncm"))
 	probe := library.Probe(probeState.probe)
 	lib := library.New(store, queue, runtimes, probe)
 	lib.SetProbeSession(probeState.session)

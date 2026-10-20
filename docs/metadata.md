@@ -12,9 +12,8 @@
   args: ['--plugin', 'scraper-local']
   enabled: true
   instances:
-    - instanceId: scraper-local
+    - instanceId: d248bf34-1780-59d3-a557-9cf5d889e977
       name: 本地歌词与封面
-      role: scraper
       enabled: true
       config: {}
 ```

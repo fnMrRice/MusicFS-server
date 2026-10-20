@@ -135,7 +135,7 @@ func TestMetadataBatchPartialFailureLanguagesAndUnsupportedCorrections(t *testin
 		t.Fatal("unsupported correction silently accepted")
 	}
 	r = request(track.ID)
-	r.ExcludeInstanceIDs = []string{"scraper"}
+	r.ExcludeInstanceIDs = []string{"d248bf34-1780-59d3-a557-9cf5d889e977"}
 	if _, _, err := f.service.Submit(ctx, "admin", r, domain.NewID()); err == nil {
 		t.Fatal("conflicting instance policy accepted")
 	}
@@ -183,7 +183,7 @@ func TestMetadataBusyScraperWaitsWithinTargetDeadline(t *testing.T) {
 	f := setup(t)
 	ctx := context.Background()
 	track := f.good()
-	occupied, err := f.runtimes[0].Host.Open(ctx, pluginproto.Context{UserID: "admin", InstanceID: "scraper", TaskID: domain.NewID(), TimeoutMs: 30000}, enrichment.Target{SourceTrackID: track.ID, AssetID: track.AssetID, AssetVersion: track.Asset.Version}, nil)
+	occupied, err := f.runtimes[0].Host.Open(ctx, pluginproto.Context{UserID: "admin", InstanceID: "d248bf34-1780-59d3-a557-9cf5d889e977", TaskID: domain.NewID(), TimeoutMs: 30000}, enrichment.Target{SourceTrackID: track.ID, AssetID: track.AssetID, AssetVersion: track.Asset.Version}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

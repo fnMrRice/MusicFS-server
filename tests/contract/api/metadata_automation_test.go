@@ -25,7 +25,7 @@ func TestMetadataAutomationHTTPBoundedPagesAndOwnerIsolation(t *testing.T) {
 	for _, owner := range []string{"admin", "other"} {
 		plan := testkit.ScanPlan(owner)
 		plan.Options.ImportLyrics = true
-		if _, _, err := store.Enqueue(ctx, owner, owner, plan, "automation-http-seed"); err != nil {
+		if _, _, err := store.Enqueue(ctx, owner, fixtureInstanceID(owner), plan, "automation-http-seed"); err != nil {
 			t.Fatal(err)
 		}
 		scan, err := store.Claim(ctx)

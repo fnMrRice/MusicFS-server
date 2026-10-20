@@ -21,7 +21,7 @@ func TestPlatformAccountWireSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	scope := pluginproto.Context{UserID: "owner", InstanceID: "net", TaskID: strings.Repeat("a", 48), TimeoutMs: 10000}
+	scope := pluginproto.Context{UserID: "owner", InstanceID: "a5e47aac-f949-5e45-9709-f28a0d8443df", TaskID: strings.Repeat("a", 48), TimeoutMs: 10000}
 	values := []any{
 		map[string]any{"jsonrpc": "2.0", "id": "request", "method": "provider.online.account", "params": pluginproto.OnlineAccount{Context: scope, Request: online.AccountRequest{Action: "begin"}}},
 		map[string]any{"jsonrpc": "2.0", "id": "request", "result": pluginproto.OnlineResult[online.AccountResult]{Context: scope, Value: online.AccountResult{View: online.AccountView{State: "signedOut"}}}},

@@ -76,20 +76,7 @@ func (s *Service) Instances(ctx context.Context, owner string) ([]Instance, erro
 		if r.Owner != owner {
 			continue
 		}
-		availability := "offline"
-		if ready(r) && r.Gate.Check(ctx) == nil {
-			availability = "available"
-		}
-		accountID, accountRevision := "", ""
-		if availability == "available" {
-			if view, err := platformSession(ctx, r); err == nil {
-				accountID = view.AccountID
-				accountRevision = view.Revision
-			} else {
-				availability = "loginRequired"
-			}
-		}
-		out = append(out, Instance{InstanceID: r.InstanceID, Name: r.Name, PluginID: pluginproto.OnlinePluginID(r.Platform), AccountID: accountID, AccountRevision: accountRevision, Availability: availability, OnlineDescriptor: r.descriptor.Clone()})
+		out = append(out, runtimeInstance(ctx, r))
 	}
 	return out, nil
 }

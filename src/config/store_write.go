@@ -33,7 +33,7 @@ func (s *Store) SetEnabled(ctx context.Context, change Change) (Operation, error
 		return Operation{}, domain.Fail("CONFLICT", "Plugin configuration is being written")
 	}
 	defer unlockDatabase()
-	if change.Settings != nil && change.PluginID == "musicfs.localfiles" {
+	if change.Settings != nil && change.PluginID == "musicfs.plugin.source.localfiles" {
 		return s.saveLocalSettings(ctx, change)
 	}
 	unlock, err := lockConfig(s.document.Path)

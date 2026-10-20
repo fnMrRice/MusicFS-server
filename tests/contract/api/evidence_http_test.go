@@ -21,7 +21,7 @@ func TestLibraryEvidenceHTTPProjection(t *testing.T) {
 	ctx := context.Background()
 	publish := func(version, key string) {
 		t.Helper()
-		if _, _, err := store.Enqueue(ctx, "admin", "mine", testkit.ScanPlan("mine"), key); err != nil {
+		if _, _, err := store.Enqueue(ctx, "admin", "316664dc-7106-5acd-8df7-88c9d0d9baef", testkit.ScanPlan("316664dc-7106-5acd-8df7-88c9d0d9baef"), key); err != nil {
 			t.Fatal(err)
 		}
 		job, err := store.Claim(ctx)
@@ -29,7 +29,7 @@ func TestLibraryEvidenceHTTPProjection(t *testing.T) {
 			t.Fatal(err)
 		}
 		item := library.Observation{Observation: pluginproto.Observation{
-			ExternalID: "one", RootID: "mine", RelativePath: "private/path/vbr.mp3", ObservedVersion: version, DisplayName: "vbr.mp3",
+			ExternalID: "one", RootID: "316664dc-7106-5acd-8df7-88c9d0d9baef", RelativePath: "private/path/vbr.mp3", ObservedVersion: version, DisplayName: "vbr.mp3",
 			MIME: "audio/mpeg", SizeBytes: 33432, BitrateBps: evidenceValue(int64(44576)), BitrateMode: evidenceValue("vbr"), ProviderSHA512: evidenceValue(strings.Repeat("a", 128))}, Artists: []string{}}
 		if err := store.Publish(ctx, job, testkit.ScanPublication(job, []library.Observation{item})); err != nil {
 			t.Fatal(err)

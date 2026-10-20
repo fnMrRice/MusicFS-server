@@ -6,6 +6,10 @@ Host 发出的 ID 为 `h-` 前缀，Worker 调用 Host 时用 `w-`。一帧只�
 
 `host.hello` 请求绑定 instanceId、配置修订和本次随机 nonce。成功结果为 Ready（逻辑上的 worker.ready），必须回显 instanceId、nonce，并用 manifest 声明精确 protocolVersion。1.0 只协商 1.0；主版本不匹配必须拒绝。每个角色实例独立 Worker，实例/账号权限由 Host 启动上下文固定，不能被请求字段切换。账户引用不是凭据。
 
+`instanceId` 使用规范小写、非空 UUID，与插件 ID 和显示别名分离。Manifest 必须包含 `plugin`（`id/name/localizedNames/features`）与 `supportsMultipleInstances`；`name` 是插件提供的默认别名，`localizedNames` 提供语言别名。SDK 的多实例布尔值默认 `false`，官方在线来源和本地元数据提取声明 `true`，本地音乐、FFmpeg、NCM 声明 `false`。单实例插件最多保存一个实例，禁用实例同样计数。宿主核验握手声明，管理接口 `/admin/plugins` 对每个插件返回同名字段，客户端据此决定是否展示多实例入口。在线实例名称优先使用当前用户已验证的平台账号用户名，退出登录后不保留账号名，也不以 UUID 替代显示别名。
+
+FFmpeg/NCM 的单次任务握手使用 `DecoderHello`，额外必需 `taskId`。实例 UUID 在该配置生命周期内保持稳定；请求的任务 ID 必须匹配握手任务 ID，nonce 继续绑定本次通道。本地音乐和在线来源握手不传此字段。
+
 在线 Provider 的资料修订为 `online-authenticated-v3`，`provider.online.describe` 必须返回插件提供的 `plugin: {id,name,localizedNames,features}`，其 ID 与握手身份一致；Host 缓存并透传已验证值，不自行生成平台名称。显示语义、生命周期与版本兼容见 [插件身份与名称](../../../plugin-identity.md)，具体 wire 模型见 [online.schema.json](online.schema.json)。
 
 Manifest的 `configuration` 为插件提供的导入选项声明；不支持导入配置的音频插件发送null。Local Files 0.3.0声明 `local-import-v5`，字段为 `schemaRevision/importOptionsSchema/importDefaults/unavailableOptions`，标题与说明为纯文本。声明限制32 KiB、8层、每对象32属性；受限Schema支持有界字符串数组，拒绝外部引用/执行扩展。`ImportOptions` 和 `ScanScope` 保留必需 `excludePatterns` 数组，最多32条、每条UTF-8最多256字节；Host与发布范围共用根相对glob语义，见[扫描说明](../../../scanning.md)。规则排序绑定PlanDigest，cursor/grant不能在同任务中换规则；不兼容旧开发声明。
@@ -30,7 +34,7 @@ Host 的 `host.entries` 返回固定根身份的 Entry 页；`host.state.get/com
 
 Capabilities 的 `normalization` 明确报告是否具备指纹 PCM 规范化能力。`audio.normalize` 使用单独计划 `taskId/assetId/startMs/durationMs` 与宿主限定的输入、输出通道；起点范围为0—86400000毫秒，请求长度10000—120000毫秒，拒绝增益或其他 DSP 参数。输出固定为11025 Hz、单声道、s16le，规范化版本为 `s16le-mono-11025-floor-range-v1`，两端点按绝对样本位置向下量化。控制响应只含实际格式、样本起点/数量和解码器版本/摘要，不含 PCM 字节；宿主复核实际字节数、范围和工具身份。尾部不足请求长度不能补零扩窗，后续指纹质量判断与实际覆盖分开记录。
 
-独立 NCM Worker 使用 `musicfs.ncm` 标识、`audio` 角色与 `audio.decrypt` 能力，不依赖 FFmpeg。`host.hello` 的 instanceId 固定为 `ncm-<taskId>`，configRevision 为 `1`；nonce 是 24 个随机字节的 48 位小写十六进制串。一个 Worker 只接受一次 `ncm.open`，绑定 taskId、assetId、nonce、inputUrl 和加密输入 size，拒绝重新绑定。返回同一任务身份、outputUrl、解密后的 size 与 metadata；format/MIME 由解密正文确认，仅支持 MP3/FLAC，未知标签省略，不下载封面或任何外部资源。请求中没有源路径、原始音频或密钥。
+独立 NCM Worker 使用 `musicfs.plugin.decoder.ncm` 标识、`audio` 角色与 `audio.decrypt` 能力，不依赖 FFmpeg。`host.hello` 的 instanceId 为配置实例 UUID，configRevision 为 `1`；nonce 是 24 个随机字节的 48 位小写十六进制串。一个 Worker 只接受一次 `ncm.open`，绑定 taskId、assetId、nonce、inputUrl 和加密输入 size，拒绝重新绑定。返回同一任务身份、outputUrl、解密后的 size 与 metadata；format/MIME 由解密正文确认，仅支持 MP3/FLAC，未知标签省略，不下载封面或任何外部资源。请求中没有源路径、原始音频或密钥。
 
 NCM 的 input/output 通道均只监听 `127.0.0.1` 随机端口，路径包含本次 nonce；接收方校验完整任务绑定及精确 URL。只允许单段显式 `bytes=start-end` GET，每段最多 64 KiB；返回必须为 `206` 且 Content-Range 的起止/总长、Content-Length 完全一致，禁止重定向、代理、压缩响应及其他地址。通道最多接受 8 个连接、4 个并发请求，设定标头、读写及空闲超时。Host 校验 Worker SHA-256，每次打开也复核；默认同时最多 2 个任务，最多可配置 8 个。启动及打开共限 5 秒，单任务最长 2 分钟。上层须在生命周期内读取或拷贝解密内容；取消与 Close 回收控制管道、两个 HTTP 服务和进程，不保留可复用输入能力。
 

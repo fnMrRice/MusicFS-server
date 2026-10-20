@@ -1,13 +1,27 @@
-# 音乐来源插件身份与显示名称
+# 插件身份、显示别名与实例
 
-在线插件通过 `provider.online.describe` 返回 `plugin` 声明，Local Files 在握手 manifest 中返回同样的声明。Server 校验并缓存插件实际返回的值，再由 `GET /api/v1/online-instances` 或 `GET /api/v1/provider-instances` 传给 Web / Client。内置 Local Files 在 Worker 尚未启动时，复用随 Server 构建的插件自身声明。名称、译名和功能分类归插件所有，宿主和前端不维护平台名称映射。
+所有插件必须在握手 manifest 中提供 `plugin` 身份声明和 `supportsMultipleInstances` 布尔声明；其中 `plugin.name` 是必填显示别名，不能用插件 ID 或实例 UUID 代替。在线插件的 `provider.online.describe` 返回同一身份，宿主校验它与握手一致。Server 通过 `GET /api/v1/admin/plugins` 的插件项返回身份与多实例能力，通过来源接口返回来源身份。尚未启动的官方插件复用与 Worker 同源的声明；已验证的运行声明优先。别名、译名和功能分类归插件所有，前端不维护 ID 到名称的固定映射。
+
+## 命名与多实例规则
+
+| 插件 ID | 中文显示别名 | 支持多实例 |
+| --- | --- | --- |
+| `musicfs.plugin.source.localfiles` | 本地音乐 | 否 |
+| `musicfs.plugin.source.netease` | 网易云音乐 | 是 |
+| `musicfs.plugin.source.qqmusic` | QQ 音乐 | 是 |
+| `musicfs.plugin.source.applemusic` | Apple Music | 是 |
+| `musicfs.plugin.decoder.ffmpeg` | FFmpeg 音频处理 | 否 |
+| `musicfs.plugin.decoder.ncm` | NCM 解密 | 否 |
+| `musicfs.scraper.local` | 本地元数据提取 | 是 |
+
+来源与解码插件分别采用 `musicfs.plugin.source.xxx` 和 `musicfs.plugin.decoder.xxx`；歌词/封面插件 ID 保持原样。多实例能力不从 ID 前缀推断。宿主在启动前使用官方插件共享声明检查配置，启动时再校验实际握手；不支持多实例的插件最多有一个配置实例，已禁用的实例也计数。本地音乐的多个目录配置在同一个实例中。
 
 ## 字段与用途
 
 ```json
 {
   "plugin": {
-    "id": "musicfs.netease",
+    "id": "musicfs.plugin.source.netease",
     "name": "NetEase Cloud Music",
     "features": ["music-source"],
     "localizedNames": {
@@ -24,12 +38,15 @@
 | 字段 | 语义 |
 | --- | --- |
 | `plugin.id` | 插件稳定身份，必须与已验证的握手 manifest 身份一致，不随显示语言改变 |
-| `plugin.name` | 插件默认显示名，未找到合适译名时使用 |
+| `plugin.name` | 插件必须提供的默认显示别名，未找到合适译名时使用 |
 | `plugin.localizedNames` | 语言标签到纯文本显示名的映射，可为空对象 |
 | `plugin.features` | 插件提供的功能分类；音乐来源声明 `music-source`，与逐项业务能力 `capabilities` 分开 |
-| `instanceId` | 具体实例身份，继续用于请求和账号绑定 |
-| 实例 `name` | 管理员的实例别名，不能代替插件的显示名或追加到平台标题 |
+| `supportsMultipleInstances` | 插件是否允许多份独立配置；通过握手及管理接口查询 |
+| `instanceId` | 全局唯一、稳定的小写 UUID，用于请求、配置和账号绑定；不随用户名改变 |
+| 在线实例 `name` | 当前已校验平台账号的用户名；未登录或无用户名时使用插件显示别名 |
 | 账号 `displayName` | 登录平台后取得的账号昵称，显示在账号状态中 |
+
+部署配置中的实例 `name` 作为旧管理员备注保留，示例与随包插件自动发现不预填，也不以 UUID 填充。在线实例显示名称由平台账号提供，不能用配置备注冒充用户名；同平台多实例可显示“插件别名 · 用户名”，未登录仅显示插件别名。账号退出或切换后及时清理旧用户名。账号名可能重复，操作仍绑定 UUID。
 
 默认名和每项译名必须为合法 UTF-8、1—128 个 Unicode 字符，不含控制字符或首尾空白。`localizedNames` 必须为非 null 对象，最多 64 项；语言标签最长 63 字符，使用 `^[A-Za-z]{1,8}(-[A-Za-z0-9]{1,8})*$` 限定形式并由语言标签解析器继续校验，不接受仅大小写不同的重复键。Schema 限定结构与长度；身份一致性、空白、重复语言标签及完整标签合法性由运行时继续检查。
 
@@ -43,8 +60,21 @@
 - Server 使用已验证的 Worker 描述，保留本次 Server 运行期间取得的名称供实例离线或停用时显示；重新成功启动后采用新 Worker 的声明。
 - 内置 Local Files 使用插件代码内同一个声明函数提供默认名 `Local Music` 和中文名“本地音乐”。首次待选择目录、禁用、清空选择后重启等尚无 Worker 的状态仍返回 `plugin`；该声明不授予扫描能力，也不启用 Worker。成功启动后以实际 Worker 的已验证声明为准，因此自定义 Worker 的名称不会被内置默认名覆盖。
 - 其他从未成功取得声明的实例可省略 HTTP `plugin`。前端显示通用未知来源提示，不根据 `qq-public` 等内部编号或旧配置别名推断名称。运行期间取得的 Worker 声明缓存不持久化到磁盘。
-- Server 和在线 Worker 需要同时升级；缺少声明或仍使用 v2 的 Worker 会被拒绝，实例显示为离线。HTTP v1 增加可选字段，现有实例标识、账号绑定及名称字段的含义不变。
-- Local Files 的宿主握手同样要求有效声明和 `music-source`；Server 与包含 Local Files 的插件程序须同步重建。通用 manifest 的 `plugin` 字段保持可选，音频和 Scraper 的既有声明无需新增该字段。
+- Server、随包 Worker 和 Web 必须配套升级；旧插件 ID、缺少必填身份或多实例声明不匹配的 Worker 会被拒绝。管理接口增加插件身份和多实例能力，实例字段改用 UUID；旧客户端的硬编码名称、实例 ID 或严格响应校验需要同步更新。
+- 通用 manifest 的 `plugin` 字段必须存在，音频与 Scraper 同样提供别名。音乐来源还必须声明 `music-source` 功能。
 - 新 Web 可连接未提供 `plugin` 的旧 Server，但这类在线来源只显示通用提示。旧 Web 可忽略新字段，只有更新 Web 才会采用插件提供的名称与译名。桌面 Client 当前只有设计文档，后续实现须消费该声明。
 
-本次覆盖在线 Provider 和 Local Files 的显示声明，不代表其他角色或未验证第三方插件已获得完整支持；平台登录和业务能力的实际验收范围仍见 [平台账号登录](platform-login.md)。
+这些声明不代表未验证第三方插件已获得完整支持；平台登录和业务能力的实际验收范围仍见 [平台账号登录](platform-login.md)。
+
+## 旧配置与已有数据
+
+- 加载旧 YAML 时先规范化官方插件 ID，再自动发现随包插件，避免重复创建。原始文件字节继续用于配置修订检查；管理员后续保存时写出新 ID。
+- 旧实例名使用固定命名空间生成稳定 UUID v5；已有 UUID 保持身份，重复读取和重启不会创建新实例。新的独立实例应生成自己的 UUID，不复用插件 ID、用户名或另一个实例 UUID。写回目录授权和自动刮削优先级同步转换实例引用。
+- 插件配置数据库在事务中迁移作用域，保留值与修订；主库同步迁移来源引用，保留曲目、资产、专辑、歌单及条目身份。旧、新作用域发生碰撞时拒绝迁移，不自动合并。
+- 本地状态和账号目录可以继续沿用旧目录名，只在旧名与目标 UUID 严格对应时读取。账号迁移先用原平台、用户、实例作用域验证并解密，再绑定新 UUID 并原子保存；不输出凭据。
+- 已捕获旧身份的活动扫描、同步与补全任务需要重新提交，原计划和审计保留。存在未完成的文件写回恢复时拒绝主库迁移，须先由旧版完成恢复。已安装旧版的多个本地音乐实例须先整理为单个实例的多目录配置，升级不会猜测合并它们。
+- 历史验收记录继续保留当时的 ID，不将旧运行记录改写为新版本验证结果。
+
+## 验证
+
+2026-10-20，Windows 下通过 UUID 与插件作用域迁移、账号凭据重新绑定、写回恢复阻断、插件声明与多实例限制、历史任务契约及用户名显示回归。完整 Server 端到端测试在配置 FFmpeg/ffprobe 后通过；需要独立 fpcalc、真实平台账号或发布制品的可选测试不计为本次实测。Web 生产构建、类型检查及 78 项单元测试通过；本次同时通过 23 项模拟浏览器测试和 10 项真实 Server 浏览器测试。管理与推荐的慢查询回归确认：读取显示名称不等待插件 RPC，退出账号后回退插件别名。

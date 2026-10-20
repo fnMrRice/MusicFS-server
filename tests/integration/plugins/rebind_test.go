@@ -25,7 +25,7 @@ func rebindFixture(t *testing.T) (*pluginhost.Worker, pluginhost.Config, pluginh
 	}
 	root := t.TempDir()
 	wave(t, filepath.Join(root, "中文 source.wav"))
-	cfg := pluginhost.Config{Executable: executable, SHA256: fmt.Sprintf("%x", sha256.Sum256(raw)), InstanceID: "local", UserID: "owner", Roots: []sourceaccess.RootConfig{{ID: "music", Path: root}}, StateDir: t.TempDir()}
+	cfg := pluginhost.Config{Executable: executable, SHA256: fmt.Sprintf("%x", sha256.Sum256(raw)), InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", UserID: "owner", Roots: []sourceaccess.RootConfig{{ID: "music", Path: root}}, StateDir: t.TempDir()}
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	t.Cleanup(cancel)
 	w, err := pluginhost.Start(ctx, cfg)

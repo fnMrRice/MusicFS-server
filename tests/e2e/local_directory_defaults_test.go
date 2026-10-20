@@ -32,9 +32,9 @@ func TestDefaultLocalDirectoryPermissionWorkflow(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg, base := yamlServiceConfig(t)
-	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Role: "provider", Enabled: true}}}}
+	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true}}}}
 	// Keep this workflow independent of directories on the test host's drives.
-	db, err := plugindb.Open(context.Background(), config.PluginDatabasePath(cfg), "musicfs.localfiles", "local")
+	db, err := plugindb.Open(context.Background(), config.PluginDatabasePath(cfg), "musicfs.plugin.source.localfiles", "local")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,9 +56,9 @@ func TestDefaultLocalDirectoryPermissionWorkflow(t *testing.T) {
 	if code != 200 || json.Unmarshal(raw, &initial) != nil || len(initial.Items) != 0 {
 		t.Fatalf("default permission imported tracks before root selection: %d %s", code, raw)
 	}
-	operation := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/local/configuration", map[string]any{"musicRoots": []config.MusicRoot{{ID: "music", Name: "Music", Path: music}}})
+	operation := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/b1548e96-3081-5c9c-8376-bf290e369d51/configuration", map[string]any{"musicRoots": []config.MusicRoot{{ID: "music", Name: "Music", Path: music}}})
 	waitLibraryOperation(t, c, operation.ID)
-	tracks := scanProvider(t, c, "local", "default-permission-initial-scan")
+	tracks := scanProvider(t, c, "b1548e96-3081-5c9c-8376-bf290e369d51", "default-permission-initial-scan")
 	first, found := tracks["default.wav"]
 	if len(tracks) != 1 || !found {
 		t.Fatal("default permission did not allow the selected user Music directory")
@@ -66,11 +66,11 @@ func TestDefaultLocalDirectoryPermissionWorkflow(t *testing.T) {
 	stop()
 	stop = startAudioYAMLServer(t, path, cfg, base)
 	c = login(t, base, cfg.AdminToken)
-	tracks = scanProvider(t, c, "local", "default-permission-restored-scan")
+	tracks = scanProvider(t, c, "b1548e96-3081-5c9c-8376-bf290e369d51", "default-permission-restored-scan")
 	if len(tracks) != 1 || tracks["default.wav"].ID != first.ID {
 		t.Fatal("restart lost the selected default directory or track identity")
 	}
-	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/local/configuration", map[string]any{"musicRoots": []config.MusicRoot{}})
+	operation = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/b1548e96-3081-5c9c-8376-bf290e369d51/configuration", map[string]any{"musicRoots": []config.MusicRoot{}})
 	waitLibraryOperation(t, c, operation.ID)
 	assertDefaultLocalPending(t, c)
 	stop()
@@ -85,7 +85,7 @@ func TestDefaultLocalDirectoryPermissionWorkflow(t *testing.T) {
 
 func assertDefaultLocalPending(t *testing.T, c *client) {
 	t.Helper()
-	code, raw, _ := c.request(t, "GET", "/api/v1/admin/plugin-instances/local/configuration", nil, "")
+	code, raw, _ := c.request(t, "GET", "/api/v1/admin/plugin-instances/b1548e96-3081-5c9c-8376-bf290e369d51/configuration", nil, "")
 	var settings plugincontrol.Configuration
 	if code != 200 || json.Unmarshal(raw, &settings) != nil || len(settings.Roots) != 0 {
 		t.Fatalf("default permission created roots without a selection: %d %s", code, raw)

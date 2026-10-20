@@ -111,11 +111,11 @@ func setup(t *testing.T) fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	host, err := scraperlocal.NewHost(scraperlocal.Config{WorkerPath: workerPath, WorkerSHA256: fmt.Sprintf("%x", sha256.Sum256(worker)), WorkDir: dir, InstanceID: "scraper", MaxConcurrent: 1})
+	host, err := scraperlocal.NewHost(scraperlocal.Config{WorkerPath: workerPath, WorkerSHA256: fmt.Sprintf("%x", sha256.Sum256(worker)), WorkDir: dir, InstanceID: "d248bf34-1780-59d3-a557-9cf5d889e977", MaxConcurrent: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtimes := []enrichmentworker.Runtime{{ID: "scraper", Name: "Local metadata", Owner: "admin", Host: host}, {ID: "disabled", Name: "Offline scraper", Owner: "admin"}}
+	runtimes := []enrichmentworker.Runtime{{ID: "d248bf34-1780-59d3-a557-9cf5d889e977", Name: "Local metadata", Owner: "admin", Host: host}, {ID: "disabled", Name: "Offline scraper", Owner: "admin"}}
 	service, err := enrichmentworker.New(store, lib, content, runtimes, enrichmentworker.Config{MaxConcurrent: 1})
 	if err != nil {
 		t.Fatal(err)
@@ -133,7 +133,7 @@ func (f fixture) good() library.Track {
 	panic("fixture track unavailable")
 }
 func request(ids ...string) enrichment.JobRequest {
-	return enrichment.JobRequest{SourceTrackIDs: ids, Fields: []string{"lyrics", "artwork"}, Languages: []string{}, InstanceIDs: []string{"scraper"}}
+	return enrichment.JobRequest{SourceTrackIDs: ids, Fields: []string{"lyrics", "artwork"}, Languages: []string{}, InstanceIDs: []string{"d248bf34-1780-59d3-a557-9cf5d889e977"}}
 }
 func finished(t *testing.T, f fixture, id string) enrichment.Job {
 	t.Helper()

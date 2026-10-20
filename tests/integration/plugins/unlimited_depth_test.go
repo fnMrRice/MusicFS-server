@@ -27,7 +27,7 @@ func TestRealWorkerUnlimitedDepthBeyond64(t *testing.T) {
 		t.Fatal(err)
 	}
 	wave(t, file)
-	w, err := pluginhost.Start(context.Background(), pluginhost.Config{Executable: executable, SHA256: fmt.Sprintf("%x", sha256.Sum256(body)), InstanceID: "local", UserID: "owner", Roots: []sourceaccess.RootConfig{{ID: "music", Path: root}}, StateDir: t.TempDir()})
+	w, err := pluginhost.Start(context.Background(), pluginhost.Config{Executable: executable, SHA256: fmt.Sprintf("%x", sha256.Sum256(body)), InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", UserID: "owner", Roots: []sourceaccess.RootConfig{{ID: "music", Path: root}}, StateDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

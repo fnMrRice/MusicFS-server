@@ -6,10 +6,9 @@ Local Files 的目录列表、名称、扫描默认值和监听设置由管理�
 
 ```yaml
 plugins:
-  - pluginId: musicfs.localfiles
+  - pluginId: musicfs.plugin.source.localfiles
     instances:
-      - instanceId: local
-        role: provider
+      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51
         permissions:
           readDirectories: ['D:\Music', 'Z:\SharedMusic']
         config: {}
@@ -29,7 +28,7 @@ Windows 上，使用默认权限的实例首次启用并启动 Server 时，宿�
 
 ## 管理接口
 
-管理员先调用 `GET /api/v1/admin/plugin-instances/local/directories` 查看允许访问的根目录。省略 `path` 时响应的 `path`、`parentPath` 均为 `null`；每项包含 `name`、Server 绝对 `path` 与 `available`。不存在、离线或不可读的授权根仍显示为 `available: false`，不能选择；不会自动创建目录。没有选定音乐目录、未启动 Worker 或实例处于 `pending_configuration`，均不影响这一管理入口。
+管理员先调用 `GET /api/v1/admin/plugin-instances/{instanceId}/directories` 查看允许访问的根目录。省略 `path` 时响应的 `path`、`parentPath` 均为 `null`；每项包含 `name`、Server 绝对 `path` 与 `available`。不存在、离线或不可读的授权根仍显示为 `available: false`，不能选择；不会自动创建目录。没有选定音乐目录、未启动 Worker 或实例处于 `pending_configuration`，均不影响这一管理入口。
 
 将选中项的路径作为 URL 编码的 `path` 查询参数请求同一接口，只返回该目录的直接子目录，不返回文件、曲目或文件内容。可以选允许根本身，也可以逐层进入并选择子目录；`parentPath` 最多回到所属授权根，在根本身为 `null`。`available` 只代表当前可读取，保存仍复核目录权限及与数据、媒体、缓存根的隔离。配置 GET 和普通 Provider 接口继续脱敏；只有此管理员浏览接口公开磁盘路径。
 
@@ -39,7 +38,7 @@ Windows 上，使用默认权限的实例首次启用并启动 Server 时，宿�
 
 每页最多检查 100 个原始条目，只返回其中的目录，因此 `items: []` 仍可能带 `nextCursor`；继续传相同 `path` 和游标，直到 `nextCursor: null`。游标绑定实例、路径、配置修订及目录修改时间，过期为 `CURSOR_EXPIRED`，客户端重新打开当前目录；目录列表使用文件系统顺序而非排序快照。为限制一次请求的回放工作，游标偏移最多 100 万条；超过此限需缩小部署允许目录范围。响应带配置 ETag 和 `Cache-Control: no-store`。
 
-先读取 `GET /api/v1/admin/plugin-instances/local/configuration`，取返回的 ETag，然后调用同路径的 PUT：
+先读取 `GET /api/v1/admin/plugin-instances/{instanceId}/configuration`，取返回的 ETag，然后调用同路径的 PUT：
 
 ```json
 {

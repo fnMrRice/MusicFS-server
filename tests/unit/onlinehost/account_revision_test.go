@@ -11,15 +11,19 @@ import (
 
 type revisionProvider struct {
 	onlinehost.Provider
-	view online.AccountView
+	view         online.AccountView
+	sessionCalls int
 }
 
 func (p *revisionProvider) PlatformSession(context.Context) (online.AccountView, error) {
+	p.sessionCalls++
 	return p.view, nil
 }
 
+func (p *revisionProvider) PlatformSessionSnapshot() online.AccountView { return p.view }
+
 func TestOnlineInstanceExposesOnlyCurrentValidatedAccountRevision(t *testing.T) {
-	p := &revisionProvider{view: online.AccountView{State: "signedIn", AccountID: "12345", Revision: "login-1"}}
+	p := &revisionProvider{view: online.AccountView{State: "signedIn", AccountID: "12345", Revision: "login-1", DisplayName: "Platform username"}}
 	r := onlinehost.Runtime{Owner: "owner", InstanceID: "instance", Platform: online.Netease, ConfigRevision: "r1", Enabled: true, Provider: p}
 	s, err := onlinehost.New([]onlinehost.Runtime{r})
 	if err != nil {
@@ -30,6 +34,22 @@ func TestOnlineInstanceExposesOnlyCurrentValidatedAccountRevision(t *testing.T) 
 		items, err := s.Instances(context.Background(), "owner")
 		if err != nil || len(items) != 1 || items[0].AccountRevision != revision || items[0].Availability != availability {
 			t.Fatal("invalid account revision projection", items, err)
+		}
+		if revision != "" && items[0].Name != "Platform username" {
+			t.Fatal("instance name did not use its signed-in platform username", items)
+		}
+		if revision == "" && items[0].Name != "NetEase Cloud Music" {
+			t.Fatal("unavailable account leaked a stale username or instance identifier", items)
+		}
+		calls := p.sessionCalls
+		if got := s.InstanceName(context.Background(), "owner", "instance"); got != items[0].Name {
+			t.Fatal("instance name lookup disagrees with the account list", got)
+		}
+		if p.sessionCalls != calls {
+			t.Fatal("display-name lookup made a blocking session call")
+		}
+		if got := s.InstanceName(context.Background(), "other", "instance"); got != "" {
+			t.Fatal("instance name lookup leaked another owner's account", got)
 		}
 		encoded, err := json.Marshal(items[0])
 		if err != nil {

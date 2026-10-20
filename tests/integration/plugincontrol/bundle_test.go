@@ -24,10 +24,10 @@ func TestDiscoveredPluginPendingConfigureAndDisableSurviveReload(t *testing.T) {
 	}
 	raw := "configVersion: 1\nallowLoopbackHttp: true\nallowedOrigins: ['http://127.0.0.1:8080']\npluginBundle: './plugins'\n"
 	raw += `plugins:
-  - pluginId: musicfs.localfiles
+  - pluginId: musicfs.plugin.source.localfiles
     instances:
-      - instanceId: local
-        role: provider
+      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51
+        name: Plugin instance
         permissions:
           readDirectories: ['./music']
         config: {}
@@ -50,7 +50,7 @@ func TestDiscoveredPluginPendingConfigureAndDisableSurviveReload(t *testing.T) {
 	}
 	var ready atomic.Bool
 	var starts atomic.Int32
-	if err := m.Register("local", plugincontrol.Hooks{
+	if err := m.Register(localInstanceID, plugincontrol.Hooks{
 		Ready: ready.Load,
 		Start: func(context.Context, config.Plugin, config.Instance) error {
 			starts.Add(1)
@@ -67,7 +67,7 @@ func TestDiscoveredPluginPendingConfigureAndDisableSurviveReload(t *testing.T) {
 		t.Helper()
 		for deadline := time.Now().Add(5 * time.Second); ; {
 			for _, p := range m.Snapshot().Items {
-				if p.PluginID == "musicfs.localfiles" && p.Instances[0].RuntimeState == state {
+				if p.PluginID == "musicfs.plugin.source.localfiles" && p.Instances[0].RuntimeState == state {
 					return
 				}
 			}
@@ -86,17 +86,17 @@ func TestDiscoveredPluginPendingConfigureAndDisableSurviveReload(t *testing.T) {
 		t.Fatal(err)
 	}
 	roots := []config.RootSettings{{ID: "music", Name: "Music", Path: &music}}
-	_, err = m.Change(context.Background(), "admin", config.Change{ExpectedRevision: store.Snapshot().Revision, IdempotencyKey: "configure-bundled-local", PluginID: "musicfs.localfiles", InstanceID: "local", Settings: &config.InstanceSettings{MusicRoots: &roots}})
+	_, err = m.Change(context.Background(), "admin", config.Change{ExpectedRevision: store.Snapshot().Revision, IdempotencyKey: "configure-bundled-local", PluginID: "musicfs.plugin.source.localfiles", InstanceID: localInstanceID, Settings: &config.InstanceSettings{MusicRoots: &roots}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	assertState("ready")
-	_, err = m.Change(context.Background(), "admin", config.Change{ExpectedRevision: store.Snapshot().Revision, IdempotencyKey: "disable-bundled-local", PluginID: "musicfs.localfiles", Enabled: false})
+	_, err = m.Change(context.Background(), "admin", config.Change{ExpectedRevision: store.Snapshot().Revision, IdempotencyKey: "disable-bundled-local", PluginID: "musicfs.plugin.source.localfiles", Enabled: false})
 	if err != nil {
 		t.Fatal(err)
 	}
 	assertState("ready")
-	if !m.Snapshot().RestartRequired || !m.Gate("local").Accepting() {
+	if !m.Snapshot().RestartRequired || !m.Gate(localInstanceID).Accepting() {
 		t.Fatal("saved disable changed the current runtime")
 	}
 	loaded, err := config.Load(path, nil)
@@ -104,7 +104,7 @@ func TestDiscoveredPluginPendingConfigureAndDisableSurviveReload(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, p := range loaded.Plugins {
-		if p.PluginID == "musicfs.localfiles" && p.Enabled {
+		if p.PluginID == "musicfs.plugin.source.localfiles" && p.Enabled {
 			t.Fatal("discovery lost persisted disable")
 		}
 	}

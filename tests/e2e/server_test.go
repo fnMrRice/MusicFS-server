@@ -113,7 +113,7 @@ func TestFreshServerScanRangePermissionsAndRestart(t *testing.T) {
 	base := "http://" + address
 	cfg := config.Config{ConfigVersion: 1, Listen: address, DataRoot: filepath.Join(dir, "data"), MediaRoot: filepath.Join(dir, "media"), CacheRoot: filepath.Join(dir, "cache"), AdminToken: domain.NewID(), AllowLoopbackHTTP: true, AllowedOrigins: []string{base}, MaxSessions: 8, MaxProcessing: 2, MaxCacheBytes: 64 << 20, SessionTTLSeconds: 3600,
 		Hashing: config.HashingConfig{MaxConcurrent: 1, BytesPerSecond: 4 << 20},
-		Plugins: []config.Plugin{{PluginID: "musicfs.localfiles", Executable: pluginPath, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Name: "Local test", Role: "provider", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Local test", Path: music}}}}}}}}
+		Plugins: []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: pluginPath, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Name: "Local test", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Local test", Path: music}}}}}}}}
 	configPath := writeYAMLConfiguration(t, cfg)
 	start := func() func() {
 		loaded, err := config.Load(configPath, map[string]string{"ADMIN_TOKEN": cfg.AdminToken})
@@ -163,7 +163,7 @@ func TestFreshServerScanRangePermissionsAndRestart(t *testing.T) {
 		}
 	}()
 	if runtime.GOOS == "windows" {
-		command := exec.Command("pwsh", "-NoProfile", "-File", filepath.Join("..", "..", "scripts", "scan.ps1"), "-BaseURL", base, "-ProviderID", "local")
+		command := exec.Command("pwsh", "-NoProfile", "-File", filepath.Join("..", "..", "scripts", "scan.ps1"), "-BaseURL", base, "-ProviderID", "b1548e96-3081-5c9c-8376-bf290e369d51")
 		command.Env = append(os.Environ(), "MUSICFS_ADMIN_TOKEN="+cfg.AdminToken)
 		if output, err := command.CombinedOutput(); err != nil {
 			t.Fatalf("scan command failed: %v %s", err, output)
@@ -175,7 +175,7 @@ func TestFreshServerScanRangePermissionsAndRestart(t *testing.T) {
 		t.Fatal(string(raw))
 	}
 	testkit.ValidateHTTP(t, "Providers", raw)
-	code, raw, _ = c.request(t, "POST", "/api/v1/provider-instances/local/scan-jobs", providerScanRequest(t, c, "local"), "scan-key-0001")
+	code, raw, _ = c.request(t, "POST", "/api/v1/provider-instances/b1548e96-3081-5c9c-8376-bf290e369d51/scan-jobs", providerScanRequest(t, c, "b1548e96-3081-5c9c-8376-bf290e369d51"), "scan-key-0001")
 	if code != 202 {
 		t.Fatalf("scan %d %s", code, raw)
 	}
@@ -272,10 +272,10 @@ func TestFreshServerScanRangePermissionsAndRestart(t *testing.T) {
 	var providers struct {
 		Items []library.Provider `json:"items"`
 	}
-	if json.Unmarshal(raw, &providers) != nil || len(providers.Items) != 1 || providers.Items[0].ID != "local" || providers.Items[0].Availability != "offline" {
+	if json.Unmarshal(raw, &providers) != nil || len(providers.Items) != 1 || providers.Items[0].ID != "b1548e96-3081-5c9c-8376-bf290e369d51" || providers.Items[0].Availability != "offline" {
 		t.Fatalf("disabled provider identity missing: %s", raw)
 	}
-	if code, _, _ = c.request(t, "POST", "/api/v1/provider-instances/local/scan-jobs", providerScanRequest(t, c, "local"), "disabled-scan-0001"); code != 503 {
+	if code, _, _ = c.request(t, "POST", "/api/v1/provider-instances/b1548e96-3081-5c9c-8376-bf290e369d51/scan-jobs", providerScanRequest(t, c, "b1548e96-3081-5c9c-8376-bf290e369d51"), "disabled-scan-0001"); code != 503 {
 		t.Fatalf("globally disabled provider accepted scan: %d", code)
 	}
 }

@@ -28,7 +28,7 @@ func libraryHTTP(t *testing.T) (*api.Server, *sqlite.Store, *http.Cookie) {
 	t.Cleanup(func() { store.Close() })
 	server, _ := testServer()
 	queue := jobs.New(store)
-	service := library.New(store, queue, []library.Runtime{{ID: "mine", Owner: "admin", Name: "My local library"}, {ID: "private", Owner: "other", Name: "Other library"}}, nil)
+	service := library.New(store, queue, []library.Runtime{{ID: "316664dc-7106-5acd-8df7-88c9d0d9baef", Owner: "admin", Name: "My local library"}, {ID: "843558e1-a158-56ac-834a-baffd12bb5c5", Owner: "other", Name: "Other library"}}, nil)
 	server.RegisterLibrary(service)
 	cookie, _ := login(t, server)
 	return server, store, cookie
@@ -38,9 +38,9 @@ func TestLibraryHTTPAuthorizationAndModel(t *testing.T) {
 	server, store, cookie := libraryHTTP(t)
 	ctx := context.Background()
 	for _, owner := range []string{"admin", "other"} {
-		provider := "mine"
+		provider := "316664dc-7106-5acd-8df7-88c9d0d9baef"
 		if owner == "other" {
-			provider = "private"
+			provider = "843558e1-a158-56ac-834a-baffd12bb5c5"
 		}
 		if _, _, err := store.Enqueue(ctx, owner, provider, testkit.ScanPlan(provider), "scan-test-key"); err != nil {
 			t.Fatal(err)
@@ -63,7 +63,7 @@ func TestLibraryHTTPAuthorizationAndModel(t *testing.T) {
 		schema string
 		status int
 	}{{"/api/v1/provider-instances", "Providers", 200}, {"/api/v1/source-tracks", "SourceTracks", 200},
-		{"/api/v1/source-tracks?providerInstanceId=private", "Error", 404},
+		{"/api/v1/source-tracks?providerInstanceId=843558e1-a158-56ac-834a-baffd12bb5c5", "Error", 404},
 		{"/api/v1/source-tracks?limit=201", "Error", 400}, {"/api/v1/source-tracks?limit=", "Error", 400},
 		{"/api/v1/source-tracks?limit=abc", "Error", 400}, {"/api/v1/source-tracks?cursor=expired", "Error", 410}} {
 		t.Run(test.path, func(t *testing.T) {
@@ -80,7 +80,7 @@ func TestLibraryHTTPAuthorizationAndModel(t *testing.T) {
 			}
 			if test.path == "/api/v1/source-tracks" {
 				var page library.Page
-				if err := json.Unmarshal(w.Body.Bytes(), &page); err != nil || len(page.Items) != 1 || page.Items[0].ProviderID != "mine" {
+				if err := json.Unmarshal(w.Body.Bytes(), &page); err != nil || len(page.Items) != 1 || page.Items[0].ProviderID != "316664dc-7106-5acd-8df7-88c9d0d9baef" {
 					t.Fatal("wrong authorized library page", err)
 				}
 			}
@@ -91,7 +91,7 @@ func TestLibraryHTTPAuthorizationAndModel(t *testing.T) {
 func TestJobHTTPErrorContractAndOwnership(t *testing.T) {
 	server, store, cookie := libraryHTTP(t)
 	ctx := context.Background()
-	if _, _, err := store.Enqueue(ctx, "admin", "mine", testkit.ScanPlan("mine"), "failed-job-key"); err != nil {
+	if _, _, err := store.Enqueue(ctx, "admin", "316664dc-7106-5acd-8df7-88c9d0d9baef", testkit.ScanPlan("316664dc-7106-5acd-8df7-88c9d0d9baef"), "failed-job-key"); err != nil {
 		t.Fatal(err)
 	}
 	job, err := store.Claim(ctx)
@@ -109,7 +109,7 @@ func TestJobHTTPErrorContractAndOwnership(t *testing.T) {
 	if strings.Contains(w.Body.String(), "private") {
 		t.Fatal("job error leaked raw storage detail")
 	}
-	if _, _, err := store.Enqueue(ctx, "other", "private", testkit.ScanPlan("private"), "private-job-key"); err != nil {
+	if _, _, err := store.Enqueue(ctx, "other", "843558e1-a158-56ac-834a-baffd12bb5c5", testkit.ScanPlan("843558e1-a158-56ac-834a-baffd12bb5c5"), "private-job-key"); err != nil {
 		t.Fatal(err)
 	}
 	job, err = store.Claim(ctx)

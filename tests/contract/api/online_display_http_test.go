@@ -18,7 +18,8 @@ func TestOnlineDisplayHTTPKindsBatchAndSourcePermissions(t *testing.T) {
 	server, store, _ := libraryHTTP(t)
 	cookie, session := login(t, server)
 	runtimes := []onlinehost.Runtime{}
-	for _, id := range []string{"albums", "artists", "playlists", "batch", "detail", "albumdetail", "artistdetail", "albumtracks", "artistalbums", "artisttracks"} {
+	for _, label := range []string{"albums", "artists", "playlists", "batch", "detail", "albumdetail", "artistdetail", "albumtracks", "artistalbums", "artisttracks"} {
+		id := fixtureInstanceID(label)
 		client, err := online.New(online.Netease, online.Scope{UserID: "admin", InstanceID: id}, online.Options{Transport: testkit.OnlineAccountTransport(onlineTransport{})})
 		if err != nil {
 			t.Fatal(err)
@@ -46,7 +47,7 @@ func TestOnlineDisplayHTTPKindsBatchAndSourcePermissions(t *testing.T) {
 		return w
 	}
 	for _, kind := range []string{"albums", "artists", "playlists"} {
-		w := request("GET", "/online-instances/"+kind+"/search?q=Synthetic&kind="+kind, "", true)
+		w := request("GET", "/online-instances/"+fixtureInstanceID(kind)+"/search?q=Synthetic&kind="+kind, "", true)
 		if w.Code != 200 {
 			t.Fatal(kind, w.Code, w.Body.String())
 		}
@@ -56,19 +57,19 @@ func TestOnlineDisplayHTTPKindsBatchAndSourcePermissions(t *testing.T) {
 			t.Fatal("wrong result kind", w.Body.String())
 		}
 	}
-	for _, tc := range []struct{ path, schema string }{{"albumdetail/albums/91", "OnlineAlbum"}, {"artistdetail/artists/92", "OnlineArtist"}, {"albumtracks/albums/91/tracks?limit=2", "OnlineSearchPage"}, {"artistalbums/artists/92/albums?limit=2", "OnlineSearchPage"}, {"artisttracks/artists/92/tracks?limit=2", "OnlineSearchPage"}} {
+	for _, tc := range []struct{ path, schema string }{{"db30b386-20a6-57d4-b151-88e69c4d5efa/albums/91", "OnlineAlbum"}, {"28d25374-8044-55fe-a377-d909fcc82bb7/artists/92", "OnlineArtist"}, {"256c5302-5381-53c9-a138-43c402d64248/albums/91/tracks?limit=2", "OnlineSearchPage"}, {"3caef4d5-8ec3-5f2c-8988-2eea0cd1991a/artists/92/albums?limit=2", "OnlineSearchPage"}, {"bdae1994-6dec-50bd-960b-1d2ea1a17f7f/artists/92/tracks?limit=2", "OnlineSearchPage"}} {
 		w := request("GET", "/online-instances/"+tc.path, "", true)
 		if w.Code != 200 {
 			t.Fatal(tc.path, w.Code, w.Body.String())
 		}
 		testkit.ValidateHTTP(t, tc.schema, w.Body.Bytes())
 	}
-	w := request("POST", "/online-instances/batch/tracks/lookup", `{"externalIds":["42","43","42"]}`, true)
+	w := request("POST", "/online-instances/bddd87bf-5609-5190-9f7d-f43ff6223f18/tracks/lookup", `{"externalIds":["42","43","42"]}`, true)
 	if w.Code != 200 {
 		t.Fatal(w.Code, w.Body.String())
 	}
 	testkit.ValidateHTTP(t, "OnlineTrackBatch", w.Body.Bytes())
-	w = request("GET", "/online-instances/detail/playlists/91/tracks?limit=2", "", true)
+	w = request("GET", "/online-instances/e2cdfdf4-1580-52b8-81d2-e3d1d0b457c0/playlists/91/tracks?limit=2", "", true)
 	if w.Code != 200 {
 		t.Fatal(w.Code, w.Body.String())
 	}
@@ -88,9 +89,9 @@ func TestOnlineDisplayHTTPKindsBatchAndSourcePermissions(t *testing.T) {
 	}{
 		{"POST", "/source-refs/lookup", `{"sources":[]}`, true, 400},
 		{"POST", "/source-refs/lookup", `{"sources":[]}`, false, 403},
-		{"POST", "/online-instances/batch/tracks/lookup", `{"externalIds":["42"]}`, false, 403},
-		{"POST", "/online-instances/other/tracks/lookup", `{"externalIds":["42"]}`, true, 404},
-		{"GET", "/online-instances/albums/search?q=x&kind=unknown", "", true, 400},
+		{"POST", "/online-instances/bddd87bf-5609-5190-9f7d-f43ff6223f18/tracks/lookup", `{"externalIds":["42"]}`, false, 403},
+		{"POST", "/online-instances/e4fe4d4f-f95b-57a9-8c27-aec99a401f05/tracks/lookup", `{"externalIds":["42"]}`, true, 404},
+		{"GET", "/online-instances/c30c766a-3e82-569a-a016-cb973a70926e/search?q=x&kind=unknown", "", true, 400},
 	} {
 		w := request(tc.method, tc.path, tc.body, tc.csrf)
 		if w.Code != tc.code {

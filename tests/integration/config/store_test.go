@@ -21,13 +21,12 @@ listen: '127.0.0.1:8080' # Keep this comment.
 allowLoopbackHttp: true
 allowedOrigins: ['http://127.0.0.1:8080']
 plugins:
-  - pluginId: musicfs.ncm
+  - pluginId: musicfs.plugin.decoder.ncm
     executable: './worker with spaces'
     enabled: true # Keep the plugin comment.
     instances:
-      - instanceId: ncm-default
+      - instanceId: 96412f52-9ff4-5a82-9eaa-7644a5837cda
         name: '中文 实例'
-        role: audio
         enabled: true # Keep the instance comment.
         config: {}
 `
@@ -58,7 +57,7 @@ func open(t *testing.T, path string, journal config.Journal) *config.Store {
 }
 
 func change(s *config.Store, key string) config.Change {
-	return config.Change{ExpectedRevision: s.Snapshot().Revision, IdempotencyKey: key, PluginID: "musicfs.ncm", Enabled: false}
+	return config.Change{ExpectedRevision: s.Snapshot().Revision, IdempotencyKey: key, PluginID: "musicfs.plugin.decoder.ncm", Enabled: false}
 }
 
 func assertCode(t *testing.T, err error, code string) {

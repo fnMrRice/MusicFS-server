@@ -30,7 +30,7 @@ func TestRecoveredOnlineTaskAcquiresGatesBeforeFirstObservation(t *testing.T) {
 		t.Fatalf("build playlist recovery worker: %v %s", err, raw)
 	}
 	cfg, base := yamlServiceConfig(t)
-	cfg.Plugins = []config.Plugin{onlinePlugin("netease", program, "net")}
+	cfg.Plugins = []config.Plugin{onlinePlugin("netease", program, "7fe223d0-a3bd-5e87-87f8-305dc26d9041")}
 	if err := os.MkdirAll(cfg.DataRoot, 0700); err != nil {
 		t.Fatal(err)
 	}
@@ -45,8 +45,8 @@ func TestRecoveredOnlineTaskAcquiresGatesBeforeFirstObservation(t *testing.T) {
 		store.Close()
 		t.Fatal(err)
 	}
-	binding, _ := json.Marshal(struct{ Plugin, Instance, Binary, Schema string }{"musicfs.netease", "net", fmt.Sprintf("%x", sha256.Sum256(binary)), pluginproto.OnlineRevision})
-	ref := playlists.Binding{RemoteRef: playlists.RemoteRef{InstanceID: "net", AccountID: "fixture-account", ExternalID: "92"}, Platform: "netease", ConfigRevision: fmt.Sprintf("%x", sha256.Sum256(binding))}
+	binding, _ := json.Marshal(struct{ Plugin, Instance, Binary, Schema string }{"musicfs.plugin.source.netease", "7fe223d0-a3bd-5e87-87f8-305dc26d9041", fmt.Sprintf("%x", sha256.Sum256(binary)), pluginproto.OnlineRevision})
+	ref := playlists.Binding{RemoteRef: playlists.RemoteRef{InstanceID: "7fe223d0-a3bd-5e87-87f8-305dc26d9041", AccountID: "fixture-account", ExternalID: "92"}, Platform: "netease", ConfigRevision: fmt.Sprintf("%x", sha256.Sum256(binding))}
 	playlist, _, err := store.ImportRemotePlaylist(context.Background(), "admin", ref, "recovery-import")
 	if err != nil {
 		store.Close()
@@ -80,11 +80,11 @@ func TestRecoveredOnlineTaskAcquiresGatesBeforeFirstObservation(t *testing.T) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	state := managedOnlineInstance(t, c, "net")
+	state := managedOnlineInstance(t, c, "7fe223d0-a3bd-5e87-87f8-305dc26d9041")
 	if state.ActiveLeases < 2 {
 		t.Fatal("recovery began before task and RPC gates were attached", state)
 	}
-	operation := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/net/state", map[string]any{"enabled": false, "mode": "force"})
+	operation := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/state", map[string]any{"enabled": false, "mode": "force"})
 	waitLibraryOperation(t, c, operation.ID)
 	time.Sleep(150 * time.Millisecond)
 	generation := recovered.Generation
@@ -92,7 +92,7 @@ func TestRecoveredOnlineTaskAcquiresGatesBeforeFirstObservation(t *testing.T) {
 	if code != 200 || json.Unmarshal(raw, &recovered) != nil || recovered.State != "running" || recovered.Generation != generation {
 		t.Fatalf("pending disable interrupted the recovered task: %d %s", code, raw)
 	}
-	if state = managedOnlineInstance(t, c, "net"); state.ActiveLeases < 2 || state.RuntimeState != "ready" || !state.AcceptingNewWork || state.Reason == nil || *state.Reason != "RESTART_REQUIRED" {
+	if state = managedOnlineInstance(t, c, "7fe223d0-a3bd-5e87-87f8-305dc26d9041"); state.ActiveLeases < 2 || state.RuntimeState != "ready" || !state.AcceptingNewWork || state.Reason == nil || *state.Reason != "RESTART_REQUIRED" {
 		t.Fatal("pending disable changed recovered task admission", state)
 	}
 }

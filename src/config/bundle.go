@@ -6,19 +6,20 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/fnMrRice/MusicFS-server/src/instanceid"
 	"go.yaml.in/yaml/v3"
 )
 
 // The shipped executable contains this fixed catalog. Discovery never searches
 // PATH or executes arbitrary files from a plugin directory.
-var bundledPlugins = []struct{ id, selector, instance, role, name string }{
-	{"musicfs.localfiles", "local", "local", "provider", "本地音乐"},
-	{"musicfs.audio.ffmpeg", "audio-ffmpeg", "audio-default", "audio", "FFmpeg 音频处理"},
-	{"musicfs.ncm", "ncm", "ncm-default", "audio", "NCM 解密"},
-	{"musicfs.scraper.local", "scraper-local", "scraper-local", "scraper", "本地歌词与封面"},
-	{"musicfs.netease", "netease", "netease-public", "provider", "网易云音乐"},
-	{"musicfs.qqmusic", "qqmusic", "qq-public", "provider", "QQ 音乐"},
-	{"musicfs.applemusic", "applemusic", "apple-public", "provider", "Apple Music"},
+var bundledPlugins = []struct{ id, selector, instance string }{
+	{"musicfs.plugin.source.localfiles", "local", "local"},
+	{"musicfs.plugin.decoder.ffmpeg", "audio-ffmpeg", "audio-default"},
+	{"musicfs.plugin.decoder.ncm", "ncm", "ncm-default"},
+	{"musicfs.scraper.local", "scraper-local", "scraper-local"},
+	{"musicfs.plugin.source.netease", "netease", "netease-public"},
+	{"musicfs.plugin.source.qqmusic", "qqmusic", "qq-public"},
+	{"musicfs.plugin.source.applemusic", "applemusic", "apple-public"},
 }
 
 func bundlePath(root *yaml.Node, base string) string {
@@ -112,12 +113,14 @@ func discoverBundle(root *yaml.Node, base string) error {
 			}
 		}
 		if mappingValue(node, "instances") == nil {
-			id := entry.instance
-			for used[strings.ToLower(id)] {
-				id += "-builtin"
+			legacy := entry.instance
+			id := instanceid.Canonical(legacy)
+			for used[id] {
+				legacy += "-builtin"
+				id = instanceid.Canonical(legacy)
 			}
 			used[strings.ToLower(id)] = true
-			instances := []Instance{{InstanceID: id, Name: entry.name, Role: entry.role, Enabled: true}}
+			instances := []Instance{{InstanceID: id, Enabled: true}}
 			if err := setNode(node, "instances", instances); err != nil {
 				return err
 			}
@@ -145,13 +148,13 @@ func markPendingConfiguration(c *Config, bundle string) {
 		for ii := range p.Instances {
 			i := &p.Instances[ii]
 			switch p.PluginID {
-			case "musicfs.localfiles":
+			case "musicfs.plugin.source.localfiles":
 				i.PendingConfiguration = len(i.Config.MusicRoots) == 0
 				for _, root := range i.Config.MusicRoots {
 					info, err := os.Stat(root.Path)
 					i.PendingConfiguration = i.PendingConfiguration || err != nil || !info.IsDir()
 				}
-			case "musicfs.audio.ffmpeg":
+			case "musicfs.plugin.decoder.ffmpeg":
 				for _, path := range []string{i.Config.FFmpegPath, i.Config.FFprobePath} {
 					info, err := os.Stat(path)
 					i.PendingConfiguration = i.PendingConfiguration || err != nil || !info.Mode().IsRegular()

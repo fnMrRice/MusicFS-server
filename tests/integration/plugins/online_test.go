@@ -37,7 +37,7 @@ func onlineConfig(t *testing.T, path, platform string) pluginhost.OnlineConfig {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return pluginhost.OnlineConfig{Executable: path, SHA256: fmt.Sprintf("%x", sha256.Sum256(body)), StateDir: t.TempDir(), Platform: platform, UserID: "owner", InstanceID: "online-instance", Timeout: 3 * time.Second}
+	return pluginhost.OnlineConfig{Executable: path, SHA256: fmt.Sprintf("%x", sha256.Sum256(body)), StateDir: t.TempDir(), Platform: platform, UserID: "owner", InstanceID: "a82dbe7f-4bf7-5101-9317-70c7890b19d7", Timeout: 3 * time.Second}
 }
 func onlineExpect(t *testing.T, err error, code string) {
 	t.Helper()
@@ -164,7 +164,7 @@ func TestActualOnlineEntrypointsAndUnsupportedPlatforms(t *testing.T) {
 }
 
 func TestOnlineDisabledAndChecksumRejectBeforeStart(t *testing.T) {
-	cfg := pluginhost.OnlineConfig{Executable: filepath.Join(t.TempDir(), "missing.exe"), SHA256: strings.Repeat("0", 64), StateDir: filepath.Join(t.TempDir(), "must-not-exist"), Platform: online.Netease, UserID: "owner", InstanceID: "instance", Disabled: true}
+	cfg := pluginhost.OnlineConfig{Executable: filepath.Join(t.TempDir(), "missing.exe"), SHA256: strings.Repeat("0", 64), StateDir: filepath.Join(t.TempDir(), "must-not-exist"), Platform: online.Netease, UserID: "owner", InstanceID: "1463118e-e2d1-564a-ab70-05a357c1b9bf", Disabled: true}
 	if w, err := pluginhost.StartOnline(context.Background(), cfg); err == nil {
 		w.Close()
 		t.Fatal("disabled instance started")

@@ -23,25 +23,25 @@ func TestMetadataHTTPPrivateJobsCandidatesAndInstances(t *testing.T) {
 	server, store, _ := libraryHTTP(t)
 	cookie, session := login(t, server)
 	ctx := context.Background()
-	if _, _, err := store.Enqueue(ctx, "other", "private", testkit.ScanPlan("private"), "metadata-private-source"); err != nil {
+	if _, _, err := store.Enqueue(ctx, "other", "843558e1-a158-56ac-834a-baffd12bb5c5", testkit.ScanPlan("843558e1-a158-56ac-834a-baffd12bb5c5"), "metadata-private-source"); err != nil {
 		t.Fatal(err)
 	}
 	scan, err := store.Claim(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	item := library.Observation{Observation: pluginproto.Observation{ExternalID: "private", RootID: "private", RelativePath: "secret/source.wav", DisplayName: "private", ObservedVersion: "version", SizeBytes: 1}, Artists: []string{}}
+	item := library.Observation{Observation: pluginproto.Observation{ExternalID: "private", RootID: "843558e1-a158-56ac-834a-baffd12bb5c5", RelativePath: "secret/source.wav", DisplayName: "private", ObservedVersion: "version", SizeBytes: 1}, Artists: []string{}}
 	if err := store.Publish(ctx, scan, testkit.ScanPublication(scan, []library.Observation{item})); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Finish(ctx, scan, 1, nil); err != nil {
 		t.Fatal(err)
 	}
-	tracks, err := store.ListTracks(ctx, "other", "private", "", 10)
+	tracks, err := store.ListTracks(ctx, "other", "843558e1-a158-56ac-834a-baffd12bb5c5", "", 10)
 	if err != nil || len(tracks.Items) != 1 {
 		t.Fatal("private source setup", err)
 	}
-	private, _, err := store.QueueEnrichment(ctx, "other", enrichment.JobRequest{SourceTrackIDs: []string{tracks.Items[0].ID}, InstanceIDs: []string{"private-scraper"}, Fields: []string{"lyrics"}}, "private-metadata-job")
+	private, _, err := store.QueueEnrichment(ctx, "other", enrichment.JobRequest{SourceTrackIDs: []string{tracks.Items[0].ID}, InstanceIDs: []string{"15f9b451-bef0-5f89-9d65-e208870fa2ae"}, Fields: []string{"lyrics"}}, "private-metadata-job")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestMetadataHTTPPrivateJobsCandidatesAndInstances(t *testing.T) {
 		t.Fatal(err)
 	}
 	unsupported := "UNSUPPORTED"
-	candidate := enrichment.PreviewCandidate{CandidateID: strings.Repeat("a", 48), Target: work.Target, InstanceID: "private-scraper", Field: "lyrics", Language: "und", Origin: "sidecar", Basis: "exactStem", Status: "unavailable", FailureCode: &unsupported, ExpiresAt: time.Now().UTC().Add(10 * time.Minute)}
+	candidate := enrichment.PreviewCandidate{CandidateID: strings.Repeat("a", 48), Target: work.Target, InstanceID: "15f9b451-bef0-5f89-9d65-e208870fa2ae", Field: "lyrics", Language: "und", Origin: "sidecar", Basis: "exactStem", Status: "unavailable", FailureCode: &unsupported, ExpiresAt: time.Now().UTC().Add(10 * time.Minute)}
 	if err := store.ReserveEnrichmentPreview(ctx, work, 0); err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestMetadataHTTPPrivateJobsCandidatesAndInstances(t *testing.T) {
 	t.Cleanup(func() { files.Close() })
 	lib := library.New(store, jobs.New(store), nil, nil)
 	content := mediastore.NewContent(store, store, files)
-	service, err := enrichmentworker.New(store, lib, content, []enrichmentworker.Runtime{{ID: "own-scraper", Owner: "admin"}, {ID: "private-scraper", Owner: "other"}}, enrichmentworker.Config{})
+	service, err := enrichmentworker.New(store, lib, content, []enrichmentworker.Runtime{{ID: "fca57a71-9efe-57dc-b4b9-2094a8c5a3c9", Owner: "admin"}, {ID: "15f9b451-bef0-5f89-9d65-e208870fa2ae", Owner: "other"}}, enrichmentworker.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestMetadataHTTPPrivateJobsCandidatesAndInstances(t *testing.T) {
 		r.Header.Set("Idempotency-Key", "metadata-private-check")
 		w := httptest.NewRecorder()
 		server.ServeHTTP(w, r)
-		if bytes.Contains(w.Body.Bytes(), []byte("secret/source")) || bytes.Contains(w.Body.Bytes(), []byte("private-scraper")) {
+		if bytes.Contains(w.Body.Bytes(), []byte("secret/source")) || bytes.Contains(w.Body.Bytes(), []byte("15f9b451-bef0-5f89-9d65-e208870fa2ae")) {
 			t.Fatal("private scope leaked")
 		}
 		return w
@@ -94,7 +94,7 @@ func TestMetadataHTTPPrivateJobsCandidatesAndInstances(t *testing.T) {
 	var instances struct {
 		Items []enrichment.Instance `json:"items"`
 	}
-	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &instances) != nil || len(instances.Items) != 1 || instances.Items[0].InstanceID != "own-scraper" {
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &instances) != nil || len(instances.Items) != 1 || instances.Items[0].InstanceID != "fca57a71-9efe-57dc-b4b9-2094a8c5a3c9" {
 		t.Fatal("instances not owner-scoped")
 	}
 	testkit.ValidateHTTP(t, "ScraperInstances", w.Body.Bytes())
@@ -103,7 +103,7 @@ func TestMetadataHTTPPrivateJobsCandidatesAndInstances(t *testing.T) {
 		{"GET", "/metadata-jobs/" + private.JobID + "/documents", ""},
 		{"POST", "/metadata-jobs/" + private.JobID + "/cancel", "{}"},
 		{"POST", "/metadata-candidates/" + candidate.CandidateID + "/apply", `{"expectedRevision":0}`},
-		{"POST", "/metadata-jobs", `{"sourceTrackIds":["any-source"],"fields":["lyrics"],"instanceIds":["private-scraper"]}`},
+		{"POST", "/metadata-jobs", `{"sourceTrackIds":["any-source"],"fields":["lyrics"],"instanceIds":["15f9b451-bef0-5f89-9d65-e208870fa2ae"]}`},
 	} {
 		w := request(tc.method, tc.path, tc.body)
 		if w.Code != http.StatusNotFound {

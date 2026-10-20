@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
@@ -62,14 +63,14 @@ func TestContractSamples(t *testing.T) {
 
 func TestPluginDTOsMatchContract(t *testing.T) {
 	manifest := pluginproto.Manifest{
-		PluginID: "musicfs.local", PluginVersion: "0.1.0", ProtocolVersion: pluginproto.ProtocolVersion,
+		PluginID: "musicfs.plugin.source.localfiles", Plugin: pluginconfig.Identity("musicfs.plugin.source.localfiles"), PluginVersion: "0.1.0", ProtocolVersion: pluginproto.ProtocolVersion,
 		Roles: []string{"provider"}, Capabilities: []string{"library.scan", "metadata.read", "stream.resolve"},
 		Systems: []string{"windows", "linux"}, Architectures: []string{"amd64"},
 		MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems,
 	}
 	testkit.ValidatePlugin(t, "Manifest", manifest)
-	testkit.ValidatePlugin(t, "Hello", pluginproto.Hello{ProtocolVersion: "1.0", InstanceID: "local", Nonce: "nonce", ConfigRevision: "1"})
-	testkit.ValidatePlugin(t, "Ready", pluginproto.Ready{Manifest: manifest, InstanceID: "local", Nonce: "nonce"})
+	testkit.ValidatePlugin(t, "Hello", pluginproto.Hello{ProtocolVersion: "1.0", InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Nonce: "nonce", ConfigRevision: "1"})
+	testkit.ValidatePlugin(t, "Ready", pluginproto.Ready{Manifest: manifest, InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Nonce: "nonce"})
 	testkit.ValidatePlugin(t, "ScanRequest", pluginproto.ScanRequest{RootID: "root", ScanID: "scan", Generation: 1, Limit: 200, Scope: pluginproto.ScanScope{RootID: "root", RootIdentity: "root-version", Recursive: true, MaxDepth: 64}, PlanDigest: strings.Repeat("a", 64), GrantID: "grant-1"})
 	testkit.ValidatePlugin(t, "ScanPage", pluginproto.ScanPage{PlanDigest: strings.Repeat("a", 64), ScanID: "scan", Generation: 1, Page: 0, Items: []pluginproto.Observation{}, Complete: true, RootIdentity: "root-version", Issues: []string{}})
 	testkit.ValidatePlugin(t, "ResolveRequest", pluginproto.ResolveRequest{ExternalID: "track", ExpectedVersion: "asset-version"})

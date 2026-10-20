@@ -36,9 +36,9 @@ func TestRecommendationsHTTPGroupedCacheRefreshAndPrivacy(t *testing.T) {
 	cookie, _ := login(t, server)
 	p, private := &recommendationHTTPProvider{}, &recommendationHTTPProvider{}
 	service, err := recommendations.New([]recommendations.Runtime{
-		{Owner: "admin", InstanceID: "good", Platform: online.Netease, ConfigRevision: "rev1", Provider: p},
-		{Owner: "admin", InstanceID: "offline", Platform: online.Netease, ConfigRevision: "rev1"},
-		{Owner: "other", InstanceID: "private", Platform: online.Netease, ConfigRevision: "private-revision", Provider: private},
+		{Owner: "admin", InstanceID: "8df55a88-1c78-50ac-ac6b-27110484abd7", Platform: online.Netease, ConfigRevision: "rev1", Provider: p},
+		{Owner: "admin", InstanceID: "7a202030-76d0-5655-b70e-aa3833cc17de", Platform: online.Netease, ConfigRevision: "rev1"},
+		{Owner: "other", InstanceID: "843558e1-a158-56ac-834a-baffd12bb5c5", Platform: online.Netease, ConfigRevision: "private-revision", Provider: private},
 	}, recommendations.Config{FailureCooldown: time.Minute})
 	if err != nil {
 		t.Fatal(err)
@@ -70,24 +70,24 @@ func TestRecommendationsHTTPGroupedCacheRefreshAndPrivacy(t *testing.T) {
 		testkit.ValidateHTTP(t, "Recommendations", w.Body.Bytes())
 		return result
 	}
-	first := read("?limit=1")
-	if len(first.Sources) != 2 || first.Sources[0].InstanceID != "good" || len(first.Sources[0].Items) != 1 || first.Sources[0].LastSuccessAt == nil || first.Sources[1].Error == nil || first.Sources[1].Error.Code != "SOURCE_OFFLINE" || first.Sources[1].LastSuccessAt != nil {
+	first := read("?instanceId=8df55a88-1c78-50ac-ac6b-27110484abd7&instanceId=7a202030-76d0-5655-b70e-aa3833cc17de&limit=1")
+	if len(first.Sources) != 2 || first.Sources[0].InstanceID != "8df55a88-1c78-50ac-ac6b-27110484abd7" || len(first.Sources[0].Items) != 1 || first.Sources[0].LastSuccessAt == nil || first.Sources[1].Error == nil || first.Sources[1].Error.Code != "SOURCE_OFFLINE" || first.Sources[1].LastSuccessAt != nil {
 		t.Fatalf("partial source state lost: %+v", first)
 	}
-	second := read("?instanceId=offline&instanceId=good&limit=1")
-	if second.Sources[0].InstanceID != "offline" || second.Sources[1].InstanceID != "good" || !second.Sources[1].LastSuccessAt.Equal(*first.Sources[0].LastSuccessAt) || p.calls.Load() != 1 || private.calls.Load() != 0 {
+	second := read("?instanceId=7a202030-76d0-5655-b70e-aa3833cc17de&instanceId=8df55a88-1c78-50ac-ac6b-27110484abd7&limit=1")
+	if second.Sources[0].InstanceID != "7a202030-76d0-5655-b70e-aa3833cc17de" || second.Sources[1].InstanceID != "8df55a88-1c78-50ac-ac6b-27110484abd7" || !second.Sources[1].LastSuccessAt.Equal(*first.Sources[0].LastSuccessAt) || p.calls.Load() != 1 || private.calls.Load() != 0 {
 		t.Fatal("cache or requested source order changed")
 	}
 	p.fail.Store(true)
-	stale := read("?instanceId=good&limit=1&refresh=true").Sources[0]
+	stale := read("?instanceId=8df55a88-1c78-50ac-ac6b-27110484abd7&limit=1&refresh=true").Sources[0]
 	if stale.Error == nil || stale.Error.Code != "TEMPORARY_FAILURE" || !stale.Stale || len(stale.Items) != 1 || !stale.LastSuccessAt.Equal(*first.Sources[0].LastSuccessAt) || p.calls.Load() != 2 {
 		t.Fatal("refresh failure erased last successful items")
 	}
-	if held := read("?instanceId=good&limit=1&refresh=true").Sources[0]; held.Error == nil || held.Error.RetryAfter == nil || p.calls.Load() != 2 {
+	if held := read("?instanceId=8df55a88-1c78-50ac-ac6b-27110484abd7&limit=1&refresh=true").Sources[0]; held.Error == nil || held.Error.RetryAfter == nil || p.calls.Load() != 2 {
 		t.Fatal("refresh bypassed failure cooldown")
 	}
 	p.fail.Store(false)
-	held := read("?instanceId=good&limit=1&refresh=true").Sources[0]
+	held := read("?instanceId=8df55a88-1c78-50ac-ac6b-27110484abd7&limit=1&refresh=true").Sources[0]
 	if held.Error == nil || !held.Stale || p.calls.Load() != 2 {
 		t.Fatal("provider recovery bypassed the advertised cooldown")
 	}
@@ -96,8 +96,8 @@ func TestRecommendationsHTTPGroupedCacheRefreshAndPrivacy(t *testing.T) {
 		auth  bool
 		code  int
 	}{
-		{"", false, http.StatusUnauthorized}, {"?instanceId=private", true, 404},
-		{"?instanceId=good&instanceId=good", true, 400}, {"?instanceId=", true, 400},
+		{"", false, http.StatusUnauthorized}, {"?instanceId=843558e1-a158-56ac-834a-baffd12bb5c5", true, 404},
+		{"?instanceId=8df55a88-1c78-50ac-ac6b-27110484abd7&instanceId=8df55a88-1c78-50ac-ac6b-27110484abd7", true, 400}, {"?instanceId=", true, 400},
 		{"?limit=0", true, 400}, {"?limit=51", true, 400}, {"?limit=1&limit=2", true, 400},
 		{"?refresh=1", true, 400}, {"?refresh=true&refresh=false", true, 400},
 		{"?accountId=other", true, 400}, {"?cursor=unknown", true, 400},

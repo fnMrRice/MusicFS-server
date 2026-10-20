@@ -1,0 +1,36 @@
+[
+  {
+    "name": "identity-upgrade-preserves-unattempted-scan",
+    "schema": "ScanJob",
+    "valid": true,
+    "value": {
+      "jobId": "legacy-job",
+      "providerInstanceId": "b1548e96-3081-5c9c-8376-bf290e369d51",
+      "status": "failed",
+      "progress": {"observed": 0},
+      "complete": false,
+      "error": {
+        "code": "RESOURCE_CHANGED",
+        "message": "Plugin instance identity changed during upgrade; submit a new request",
+        "requestId": "request",
+        "retryAfter": null
+      },
+      "lastSuccessAt": null,
+      "rootIds": ["music"],
+      "effectiveOptions": {
+        "recursive": true,
+        "maxDepth": 64,
+        "importLyrics": false,
+        "excludePatterns": []
+      },
+      "schemaRevision": "local-import-v3",
+      "attemptCount": 0,
+      "retryCount": 0,
+      "maxAttempts": 3,
+      "nextAttemptAt": null,
+      "lastAttemptAt": null,
+      "createdAt": "2026-10-19T00:00:00Z",
+      "updatedAt": "2026-10-20T00:00:00Z"
+    }
+  }
+]

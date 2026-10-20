@@ -31,7 +31,7 @@ func TestMediaActualServerPreviewSelectionRestartAndPlayback(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg, base := yamlServiceConfig(t)
-	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Role: "provider", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Media fixture", Path: music}}}}}}}
+	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Media fixture", Path: music}}}}}}}
 	var target mediastore.ContentTarget
 	var lyrics, cover mediastore.ContentObject
 	lyricBytes := []byte("[00:00.00]合成歌词\n[00:01.00]仅用于测试\n")
@@ -156,7 +156,7 @@ func TestMediaActualServerPreviewSelectionRestartAndPlayback(t *testing.T) {
 		if err := os.WriteFile(source, changed, 0600); err != nil {
 			t.Fatal(err)
 		}
-		tracks := scanProvider(t, c, "local", "media-source-rescan")
+		tracks := scanProvider(t, c, "b1548e96-3081-5c9c-8376-bf290e369d51", "media-source-rescan")
 		if tracks["media.wav"].ID != target.SourceTrackID || tracks["media.wav"].AssetID == target.AssetID {
 			t.Fatal("source identity or asset generation incorrect")
 		}

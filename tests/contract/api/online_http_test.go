@@ -56,7 +56,7 @@ func TestOnlineHTTPPrivateAuthenticatedMetadataAndErrors(t *testing.T) {
 	server, store, _ := libraryHTTP(t)
 	cookie, session := login(t, server)
 	runtimes := []onlinehost.Runtime{}
-	for _, item := range []struct{ owner, id, platform string }{{"admin", "net", online.Netease}, {"admin", "net2", online.Netease}, {"admin", "qq", online.QQMusic}, {"admin", "apple", online.AppleMusic}, {"other", "private", online.Netease}} {
+	for _, item := range []struct{ owner, id, platform string }{{"admin", "7fe223d0-a3bd-5e87-87f8-305dc26d9041", online.Netease}, {"admin", "db019d81-1fbb-528c-a9f7-9c47006844a2", online.Netease}, {"admin", "b5e86bbe-524b-53fc-bde9-bbe3cbb02a80", online.QQMusic}, {"admin", "2e2b7962-89d2-5815-9804-0d395497f906", online.AppleMusic}, {"other", "843558e1-a158-56ac-834a-baffd12bb5c5", online.Netease}} {
 		provider, err := online.New(item.platform, online.Scope{UserID: item.owner, InstanceID: item.id}, online.Options{Transport: testkit.OnlineAccountTransport(onlineTransport{})})
 		if err != nil {
 			t.Fatal(err)
@@ -67,7 +67,7 @@ func TestOnlineHTTPPrivateAuthenticatedMetadataAndErrors(t *testing.T) {
 		}
 		runtimes = append(runtimes, onlinehost.Runtime{Owner: item.owner, InstanceID: item.id, Name: item.id, Platform: item.platform, ConfigRevision: "private-config", Enabled: true, Provider: provider})
 	}
-	runtimes = append(runtimes, onlinehost.Runtime{Owner: "admin", InstanceID: "disabled", Name: "Disabled", Platform: online.Netease, ConfigRevision: "config"})
+	runtimes = append(runtimes, onlinehost.Runtime{Owner: "admin", InstanceID: "9d986e6a-04fd-522e-b5b5-eb9f28ac4ce6", Name: "Disabled", Platform: online.Netease, ConfigRevision: "config"})
 	service, err := onlinehost.New(runtimes)
 	if err != nil {
 		t.Fatal(err)
@@ -109,7 +109,7 @@ func TestOnlineHTTPPrivateAuthenticatedMetadataAndErrors(t *testing.T) {
 			}
 		}
 	}
-	w = request("GET", "/online-instances/net/search?q=Synthetic&limit=1", "", true, nil)
+	w = request("GET", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/search?q=Synthetic&limit=1", "", true, nil)
 	var page online.SearchPage
 	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &page) != nil || page.NextCursor == nil || page.Tracks[0].PlaybackAvailability != "unknown" {
 		t.Fatalf("search: %d %s", w.Code, w.Body.String())
@@ -119,20 +119,20 @@ func TestOnlineHTTPPrivateAuthenticatedMetadataAndErrors(t *testing.T) {
 		path string
 		code int
 	}{
-		{"/online-instances/private/search?q=Synthetic", 404},
-		{"/online-instances/disabled/search?q=Synthetic", 503},
-		{"/online-instances/apple/search?q=Synthetic", 403},
-		{"/online-instances/qq/search?q=Synthetic", 403},
-		{"/online-instances/net/search?q=Synthetic&limit=1", 429},
-		{"/online-instances/net/search?q=Changed&limit=1&cursor=" + url.QueryEscape(*page.NextCursor), 400},
-		{"/online-instances/net2/search?q=Synthetic&limit=1&cursor=" + url.QueryEscape(*page.NextCursor), 400},
-		{"/online-instances/net/search?q=Synthetic&url=https://private.invalid", 400},
-		{"/online-instances/net/search?q=Synthetic&q=Again", 400},
-		{"/online-instances/net/search?q=Synthetic&limit=01", 400},
-		{"/online-instances/net/search?q=Synthetic&limit=51", 400},
-		{"/online-instances/net/search?q=", 400},
-		{"/online-instances/net/tracks/42?accountId=private", 400},
-		{"/online-instances/net/recommendations?cursor=invalid", 400},
+		{"/online-instances/843558e1-a158-56ac-834a-baffd12bb5c5/search?q=Synthetic", 404},
+		{"/online-instances/9d986e6a-04fd-522e-b5b5-eb9f28ac4ce6/search?q=Synthetic", 503},
+		{"/online-instances/2e2b7962-89d2-5815-9804-0d395497f906/search?q=Synthetic", 403},
+		{"/online-instances/b5e86bbe-524b-53fc-bde9-bbe3cbb02a80/search?q=Synthetic", 403},
+		{"/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/search?q=Synthetic&limit=1", 429},
+		{"/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/search?q=Changed&limit=1&cursor=" + url.QueryEscape(*page.NextCursor), 400},
+		{"/online-instances/db019d81-1fbb-528c-a9f7-9c47006844a2/search?q=Synthetic&limit=1&cursor=" + url.QueryEscape(*page.NextCursor), 400},
+		{"/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/search?q=Synthetic&url=https://private.invalid", 400},
+		{"/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/search?q=Synthetic&q=Again", 400},
+		{"/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/search?q=Synthetic&limit=01", 400},
+		{"/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/search?q=Synthetic&limit=51", 400},
+		{"/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/search?q=", 400},
+		{"/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/tracks/42?accountId=private", 400},
+		{"/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/recommendations?cursor=invalid", 400},
 	} {
 		w = request("GET", tc.path, "", true, nil)
 		if w.Code != tc.code {
@@ -145,7 +145,7 @@ func TestOnlineHTTPPrivateAuthenticatedMetadataAndErrors(t *testing.T) {
 	}
 	for _, tc := range []struct{ path, schema string }{{"/tracks/42", "OnlineTrack"}, {"/recommendations?limit=1", "OnlineRecommendationPage"}, {"/playlists/91", "OnlineObservation"}} {
 		time.Sleep(1050 * time.Millisecond)
-		w = request("GET", "/online-instances/net"+tc.path, "", true, nil)
+		w = request("GET", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041"+tc.path, "", true, nil)
 		if w.Code != 200 {
 			t.Fatalf("online read: %d %s", w.Code, w.Body.String())
 		}
@@ -164,10 +164,10 @@ func TestOnlineHTTPPrivateAuthenticatedMetadataAndErrors(t *testing.T) {
 		code               int
 	}{
 		{"GET", "/online-instances", "", false, nil, 401},
-		{"POST", "/online-instances/net/tracks/42/resolve", "{}", true, nil, 415},
-		{"POST", "/online-instances/net/tracks/42/resolve", `{"url":"private"}`, true, nil, 400},
-		{"POST", "/online-instances/net/tracks/42/resolve", "{}", true, func(r *http.Request) { r.Header.Del("X-CSRF-Token") }, 403},
-		{"POST", "/online-instances/net/tracks/42/resolve", "{}", true, func(r *http.Request) { r.Header.Set("Origin", "https://other.invalid") }, 403},
+		{"POST", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/tracks/42/resolve", "{}", true, nil, 415},
+		{"POST", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/tracks/42/resolve", `{"url":"private"}`, true, nil, 400},
+		{"POST", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/tracks/42/resolve", "{}", true, func(r *http.Request) { r.Header.Del("X-CSRF-Token") }, 403},
+		{"POST", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/tracks/42/resolve", "{}", true, func(r *http.Request) { r.Header.Set("Origin", "https://other.invalid") }, 403},
 	} {
 		if w := request(tc.method, tc.path, tc.body, tc.auth, tc.modify); w.Code != tc.code {
 			t.Fatalf("auth/resolve: %d %s", w.Code, w.Body.String())

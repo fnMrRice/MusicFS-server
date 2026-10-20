@@ -37,7 +37,7 @@ func TestPluginGateOfflineCausePreservesAdmissionAndForceCleanup(t *testing.T) {
 
 func TestPluginManagerWorkerExitRemainsOfflineUntilExplicitStateChange(t *testing.T) {
 	h := setup(t)
-	gate := h.manager.Gate("ncm")
+	gate := h.manager.Gate(ncmInstanceID)
 	h.ready.Store(false)
 	for deadline := time.Now().Add(2 * time.Second); ; {
 		state := h.manager.Snapshot().Items[0].Instances[0]

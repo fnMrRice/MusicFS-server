@@ -103,7 +103,7 @@ func TestAutomaticExplicitImportAllLanguagesAndManualLockAcrossRestart(t *testin
 	// The request remains durable while no worker is running. Global languages
 	// cannot suppress English/unknown language explicitly imported by the scan.
 	j := rescanAutomatic(t, f, true)
-	policy := enrichment.AutomaticPolicy{Languages: []string{"zh"}, InstancePriority: []string{"scraper"}}
+	policy := enrichment.AutomaticPolicy{Languages: []string{"zh"}, InstancePriority: []string{"d248bf34-1780-59d3-a557-9cf5d889e977"}}
 	automaticService(t, &f, policy, f.runtimes)
 	results := automaticFinished(t, f, j.ID)
 	for _, r := range results {
@@ -169,7 +169,7 @@ func TestAutomaticRejectsAmbiguousEmbeddedAndDirectoryCover(t *testing.T) {
 	}
 	j := rescanAutomatic(t, f, false)
 	// Start after publication so the policy is captured once at dispatch.
-	automaticService(t, &f, enrichment.AutomaticPolicy{Enabled: true, InstancePriority: []string{"scraper"}, Fields: []string{"lyrics", "artwork"}}, f.runtimes)
+	automaticService(t, &f, enrichment.AutomaticPolicy{Enabled: true, InstancePriority: []string{"d248bf34-1780-59d3-a557-9cf5d889e977"}, Fields: []string{"lyrics", "artwork"}}, f.runtimes)
 	results := automaticFinished(t, f, j.ID)
 	ambiguous, cover := false, false
 	for _, r := range results {

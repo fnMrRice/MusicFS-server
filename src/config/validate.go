@@ -7,6 +7,9 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/fnMrRice/MusicFS-server/src/instanceid"
+	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 )
 
 func (c Config) Validate() error {
@@ -84,18 +87,15 @@ func (c Config) validatePlugins(writable []string) error {
 	onlineInstances := 0
 	watchedInstances := 0
 	for _, plugin := range c.Plugins {
-		role := "audio"
-		switch plugin.PluginID {
-		case "musicfs.localfiles", "musicfs.netease", "musicfs.qqmusic", "musicfs.applemusic":
-			role = "provider"
-		case "musicfs.scraper.local":
-			role = "scraper"
-		case "musicfs.audio.ffmpeg", "musicfs.ncm":
-		default:
+		role := pluginconfig.Role(plugin.PluginID)
+		if role == "" {
 			return errors.New("unsupported pluginId")
 		}
 		if plugins[plugin.PluginID] {
 			return errors.New("pluginId must be unique")
+		}
+		if !pluginconfig.SupportsMultipleInstances(plugin.PluginID) && len(plugin.Instances) > 1 {
+			return errors.New("plugin supports at most one configured instance")
 		}
 		if role == "scraper" && len(plugin.Instances) > 16 {
 			return errors.New("local scraper supports at most 16 configured instances")
@@ -124,10 +124,9 @@ func (c Config) validatePlugins(writable []string) error {
 				return errors.New("invalid plugin argument")
 			}
 		}
-		active := 0
 		for _, instance := range plugin.Instances {
 			if instance.Permissions != nil {
-				if plugin.PluginID != "musicfs.localfiles" || len(instance.Permissions.ReadDirectories) > 256 {
+				if plugin.PluginID != "musicfs.plugin.source.localfiles" || len(instance.Permissions.ReadDirectories) > 256 {
 					return errors.New("invalid filesystem permissions")
 				}
 				for _, path := range instance.Permissions.ReadDirectories {
@@ -140,13 +139,10 @@ func (c Config) validatePlugins(writable []string) error {
 				return err
 			}
 			identityKey := strings.ToLower(instance.InstanceID)
-			if !validConfigID(instance.InstanceID) || instances[identityKey] {
-				return errors.New("instanceId must be valid and globally unique ignoring case")
+			if !instanceid.Valid(instance.InstanceID) || instances[identityKey] {
+				return errors.New("instanceId must be a UUID and globally unique ignoring case")
 			}
 			instances[identityKey] = true
-			if instance.Role != role {
-				return errors.New("instance role does not match pluginId")
-			}
 			enabled := plugin.CanStart(instance)
 			if enabled && instance.Config.Watch != nil && instance.Config.Watch.Enabled {
 				watchedInstances++
@@ -155,7 +151,6 @@ func (c Config) validatePlugins(writable []string) error {
 				}
 			}
 			if enabled {
-				active++
 				if plugin.Executable == "" {
 					return errors.New("enabled plugin instance requires an executable path")
 				}
@@ -163,9 +158,6 @@ func (c Config) validatePlugins(writable []string) error {
 			if err := validateSettings(plugin.PluginID, instance.Config, enabled, writable); err != nil {
 				return err
 			}
-		}
-		if role == "audio" && active > 1 {
-			return errors.New("audio plugins support at most one effectively enabled instance each")
 		}
 	}
 	return nil
@@ -185,7 +177,7 @@ func validConfigID(id string) bool {
 
 func validateSettings(plugin string, settings InstanceConfig, enabled bool, writable []string) error {
 	if settings.Watch != nil {
-		if plugin != "musicfs.localfiles" {
+		if plugin != "musicfs.plugin.source.localfiles" {
 			return errors.New("watch is available only for local files")
 		}
 		if err := settings.Watch.Validate(); err != nil {
@@ -198,13 +190,13 @@ func validateSettings(plugin string, settings InstanceConfig, enabled bool, writ
 	if strings.ContainsRune(settings.FFmpegPath, 0) || strings.ContainsRune(settings.FFprobePath, 0) {
 		return errors.New("invalid audio tool path")
 	}
-	if plugin != "musicfs.localfiles" && len(settings.MusicRoots) != 0 || plugin != "musicfs.audio.ffmpeg" && (settings.FFmpegPath != "" || settings.FFprobePath != "") {
+	if plugin != "musicfs.plugin.source.localfiles" && len(settings.MusicRoots) != 0 || plugin != "musicfs.plugin.decoder.ffmpeg" && (settings.FFmpegPath != "" || settings.FFprobePath != "") {
 		return errors.New("instance config does not match pluginId")
 	}
-	if enabled && plugin == "musicfs.audio.ffmpeg" && (settings.FFmpegPath == "" || settings.FFprobePath == "") {
+	if enabled && plugin == "musicfs.plugin.decoder.ffmpeg" && (settings.FFmpegPath == "" || settings.FFprobePath == "") {
 		return errors.New("enabled audio instance requires ffmpegPath and ffprobePath")
 	}
-	if enabled && plugin == "musicfs.localfiles" && len(settings.MusicRoots) == 0 {
+	if enabled && plugin == "musicfs.plugin.source.localfiles" && len(settings.MusicRoots) == 0 {
 		return errors.New("enabled local files instance requires musicRoots")
 	}
 	ids := map[string]bool{}

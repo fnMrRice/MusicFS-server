@@ -28,9 +28,9 @@ func TestRemotePlaylistsHTTPImportSyncSnapshotPrivacyAndErrors(t *testing.T) {
 	server, store, _ := libraryHTTP(t)
 	cookie, session := login(t, server)
 	host, err := onlinehost.New([]onlinehost.Runtime{
-		{Owner: "admin", InstanceID: "net", Platform: online.Netease, ConfigRevision: "private-config-revision", Enabled: true, Provider: &playlistHTTPProvider{}},
-		{Owner: "admin", InstanceID: "qq", Platform: online.QQMusic, ConfigRevision: "private-config-revision", Enabled: true, Provider: &playlistHTTPProvider{}},
-		{Owner: "other", InstanceID: "private", Platform: online.Netease, ConfigRevision: "private-config-revision", Enabled: true, Provider: &playlistHTTPProvider{}},
+		{Owner: "admin", InstanceID: "7fe223d0-a3bd-5e87-87f8-305dc26d9041", Platform: online.Netease, ConfigRevision: "private-config-revision", Enabled: true, Provider: &playlistHTTPProvider{}},
+		{Owner: "admin", InstanceID: "b5e86bbe-524b-53fc-bde9-bbe3cbb02a80", Platform: online.QQMusic, ConfigRevision: "private-config-revision", Enabled: true, Provider: &playlistHTTPProvider{}},
+		{Owner: "other", InstanceID: "843558e1-a158-56ac-834a-baffd12bb5c5", Platform: online.Netease, ConfigRevision: "private-config-revision", Enabled: true, Provider: &playlistHTTPProvider{}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -77,7 +77,7 @@ func TestRemotePlaylistsHTTPImportSyncSnapshotPrivacyAndErrors(t *testing.T) {
 		testkit.ValidateHTTP(t, schema, w.Body.Bytes())
 		return w
 	}
-	ref := playlists.RemoteRef{InstanceID: "net", AccountID: "12345", ExternalID: "91"}
+	ref := playlists.RemoteRef{InstanceID: "7fe223d0-a3bd-5e87-87f8-305dc26d9041", AccountID: "12345", ExternalID: "91"}
 	decodeImported := func(w *httptest.ResponseRecorder) playlists.RemotePlaylist {
 		t.Helper()
 		var result struct {
@@ -98,12 +98,12 @@ func TestRemotePlaylistsHTTPImportSyncSnapshotPrivacyAndErrors(t *testing.T) {
 	otherRef := ref
 	otherRef.ExternalID = "92"
 	expect("POST", "/remote-playlists", otherRef, "import-key-1", 409, "Error")
-	expect("POST", "/remote-playlists", map[string]any{"instanceId": "net", "externalId": "91"}, "missing-account", 400, "Error")
-	expect("POST", "/remote-playlists", map[string]any{"instanceId": "net", "accountId": "", "externalId": "91", "url": "private"}, "forged-url", 400, "Error")
+	expect("POST", "/remote-playlists", map[string]any{"instanceId": "7fe223d0-a3bd-5e87-87f8-305dc26d9041", "externalId": "91"}, "missing-account", 400, "Error")
+	expect("POST", "/remote-playlists", map[string]any{"instanceId": "7fe223d0-a3bd-5e87-87f8-305dc26d9041", "accountId": "", "externalId": "91", "url": "private"}, "forged-url", 400, "Error")
 	for _, tc := range []struct {
 		ref    playlists.RemoteRef
 		status int
-	}{{playlists.RemoteRef{InstanceID: "net", AccountID: "other", ExternalID: "91"}, 403}, {playlists.RemoteRef{InstanceID: "private", ExternalID: "91"}, 404}, {playlists.RemoteRef{InstanceID: "qq", AccountID: "12345", ExternalID: "91"}, 415}, {playlists.RemoteRef{InstanceID: "net", ExternalID: "https://private.invalid"}, 400}} {
+	}{{playlists.RemoteRef{InstanceID: "7fe223d0-a3bd-5e87-87f8-305dc26d9041", AccountID: "other", ExternalID: "91"}, 403}, {playlists.RemoteRef{InstanceID: "843558e1-a158-56ac-834a-baffd12bb5c5", ExternalID: "91"}, 404}, {playlists.RemoteRef{InstanceID: "b5e86bbe-524b-53fc-bde9-bbe3cbb02a80", AccountID: "12345", ExternalID: "91"}, 415}, {playlists.RemoteRef{InstanceID: "7fe223d0-a3bd-5e87-87f8-305dc26d9041", ExternalID: "https://private.invalid"}, 400}} {
 		expect("POST", "/remote-playlists", tc.ref, "invalid-ref", tc.status, "Error")
 	}
 	for _, change := range []func(*http.Request){func(r *http.Request) { r.Header.Del("Cookie") }, func(r *http.Request) { r.Header.Del("X-CSRF-Token") }, func(r *http.Request) { r.Header.Set("Origin", "https://untrusted.invalid") }} {
@@ -115,7 +115,7 @@ func TestRemotePlaylistsHTTPImportSyncSnapshotPrivacyAndErrors(t *testing.T) {
 	}
 	expect("POST", "/remote-playlists", ref, "", 400, "Error")
 	ctx := context.Background()
-	private, _, err := store.ImportRemotePlaylist(ctx, "other", playlists.Binding{RemoteRef: playlists.RemoteRef{InstanceID: "private", ExternalID: "91"}, Platform: online.Netease, ConfigRevision: "private-config-revision"}, "private-import")
+	private, _, err := store.ImportRemotePlaylist(ctx, "other", playlists.Binding{RemoteRef: playlists.RemoteRef{InstanceID: "843558e1-a158-56ac-834a-baffd12bb5c5", ExternalID: "91"}, Platform: online.Netease, ConfigRevision: "private-config-revision"}, "private-import")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -41,16 +41,16 @@ func TestConfigurationSchema(t *testing.T) {
 	}{
 		"minimal":                     {minimalYAML, true},
 		"plugins":                     {minimalYAML + pluginYAML, true},
-		"unlimited recursion":         {strings.Replace(minimalYAML+pluginYAML, "        role: provider\n", "        role: provider\n        importDefaults: {recursive: true, maxDepth: 0}\n", 1), true},
-		"flat recursion":              {strings.Replace(minimalYAML+pluginYAML, "        role: provider\n", "        role: provider\n        importDefaults: {recursive: false, maxDepth: 0}\n", 1), true},
-		"contradictory recursion":     {strings.Replace(minimalYAML+pluginYAML, "        role: provider\n", "        role: provider\n        importDefaults: {recursive: false, maxDepth: 1}\n", 1), false},
+		"unlimited recursion":         {strings.Replace(minimalYAML+pluginYAML, "      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n", "      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n        importDefaults: {recursive: true, maxDepth: 0}\n", 1), true},
+		"flat recursion":              {strings.Replace(minimalYAML+pluginYAML, "      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n", "      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n        importDefaults: {recursive: false, maxDepth: 0}\n", 1), true},
+		"contradictory recursion":     {strings.Replace(minimalYAML+pluginYAML, "      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n", "      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n        importDefaults: {recursive: false, maxDepth: 1}\n", 1), false},
 		"unknown top":                 {minimalYAML + "pluginPath: legacy", false},
 		"secret":                      {minimalYAML + "adminToken: private", false},
 		"version":                     {strings.Replace(minimalYAML, "Version: 1", "Version: 2", 1), false},
 		"null":                        {minimalYAML + "webRoot: null", false},
 		"enabled string":              {strings.Replace(minimalYAML+pluginYAML, "enabled: true", "enabled: 'false'", 1), false},
 		"ncm config":                  {strings.Replace(minimalYAML+pluginYAML, "config: {}", "config: {musicRoots: []}", 1), false},
-		"role mismatch":               {strings.Replace(minimalYAML+pluginYAML, "role: provider", "role: audio", 1), false},
+		"configured role":             {strings.Replace(minimalYAML+pluginYAML, "instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n", "instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n        role: provider\n", 1), false},
 		"missing dependency":          {strings.Replace(minimalYAML+pluginYAML, "ffprobePath: '../tools/ffprobe'", "ffprobePath: ''", 1), false},
 		"disabled missing dependency": {strings.ReplaceAll(strings.Replace(minimalYAML+pluginYAML, "ffprobePath: '../tools/ffprobe'", "ffprobePath: ''", 1), "enabled: true", "enabled: false"), true},
 	} {
@@ -114,12 +114,11 @@ func TestLocalPendingConfigurationMatchesLoaderAndSchema(t *testing.T) {
 	for _, permission := range []string{"", "        permissions: {readDirectories: []}\n", "        permissions: {readDirectories: ['./music']}\n"} {
 		raw := minimalYAML + `pluginBundle: ''
 plugins:
-  - pluginId: musicfs.localfiles
+  - pluginId: musicfs.plugin.source.localfiles
     executable: './local-worker'
     enabled: true
     instances:
-      - instanceId: local
-        role: provider
+      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51
         enabled: true
         config: {}
 ` + permission

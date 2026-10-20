@@ -105,7 +105,7 @@ func requireHTTP(t *testing.T, w *httptest.ResponseRecorder, status int, failure
 func TestPluginManagementHTTPAuthorizationCSRFRevisionAndIdempotency(t *testing.T) {
 	h := setup(t)
 	server, cookies := managementHTTP(t, h.manager)
-	for _, route := range []string{"/admin/plugins", "/admin/plugins/musicfs.ncm/instances", "/admin/plugin-instances/ncm/configuration", "/admin/plugin-operations/missing"} {
+	for _, route := range []string{"/admin/plugins", "/admin/plugins/musicfs.plugin.decoder.ncm/instances", "/admin/plugin-instances/" + ncmInstanceID + "/configuration", "/admin/plugin-operations/missing"} {
 		requireHTTP(t, managementRequest(server, nil, "GET", route, "", "", ""), 401, "AUTH_REQUIRED")
 		requireHTTP(t, managementRequest(server, cookies["user"], "GET", route, "", "", ""), 403, "ACCESS_DENIED")
 	}
@@ -116,7 +116,7 @@ func TestPluginManagementHTTPAuthorizationCSRFRevisionAndIdempotency(t *testing.
 	if revision != `"`+h.manager.Snapshot().Revision+`"` || strings.Contains(w.Body.String(), "installed-worker") || strings.Contains(w.Body.String(), "executable") {
 		t.Fatal("missing ETag or private executable leaked", w.Body.String())
 	}
-	state := "/admin/plugin-instances/ncm/state"
+	state := "/admin/plugin-instances/" + ncmInstanceID + "/state"
 	body := `{"enabled":false,"mode":"drain"}`
 	requireHTTP(t, managementRequest(server, cookies["user"], "PUT", state, body, revision, "user-state"), 403, "ACCESS_DENIED")
 	r := httptest.NewRequest("PUT", "/api/v1"+state, strings.NewReader(body))
@@ -152,7 +152,7 @@ func TestPluginManagementHTTPAuthorizationCSRFRevisionAndIdempotency(t *testing.
 	w = managementRequest(server, cookies["admin"], "GET", "/admin/plugin-operations/"+operation.ID, "", "", "")
 	requireHTTP(t, w, 200, "")
 	testkit.ValidateHTTP(t, "PluginOperation", w.Body.Bytes())
-	w = managementRequest(server, cookies["admin"], "GET", "/admin/plugins/musicfs.ncm/instances", "", "", "")
+	w = managementRequest(server, cookies["admin"], "GET", "/admin/plugins/musicfs.plugin.decoder.ncm/instances", "", "", "")
 	requireHTTP(t, w, 200, "")
 	testkit.ValidateHTTP(t, "ManagedPluginInstances", w.Body.Bytes())
 	if !strings.Contains(w.Body.String(), `"configuredEnabled":false`) || !strings.Contains(w.Body.String(), `"effectiveEnabled":true`) || !strings.Contains(w.Body.String(), `"runtimeState":"ready"`) || !strings.Contains(w.Body.String(), `"reason":"RESTART_REQUIRED"`) {
@@ -170,36 +170,34 @@ listen: '127.0.0.1:8080'
 allowLoopbackHttp: true
 allowedOrigins: ['http://127.0.0.1:8080']
 plugins:
-  - pluginId: musicfs.localfiles
+  - pluginId: musicfs.plugin.source.localfiles
     executable: './private-provider-worker'
     enabled: false
     instances:
-      - instanceId: local
+      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51
         name: Local
-        role: provider
         enabled: false
         config:
           musicRoots:
             - id: music
               name: Music
               path: ` + strconv.Quote(private) + `
-  - pluginId: musicfs.audio.ffmpeg
+  - pluginId: musicfs.plugin.decoder.ffmpeg
     executable: './private-audio-worker'
     enabled: false
     instances:
-      - instanceId: audio
-        role: audio
+      - instanceId: 7edbaa88-7094-5657-ac43-37c118ef4f77
+        name: Plugin instance
         enabled: false
         config:
           ffmpegPath: './private-ffmpeg'
           ffprobePath: './private-ffprobe'
-  - pluginId: musicfs.ncm
+  - pluginId: musicfs.plugin.decoder.ncm
     executable: './private-ncm-worker'
     enabled: false
     instances:
-      - instanceId: ncm
+      - instanceId: d1971de9-e153-57c6-ac53-82dfb631da0b
         name: Decoder
-        role: audio
         enabled: false
         config: {}
 `
@@ -231,7 +229,7 @@ func TestPluginManagementHTTPConfigurationSchemaAndWriteOnlyPaths(t *testing.T) 
 	w := managementRequest(server, cookies["admin"], "GET", "/admin/plugins", "", "", "")
 	requireHTTP(t, w, 200, "")
 	testkit.ValidateHTTP(t, "PluginManagementSnapshot", w.Body.Bytes())
-	for _, id := range []string{"local", "audio", "ncm"} {
+	for _, id := range []string{localInstanceID, audioInstanceID, ncmInstanceID} {
 		w := managementRequest(server, cookies["admin"], "GET", "/admin/plugin-instances/"+id+"/configuration", "", "", "")
 		requireHTTP(t, w, 200, "")
 		testkit.ValidateHTTP(t, "ManagedPluginConfiguration", w.Body.Bytes())
@@ -244,17 +242,17 @@ func TestPluginManagementHTTPConfigurationSchemaAndWriteOnlyPaths(t *testing.T) 
 		if json.Unmarshal(w.Body.Bytes(), &view) != nil || view.Schema["additionalProperties"] != false {
 			t.Fatal("configuration lacks strict writable schema", w.Body.String())
 		}
-		if id == "local" && (len(view.Roots) != 1 || !view.Roots[0].PathConfigured || view.ImportOptions == nil || view.Watch == nil) {
+		if id == localInstanceID && (len(view.Roots) != 1 || !view.Roots[0].PathConfigured || view.ImportOptions == nil || view.Watch == nil) {
 			t.Fatal("local configuration summary incomplete", view)
 		}
-		if id == "audio" && (!view.FFmpegConfigured || !view.FFprobeConfigured) {
+		if id == audioInstanceID && (!view.FFmpegConfigured || !view.FFprobeConfigured) {
 			t.Fatal("audio path presence missing", view)
 		}
-		if id != "ncm" && !strings.Contains(w.Body.String(), `"writeOnly":true`) {
+		if id != ncmInstanceID && !strings.Contains(w.Body.String(), `"writeOnly":true`) {
 			t.Fatal("path input schema is not write-only")
 		}
 	}
-	path := "/admin/plugin-instances/local/configuration"
+	path := "/admin/plugin-instances/" + localInstanceID + "/configuration"
 	revision := `"` + manager.Snapshot().Revision + `"`
 	for index, body := range []string{`{}`, `{"role":"audio"}`, `{"executable":"private"}`, `{"ffmpegPath":"private"}`, `{"importDefaults":{"recursive":true,"maxDepth":-1}}`, `{"musicRoots":[{"id":"music","name":"Music","path":null}]}`} {
 		w := managementRequest(server, cookies["admin"], "PUT", path, body, revision, "bad-settings-"+strconv.Itoa(index))
@@ -273,7 +271,7 @@ func TestPluginManagementHTTPConfigurationSchemaAndWriteOnlyPaths(t *testing.T) 
 	if json.Unmarshal(w.Body.Bytes(), &view) != nil || view.Name != "Renamed local" || view.Roots[0].Name != "Renamed root" || !view.Roots[0].PathConfigured {
 		t.Fatal("partial root update lost its preserved private path", w.Body.String())
 	}
-	path = "/admin/plugin-instances/ncm/configuration"
+	path = "/admin/plugin-instances/" + ncmInstanceID + "/configuration"
 	revision = `"` + manager.Snapshot().Revision + `"`
 	w = managementRequest(server, cookies["admin"], "PUT", path, `{"name":"Renamed decoder"}`, revision, "save-http-ncm-settings")
 	requireHTTP(t, w, 202, "")

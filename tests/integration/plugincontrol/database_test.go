@@ -19,7 +19,7 @@ func TestLocalSettingsDatabaseAndDirectoryAuthority(t *testing.T) {
 	ctx := context.Background()
 	dir, music := t.TempDir(), t.TempDir()
 	path := filepath.Join(dir, "server.yaml")
-	raw := "configVersion: 1\nallowLoopbackHttp: true\nallowedOrigins: ['http://127.0.0.1:8080']\npluginBundle: ''\nplugins:\n  - pluginId: musicfs.localfiles\n    executable: './worker'\n    enabled: true\n    instances:\n      - instanceId: local\n        role: provider\n        enabled: true\n        permissions:\n          readDirectories: [" + strconv.Quote(music) + "]\n        config: {}\n"
+	raw := "configVersion: 1\nallowLoopbackHttp: true\nallowedOrigins: ['http://127.0.0.1:8080']\npluginBundle: ''\nplugins:\n  - pluginId: musicfs.plugin.source.localfiles\n    executable: './worker'\n    enabled: true\n    instances:\n      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n        name: Plugin instance\n        enabled: true\n        permissions:\n          readDirectories: [" + strconv.Quote(music) + "]\n        config: {}\n"
 	if err := os.WriteFile(path, []byte(raw), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestLocalSettingsDatabaseAndDirectoryAuthority(t *testing.T) {
 	defer m.Close()
 	initial := store.Snapshot().Revision
 	roots := []config.RootSettings{{ID: "music", Name: "Music", Path: &music}}
-	change := config.Change{PluginID: "musicfs.localfiles", InstanceID: "local", ExpectedRevision: initial, IdempotencyKey: "database-configure", Settings: &config.InstanceSettings{MusicRoots: &roots}}
+	change := config.Change{PluginID: "musicfs.plugin.source.localfiles", InstanceID: localInstanceID, ExpectedRevision: initial, IdempotencyKey: "database-configure", Settings: &config.InstanceSettings{MusicRoots: &roots}}
 	op, err := m.Change(ctx, "admin", change)
 	if err != nil {
 		t.Fatal(err)
@@ -72,7 +72,7 @@ func TestLocalSettingsDatabaseAndDirectoryAuthority(t *testing.T) {
 		t.Fatalf("revocation lost settings or left provider active: %v", err)
 	}
 	// Writeback can refer to an API-created root without copying it into YAML.
-	granted := raw + "writeBack: {roots: [{instanceId: local, rootId: music, fields: [lyrics]}]}\n"
+	granted := raw + "writeBack: {roots: [{instanceId: b1548e96-3081-5c9c-8376-bf290e369d51, rootId: music, fields: [lyrics]}]}\n"
 	if err := os.WriteFile(path, []byte(granted), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestLocalSettingsDatabaseAndDirectoryAuthority(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chmod(path, 0600) })
 	name := "Read-only deployment"
-	_, err = m.Change(ctx, "admin", config.Change{PluginID: change.PluginID, InstanceID: "local", ExpectedRevision: store.Snapshot().Revision, IdempotencyKey: "database-readonly-yaml", Settings: &config.InstanceSettings{Name: &name}})
+	_, err = m.Change(ctx, "admin", config.Change{PluginID: change.PluginID, InstanceID: localInstanceID, ExpectedRevision: store.Snapshot().Revision, IdempotencyKey: "database-readonly-yaml", Settings: &config.InstanceSettings{Name: &name}})
 	if err != nil {
 		t.Fatalf("read-only YAML blocked database settings: %v", err)
 	}
@@ -96,11 +96,11 @@ func TestLocalSettingsDatabaseAndDirectoryAuthority(t *testing.T) {
 	}
 	outside := t.TempDir()
 	roots = []config.RootSettings{{ID: "outside", Name: "Outside", Path: &outside}}
-	_, err = m.Change(ctx, "admin", config.Change{PluginID: change.PluginID, InstanceID: "local", ExpectedRevision: store.Snapshot().Revision, IdempotencyKey: "database-deny-outside", Settings: &config.InstanceSettings{MusicRoots: &roots}})
+	_, err = m.Change(ctx, "admin", config.Change{PluginID: change.PluginID, InstanceID: localInstanceID, ExpectedRevision: store.Snapshot().Revision, IdempotencyKey: "database-deny-outside", Settings: &config.InstanceSettings{MusicRoots: &roots}})
 	code(t, err, "ACCESS_DENIED")
 	// Empty means intentionally unconfigured, and must not revive YAML defaults.
 	roots = []config.RootSettings{}
-	_, err = m.Change(ctx, "admin", config.Change{PluginID: change.PluginID, InstanceID: "local", ExpectedRevision: store.Snapshot().Revision, IdempotencyKey: "database-remove-all", Settings: &config.InstanceSettings{MusicRoots: &roots}})
+	_, err = m.Change(ctx, "admin", config.Change{PluginID: change.PluginID, InstanceID: localInstanceID, ExpectedRevision: store.Snapshot().Revision, IdempotencyKey: "database-remove-all", Settings: &config.InstanceSettings{MusicRoots: &roots}})
 	if err != nil {
 		t.Fatal(err)
 	}

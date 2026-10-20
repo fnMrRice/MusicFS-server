@@ -24,7 +24,7 @@ func configureLibraryManagement(runCtx context.Context, c config.Config, lib *li
 		}
 	}
 	for _, plugin := range c.Plugins {
-		if plugin.PluginID != "musicfs.localfiles" {
+		if plugin.PluginID != "musicfs.plugin.source.localfiles" {
 			continue
 		}
 		for _, instance := range plugin.Instances {
@@ -88,7 +88,13 @@ func configureLibraryManagement(runCtx context.Context, c config.Config, lib *li
 				r.Worker = nil
 				return lib.UpdateRuntime(r)
 			}
-			hooks := plugincontrol.Hooks{Ready: ready, Stop: stop, Capabilities: func() []string {
+			hooks := plugincontrol.Hooks{Ready: ready, Stop: stop, PluginIdentity: func() *pluginproto.PluginIdentity {
+				r, ok := lib.Runtime(id)
+				if !ok || r.Worker == nil {
+					return nil
+				}
+				return r.Worker.PluginIdentity()
+			}, Capabilities: func() []string {
 				r, ok := lib.Runtime(id)
 				if !ok || r.Worker == nil {
 					return []string{}

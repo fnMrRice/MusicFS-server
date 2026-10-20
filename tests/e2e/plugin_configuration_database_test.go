@@ -19,7 +19,7 @@ func TestDatabaseConfiguredLocalDirectoryWorkflow(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg, base := yamlServiceConfig(t)
-	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.localfiles", Executable: build(t, "musicfs-plugin-local"), Enabled: true, Instances: []config.Instance{{InstanceID: "local", Role: "provider", Enabled: true, Permissions: &config.Permissions{ReadDirectories: []string{music}}}}}}
+	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: build(t, "musicfs-plugin-local"), Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Permissions: &config.Permissions{ReadDirectories: []string{music}}}}}}
 	path := writeYAMLConfiguration(t, cfg)
 	original, err := os.ReadFile(path)
 	if err != nil {
@@ -32,9 +32,9 @@ func TestDatabaseConfiguredLocalDirectoryWorkflow(t *testing.T) {
 	if status != 200 || !bytes.Contains(raw, []byte("pending_configuration")) {
 		t.Fatalf("empty provider was not pending: %d %s", status, raw)
 	}
-	op := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/local/configuration", map[string]any{"musicRoots": []config.MusicRoot{{ID: "music", Name: "Music", Path: music}}})
+	op := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/b1548e96-3081-5c9c-8376-bf290e369d51/configuration", map[string]any{"musicRoots": []config.MusicRoot{{ID: "music", Name: "Music", Path: music}}})
 	waitLibraryOperation(t, c, op.ID)
-	tracks := scanProvider(t, c, "local", "database-initial-scan")
+	tracks := scanProvider(t, c, "b1548e96-3081-5c9c-8376-bf290e369d51", "database-initial-scan")
 	if len(tracks) != 1 {
 		t.Fatal("API-selected root was not scanned")
 	}
@@ -46,7 +46,7 @@ func TestDatabaseConfiguredLocalDirectoryWorkflow(t *testing.T) {
 	stop()
 	stop = startAudioYAMLServer(t, path, cfg, base)
 	c = login(t, base, cfg.AdminToken)
-	tracks = scanProvider(t, c, "local", "database-restored-scan")
+	tracks = scanProvider(t, c, "b1548e96-3081-5c9c-8376-bf290e369d51", "database-restored-scan")
 	if len(tracks) != 1 || tracks["first.wav"].ID != first {
 		t.Fatal("restart lost database root or track identity")
 	}

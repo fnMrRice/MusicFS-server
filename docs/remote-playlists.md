@@ -6,7 +6,7 @@ S-P7-04 将远程歌单引用、同步任务和本地修订持久保存。读取
 
 以下路径均以 `/api/v1` 开头，需要MusicFS登录。导入与同步需允许Origin、CSRF和8—128字符 `Idempotency-Key`；幂等窗口24小时。同键不同有效参数返回409，过期返回410，不生成另一份导入或任务。
 
-1. `POST /remote-playlists {"instanceId":"netease-public","accountId":"","externalId":"91"}` 返回201 `{playlist,merged}`。账号字段必须显式提供空字符串；歌单编号来自该来源资料，不接受URL、路径、配置修订或凭据。
+1. `POST /remote-playlists {"instanceId":"a5e47aac-f949-5e45-9709-f28a0d8443df","accountId":"","externalId":"91"}` 返回201 `{playlist,merged}`。账号字段必须显式提供空字符串；歌单编号来自该来源资料，不接受URL、路径、配置修订或凭据。
 2. 导入只记录意图并验证当前实例/能力，不访问远端。初始 `revision=0,title="",stale=true,lastSuccessAt=null,error=null`，尚无快照。已有本人相同实例/账号/歌单返回同一playlistId，`merged=true`；重放返回该身份当前的描述，不把旧描述冻结为永久状态。
 3. `POST /remote-playlists/{id}/sync-jobs {"expectedBindingRevision":1}` 返回202 `{jobId,merged}`。从GET得到当前绑定修订；同歌单和有效配置的在途同步可合并。同键重放保留原任务编号，配置或有效参数变化明确冲突。
 4. `GET /remote-playlist-sync-jobs/{id}` 读取 `queued/running/succeeded/failed/cancelled`。成功的resultRevision指向新本地快照；失败error为安全错误与本次HTTP requestId，没有上游原始正文。generation从入队0开始，领取或恢复时更新，用于拒绝旧任务结果，不是远端版本。

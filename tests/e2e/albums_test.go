@@ -31,8 +31,8 @@ func TestAlbumsActualServerSnapshotDocumentsThumbnailAndRestart(t *testing.T) {
 	}
 	cfg, base := yamlServiceConfig(t)
 	cfg.Plugins = []config.Plugin{
-		{PluginID: "musicfs.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "local", Role: "provider", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Album fixture", Path: music}}}}}},
-		{PluginID: "musicfs.scraper.local", Executable: scraper, Enabled: true, Instances: []config.Instance{{InstanceID: "scraper-local", Role: "scraper", Enabled: true}}},
+		{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Album fixture", Path: music}}}}}},
+		{PluginID: "musicfs.scraper.local", Executable: scraper, Enabled: true, Instances: []config.Instance{{InstanceID: "d248bf34-1780-59d3-a557-9cf5d889e977", Enabled: true}}},
 	}
 	var album albums.SourceAlbum
 	var release albums.Release
@@ -47,12 +47,12 @@ func TestAlbumsActualServerSnapshotDocumentsThumbnailAndRestart(t *testing.T) {
 		c := login(t, base, cfg.AdminToken)
 		tracks := scanNCM(t, c)
 		ordered = []string{tracks["b.wav"].ID, tracks["a.wav"].ID}
-		album = albumRequest[albums.SourceAlbum](t, c, "POST", "/source-albums", map[string]any{"providerInstanceId": "local", "name": "Synthetic album", "sourceTrackIds": ordered}, "album-create-key", 201, "SourceAlbum")
+		album = albumRequest[albums.SourceAlbum](t, c, "POST", "/source-albums", map[string]any{"providerInstanceId": "b1548e96-3081-5c9c-8376-bf290e369d51", "name": "Synthetic album", "sourceTrackIds": ordered}, "album-create-key", 201, "SourceAlbum")
 		if album.Revision != 1 || !reflect.DeepEqual(album.SourceTrackIDs, ordered) {
 			t.Fatal("album did not preserve explicit membership order")
 		}
 		release = albumRequest[albums.Release](t, c, "POST", "/releases", map[string]any{"name": "Synthetic release", "sourceAlbumIds": []string{album.ID}}, "release-create-key", 201, "Release")
-		input := map[string]any{"sourceAlbum": map[string]any{"sourceAlbumId": album.ID, "expectedRevision": album.Revision}, "fields": []string{"lyrics", "artwork"}, "instanceIds": []string{"scraper-local"}}
+		input := map[string]any{"sourceAlbum": map[string]any{"sourceAlbumId": album.ID, "expectedRevision": album.Revision}, "fields": []string{"lyrics", "artwork"}, "instanceIds": []string{"d248bf34-1780-59d3-a557-9cf5d889e977"}}
 		job = metadataJob(t, c, input, "album-metadata-key")
 		if job.State != "completed" || len(job.Targets) != 2 || job.Request.SourceAlbum == nil || job.Request.SourceAlbum.ExpectedRevision != 1 || len(job.Request.SourceTrackIDs) != 0 {
 			t.Fatalf("album snapshot not retained: %+v", job)

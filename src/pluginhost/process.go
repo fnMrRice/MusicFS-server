@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
 )
@@ -112,9 +113,9 @@ func Start(ctx context.Context, cfg Config) (*Worker, error) {
 	var ready pluginproto.Ready
 	err = w.peer.Call(handshake, "host.hello", pluginproto.Hello{ProtocolVersion: pluginproto.ProtocolVersion, InstanceID: cfg.InstanceID, Nonce: nonce, ConfigRevision: "1"}, &ready)
 	if err == nil {
-		err = ready.Manifest.Validate("provider")
+		err = pluginconfig.ValidateManifest(ready.Manifest, "provider")
 	}
-	if err == nil && (ready.InstanceID != cfg.InstanceID || ready.Nonce != nonce || ready.Manifest.PluginID != "musicfs.localfiles") {
+	if err == nil && (ready.InstanceID != cfg.InstanceID || ready.Nonce != nonce || ready.Manifest.PluginID != "musicfs.plugin.source.localfiles") {
 		err = fmt.Errorf("PROTOCOL_MISMATCH: invalid handshake")
 	}
 	if err == nil && (ready.Manifest.Plugin == nil || !slices.Contains(ready.Manifest.Plugin.Features, "music-source")) {
