@@ -24,6 +24,7 @@ type Instance struct {
 	Permissions          *Permissions                 `yaml:"permissions,omitempty" json:"permissions,omitempty"`
 	PendingConfiguration bool                         `yaml:"-" json:"-"`
 	InstanceID           string                       `yaml:"instanceId" json:"instanceId"`
+	OwnerUserID          string                       `yaml:"ownerUserId,omitempty" json:"ownerUserId,omitempty"`
 	Name                 string                       `yaml:"name,omitempty" json:"name,omitempty"`
 	Enabled              bool                         `yaml:"enabled" json:"enabled"`
 	Config               InstanceConfig               `yaml:"config" json:"config"`
@@ -31,6 +32,14 @@ type Instance struct {
 
 	defaultReadDirectories   bool
 	defaultDirectoryRevision int64
+}
+
+// OnlineOwnerUserID preserves the original administrator binding when omitted.
+func (i Instance) OnlineOwnerUserID() string {
+	if i.OwnerUserID == "" {
+		return "admin"
+	}
+	return i.OwnerUserID
 }
 
 type Permissions struct {

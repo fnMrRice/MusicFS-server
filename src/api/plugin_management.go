@@ -23,18 +23,20 @@ func requireAdmin(next Handler) Handler {
 func (s *Server) RegisterPluginManagement(manager *plugincontrol.Manager) {
 	s.registerPluginDirectories(manager)
 	s.Handle("GET /api/v1/admin/plugins", true, false, requireAdmin(func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
-		if _, err := onlineQuery(r); err != nil {
+		allUsers, err := pluginManagementScope(r)
+		if err != nil {
 			return err
 		}
-		v := manager.SnapshotFor(r.Context(), session.User.ID)
+		v := manager.SnapshotForScope(r.Context(), session.User.ID, allUsers)
 		w.Header().Set("ETag", `"`+v.Revision+`"`)
 		return WriteJSON(w, 200, v)
 	}))
 	s.Handle("GET /api/v1/admin/plugins/{pluginId}/instances", true, false, requireAdmin(func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
-		if _, err := onlineQuery(r); err != nil {
+		allUsers, err := pluginManagementScope(r)
+		if err != nil {
 			return err
 		}
-		v := manager.SnapshotFor(r.Context(), session.User.ID)
+		v := manager.SnapshotForScope(r.Context(), session.User.ID, allUsers)
 		for _, p := range v.Items {
 			if p.PluginID == r.PathValue("pluginId") {
 				return WriteJSON(w, 200, struct {
@@ -120,4 +122,22 @@ func (s *Server) RegisterPluginManagement(manager *plugincontrol.Manager) {
 		return WriteJSON(w, http.StatusAccepted, op)
 	}))
 	s.registerPluginEvents(manager)
+}
+
+func pluginManagementScope(r *http.Request) (bool, error) {
+	query, err := onlineQuery(r, "allUsers")
+	if err != nil {
+		return false, err
+	}
+	if _, present := query["allUsers"]; !present {
+		return false, nil
+	}
+	switch query.Get("allUsers") {
+	case "true":
+		return true, nil
+	case "false":
+		return false, nil
+	default:
+		return false, domain.Fail("INVALID_ARGUMENT", "allUsers must be true or false")
+	}
 }

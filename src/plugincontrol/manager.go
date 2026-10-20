@@ -172,13 +172,20 @@ func (m *Manager) Snapshot() Snapshot {
 		}
 		for _, i := range p.Instances {
 			name := i.Name
+			ownerUserID := ""
+			if config.OnlinePlatform(p.PluginID) != "" {
+				ownerUserID = i.OnlineOwnerUserID()
+			}
 			if v.Plugin != nil && (config.OnlinePlatform(p.PluginID) != "" || name == "" || name == i.InstanceID) {
 				name = v.Plugin.Name
 			}
 			r := m.runtimes[i.InstanceID]
+			if r != nil && v.Version == "" && r.hooks.PluginVersion != nil {
+				v.Version = r.hooks.PluginVersion()
+			}
 			if r == nil {
 				code := "RESTART_REQUIRED"
-				v.Instances = append(v.Instances, Instance{PluginID: p.PluginID, InstanceID: i.InstanceID, Name: name, Role: pluginconfig.Role(p.PluginID), Capabilities: []string{}, ConfiguredEnabled: i.Enabled, RuntimeState: "disabled", Generation: 1, Reason: &code})
+				v.Instances = append(v.Instances, Instance{PluginID: p.PluginID, InstanceID: i.InstanceID, Name: name, OwnerUserID: ownerUserID, Role: pluginconfig.Role(p.PluginID), Capabilities: []string{}, ConfiguredEnabled: i.Enabled, RuntimeState: "disabled", Generation: 1, Reason: &code})
 				continue
 			}
 			capabilities := []string{}
@@ -193,7 +200,7 @@ func (m *Manager) Snapshot() Snapshot {
 				code := "PARENT_DISABLED"
 				reason = &code
 			}
-			v.Instances = append(v.Instances, Instance{PluginID: p.PluginID, InstanceID: i.InstanceID, Name: name, Role: pluginconfig.Role(p.PluginID), Capabilities: capabilities, ConfiguredEnabled: i.Enabled, EffectiveEnabled: r.plugin.CanStart(r.instance), AcceptingNewWork: r.gate.Accepting(), RuntimeState: r.state, Generation: r.generation, ActiveLeases: r.gate.Active(), Reason: reason})
+			v.Instances = append(v.Instances, Instance{PluginID: p.PluginID, InstanceID: i.InstanceID, Name: name, OwnerUserID: ownerUserID, Role: pluginconfig.Role(p.PluginID), Capabilities: capabilities, ConfiguredEnabled: i.Enabled, EffectiveEnabled: r.plugin.CanStart(r.instance), AcceptingNewWork: r.gate.Accepting(), RuntimeState: r.state, Generation: r.generation, ActiveLeases: r.gate.Active(), Reason: reason})
 		}
 		s.Items = append(s.Items, v)
 	}

@@ -112,6 +112,9 @@ func rms(samples []float32) float64 {
 
 func TestActualAudioWorkerGainSeekAndMetadata(t *testing.T) {
 	p := newProcessor(t)
+	if p.PluginVersion() != "" {
+		t.Fatal("audio version was published before the worker handshake")
+	}
 	ffmpeg, ffprobe := audioTools(t)
 	input := toneWave(4)
 	originalHash := sha256.Sum256(input)
@@ -133,6 +136,9 @@ func TestActualAudioWorkerGainSeekAndMetadata(t *testing.T) {
 		cancel()
 		if err != nil {
 			t.Fatal(err)
+		}
+		if p.PluginVersion() != "0.2.0" {
+			t.Fatal("verified audio worker version was not retained", p.PluginVersion())
 		}
 	}
 	pcm0 := decodePCM(t, ffmpeg, zero.Bytes())

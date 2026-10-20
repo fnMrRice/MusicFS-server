@@ -57,11 +57,23 @@ func registerOnlineManagement(ctx context.Context, c config.Config, manager *plu
 				return nil
 			}
 			return s.worker.PluginIdentity()
+		}, PluginVersion: func() string {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if s.worker == nil {
+				return ""
+			}
+			return s.worker.PluginVersion()
 		}, InstanceName: func(ctx context.Context, owner string) string {
 			if owner != r.Owner {
 				return ""
 			}
 			return host.InstanceName(ctx, owner, r.InstanceID)
+		}, AccountName: func(ctx context.Context, owner string) string {
+			if owner != r.Owner {
+				return ""
+			}
+			return host.AccountName(ctx, owner, r.InstanceID)
 		}, Capabilities: s.capabilities}, s.ready()); err != nil {
 			return closeAll, err
 		}
@@ -124,8 +136,9 @@ func (s *managedOnline) start(ctx context.Context, p config.Plugin, i config.Ins
 		name = pluginconfig.Identity(p.PluginID).Name
 	}
 	hash := expectedChecksum(p.SHA256, p.Executable)
-	binding, _ := json.Marshal(struct{ Plugin, Instance, Binary, Schema string }{p.PluginID, i.InstanceID, hash, pluginproto.OnlineRevision})
-	r := onlinehost.Runtime{Owner: s.runtime.Owner, InstanceID: i.InstanceID, Name: name, Platform: config.OnlinePlatform(p.PluginID), ConfigRevision: fmt.Sprintf("%x", sha256.Sum256(binding)), Enabled: true, Gate: s.runtime.Gate}
+	owner := i.OnlineOwnerUserID()
+	binding, _ := json.Marshal(struct{ Plugin, Instance, Owner, Binary, Schema string }{p.PluginID, i.InstanceID, owner, hash, pluginproto.OnlineRevision})
+	r := onlinehost.Runtime{Owner: owner, InstanceID: i.InstanceID, Name: name, Platform: config.OnlinePlatform(p.PluginID), ConfigRevision: fmt.Sprintf("%x", sha256.Sum256(binding)), Enabled: true, Gate: s.runtime.Gate}
 	stateDir, err := instanceid.StateDirectory(filepath.Join(s.dataRoot, "online"), i.InstanceID)
 	if err != nil {
 		return err

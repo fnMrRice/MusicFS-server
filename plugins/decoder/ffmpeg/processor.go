@@ -33,6 +33,7 @@ type Config struct {
 }
 type Processor struct {
 	gate          atomic.Pointer[lifecycleBinding]
+	version       atomic.Pointer[string]
 	config        Config
 	Capabilities  Capabilities
 	slots         chan struct{}
@@ -230,6 +231,8 @@ func (p *Processor) run(ctx context.Context, taskID string, readerAt io.ReaderAt
 	if ready.Manifest.PluginID != "musicfs.plugin.decoder.ffmpeg" || ready.Manifest.PluginVersion != audioPluginVersion {
 		return fmt.Errorf("PROTOCOL_MISMATCH: audio worker implementation differs")
 	}
+	version := ready.Manifest.PluginVersion
+	p.version.Store(&version)
 	if err = operation(peer, base+"/input", base+"/output"); err != nil {
 		return err
 	}
@@ -239,4 +242,12 @@ func (p *Processor) run(ctx context.Context, taskID string, readerAt io.ReaderAt
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+// PluginVersion returns only a release verified by a completed worker handshake.
+func (p *Processor) PluginVersion() string {
+	if version := p.version.Load(); version != nil {
+		return *version
+	}
+	return ""
 }

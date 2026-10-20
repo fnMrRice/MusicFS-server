@@ -132,7 +132,7 @@ func yamlField(node *yaml.Node, key string) *yaml.Node {
 
 func validateDocumentShape(root *yaml.Node) error {
 	instance := mappingShape(map[string]fieldShape{
-		"instanceId": stringShape, "name": stringShape,
+		"instanceId": stringShape, "name": stringShape, "ownerUserId": stringShape,
 		"enabled": boolShape, "config": {tag: "!!map"}, "importDefaults": importDefaultsShape(),
 		"permissions": mappingShape(map[string]fieldShape{"readDirectories": sequenceShape(stringShape)}, "readDirectories"),
 	}, "instanceId", "config")
@@ -195,6 +195,9 @@ func validateDocumentShape(root *yaml.Node) error {
 			return nodeError(id, "config.plugins[].pluginId", "unsupported plugin")
 		}
 		for _, instance := range yamlField(plugin, "instances").Content {
+			if owner := yamlField(instance, "ownerUserId"); owner != nil && owner.Value == "" {
+				return nodeError(owner, "config.plugins[].instances[].ownerUserId", "expected a nonempty user identity")
+			}
 			if err := validateShape(yamlField(instance, "config"), settings, "config.plugins[].instances[].config"); err != nil {
 				return err
 			}

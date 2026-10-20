@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 )
 
@@ -144,6 +145,9 @@ func (c Config) validatePlugins(writable []string) error {
 			}
 		}
 		for _, instance := range plugin.Instances {
+			if instance.OwnerUserID != "" && (OnlinePlatform(plugin.PluginID) == "" || !pluginproto.OnlineIdentity(instance.OwnerUserID)) {
+				return errors.New("ownerUserId requires an online plugin and a valid user identity")
+			}
 			if instance.Permissions != nil {
 				if plugin.PluginID != "musicfs.plugin.source.localfiles" || len(instance.Permissions.ReadDirectories) > 256 {
 					return errors.New("invalid filesystem permissions")

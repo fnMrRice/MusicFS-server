@@ -29,9 +29,10 @@ type Config struct {
 }
 
 type Processor struct {
-	gate   atomic.Pointer[lifecycleBinding]
-	config Config
-	slots  chan struct{}
+	gate    atomic.Pointer[lifecycleBinding]
+	version atomic.Pointer[string]
+	config  Config
+	slots   chan struct{}
 }
 
 type Decoded struct {
@@ -182,6 +183,8 @@ func (p *Processor) Open(ctx context.Context, taskID, assetID string, input io.R
 	if pluginconfig.ValidateManifest(ready.Manifest, "audio") != nil || ready.Manifest.PluginID != "musicfs.plugin.decoder.ncm" || !slices.Contains(ready.Manifest.Capabilities, "audio.decrypt") || ready.Nonce != nonce || ready.InstanceID != hello.InstanceID {
 		return nil, fmt.Errorf("PROTOCOL_MISMATCH: NCM worker identity mismatch")
 	}
+	version := ready.Manifest.PluginVersion
+	p.version.Store(&version)
 	var result openResult
 	if err = peer.Call(startup, "ncm.open", openRequest{TaskID: taskID, AssetID: assetID, Nonce: nonce, InputURL: channel.url, Size: size}, &result); err != nil {
 		return nil, err
@@ -199,6 +202,14 @@ func (p *Processor) Open(ctx context.Context, taskID, assetID string, input io.R
 	}
 	success = true
 	return &Decoded{reader: remote, size: result.Size, metadata: cloneMetadata(result.Metadata), cancel: cancel, closed: cleaned}, nil
+}
+
+// PluginVersion returns only a release verified by a completed worker handshake.
+func (p *Processor) PluginVersion() string {
+	if version := p.version.Load(); version != nil {
+		return *version
+	}
+	return ""
 }
 
 func (d *Decoded) ReadAt(dst []byte, offset int64) (int, error) { return d.reader.ReadAt(dst, offset) }

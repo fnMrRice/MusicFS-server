@@ -215,7 +215,7 @@
         "timeoutMs": {"type": "integer", "anyOf": [{"const": 0}, {"minimum": 10, "maximum": 30000}], "default": 5000}
       }
     },
-    "OnlinePlugin": {"allOf": [{"$ref": "#/$defs/Plugin"}], "description": "匿名固定平台适配；加载器额外限制三平台总共最多16实例。禁止配置URL、Cookie、token或导入选项。", "properties": {"pluginId": {"enum": ["musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic"]}, "instances": {"type": "array", "maxItems": 16, "items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"config": {"type": "object", "additionalProperties": false}, "importDefaults": false}}}}},
+    "OnlinePlugin": {"allOf": [{"$ref": "#/$defs/Plugin"}], "description": "按 MusicFS 用户及音乐平台账号隔离的在线实例；ownerUserId 省略时为 admin。每个实例只绑定一个平台账号，多个账号配置不同 instanceId。加载器额外限制三平台总共最多16实例。禁止配置URL、Cookie、token或导入选项。", "properties": {"pluginId": {"enum": ["musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic"]}, "instances": {"type": "array", "maxItems": 16, "items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"config": {"type": "object", "additionalProperties": false}, "importDefaults": false}}}}},
     "ImportOverrides": {
       "type": "object",
       "additionalProperties": false,
@@ -309,6 +309,7 @@
         "instanceId": {
           "$ref": "#/$defs/InstanceID"
         },
+        "ownerUserId": {"type": "string", "minLength": 1, "maxLength": 128, "description": "仅在线插件：所属 MusicFS 用户 ID，省略时为 admin。加载器拒绝控制字符及首尾空白；账号凭据仍单独绑定 instanceId。"},
         "permissions": {"type": "object", "additionalProperties": false, "required": ["readDirectories"], "properties": {"readDirectories": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/NonemptyPath"}}}},
         "name": {
           "type": "string"

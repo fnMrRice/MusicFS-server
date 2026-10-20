@@ -39,13 +39,14 @@ func configureOnline(ctx context.Context, c config.Config, log *slog.Logger) (*o
 			if enabled {
 				hash = expectedChecksum(plugin.SHA256, plugin.Executable)
 			}
-			binding, _ := json.Marshal(struct{ Plugin, Instance, Binary, Schema string }{plugin.PluginID, instance.InstanceID, hash, pluginproto.OnlineRevision})
-			r := onlinehost.Runtime{Owner: "admin", InstanceID: instance.InstanceID, Name: name, Platform: platform, ConfigRevision: fmt.Sprintf("%x", sha256.Sum256(binding)), Enabled: enabled}
+			owner := instance.OnlineOwnerUserID()
+			binding, _ := json.Marshal(struct{ Plugin, Instance, Owner, Binary, Schema string }{plugin.PluginID, instance.InstanceID, owner, hash, pluginproto.OnlineRevision})
+			r := onlinehost.Runtime{Owner: owner, InstanceID: instance.InstanceID, Name: name, Platform: platform, ConfigRevision: fmt.Sprintf("%x", sha256.Sum256(binding)), Enabled: enabled}
 			if enabled {
 				stateDir, err := instanceid.StateDirectory(filepath.Join(c.DataRoot, "online"), instance.InstanceID)
 				var worker *pluginhost.OnlineWorker
 				if err == nil {
-					worker, err = pluginhost.StartOnline(ctx, pluginhost.OnlineConfig{Executable: plugin.Executable, Args: plugin.Args, SHA256: hash, StateDir: stateDir, Platform: platform, UserID: "admin", InstanceID: instance.InstanceID})
+					worker, err = pluginhost.StartOnline(ctx, pluginhost.OnlineConfig{Executable: plugin.Executable, Args: plugin.Args, SHA256: hash, StateDir: stateDir, Platform: platform, UserID: owner, InstanceID: instance.InstanceID})
 				}
 				if err != nil {
 					log.Warn("online plugin instance unavailable", "pluginId", plugin.PluginID, "instanceId", instance.InstanceID, "errorCode", pluginproto.ErrorCode(err))

@@ -94,6 +94,12 @@ func configureLibraryManagement(runCtx context.Context, c config.Config, lib *li
 					return nil
 				}
 				return r.Worker.PluginIdentity()
+			}, PluginVersion: func() string {
+				r, ok := lib.Runtime(id)
+				if !ok || r.Worker == nil {
+					return ""
+				}
+				return r.Worker.Manifest.PluginVersion
 			}, Capabilities: func() []string {
 				r, ok := lib.Runtime(id)
 				if !ok || r.Worker == nil {

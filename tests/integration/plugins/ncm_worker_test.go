@@ -62,6 +62,9 @@ func TestActualNCMWorker(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if p.PluginVersion() != "" {
+		t.Fatal("NCM version was published before the worker handshake")
+	}
 	for _, fixture := range []string{"vbr-untagged.mp3", "lossless.flac"} {
 		t.Run(fixture, func(t *testing.T) {
 			plain, err := os.ReadFile(filepath.Join("..", "..", "testdata", "audio", fixture))
@@ -80,6 +83,9 @@ func TestActualNCMWorker(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer decoded.Close()
+			if p.PluginVersion() != "0.1.0" {
+				t.Fatal("verified NCM worker version was not retained", p.PluginVersion())
+			}
 			if decoded.Size() != int64(len(plain)) || input.bytes.Load() > 4096 {
 				t.Fatalf("unexpected size/startup read: %d / %d", decoded.Size(), input.bytes.Load())
 			}

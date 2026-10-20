@@ -2,6 +2,7 @@ package onlinehost
 
 import (
 	"context"
+	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
@@ -15,21 +16,43 @@ func (s *Service) InstanceName(ctx context.Context, owner, id string) string {
 	defer s.mu.RUnlock()
 	for _, runtime := range s.runtimes {
 		if runtime.Owner == owner && runtime.InstanceID == id {
-			name := runtimeAlias(runtime)
-			if ready(runtime) && runtime.Gate.Check(ctx) == nil {
-				if provider, ok := runtime.Provider.(interface {
-					PlatformSessionSnapshot() online.AccountView
-				}); ok {
-					view := provider.PlatformSessionSnapshot()
-					if view.State == "signedIn" && view.AccountID != "" && view.Revision != "" && view.DisplayName != "" {
-						name = view.DisplayName
-					}
-				}
+			if name := runtimeAccountName(ctx, runtime); name != "" {
+				return name
 			}
-			return name
+			return runtimeAlias(runtime)
 		}
 	}
 	return ""
+}
+
+// AccountName exposes only a current, verified public name for this owner.
+// It never falls back to a plugin alias or performs a network request.
+func (s *Service) AccountName(ctx context.Context, owner, id string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, runtime := range s.runtimes {
+		if runtime.Owner == owner && runtime.InstanceID == id {
+			return runtimeAccountName(ctx, runtime)
+		}
+	}
+	return ""
+}
+
+func runtimeAccountName(ctx context.Context, runtime Runtime) string {
+	if !ready(runtime) || runtime.Gate.Check(ctx) != nil {
+		return ""
+	}
+	provider, ok := runtime.Provider.(interface {
+		PlatformSessionSnapshot() online.AccountView
+	})
+	if !ok {
+		return ""
+	}
+	view := provider.PlatformSessionSnapshot()
+	if view.State != "signedIn" || view.AccountID == "" || view.Revision == "" || (view.ExpiresAt != nil && !time.Now().Before(*view.ExpiresAt)) {
+		return ""
+	}
+	return view.DisplayName
 }
 
 func runtimeInstance(ctx context.Context, runtime Runtime) Instance {

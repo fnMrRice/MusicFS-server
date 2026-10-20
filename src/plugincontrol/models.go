@@ -14,13 +14,17 @@ type Hooks struct {
 	Ready          func() bool
 	Capabilities   func() []string
 	PluginIdentity func() *pluginproto.PluginIdentity
+	PluginVersion  func() string
 	InstanceName   func(context.Context, string) string
+	AccountName    func(context.Context, string) string
 }
 
 type Instance struct {
 	PluginID          string   `json:"pluginId"`
 	InstanceID        string   `json:"instanceId"`
 	Name              string   `json:"name"`
+	OwnerUserID       string   `json:"ownerUserId,omitempty"`
+	AccountName       string   `json:"accountName,omitempty"`
 	Role              string   `json:"role"`
 	Capabilities      []string `json:"capabilities"`
 	ConfiguredEnabled bool     `json:"configuredEnabled"`
@@ -34,6 +38,7 @@ type Instance struct {
 type Plugin struct {
 	PluginID                  string                      `json:"pluginId"`
 	Plugin                    *pluginproto.PluginIdentity `json:"plugin"`
+	Version                   string                      `json:"version,omitempty"`
 	SupportsMultipleInstances bool                        `json:"supportsMultipleInstances"`
 	ConfiguredEnabled         bool                        `json:"configuredEnabled"`
 	Instances                 []Instance                  `json:"instances"`

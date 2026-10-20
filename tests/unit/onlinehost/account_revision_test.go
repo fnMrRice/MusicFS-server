@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/onlinehost"
@@ -51,6 +52,19 @@ func TestOnlineInstanceExposesOnlyCurrentValidatedAccountRevision(t *testing.T) 
 		if got := s.InstanceName(context.Background(), "other", "instance"); got != "" {
 			t.Fatal("instance name lookup leaked another owner's account", got)
 		}
+		accountName := ""
+		if revision != "" {
+			accountName = "Platform username"
+		}
+		if got := s.AccountName(context.Background(), "owner", "instance"); got != accountName {
+			t.Fatal("account name included an alias or stale identity", got)
+		}
+		if got := s.AccountName(context.Background(), "other", "instance"); got != "" {
+			t.Fatal("account name crossed the owner boundary", got)
+		}
+		if p.sessionCalls != calls {
+			t.Fatal("account name lookup made a blocking session call")
+		}
 		encoded, err := json.Marshal(items[0])
 		if err != nil {
 			t.Fatal(err)
@@ -70,6 +84,15 @@ func TestOnlineInstanceExposesOnlyCurrentValidatedAccountRevision(t *testing.T) 
 	p.view.State = "signedOut"
 	assertRevision("", "loginRequired")
 	p.view.State = "signedIn"
+	p.view.Revision = ""
+	assertRevision("", "loginRequired")
+	p.view.Revision = "login-2"
+	expired := time.Now().Add(-time.Minute)
+	p.view.ExpiresAt = &expired
+	if got := s.AccountName(context.Background(), "owner", "instance"); got != "" {
+		t.Fatal("expired account name was exposed", got)
+	}
+	p.view.ExpiresAt = nil
 	r.Enabled = false
 	if err := s.UpdateRuntime(r); err != nil {
 		t.Fatal(err)

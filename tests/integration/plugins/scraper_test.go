@@ -62,6 +62,9 @@ func scraperInput(id, kind string, body []byte) scraperlocal.Input {
 
 func TestActualScraperWorkerSearchFetchAndVersionGuards(t *testing.T) {
 	host := scraperHost(t)
+	if host.PluginVersion() != "" {
+		t.Fatal("scraper version was published before the worker handshake")
+	}
 	var hits atomic.Int64
 	remote := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { hits.Add(1); w.WriteHeader(404) }))
 	defer remote.Close()
@@ -82,6 +85,9 @@ func TestActualScraperWorkerSearchFetchAndVersionGuards(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer session.Close()
+	if host.PluginVersion() != "0.1.0" || host.PluginVersion() != session.PluginVersion() {
+		t.Fatal("verified scraper worker version was not retained", host.PluginVersion())
+	}
 	result, err := session.Search(context.Background(), []string{"lyrics", "artwork"}, []string{"zho"}, nil)
 	if err != nil || len(result.Candidates) != 4 {
 		t.Fatalf("actual scraper search: %+v %v", result, err)

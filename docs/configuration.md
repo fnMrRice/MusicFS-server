@@ -6,6 +6,10 @@
 
 2026-10-20 增量：顶层 `storage` 选择内置 SQLite 或受信任的独立持久化插件，顶层 `audioDSP` 配置有序 DSP 链及外部节点；两者为启动配置，修改后重启生效。配置、构建和兼容边界见[存储插件](storage-plugins.md)与[DSP 插件](dsp-plugins.md)。非空 DSP 链要求启用且成功初始化音频处理器，不可因插件缺失静默直放。
 
+同日账号实例增量：网易云、QQ 音乐及 Apple Music 的每个实例可在 `instanceId` 同级配置 `ownerUserId`，省略时兼容为 `admin`。每个 MusicFS 用户使用自己的实例，同一用户的不同平台账号也应配置不同 UUID `instanceId` 并分别登录；单实例只保留一个当前平台账号。非账号插件不接受 `ownerUserId`。实例归属是部署配置，变更需重启；不要通过修改既有实例的归属转移凭据，分配新 UUID 后重新登录。凭据加密范围包含平台、用户及实例，跨用户不可恢复旧凭据。
+
+当前产品登录入口仍只创建 `admin` 会话，尚未实现多用户创建或注册；配置用户归属与服务隔离不代表已交付普通用户登录。`GET /admin/plugins` 及其插件实例列表默认仅展示当前用户的账号实例，保留共享插件实例；管理员显式传入 `allUsers=true` 可查看全部，返回 `ownerUserId` 和可选的已验证 `accountName`。该选项不扩大 `/online-instances`、平台登录/退出及资料请求的用户范围，也不会返回凭据；账号显示名只是展示快照，不用于授权。
+
 ## 1. 文件与严格校验
 
 配置路径必须为 `.yaml` / `.yml`，建议复制示例为 `configs/server.local.yaml` 后编辑。只接受一个顶层 mapping 文档，`configVersion` 必须为整数 `1`；大小为1字节至1 MiB，嵌套最多32层。解析器拒绝未知字段、重复键、额外文档、anchor/alias、merge、自定义标签、null及不匹配的类型。

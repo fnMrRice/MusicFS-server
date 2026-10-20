@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
@@ -25,8 +26,9 @@ type Config struct {
 	MaxConcurrent                                 int
 }
 type Host struct {
-	config Config
-	slots  chan struct{}
+	config  Config
+	slots   chan struct{}
+	version atomic.Pointer[string]
 }
 type Input struct {
 	Resource enrichment.Resource
@@ -186,7 +188,17 @@ func (h *Host) Open(parent context.Context, scope pluginproto.Context, target en
 	}
 	failed = false
 	session.version = ready.Manifest.PluginVersion
+	version := session.version
+	h.version.Store(&version)
 	return session, nil
+}
+
+// PluginVersion returns only a release verified by a completed worker handshake.
+func (h *Host) PluginVersion() string {
+	if version := h.version.Load(); version != nil {
+		return *version
+	}
+	return ""
 }
 
 func (s *Session) PluginVersion() string { return s.version }

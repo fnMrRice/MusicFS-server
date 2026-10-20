@@ -23,6 +23,13 @@ func registerScraperManagement(manager *plugincontrol.Manager, c config.Config, 
 				hooks := plugincontrol.Hooks{
 					Ready:        func() bool { r, _ := service.Runtime(id); return r.Host != nil },
 					Capabilities: func() []string { return []string{"lyrics", "artwork"} },
+					PluginVersion: func() string {
+						r, _ := service.Runtime(id)
+						if r.Host == nil {
+							return ""
+						}
+						return r.Host.PluginVersion()
+					},
 					Start: func(ctx context.Context, p config.Plugin, i config.Instance) error {
 						if err := ctx.Err(); err != nil {
 							return err
