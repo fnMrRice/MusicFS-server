@@ -16,7 +16,7 @@ storage:
 在 Server 仓库构建独立实现，并计算实际程序摘要：
 
 ```powershell
-go build -o build/musicfs-plugin-storage-sqlite.exe ./src/app/musicfs-plugin-storage-sqlite
+go build -o build/musicfs-plugin-storage-sqlite.exe ./plugins/database/sqlite/cmd/musicfs-plugin-storage-sqlite
 (Get-FileHash build/musicfs-plugin-storage-sqlite.exe -Algorithm SHA256).Hash.ToLowerInvariant()
 ```
 

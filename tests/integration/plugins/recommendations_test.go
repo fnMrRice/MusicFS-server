@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/recommendations"
 )
 

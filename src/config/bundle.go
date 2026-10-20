@@ -6,20 +6,19 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/fnMrRice/MusicFS-server/src/instanceid"
+	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
 	"go.yaml.in/yaml/v3"
 )
 
-// The shipped executable contains this fixed catalog. Discovery never searches
-// PATH or executes arbitrary files from a plugin directory.
-var bundledPlugins = []struct{ id, selector, instance string }{
-	{"musicfs.plugin.source.localfiles", "local", "local"},
-	{"musicfs.plugin.decoder.ffmpeg", "audio-ffmpeg", "audio-default"},
-	{"musicfs.plugin.decoder.ncm", "ncm", "ncm-default"},
-	{"musicfs.scraper.local", "scraper-local", "scraper-local"},
-	{"musicfs.plugin.source.netease", "netease", "netease-public"},
-	{"musicfs.plugin.source.qqmusic", "qqmusic", "qq-public"},
-	{"musicfs.plugin.source.applemusic", "applemusic", "apple-public"},
+// Discovery uses a fixed catalog, never PATH or arbitrary directory entries.
+var bundledPlugins = []struct{ id, selector, instance, program string }{
+	{"musicfs.plugin.source.localfiles", "local", "local", ""},
+	{"musicfs.plugin.decoder.ffmpeg", "audio-ffmpeg", "audio-default", ""},
+	{"musicfs.plugin.decoder.ncm", "ncm", "ncm-default", ""},
+	{"musicfs.scraper.local", "scraper-local", "scraper-local", ""},
+	{"musicfs.plugin.source.netease", "netease", "netease-public", "musicfs-plugin-netease"},
+	{"musicfs.plugin.source.qqmusic", "qqmusic", "qq-public", "musicfs-plugin-qqmusic"},
+	{"musicfs.plugin.source.applemusic", "applemusic", "apple-public", "musicfs-plugin-applemusic"},
 }
 
 func bundlePath(root *yaml.Node, base string) string {
@@ -46,13 +45,8 @@ func bundlePath(root *yaml.Node, base string) string {
 // Expand only the in-memory YAML tree. Reading does not write a configuration;
 // a later explicit settings change persists the expanded tree with its flags.
 func discoverBundle(root *yaml.Node, base string) error {
-	path := bundlePath(root, base)
-	configuredPath := path
-	if relative, err := filepath.Rel(base, path); err == nil {
-		configuredPath = relative
-	}
-	info, err := os.Stat(path)
-	if err != nil || !info.Mode().IsRegular() {
+	bundle := bundlePath(root, base)
+	if bundle == "" {
 		return nil
 	}
 	list := mappingValue(root, "plugins")
@@ -76,6 +70,23 @@ func discoverBundle(root *yaml.Node, base string) error {
 		}
 	}
 	for _, entry := range bundledPlugins {
+		path := bundle
+		args := []string{"--plugin", entry.selector}
+		if entry.program != "" {
+			path = standalonePath(bundle, entry.program)
+			args = []string{}
+			if !regularExecutable(path) {
+				path = standalonePath(bundle, "musicfs-plugin-online")
+				args = []string{"--plugin", entry.selector}
+			}
+		}
+		if !regularExecutable(path) {
+			continue
+		}
+		configuredPath := path
+		if relative, err := filepath.Rel(base, path); err == nil {
+			configuredPath = relative
+		}
 		var node *yaml.Node
 		for _, p := range list.Content {
 			if id := mappingValue(p, "pluginId"); id != nil && id.Value == entry.id {
@@ -95,15 +106,48 @@ func discoverBundle(root *yaml.Node, base string) error {
 			if !filepath.IsAbs(candidate) {
 				candidate = filepath.Join(base, candidate)
 			}
-			if canonicalPath(candidate) != canonicalPath(path) {
-				continue // Explicit external executables retain their old semantics.
+			legacy := entry.program != "" && canonicalPath(candidate) == canonicalPath(bundle)
+			fallback := entry.program != "" && canonicalPath(candidate) == canonicalPath(standalonePath(bundle, entry.program)) &&
+				!regularExecutable(candidate) && canonicalPath(path) == canonicalPath(standalonePath(bundle, "musicfs-plugin-online"))
+			if legacy || fallback {
+				// An old digest pins the old program, not its replacement. Require
+				// an explicit digest update instead of silently removing that pin.
+				approvedArgs := legacyOnlineArgs(node, entry.selector)
+				if fallback {
+					rawArgs := mappingValue(node, "args")
+					approvedArgs = rawArgs == nil || (rawArgs.Kind == yaml.SequenceNode && len(rawArgs.Content) == 0)
+				}
+				if digest := mappingValue(node, "sha256"); (digest != nil && digest.Value != "") || !approvedArgs {
+					continue
+				}
+				if err := setNode(node, "executable", configuredPath); err != nil {
+					return err
+				}
+				if err := setNode(node, "args", args); err != nil {
+					return err
+				}
+			} else if canonicalPath(candidate) != canonicalPath(path) {
+				standalone := entry.program != "" && canonicalPath(candidate) == canonicalPath(standalonePath(bundle, entry.program))
+				unified := entry.program != "" && canonicalPath(candidate) == canonicalPath(standalonePath(bundle, "musicfs-plugin-online"))
+				if !regularExecutable(candidate) || (!standalone && !unified) {
+					continue // Explicit external executables retain their old semantics.
+				}
+				// Explicit official online executables retain their chosen form.
+				configuredPath = candidate
+				if relative, err := filepath.Rel(base, candidate); err == nil {
+					configuredPath = relative
+				}
+				args = []string{}
+				if unified {
+					args = []string{"--plugin", entry.selector}
+				}
 			}
 		}
 		defaults := []struct {
 			key   string
 			value any
 		}{
-			{"executable", configuredPath}, {"args", []string{"--plugin", entry.selector}}, {"enabled", true},
+			{"executable", configuredPath}, {"args", args}, {"enabled", true},
 		}
 		for _, field := range defaults {
 			if mappingValue(node, field.key) == nil {
@@ -142,14 +186,22 @@ func markPendingConfiguration(c *Config, bundle string) {
 	}
 	for pi := range c.Plugins {
 		p := &c.Plugins[pi]
-		if canonicalPath(p.Executable) != canonicalPath(bundle) {
+		isBundle := canonicalPath(p.Executable) == canonicalPath(bundle)
+		platform := OnlinePlatform(p.PluginID)
+		isStandalone := platform != "" && canonicalPath(p.Executable) == canonicalPath(standalonePath(bundle, "musicfs-plugin-"+platform))
+		isOnlineBundle := platform != "" && canonicalPath(p.Executable) == canonicalPath(standalonePath(bundle, "musicfs-plugin-online"))
+		if !isBundle && !isStandalone && !isOnlineBundle {
 			continue
 		}
 		for ii := range p.Instances {
 			i := &p.Instances[ii]
+			i.PendingConfiguration = !regularExecutable(p.Executable) || (isBundle && platform != "")
+			if isOnlineBundle && !onlineSelectorArgs(p.Args, platform) {
+				i.PendingConfiguration = true
+			}
 			switch p.PluginID {
 			case "musicfs.plugin.source.localfiles":
-				i.PendingConfiguration = len(i.Config.MusicRoots) == 0
+				i.PendingConfiguration = i.PendingConfiguration || len(i.Config.MusicRoots) == 0
 				for _, root := range i.Config.MusicRoots {
 					info, err := os.Stat(root.Path)
 					i.PendingConfiguration = i.PendingConfiguration || err != nil || !info.IsDir()
@@ -162,6 +214,33 @@ func markPendingConfiguration(c *Config, bundle string) {
 			}
 		}
 	}
+}
+
+func standalonePath(bundle, program string) string {
+	if strings.EqualFold(filepath.Ext(bundle), ".exe") {
+		program += ".exe"
+	}
+	return filepath.Join(filepath.Dir(bundle), program)
+}
+
+func regularExecutable(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.Mode().IsRegular()
+}
+
+func onlineSelectorArgs(args []string, platform string) bool {
+	return (len(args) == 1 && args[0] == "--plugin="+platform) ||
+		(len(args) == 2 && args[0] == "--plugin" && args[1] == platform)
+}
+
+func legacyOnlineArgs(node *yaml.Node, selector string) bool {
+	args := mappingValue(node, "args")
+	if args == nil {
+		return true
+	}
+	return args.Kind == yaml.SequenceNode && len(args.Content) == 2 &&
+		args.Content[0].Tag == "!!str" && args.Content[0].Value == "--plugin" &&
+		args.Content[1].Tag == "!!str" && args.Content[1].Value == selector
 }
 
 func (p Plugin) CanStart(i Instance) bool {

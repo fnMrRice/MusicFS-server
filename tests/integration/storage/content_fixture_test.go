@@ -6,10 +6,10 @@ import (
 	"encoding/hex"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 )
 
 func contentInput(track library.Track, language, body string) mediastore.UploadInput {

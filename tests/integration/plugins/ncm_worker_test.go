@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 
@@ -27,7 +27,7 @@ func buildNCMWorker(t *testing.T) (string, string) {
 	if runtime.GOOS == "windows" {
 		path += ".exe"
 	}
-	cmd := exec.Command("go", "build", "-o", path, "./src/app/musicfs-plugin-ncm")
+	cmd := exec.Command("go", "build", "-o", path, "./plugins/decoder/ncm/cmd/musicfs-plugin-ncm")
 	cmd.Dir = filepath.Join("..", "..", "..")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build: %v %s", err, out)

@@ -86,7 +86,7 @@ func build(t *testing.T, name string) string {
 	if runtime.GOOS == "windows" {
 		path += ".exe"
 	}
-	cmd := exec.Command("go", "build", "-o", path, "./src/app/"+name)
+	cmd := exec.Command("go", "build", "-o", path, testkit.ProgramPackage(name))
 	cmd.Dir = filepath.Join("..", "..")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build: %v %s", err, output)

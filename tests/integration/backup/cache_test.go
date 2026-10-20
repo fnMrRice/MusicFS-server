@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/src/backup"
 	"github.com/fnMrRice/MusicFS-server/src/processedcache"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 )
 
 func TestRestoreDropsDisposableProcessingIndexAndFiles(t *testing.T) {

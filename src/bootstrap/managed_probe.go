@@ -2,10 +2,10 @@ package bootstrap
 
 import (
 	"context"
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
 	"io"
 	"sync"
 )

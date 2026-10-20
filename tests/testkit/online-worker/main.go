@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/online"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/provideronline"
+	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 
@@ -87,7 +87,7 @@ func main() {
 	if strings.Contains(name, "qqfixture") {
 		platform = online.QQMusic
 	}
-	_ = provideronline.Serve(context.Background(), platform, os.Stdin, os.Stdout, fixture{})
+	_ = onlineplugins.Serve(context.Background(), platform, os.Stdin, os.Stdout, fixture{})
 }
 
 func badWorker(mode string) {
@@ -97,12 +97,12 @@ func badWorker(mode string) {
 			if err := pluginproto.DecodeOnline(raw, &hello); err != nil {
 				return nil, err
 			}
-			return pluginproto.Ready{InstanceID: hello.InstanceID, Nonce: hello.Nonce, Manifest: pluginproto.Manifest{PluginID: "musicfs.plugin.source.netease", Plugin: provideronline.Describe(online.Netease).Plugin, SupportsMultipleInstances: true, PluginVersion: "0.1.0", ProtocolVersion: "1.0", Roles: []string{"provider"}, Capabilities: pluginproto.OnlineCapabilities(online.Netease), Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems}}, nil
+			return pluginproto.Ready{InstanceID: hello.InstanceID, Nonce: hello.Nonce, Manifest: pluginproto.Manifest{PluginID: "musicfs.plugin.source.netease", Plugin: onlineplugins.Describe(online.Netease).Plugin, SupportsMultipleInstances: true, PluginVersion: "0.1.0", ProtocolVersion: "1.0", Roles: []string{"provider"}, Capabilities: pluginproto.OnlineCapabilities(online.Netease), Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems}}, nil
 		}
 		if method == "provider.online.describe" {
 			var r pluginproto.OnlineScope
 			_ = json.Unmarshal(raw, &r)
-			return pluginproto.OnlineResult[pluginproto.OnlineDescriptor]{Context: r.Context, Value: provideronline.Describe(online.Netease)}, nil
+			return pluginproto.OnlineResult[pluginproto.OnlineDescriptor]{Context: r.Context, Value: onlineplugins.Describe(online.Netease)}, nil
 		}
 		var r pluginproto.OnlineSearch
 		_ = json.Unmarshal(raw, &r)

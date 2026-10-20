@@ -1,8 +1,8 @@
 package recommendations
 
 import (
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
 // UpdateRuntime drops only this instance's cached observations and cancels its

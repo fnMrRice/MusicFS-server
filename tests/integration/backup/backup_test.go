@@ -10,14 +10,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/auth"
 	"github.com/fnMrRice/MusicFS-server/src/backup"
 	"github.com/fnMrRice/MusicFS-server/src/config"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 	"go.yaml.in/yaml/v3"
 )

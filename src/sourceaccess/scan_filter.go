@@ -6,7 +6,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
 func excludedEntry(root *os.Root, scope pluginproto.ScanScope, relative string, info fs.FileInfo) (bool, error) {

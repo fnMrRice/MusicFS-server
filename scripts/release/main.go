@@ -15,29 +15,28 @@ import (
 	"time"
 )
 
-var programs = []string{"musicfs", "musicfs-plugins", "musicfs-plugin-storage-sqlite", "musicfs-plugin-dsp-gain"}
-
 type builder struct {
 	root, out, target, arch, web string
 	env                          []string
 }
 
 type manifest struct {
-	Version        string       `json:"version"`
-	Revision       string       `json:"revision"`
-	Dirty          bool         `json:"dirty"`
-	OS             string       `json:"os"`
-	Arch           string       `json:"arch"`
-	GoVersion      string       `json:"goVersion"`
-	BuiltAt        time.Time    `json:"builtAt"`
-	APIVersion     string       `json:"apiVersion"`
-	PluginProtocol string       `json:"pluginProtocol"`
-	SchemaVersion  int          `json:"schemaVersion"`
-	Programs       []string     `json:"programs"`
-	Components     []component  `json:"components"`
-	ExternalTools  []string     `json:"externalTools"`
-	Dependencies   []dependency `json:"dependencies"`
-	GoLicenses     []string     `json:"goLicenses"`
+	Version        string         `json:"version"`
+	Revision       string         `json:"revision"`
+	Dirty          bool           `json:"dirty"`
+	OS             string         `json:"os"`
+	Arch           string         `json:"arch"`
+	GoVersion      string         `json:"goVersion"`
+	BuiltAt        time.Time      `json:"builtAt"`
+	APIVersion     string         `json:"apiVersion"`
+	PluginProtocol string         `json:"pluginProtocol"`
+	SchemaVersion  int            `json:"schemaVersion"`
+	Programs       []string       `json:"programs"`
+	Components     []component    `json:"components"`
+	ExternalTools  []string       `json:"externalTools"`
+	Dependencies   []dependency   `json:"dependencies"`
+	Modules        []sourceModule `json:"modules"`
+	GoLicenses     []string       `json:"goLicenses"`
 }
 
 func main() {
@@ -104,12 +103,12 @@ func run() error {
 	if err = os.WriteFile(filepath.Join(b.out, ".incomplete"), []byte("Build has not completed.\n"), 0600); err != nil {
 		return err
 	}
-	for _, name := range programs {
-		file := name
+	for _, program := range releasePrograms {
+		file := program.name
 		if b.target == "windows" {
 			file += ".exe"
 		}
-		if _, err = b.command("go", "build", "-mod=readonly", "-trimpath", "-buildvcs=false", "-ldflags=-s -w", "-o", filepath.Join(b.out, "bin", file), "./src/app/"+name); err != nil {
+		if _, err = b.moduleCommand(program.moduleDir, "go", "build", "-mod=readonly", "-trimpath", "-buildvcs=false", "-ldflags=-s -w", "-o", filepath.Join(b.out, "bin", file), program.packagePath); err != nil {
 			return err
 		}
 	}
@@ -138,6 +137,7 @@ func run() error {
 	}
 	m := manifest{Version: "0.1.0", Revision: strings.TrimSpace(string(rev)), Dirty: dirty, OS: b.target, Arch: b.arch, GoVersion: strings.TrimSpace(string(version)), BuiltAt: time.Now().UTC(), APIVersion: "1", PluginProtocol: "1.0", Programs: programs, ExternalTools: []string{"FFmpeg/ffprobe: external, libmp3lame required", "Chromaprint fpcalc 1.6.1: external, optional"}, Dependencies: deps, GoLicenses: goLicenses}
 	m.Components = components()
+	m.Modules = sourceModules
 	m.SchemaVersion, err = b.schemaVersion()
 	if err != nil {
 		return err
@@ -162,16 +162,20 @@ func targetEnvironment(target, arch string) []string {
 	env := []string{}
 	for _, entry := range os.Environ() {
 		key, _, _ := strings.Cut(entry, "=")
-		if key != "GOOS" && key != "GOARCH" && key != "CGO_ENABLED" {
+		if !strings.EqualFold(key, "GOOS") && !strings.EqualFold(key, "GOARCH") && !strings.EqualFold(key, "CGO_ENABLED") && !strings.EqualFold(key, "GOWORK") {
 			env = append(env, entry)
 		}
 	}
-	return append(env, "GOOS="+target, "GOARCH="+arch, "CGO_ENABLED=0")
+	return append(env, "GOOS="+target, "GOARCH="+arch, "CGO_ENABLED=0", "GOWORK=off")
 }
 
 func (b builder) command(name string, args ...string) ([]byte, error) {
+	return b.moduleCommand(".", name, args...)
+}
+
+func (b builder) moduleCommand(dir, name string, args ...string) ([]byte, error) {
 	cmd := exec.Command(name, args...)
-	cmd.Dir = b.root
+	cmd.Dir = filepath.Join(b.root, filepath.FromSlash(dir))
 	cmd.Env = b.env
 	var diagnostics bytes.Buffer
 	cmd.Stderr = &diagnostics

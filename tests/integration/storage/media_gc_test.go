@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 )
 
 func abandonedMedia(t *testing.T, s *sqlite.Store, track library.Track, at time.Time) mediastore.Publication {

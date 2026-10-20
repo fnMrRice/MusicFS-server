@@ -2,7 +2,7 @@ package storage_test
 
 import (
 	"context"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 	"path/filepath"
 	"testing"

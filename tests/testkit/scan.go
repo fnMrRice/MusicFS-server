@@ -1,9 +1,9 @@
 package testkit
 
 import (
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
 // ScanPlan is an explicit complete-range fixture for repository tests. Real

@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 )
 
 func TestCatalogMetadataActualProbeTagsRateAndUnknownValues(t *testing.T) {

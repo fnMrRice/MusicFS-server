@@ -8,10 +8,10 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 )
 
 const maxDatabaseBytes int64 = 64 << 30

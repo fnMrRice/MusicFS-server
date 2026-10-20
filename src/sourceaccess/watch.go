@@ -7,7 +7,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
 type WatchDirectory struct {

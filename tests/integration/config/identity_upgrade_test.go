@@ -15,10 +15,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
+	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
 	"github.com/fnMrRice/MusicFS-server/src/bootstrap"
 	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/instanceid"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 	"github.com/fnMrRice/MusicFS-server/src/writeback"
 )
 

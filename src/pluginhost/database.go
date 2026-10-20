@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/plugindb"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
 func (w *Worker) database(ctx context.Context, method string, raw json.RawMessage) (any, error) {

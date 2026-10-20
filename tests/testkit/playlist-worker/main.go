@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/fnMrRice/MusicFS-server/src/online"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/provideronline"
+	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 
@@ -53,5 +53,5 @@ func (f *fixture) RoundTrip(r *http.Request) (*http.Response, error) {
 }
 
 func main() {
-	_ = provideronline.Serve(context.Background(), online.Netease, os.Stdin, os.Stdout, &fixture{})
+	_ = onlineplugins.Serve(context.Background(), online.Netease, os.Stdin, os.Stdout, &fixture{})
 }

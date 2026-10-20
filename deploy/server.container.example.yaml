@@ -12,6 +12,7 @@ storage:
   backend: sqlite
 webRoot: ''
 pluginBundle: '/opt/musicfs/bin/musicfs-plugins'
+# 同目录优先发现 musicfs-plugin-netease/qqmusic/applemusic；缺少某平台时使用 musicfs-plugin-online 对应角色。
 plugins:
   - pluginId: 'musicfs.plugin.source.localfiles'
     executable: '/opt/musicfs/bin/musicfs-plugins'

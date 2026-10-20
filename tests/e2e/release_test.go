@@ -53,8 +53,12 @@ func TestActualInstallationBundleScanAudioWebAndExit(t *testing.T) {
 	}
 	assertInstallationPersistence(t, installed, cfg)
 	for _, p := range cfg.Plugins {
-		if filepath.Base(p.Executable) != "musicfs-plugins"+suffix || len(p.Args) != 2 || p.Args[0] != "--plugin" {
-			t.Fatal("installation does not use the shared plugin executable")
+		if platform := config.OnlinePlatform(p.PluginID); platform != "" {
+			if filepath.Base(p.Executable) != "musicfs-plugin-"+platform+suffix || len(p.Args) != 0 {
+				t.Fatal("online provider does not use its independent executable")
+			}
+		} else if filepath.Base(p.Executable) != "musicfs-plugins"+suffix || len(p.Args) != 2 || p.Args[0] != "--plugin" {
+			t.Fatal("local role does not use the shared plugin executable")
 		}
 		if p.PluginID == "musicfs.plugin.source.localfiles" {
 			for _, instance := range p.Instances {

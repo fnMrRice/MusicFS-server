@@ -9,12 +9,12 @@ import (
 	"runtime/debug"
 	"time"
 
+	_ "github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/src/config"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
 	_ "github.com/fnMrRice/MusicFS-server/src/storage/rpcbackend"
-	_ "github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 	"go.yaml.in/yaml/v3"
 )
 

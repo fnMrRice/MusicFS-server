@@ -9,13 +9,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/instanceid"
 	"github.com/fnMrRice/MusicFS-server/src/onlinehost"
 	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/recommendations"
 )
 
@@ -62,11 +62,25 @@ func registerOnlineManagement(ctx context.Context, c config.Config, manager *plu
 				return ""
 			}
 			return host.InstanceName(ctx, owner, r.InstanceID)
-		}, Capabilities: func() []string { return pluginproto.OnlineCapabilities(r.Platform) }}, s.ready()); err != nil {
+		}, Capabilities: s.capabilities}, s.ready()); err != nil {
 			return closeAll, err
 		}
 	}
 	return closeAll, nil
+}
+
+func (s *managedOnline) capabilities() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	result := []string{}
+	if s.worker != nil {
+		for _, capability := range s.worker.Descriptor().Capabilities {
+			if capability.Supported {
+				result = append(result, capability.Name)
+			}
+		}
+	}
+	return result
 }
 
 func (s *managedOnline) ready() bool {

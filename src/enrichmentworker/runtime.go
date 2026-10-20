@@ -1,8 +1,8 @@
 package enrichmentworker
 
 import (
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
 )
 
 func (s *Service) Runtime(id string) (Runtime, bool) {

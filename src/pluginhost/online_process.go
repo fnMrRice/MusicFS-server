@@ -8,16 +8,15 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"reflect"
 	"runtime"
 	"slices"
 	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/accountstore"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
 type OnlineConfig struct {
@@ -35,7 +34,9 @@ type OnlineWorker struct {
 	peer           *pluginproto.Peer
 	cancel         context.CancelFunc
 	done           chan struct{}
+	manifest       pluginproto.Manifest
 	descriptor     pluginproto.OnlineDescriptor
+	version        string
 }
 
 func StartOnline(parent context.Context, config OnlineConfig) (*OnlineWorker, error) {
@@ -135,13 +136,15 @@ func StartOnline(parent context.Context, config OnlineConfig) (*OnlineWorker, er
 	if pluginproto.DecodeOnline(raw, &ready) != nil || ready.Nonce != nonce || ready.InstanceID != config.InstanceID || pluginconfig.ValidateManifest(ready.Manifest, "provider") != nil || pluginproto.ValidateOnlineManifest(ready.Manifest, config.Platform) != nil || !slices.Contains(ready.Manifest.Systems, runtime.GOOS) || !slices.Contains(ready.Manifest.Architectures, runtime.GOARCH) {
 		return nil, domain.Fail("PROTOCOL_MISMATCH", "Online worker handshake mismatch")
 	}
+	w.manifest = ready.Manifest
 	w.descriptor, err = w.Describe(startup)
 	if err != nil {
 		return nil, err
 	}
-	if !reflect.DeepEqual(ready.Manifest.Plugin, w.descriptor.Plugin) {
-		return nil, domain.Fail("PROTOCOL_MISMATCH", "Online plugin display identity changed during startup")
+	if err = pluginproto.ValidateOnlineDescriptor(ready.Manifest, w.descriptor, config.Platform); err != nil {
+		return nil, domain.Fail("PROTOCOL_MISMATCH", "Online plugin descriptor does not match the handshake")
 	}
+	w.version = ready.Manifest.PluginVersion
 	if err = w.initializeAccount(startup); err != nil {
 		return nil, err
 	}
@@ -178,6 +181,8 @@ func (w *OnlineWorker) Descriptor() pluginproto.OnlineDescriptor {
 func (w *OnlineWorker) PluginIdentity() *pluginproto.PluginIdentity {
 	return w.descriptor.Plugin.Clone()
 }
+
+func (w *OnlineWorker) PluginVersion() string { return w.version }
 
 // Keep paths private; only identity and verified capabilities are public.
 func (w *OnlineWorker) Platform() string { return w.config.Platform }

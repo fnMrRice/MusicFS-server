@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/plugindb"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
 // saveLocalSettings requires the Store mutex. It never modifies the YAML file.

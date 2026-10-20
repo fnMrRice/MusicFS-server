@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
 // LocalRebind is a trusted host operation, not a plugin RPC or public request.

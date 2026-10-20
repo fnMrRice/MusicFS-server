@@ -38,7 +38,7 @@
 | `fingerprinting.maxConcurrent` | 默认1，范围1—2；指纹任务并发上限；DSP 前规范化和 NCM 解密各有独立的后台1槽位，不占前台播放准入槽位 |
 | `fingerprinting.timeoutSeconds` | 默认30，范围1—120；指纹任务时间上限；已有规范化管线另有30秒保护，上层较长配置不会撤销内层限制 |
 | `plugins` | 插件配置及显式禁用覆盖；可省略，随包角色自动补齐 |
-| `pluginBundle` | 可选统一插件程序路径；省略时检查 Server 程序同目录；空字符串关闭发现 |
+| `pluginBundle` | 可选本地角色统一程序路径，同时限定同目录的在线插件发现位置；省略时检查 Server 程序同目录；空字符串关闭发现 |
 | `writeBack.enabled` | 默认false；显式原件写回开关，不由上传/选用/自动补缺开启 |
 | `writeBack.allowOverwrite` | 默认false；覆盖旧标签还要求本次请求显式overwrite |
 | `writeBack.maxFileBytes` | 默认8589934592（8 GiB），范围46—1099511627776（1 TiB） |
@@ -155,9 +155,9 @@ Linux保留文件所有者/组与权限，同步文件及目录后rename；Windo
 
 ## 内置插件程序与自动发现
 
-默认构建生成 `musicfs`、`musicfs-plugins`、独立 SQLite 插件 `musicfs-plugin-storage-sqlite` 和 DSP 示例 `musicfs-plugin-dsp-gain`。统一插件程序中的七种内置角色为 `local`、`audio-ffmpeg`、`ncm`、`scraper-local`、`netease`、`qqmusic`、`applemusic`。这些角色的插件配置以 `executable` 指向统一程序，以 `args: ['--plugin', '角色']` 固定角色；不通过 shell 解释参数。`args` 最多 64 项，每项最多 4096 UTF-8 字节，不得包含 NUL；参数中不应保存凭据。SQLite 由顶层 `storage` 配置选定，是必需组件，不属于可禁用的普通插件；DSP 示例只有加入 `audioDSP` 处理链才会启用。
+默认构建生成八个程序：`musicfs`、`musicfs-plugins`、`musicfs-plugin-netease`、`musicfs-plugin-qqmusic`、`musicfs-plugin-applemusic`、`musicfs-plugin-online`、独立 SQLite 插件 `musicfs-plugin-storage-sqlite` 和 DSP 示例 `musicfs-plugin-dsp-gain`。`musicfs-plugins` 仅包含四种本地处理角色 `local`、`audio-ffmpeg`、`ncm`、`scraper-local`，配置以 `args: ['--plugin', '角色']` 选择。三个在线平台各用自己的可执行文件，不需要角色选择参数，其源码位于独立 `plugins/source/online` Go 模块，只依赖 `sdk` 模块。参数不通过 shell 解释；`args` 最多 64 项，每项最多 4096 UTF-8 字节，不得包含 NUL，不应保存凭据。SQLite 由顶层 `storage` 配置选定，是必需组件，不属于可禁用的普通插件；DSP 示例只有加入 `audioDSP` 处理链才会启用。
 
-启动读取配置时检查 `pluginBundle` 指定的文件；省略该字段则检查 Server 程序同目录的 `musicfs-plugins[.exe]`。仅发现本版本内置的七种角色，不扫描 PATH、不自动执行目录中的任意 EXE。显式指定的其他可执行文件及其参数保持原义，旧独立插件入口仍可单独编译。
+启动读取配置时检查 `pluginBundle` 指定的文件；省略该字段则检查 Server 程序同目录的 `musicfs-plugins[.exe]`。统一程序存在时补齐四种本地角色；在线平台优先检查同目录固定名称 `musicfs-plugin-netease[.exe]`、`musicfs-plugin-qqmusic[.exe]`、`musicfs-plugin-applemusic[.exe]`。缺少某个平台独立程序时，若存在固定名称 `musicfs-plugin-online[.exe]`，使用 `args: ['--plugin', '<平台>']` 补足。两种入口对应同一插件 ID，默认发现不重复创建实例；显式配置的可用在线入口保持原选择。在线发现不要求本地统一程序存在。不扫描 PATH，也不执行目录中的任意文件；显式指定的其他可执行文件及其参数保持原义。
 
 发现后补齐缺省的插件和默认实例。内置插件及实例省略 `enabled` 时默认 true；任意一层明确 false 都阻止启动。无需为了禁用自动发现项复制整份配置，例如：
 
@@ -167,10 +167,12 @@ plugins:
     enabled: false
 ```
 
-缺少已选择且可访问的音乐目录或 FFmpeg/ffprobe 文件时，实例保持启用意图，但 `effectiveEnabled=false`、`runtimeState=pending_configuration`、`reason=CONFIGURATION_REQUIRED`；不创建工作进程，也不阻止服务启动。设置页显示待配置原因。通过已有实例设置接口，在默认或显式授权范围内选择实际音乐目录后自动进入启动流程；默认授权和目录探测本身不会使实例就绪。所需目录不在授权范围内时，在服务端 YAML 设置完整的 `permissions.readDirectories` 列表并重启。运行中安装新的程序需重启发现，当前不是目录热监控。
+缺少已选择且可访问的音乐目录、FFmpeg/ffprobe 文件或已配置的随包程序时，实例保持启用意图，但 `effectiveEnabled=false`、`runtimeState=pending_configuration`、`reason=CONFIGURATION_REQUIRED`；不创建工作进程，也不阻止服务启动。设置页显示待配置原因。通过已有实例设置接口，在默认或显式授权范围内选择实际音乐目录后自动进入启动流程；默认授权和目录探测本身不会使实例就绪。所需目录不在授权范围内时，在服务端 YAML 设置完整的 `permissions.readDirectories` 列表并重启。运行中安装新的程序需重启发现，当前不是目录热监控。
 
-内置程序发现只展开内存配置，不因读取而修改 YAML；首次默认音乐目录探测则将结果保存在插件数据库。通过管理接口保存启停开关时，将展开后的角色及开关一同持久化，重启仍保留显式禁用。业务设置使用各插件的配置存储机制；本地目录设置存于插件数据库，不能扩大生效的目录授权。没有找到统一程序时不凭空注册插件。设置 `pluginBundle: ''` 可关闭自动发现，显式配置仍有效。
+随包程序发现及迁移只展开内存配置，不因读取而修改 YAML；首次默认音乐目录探测则将结果保存在插件数据库。通过管理接口保存启停开关时，将展开后的角色及开关一同持久化，重启仍保留显式禁用。业务设置使用各插件的配置存储机制；本地目录设置存于插件数据库，不能扩大生效的目录授权。没有找到对应程序时不凭空注册插件。设置 `pluginBundle: ''` 可关闭自动发现，显式配置仍有效。
 
-多个插件共用文件，但仍按实例或任务分别启动独立进程，保留原来的协议、工作目录、用户绑定和取消回收；公共文件的升级需先停机。此改动减少磁盘重复代码，不把进程内存或权限合并。旧安装配置的 `musicfs-plugin-*.exe` 路径不会自动改写：升级时改为统一程序并补充对应 args；旧 `enabled: false` 不会被覆盖。第三方入口沿用已有受支持的协议与身份校验，不表示任意第三方插件 ID 已开放。
+旧在线配置若指向当前 `pluginBundle`，参数为精确的 `['--plugin', 'netease|qqmusic|applemusic']`（或缺省参数），且未固定非空 `sha256`，优先迁移到同目录独立程序并清空角色参数；独立程序缺失时可迁移到在线统一程序并保留对应选择参数。已配置的已知独立程序若文件缺失、未固定摘要且参数为空，也可使用此统一入口补足。迁移保留插件与实例禁用状态、实例 UUID、名称及其他配置，不更改本地目录权限。已固定旧程序摘要的配置不会静默更换可信文件：管理员须审核新程序，显式更新路径、参数和摘要。候选文件均缺失、摘要待更新、选择参数不匹配或带有自定义参数的旧入口保持待配置。其他自定义可执行路径及参数保持不变。
 
-发布打包启用 `-ldflags="-s -w"`，去掉调试符号；开发构建保留调试信息。`release.json` 列出四个程序、七个普通插件角色的参数及独立 SQLite/DSP 入口，SQLite 标为必需组件。发布配置默认选择独立 SQLite 插件，并写入包内程序的实际 SHA256；许可证按实际链接依赖生成。
+四种本地角色仍共用文件，并按实例或任务启动独立进程，保留协议、工作目录、用户绑定和取消回收；公共文件升级需先停机。在线平台可选择独立程序或 `musicfs-plugin-online --plugin <平台>`；统一程序每次进程固定一个平台，不将不同账号实例合并。支持的身份、协议与能力仍须通过宿主校验，不表示任意第三方插件 ID 已开放。
+
+发布打包启用 `-ldflags="-s -w"`，去掉调试符号；开发构建保留调试信息。`release.json` 列出八个程序、七个普通插件身份及独立 SQLite/DSP 入口，SQLite 标为必需组件。发布配置默认选择独立 SQLite 插件，并写入包内程序的实际 SHA256；依赖与许可证按 Server、SDK、在线插件三个模块共同收集。

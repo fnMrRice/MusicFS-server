@@ -14,9 +14,20 @@ var deploymentFiles = map[string]bool{
 }
 
 func (b builder) documents() error {
-	for _, name := range []string{"LICENSE", "go.mod", "go.sum", "configs/server.schema.json"} {
+	for _, name := range []string{"LICENSE", "configs/server.schema.json"} {
 		if err := copyRegular(filepath.Join(b.root, name), filepath.Join(b.out, name), 4<<20); err != nil {
 			return err
+		}
+	}
+	for _, mod := range sourceModules {
+		for _, name := range []string{"go.mod", "go.sum"} {
+			path := filepath.Join(mod.Directory, name)
+			if _, err := os.Stat(filepath.Join(b.root, path)); name == "go.sum" && os.IsNotExist(err) {
+				continue // A module with no external dependencies needs no checksum file.
+			}
+			if err := copyRegular(filepath.Join(b.root, path), filepath.Join(b.out, path), 4<<20); err != nil {
+				return err
+			}
 		}
 	}
 	files, err := b.command("git", "ls-files", "-z", "--", "deploy", "scripts/scan.ps1", "src/identification/fingerprint/REFERENCES.md")
@@ -37,12 +48,13 @@ func (b builder) documents() error {
 	if err = b.containerConfiguration(); err != nil {
 		return err
 	}
-	readme := "# MusicFS 私有安装包\n\n此目录包含 Server、统一内置插件程序（各角色仍独立启动进程）、必需的独立 SQLite 存储插件及可选 DSP gain 示例程序，不包含音乐、账号凭据或开发数据库。\n\n" +
+	readme := "# MusicFS 私有安装包\n\n此目录包含 Server、本地处理插件程序、网易云/QQ 音乐/Apple Music 三个独立在线插件程序及统一在线程序 musicfs-plugin-online、必需的独立 SQLite 存储插件及可选 DSP gain 示例程序，共八个程序，不包含音乐、账号凭据或开发数据库。统一程序按角色仍独立启动进程。\n\n" +
 		"配置示例为 configs/server.example.yaml，内置插件自动发现，配置齐全且未显式禁用时自动启动。手动扫描使用 [PowerShell 扫描脚本](scripts/scan.ps1)。\n\n" +
+		"在线平台优先使用独立程序；缺少某个平台程序时，可由同目录 musicfs-plugin-online --plugin <平台> 补足。两种入口对应同一插件身份，不重复创建实例。\n\n" +
 		"SQLite 存储插件是必需基础设施，不进入普通插件启停列表，不提供禁用开关；缺失或加载失败时拒绝启动。DSP 示例默认不启用，只有明确配置 audioDSP 后参与处理。两者均不参与普通角色自动发现。\n\n" +
 		"容器只能使用 Linux 安装包；其中的容器配置已固定 Linux SQLite Worker 路径和本次摘要。Windows 包保留源码中的兼容容器示例，不能直接用作 Linux 容器安装。\n\n" +
 		"安装包不包含 docs 目录；安装部署、配置、运行扫描及备份恢复说明请在对应 revision 的 Server 私有源仓库 docs 目录查阅。\n\n" +
-		"release.json 记录版本、构建平台与依赖许可证；SHA256SUMS 校验文件一致性。Go 工具链许可证位于 licenses/go。\n\n" +
+		"release.json 记录版本、构建平台、Server/SDK/在线插件各模块及依赖许可证；各模块的 go.mod/go.sum 随包保留。SHA256SUMS 校验文件一致性。Go 工具链许可证位于 licenses/go。\n\n" +
 		"该制品仅供私有安装验证，不自动上传或公开分发。\n"
 	return os.WriteFile(filepath.Join(b.out, "README.md"), []byte(readme), 0600)
 }

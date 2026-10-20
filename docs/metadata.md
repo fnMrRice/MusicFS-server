@@ -22,7 +22,7 @@ Linux 使用 `../build/linux/musicfs-plugins`，保留相同 `args`。可选 `sh
 
 `GET /api/v1/scraper-instances` 返回本人实例的编号、显示名、字段和可用状态，不包含执行路径。`available` 表示已启用且程序通过本地校验，不保证每个源都支持提取。`queryCorrectionsSupported=false`：当前本地插件不进行在线搜索，提交非空标题/艺人修正返回415 `UNSUPPORTED`。
 
-支持的格式和限制见[插件说明](../src/plugins/scraperlocal/README.md)：MP3 ID3v2.3/v2.4 的 USLT/APIC、原生 FLAC 的歌词注释/PICTURE，以及授权的同名歌词/图片和目录封面。NCM 由独立后台解密通道提供 MP3/FLAC 字节，不把 NCM 外层图片或不可靠元数据当作已验证内容。不支持的内嵌内容保留问题说明，仍可使用有效旁置内容。
+支持的格式和限制见[插件说明](../plugins/scraper/local/README.md)：MP3 ID3v2.3/v2.4 的 USLT/APIC、原生 FLAC 的歌词注释/PICTURE，以及授权的同名歌词/图片和目录封面。NCM 由独立后台解密通道提供 MP3/FLAC 字节，不把 NCM 外层图片或不可靠元数据当作已验证内容。不支持的内嵌内容保留问题说明，仍可使用有效旁置内容。
 
 ## 搜索和预览
 

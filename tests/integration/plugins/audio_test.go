@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 )
 
 func audioTools(t *testing.T) (string, string) {
@@ -35,7 +35,7 @@ func buildAudioWorker(t *testing.T) string {
 	if runtime.GOOS == "windows" {
 		path += ".exe"
 	}
-	cmd := exec.Command("go", "build", "-o", path, "./src/app/musicfs-plugin-audio-ffmpeg")
+	cmd := exec.Command("go", "build", "-o", path, "./plugins/decoder/ffmpeg/cmd/musicfs-plugin-audio-ffmpeg")
 	cmd.Dir = filepath.Join("..", "..", "..")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build: %v %s", err, out)

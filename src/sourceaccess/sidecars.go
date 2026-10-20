@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
 // Sidecar is an exact sibling grant. Paths stay in the host and must not be

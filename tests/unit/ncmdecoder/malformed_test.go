@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
 )
 
 // 这些测试重新构造损坏的加密区块，不依赖生产实现的解密函数。

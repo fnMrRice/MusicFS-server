@@ -4,6 +4,8 @@
 
 2026-10-20 实现增量：[有序 DSP 链与独立 DSP Worker](dsp-plugins.md)、[受信任持久化后端及独立 SQLite Worker](storage-plugins.md)已有对应实现。它们使用专用版本化契约，不向旧 Provider manifest 任意添加角色。其余 C++、任意音频拓扑和新角色仍按本文后续设计验收。
 
+同日模块增量：Go 协议、公共模型和在线 Worker 提取为独立 `sdk` module，网易云、QQ 音乐、Apple Music 实现迁到 `plugins/source/online` module，分别构建独立程序，并提供 `online/unified` 统一装配入口；宿主生产依赖不含平台实现。插件发布版本可独立更新，权限仍受官方来源策略限制。使用、兼容性及迁移见 [Go SDK](plugin-sdk.md)；独立模块不表示通用第三方发现或 C++ SDK 已交付。
+
 ## 1. 架构能力与前置缺口
 
 现有架构支持继续插件化：Server 保持 Go 模块化单体，来源适配、内容提取和音频处理在受管 Worker 中执行；控制面与数据面已经分离。新工作优先扩展现有角色和受控资源服务，不要求重写已交付的 Go 插件。需要 C++ 库或原生性能的插件使用 CMake / C++23，交付独立 Worker 可执行程序。
@@ -13,7 +15,7 @@ Server 的进程模型与 Client 的单进程 DLL 模型分别维护。两端可
 | 项目 | 当前事实 | 扩展前必须处理 |
 | --- | --- | --- |
 | 角色 | `provider`、`scraper`、`audio`；其他角色被拒绝 | 新角色先增加协议、注册、授权、调度和生命周期适配 |
-| 插件接入 | 官方插件按固定身份和已知配置接入；统一程序通过参数选择内置角色 | 新插件 ID 需要 Host 注册/适配，不能只放入 manifest 或更换程序路径 |
+| 插件接入 | 官方插件按固定身份和已知配置接入；本地四角色使用统一程序，在线来源提供独立和统一程序 | 新插件 ID 需要 Host 注册/适配，不能只放入 manifest 或更换程序路径 |
 | 控制协议 | JSON-RPC 2.0 / stdio，协议版本精确为 `1.0` | 不是“任意 JSON-RPC 实现都兼容”；须符合角色专用握手、DTO、版本和能力检查 |
 | 数据通道 | 音频、NCM、本地 Scraper 已有任务限定 loopback 二进制通道 | 各通道契约不同；未交付通用节点 PCM 总线或共享内存 SDK |
 | 来源资源 | Local Files 为本地根、路径与稳定读取；在线主要为资料/账号 | 原生 NAS、在线整曲先扩展资源模型和受控读取，见[NAS / Bilibili 计划](implementation/nas-bilibili.md) |
@@ -21,7 +23,7 @@ Server 的进程模型与 Client 的单进程 DLL 模型分别维护。两端可
 | 安全隔离 | Broker 校验 Host 提供的权限；仅管理员配置的受信任程序 | 独立进程不等于 OS 沙箱；第三方不可信插件必须先验证额外隔离 |
 | 原生实现 | 当前官方插件为 Go；尚无 C++ Worker 一致性验收 | C++23 工具链、协议绑定、实际数据通道及平台制品需验证 |
 
-具体固定身份校验位于 `src/pluginhost/process.go`、`online_process.go`、`src/pluginproto/online.go`、`src/plugins/audioffmpeg/processor.go`、`src/plugins/scraperlocal/host.go`。因此当前可论证的是**插件化架构可扩展**，不能据此宣称**通用第三方 SDK 已可用**。
+具体固定身份校验位于 `src/pluginhost/process.go`、`online_process.go`、`sdk/pluginproto/online.go`、`plugins/decoder/ffmpeg/processor.go`、`plugins/scraper/local/host.go`。当前 Go SDK 可独立依赖，官方在线插件可分别构建，但不能据此宣称任意第三方插件已可自动接入。
 
 ## 2. 按职责拆分的插件矩阵
 

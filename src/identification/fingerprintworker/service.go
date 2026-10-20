@@ -8,12 +8,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/identification"
 	"github.com/fnMrRice/MusicFS-server/src/identification/fingerprint"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
 	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
 )
 
 type Extractor interface {

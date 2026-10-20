@@ -4,8 +4,8 @@ import (
 	"math"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/dsp/gain"
 	"github.com/fnMrRice/MusicFS-server/src/audio"
-	"github.com/fnMrRice/MusicFS-server/src/audio/dsp"
 )
 
 func TestGainChangesPCMAndValidatesFormat(t *testing.T) {

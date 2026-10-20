@@ -2,7 +2,7 @@
 
 后续增量：[平台账号登录](../platform-login.md)已接入网易云 eapi、QQ 扫码及桌面账号接口、Apple MusicKit 用户令牌校验，以及 Worker / Host / Web 入口；完整实号授权仍待验收。下文阶段原始状态不包含此增量，不能据此宣称完整在线能力已交付。
 
-状态：2026-10-11。Local Files、音频处理、[NCM解密](../ncm.md)、[本地Scraper](../metadata.md)及网易/QQ/Apple三个[在线资料Worker](../online.md)均已有独立进程实现；账号增量以上述专项说明为准，尚无在线完整音频。默认构建 Server 与统一内置插件两个程序；旧单插件薄入口保留兼容。动态启用、配置应用和工作租约已交付；停用改为保存后重启生效，见[管理验收](../validation/plugin-management.md)；通用第三方 SDK、C++ Worker SDK 和恶意插件 OS 沙箱未交付。
+状态：2026-10-20。Local Files、音频处理、[NCM解密](../ncm.md)、[本地Scraper](../metadata.md)及网易/QQ/Apple三个[在线资料Worker](../online.md)均已有独立进程实现；账号增量以上述专项说明为准，尚无在线完整音频。默认构建 Server、四种本地角色共用的插件程序、SQLite 存储、DSP gain、三个独立在线程序和一个在线统一程序，共八个程序。[Go SDK 与在线插件](../plugin-sdk.md)已拆为独立模块，本地单插件薄入口仍保留。[存储](../storage-plugins.md)与[DSP](../dsp-plugins.md)已有各自受限的外部 Go 接口，不参加普通媒体角色自动发现。动态启用、配置应用和工作租约已交付；停用改为保存后重启生效，见[管理验收](../validation/plugin-management.md)；通用第三方发现、C++ Worker SDK 和恶意插件 OS 沙箱未交付。
 
 设计约束来自 [Server 架构](../architecture.md)和[音频处理设计](../audio-processing.md)。本文保留计划边界，已存在代码及已验证能力以验证记录为准。阶段编号与 Server / Web 共用；源文件尽量不超过 400 行，按职责拆分。
 
@@ -83,7 +83,7 @@ tests/
 
 测试与被测源码在不同目录，属于不同 Go package，使用导出的业务接口进行黑盒验证；相同 package 名称不赋予访问未导出符号的权限。测试辅助代码放 `tests/testkit`，不为测试任意公开内部字段或新增源码目录中的测试文件。
 
-先按阶段建立实际使用的包和入口，不一次创建所有空目录。`src/pluginproto` 暂不作为外部 SDK 发布；首版由本项目使用，保留带版本的线协议，不承诺源码包的外部兼容性。准备公开 Go SDK 时另建 module、兼容性策略、示例和一致性测试，不把未承诺稳定的源码路径作为对外接口。
+上述目录树保留首版单模块规划。当前协议包迁到独立 `sdk/pluginproto`，在线实现与其独立/统一入口、单元测试迁到 `plugins/source/online`；根 `tests` 保留跨模块契约与进程集成验证。SDK 使用、独立模块版本和依赖约束见 [Go SDK](../plugin-sdk.md)。本地 `replace` 用于当前工作区开发，不代表已经发布远程模块标签。
 
 ## 3. P0：冻结最小插件契约
 

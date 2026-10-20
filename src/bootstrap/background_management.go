@@ -4,11 +4,11 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
 	"github.com/fnMrRice/MusicFS-server/src/enrichmentworker"
 	"github.com/fnMrRice/MusicFS-server/src/identification/fingerprintworker"
 	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
 )
 
 func audioGate(manager *plugincontrol.Manager, pluginID string) *plugincontrol.Gate {

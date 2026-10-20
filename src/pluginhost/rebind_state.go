@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
 // Call with stateStore.mu held. The durable intent itself is the restart

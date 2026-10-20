@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/online"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/provideronline"
+	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
@@ -54,7 +54,7 @@ func TestOnlineWireContractActualDTOs(t *testing.T) {
 	onlineContract(t, "Hello", hello)
 	onlineContract(t, "", map[string]any{"jsonrpc": "2.0", "id": "h-1", "method": "host.hello", "params": hello})
 	for _, platform := range []string{online.Netease, online.QQMusic, online.AppleMusic} {
-		descriptor := provideronline.Describe(platform)
+		descriptor := onlineplugins.Describe(platform)
 		onlineContract(t, "Descriptor", descriptor)
 		onlineContract(t, "", map[string]any{"jsonrpc": "2.0", "id": "h-2", "result": pluginproto.OnlineResult[pluginproto.OnlineDescriptor]{Context: scope, Value: descriptor}})
 		manifest := pluginproto.Manifest{PluginID: pluginproto.OnlinePluginID(platform), Plugin: descriptor.Plugin, SupportsMultipleInstances: true, PluginVersion: "0.1.0", ProtocolVersion: "1.0", Roles: []string{"provider"}, Capabilities: pluginproto.OnlineCapabilities(platform), Systems: []string{"windows", "linux"}, Architectures: []string{"amd64"}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems}
@@ -66,7 +66,7 @@ func TestOnlineWireContractActualDTOs(t *testing.T) {
 	if err := onlineSchema(t, "").Validate(fixture); err != nil {
 		t.Fatal(err)
 	}
-	c, err := online.New(online.Netease, online.Scope{UserID: "owner", InstanceID: "1463118e-e2d1-564a-ab70-05a357c1b9bf"}, online.Options{Transport: testkit.OnlineAccountTransport(onlineResponse(func(*http.Request) (*http.Response, error) {
+	c, err := onlineplugins.New(online.Netease, online.Scope{UserID: "owner", InstanceID: "1463118e-e2d1-564a-ab70-05a357c1b9bf"}, onlineplugins.Options{Transport: testkit.OnlineAccountTransport(onlineResponse(func(*http.Request) (*http.Response, error) {
 		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"code":200,"result":{"songs":[{"id":42,"name":"Synthetic","artists":[],"album":{},"duration":1}],"songCount":1,"hasMore":false}}`))}, nil
 	}))})
 	if err != nil {
@@ -103,12 +103,12 @@ func TestOnlineWireRejectsScopeAndUnverifiedCapabilities(t *testing.T) {
 			t.Fatal("unsafe online context accepted")
 		}
 	}
-	descriptor := provideronline.Describe(online.AppleMusic)
+	descriptor := onlineplugins.Describe(online.AppleMusic)
 	descriptor.Capabilities[0].Supported = true
 	if descriptor.Validate(online.AppleMusic) == nil {
 		t.Fatal("unverified Apple capability accepted by host")
 	}
-	manifest := pluginproto.Manifest{PluginID: "musicfs.plugin.source.qqmusic", Plugin: provideronline.Describe(online.QQMusic).Plugin, SupportsMultipleInstances: true, PluginVersion: "0.1.0", ProtocolVersion: "1.0", Roles: []string{"provider"}, Capabilities: []string{"stream.resolve"}, Systems: []string{"windows"}, Architectures: []string{"amd64"}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems}
+	manifest := pluginproto.Manifest{PluginID: "musicfs.plugin.source.qqmusic", Plugin: onlineplugins.Describe(online.QQMusic).Plugin, SupportsMultipleInstances: true, PluginVersion: "0.1.0", ProtocolVersion: "1.0", Roles: []string{"provider"}, Capabilities: []string{"stream.resolve"}, Systems: []string{"windows"}, Architectures: []string{"amd64"}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems}
 	body, _ := json.Marshal(manifest)
 	if onlineSchema(t, "Manifest").Validate(testkit.DecodeJSON(t, body)) == nil || pluginproto.ValidateOnlineManifest(manifest, online.QQMusic) == nil {
 		t.Fatal("unverified audio capability accepted")
@@ -116,7 +116,7 @@ func TestOnlineWireRejectsScopeAndUnverifiedCapabilities(t *testing.T) {
 }
 
 func TestOnlineWireRequiresPluginOwnedDisplayMetadata(t *testing.T) {
-	descriptor := provideronline.Describe(online.Netease)
+	descriptor := onlineplugins.Describe(online.Netease)
 	descriptor.Plugin.Name = "Custom plugin name"
 	descriptor.Plugin.LocalizedNames = map[string]string{"fr": "Nom du plugin"}
 	onlineContract(t, "Descriptor", descriptor)

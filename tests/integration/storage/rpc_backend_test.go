@@ -17,15 +17,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/auth"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
 	"github.com/fnMrRice/MusicFS-server/src/plugindb"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/pluginrpc"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
 	_ "github.com/fnMrRice/MusicFS-server/src/storage/rpcbackend"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 
@@ -35,7 +35,7 @@ func storageWorker(t *testing.T, packages ...string) storage.Options {
 	if runtime.GOOS == "windows" {
 		path += ".exe"
 	}
-	pkg := "./src/app/musicfs-plugin-storage-sqlite"
+	pkg := "./plugins/database/sqlite/cmd/musicfs-plugin-storage-sqlite"
 	if len(packages) > 0 {
 		pkg = packages[0]
 	}

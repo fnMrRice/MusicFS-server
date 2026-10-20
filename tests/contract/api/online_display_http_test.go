@@ -7,8 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/online"
 	"github.com/fnMrRice/MusicFS-server/src/onlinehost"
 	"github.com/fnMrRice/MusicFS-server/src/sourcedisplay"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
@@ -20,7 +21,7 @@ func TestOnlineDisplayHTTPKindsBatchAndSourcePermissions(t *testing.T) {
 	runtimes := []onlinehost.Runtime{}
 	for _, label := range []string{"albums", "artists", "playlists", "batch", "detail", "albumdetail", "artistdetail", "albumtracks", "artistalbums", "artisttracks"} {
 		id := fixtureInstanceID(label)
-		client, err := online.New(online.Netease, online.Scope{UserID: "admin", InstanceID: id}, online.Options{Transport: testkit.OnlineAccountTransport(onlineTransport{})})
+		client, err := onlineplugins.New(online.Netease, online.Scope{UserID: "admin", InstanceID: id}, onlineplugins.Options{Transport: testkit.OnlineAccountTransport(onlineTransport{})})
 		if err != nil {
 			t.Fatal(err)
 		}

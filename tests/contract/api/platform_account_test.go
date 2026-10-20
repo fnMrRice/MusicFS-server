@@ -7,12 +7,13 @@ import (
 	"strings"
 	"testing"
 
+	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/online"
 	"github.com/fnMrRice/MusicFS-server/src/onlinehost"
 )
 
-type accountFake struct{ *online.Client }
+type accountFake struct{ *onlineplugins.Client }
 
 func (p accountFake) PlatformDeveloperToken() string { return "" }
 func (p accountFake) PlatformAccount(_ context.Context, r online.AccountRequest) (online.AccountView, error) {
@@ -24,7 +25,7 @@ func (p accountFake) PlatformAccount(_ context.Context, r online.AccountRequest)
 func TestPlatformAccountHTTPIsolationAndCSRF(t *testing.T) {
 	server, _, _ := libraryHTTP(t)
 	cookie, session := login(t, server)
-	c, err := online.New(online.Netease, online.Scope{UserID: "admin", InstanceID: "7fe223d0-a3bd-5e87-87f8-305dc26d9041"}, online.Options{})
+	c, err := onlineplugins.New(online.Netease, online.Scope{UserID: "admin", InstanceID: "7fe223d0-a3bd-5e87-87f8-305dc26d9041"}, onlineplugins.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

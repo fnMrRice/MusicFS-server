@@ -5,8 +5,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
 func runtimeName(r Runtime) string {

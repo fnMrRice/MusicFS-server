@@ -3,8 +3,8 @@ package config
 import (
 	"errors"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
 func EffectiveImportDefaults(pluginID string, instance Instance) (pluginproto.ImportOptions, error) {

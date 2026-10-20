@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/online"
+	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/onlinehost"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/provideronline"
 )
 
 type describedProvider struct {
@@ -18,7 +18,7 @@ type describedProvider struct {
 func (p *describedProvider) Descriptor() pluginproto.OnlineDescriptor { return p.descriptor }
 
 func TestOnlineIdentitySurvivesRuntimeChangesWithDetachedCopies(t *testing.T) {
-	p := &describedProvider{blocked: &blocked{}, descriptor: provideronline.Describe(online.Netease)}
+	p := &describedProvider{blocked: &blocked{}, descriptor: onlineplugins.Describe(online.Netease)}
 	p.descriptor.Plugin.Name = "Custom provider"
 	p.descriptor.Plugin.LocalizedNames["fr"] = "Nom personnalisé"
 	r := onlinehost.Runtime{Owner: "owner", InstanceID: "instance", Name: "Instance label", Platform: online.Netease, ConfigRevision: "r1", Enabled: true, Provider: p}
@@ -76,5 +76,21 @@ func TestNeverStartedOnlineInstanceHasNoInventedPluginName(t *testing.T) {
 	items, err := s.Instances(context.Background(), "owner")
 	if err != nil || len(items) != 1 || items[0].Plugin != nil {
 		t.Fatal("never-started instance invented plugin metadata", items, err)
+	}
+}
+
+func TestOnlineInstancePublishesDeclaredCapabilitySubset(t *testing.T) {
+	p := &describedProvider{blocked: &blocked{}, descriptor: onlineplugins.Describe(online.Netease)}
+	p.descriptor.Capabilities = []online.Capability{{Name: "metadata.track", Supported: true, Reason: "Metadata-only release"}}
+	s, err := onlinehost.New([]onlinehost.Runtime{{
+		Owner: "owner", InstanceID: "subset", Platform: online.Netease,
+		ConfigRevision: "r1", Enabled: true, Provider: p,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	items, err := s.Instances(context.Background(), "owner")
+	if err != nil || len(items) != 1 || len(items[0].Capabilities) != 1 || items[0].Capabilities[0].Name != "metadata.track" {
+		t.Fatalf("host substituted platform defaults for plugin capabilities: %+v %v", items, err)
 	}
 }

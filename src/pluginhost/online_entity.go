@@ -2,9 +2,9 @@ package pluginhost
 
 import (
 	"context"
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/online"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
 func (w *OnlineWorker) Album(ctx context.Context, id string) (online.Album, error) {

@@ -8,16 +8,14 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/fnMrRice/MusicFS-server/src/online"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/localfiles"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/provideronline"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/scraperlocal"
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
+	"github.com/fnMrRice/MusicFS-server/plugins/scraper/local"
+	"github.com/fnMrRice/MusicFS-server/plugins/source/localfiles"
 )
 
 func main() {
-	role := flag.String("plugin", "", "Plugin role: local, audio-ffmpeg, ncm, scraper-local, netease, qqmusic, applemusic")
+	role := flag.String("plugin", "", "Plugin role: local, audio-ffmpeg, ncm, scraper-local")
 	flag.Parse()
 	if flag.NArg() != 0 {
 		fmt.Fprintln(os.Stderr, "Unexpected positional arguments")
@@ -36,8 +34,6 @@ func main() {
 		_ = ncmdecoder.RunWorker(ctx, os.Stdin, os.Stdout)
 	case "scraper-local":
 		_ = scraperlocal.RunWorker(ctx, os.Stdin, os.Stdout)
-	case online.Netease, online.QQMusic, online.AppleMusic:
-		_ = provideronline.Run(ctx, *role, os.Stdin, os.Stdout)
 	default:
 		fmt.Fprintln(os.Stderr, "A supported --plugin role is required")
 		os.Exit(2)

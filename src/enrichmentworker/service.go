@@ -8,13 +8,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
+	"github.com/fnMrRice/MusicFS-server/plugins/scraper/local"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
 	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/scraperlocal"
 )
 
 type Runtime struct {

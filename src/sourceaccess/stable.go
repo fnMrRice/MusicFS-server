@@ -6,7 +6,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
 type stableProtection struct {

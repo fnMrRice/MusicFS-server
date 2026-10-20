@@ -1,0 +1,35 @@
+package main
+
+type releaseProgram struct {
+	name, moduleDir, packagePath string
+}
+
+type sourceModule struct {
+	Path      string `json:"path"`
+	Directory string `json:"directory"`
+}
+
+var sourceModules = []sourceModule{
+	{Path: "github.com/fnMrRice/MusicFS-server", Directory: "."},
+	{Path: "github.com/fnMrRice/MusicFS-server/sdk", Directory: "sdk"},
+	{Path: "github.com/fnMrRice/MusicFS-server/plugins/source/online", Directory: "plugins/source/online"},
+}
+
+var releasePrograms = []releaseProgram{
+	{"musicfs", ".", "./src/app/musicfs"},
+	{"musicfs-plugins", ".", "./src/app/musicfs-plugins"},
+	{"musicfs-plugin-storage-sqlite", ".", "./plugins/database/sqlite/cmd/musicfs-plugin-storage-sqlite"},
+	{"musicfs-plugin-dsp-gain", ".", "./plugins/dsp/gain/cmd/musicfs-plugin-dsp-gain"},
+	{"musicfs-plugin-netease", "plugins/source/online", "./cmd/musicfs-plugin-netease"},
+	{"musicfs-plugin-qqmusic", "plugins/source/online", "./cmd/musicfs-plugin-qqmusic"},
+	{"musicfs-plugin-applemusic", "plugins/source/online", "./cmd/musicfs-plugin-applemusic"},
+	{"musicfs-plugin-online", "plugins/source/online", "./cmd/musicfs-plugin-online"},
+}
+
+var programs = func() []string {
+	result := make([]string, 0, len(releasePrograms))
+	for _, program := range releasePrograms {
+		result = append(result, program.name)
+	}
+	return result
+}()

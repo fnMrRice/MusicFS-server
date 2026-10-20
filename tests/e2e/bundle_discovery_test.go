@@ -2,6 +2,8 @@ package e2e_test
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -12,6 +14,16 @@ import (
 func TestBundledPluginsAutostartPendingAndPersistedDisable(t *testing.T) {
 	cfg, base := yamlServiceConfig(t)
 	cfg.PluginBundle = build(t, "musicfs-plugins")
+	for _, platform := range []string{"netease", "qqmusic", "applemusic", "online"} {
+		source := build(t, "musicfs-plugin-"+platform)
+		data, err := os.ReadFile(source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(filepath.Dir(cfg.PluginBundle), filepath.Base(source)), data, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
 	path := writeYAMLConfiguration(t, cfg)
 	stop := startAudioYAMLServer(t, path, cfg, base)
 	c := login(t, base, cfg.AdminToken)

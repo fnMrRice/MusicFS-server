@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/scraper/local"
 	"github.com/fnMrRice/MusicFS-server/src/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/scraperlocal"
 )
 
 type documentTrace struct {

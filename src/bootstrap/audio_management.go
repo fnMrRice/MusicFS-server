@@ -5,11 +5,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
 	"github.com/fnMrRice/MusicFS-server/src/config"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
 	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
 )
 
 // configureAudioManagement rebuilds verified processors only after the manager

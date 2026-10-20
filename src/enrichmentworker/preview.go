@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/scraper/local"
 	"github.com/fnMrRice/MusicFS-server/src/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/scraperlocal"
 )
 
 // ID3 declares ISO 639-2. Only known exact aliases are normalized; no language

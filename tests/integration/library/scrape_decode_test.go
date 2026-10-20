@@ -12,7 +12,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 
@@ -21,7 +21,7 @@ func TestScrapeSourceActualNCMDecoder(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		path += ".exe"
 	}
-	cmd := exec.Command("go", "build", "-mod=readonly", "-o", path, "./src/app/musicfs-plugin-ncm")
+	cmd := exec.Command("go", "build", "-mod=readonly", "-o", path, "./plugins/decoder/ncm/cmd/musicfs-plugin-ncm")
 	cmd.Dir = testkit.RepositoryRoot()
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build decoder: %v %s", err, out)

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
 type scanReceipt struct {

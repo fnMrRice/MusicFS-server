@@ -13,9 +13,16 @@ import (
 
 func bundledDocument(t *testing.T, extra string) *config.Document {
 	t.Helper()
+	return discoveredDocument(t, extra, []string{"musicfs-plugins", "musicfs-plugin-netease", "musicfs-plugin-qqmusic", "musicfs-plugin-applemusic"})
+}
+
+func discoveredDocument(t *testing.T, extra string, files []string) *config.Document {
+	t.Helper()
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "musicfs-plugins"), []byte("discovery does not execute binaries"), 0600); err != nil {
-		t.Fatal(err)
+	for _, name := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("discovery does not execute binaries"), 0600); err != nil {
+			t.Fatal(err)
+		}
 	}
 	raw := minimalYAML + "pluginBundle: './musicfs-plugins'\n" + extra
 	doc, err := config.ParseDocument([]byte(raw), filepath.Join(dir, "server.yaml"), map[string]string{"ADMIN_TOKEN": "test-credential-at-least-24-characters"})
@@ -34,8 +41,15 @@ func TestBundledDiscoveryDefaultsAndPendingConfiguration(t *testing.T) {
 		t.Fatalf("plugins: %d", len(doc.Config.Plugins))
 	}
 	for _, p := range doc.Config.Plugins {
-		if !p.Enabled || len(p.Instances) != 1 || !p.Instances[0].Enabled || len(p.Args) != 2 || p.Args[0] != "--plugin" {
+		if !p.Enabled || len(p.Instances) != 1 || !p.Instances[0].Enabled {
 			t.Fatalf("invalid discovery: %+v", p)
+		}
+		if platform := config.OnlinePlatform(p.PluginID); platform != "" {
+			if filepath.Base(p.Executable) != "musicfs-plugin-"+platform || len(p.Args) != 0 {
+				t.Fatalf("online provider uses bundled dispatch: %+v", p)
+			}
+		} else if len(p.Args) != 2 || p.Args[0] != "--plugin" {
+			t.Fatalf("local role has no bundled dispatch: %+v", p)
 		}
 		wantPending := p.PluginID == "musicfs.plugin.source.localfiles" || p.PluginID == "musicfs.plugin.decoder.ffmpeg"
 		if p.Pending(p.Instances[0]) != wantPending || p.CanStart(p.Instances[0]) == wantPending {

@@ -18,9 +18,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/scraper/local"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/enrichment"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/scraperlocal"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 
@@ -30,7 +30,7 @@ func scraperHost(t *testing.T) *scraperlocal.Host {
 	if runtime.GOOS == "windows" {
 		path += ".exe"
 	}
-	cmd := exec.Command("go", "build", "-mod=readonly", "-o", path, "./src/app/musicfs-plugin-scraper-local")
+	cmd := exec.Command("go", "build", "-mod=readonly", "-o", path, "./plugins/scraper/local/cmd/musicfs-plugin-scraper-local")
 	cmd.Dir = filepath.Join("..", "..", "..")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build scraper: %v %s", err, out)

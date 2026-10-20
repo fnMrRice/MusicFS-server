@@ -14,10 +14,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/audio"
 	"github.com/fnMrRice/MusicFS-server/src/audio/dspworker"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 
@@ -27,7 +27,7 @@ func externalGainWorker(t *testing.T) dspworker.Config {
 	if runtime.GOOS == "windows" {
 		path += ".exe"
 	}
-	cmd := exec.Command("go", "build", "-mod=readonly", "-o", path, "./src/app/musicfs-plugin-dsp-gain")
+	cmd := exec.Command("go", "build", "-mod=readonly", "-o", path, "./plugins/dsp/gain/cmd/musicfs-plugin-dsp-gain")
 	cmd.Dir = testkit.RepositoryRoot()
 	if raw, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build DSP plugin: %v %s", err, raw)

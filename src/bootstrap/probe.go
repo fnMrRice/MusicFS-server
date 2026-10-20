@@ -6,11 +6,11 @@ import (
 	"io"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/identification"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
 	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
 )
 

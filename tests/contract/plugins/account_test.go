@@ -2,8 +2,8 @@ package plugins_test
 
 import (
 	"encoding/json"
-	"github.com/fnMrRice/MusicFS-server/src/online"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"strings"

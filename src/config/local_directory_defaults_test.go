@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/plugindb"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
 func defaultDirectoriesDocument(t *testing.T, permissions string) (*Document, map[string]string) {

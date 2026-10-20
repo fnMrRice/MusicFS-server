@@ -5,7 +5,6 @@ import (
 	"regexp"
 
 	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/online"
 	"github.com/fnMrRice/MusicFS-server/src/playlists"
 )
 
@@ -57,7 +56,7 @@ func (p *playlistRemote) Authorize(ctx context.Context, owner string, ref playli
 		return playlists.Binding{}, domain.Fail("ACCESS_DENIED", "Platform account does not match the playlist")
 	}
 	supported := false
-	for _, capability := range online.Capabilities(runtime.Platform) {
+	for _, capability := range runtime.descriptor.Capabilities {
 		if capability.Name == "playlist.observe" && capability.Supported {
 			supported = true
 		}

@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
 	"golang.org/x/sys/windows"
 )

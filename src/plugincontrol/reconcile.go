@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
 type action struct {

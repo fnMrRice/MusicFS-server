@@ -1,6 +1,6 @@
 package pluginconfig
 
-import "github.com/fnMrRice/MusicFS-server/src/pluginproto"
+import "github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 
 // Identity owns the official plugin display declarations. Workers and hosts
 // share these defaults; a verified worker may supply updated display names.

@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
 )
 
 func TestRequiredDSPDoesNotFallBackToOriginalWhenProcessorUnavailable(t *testing.T) {

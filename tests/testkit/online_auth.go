@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
 )
 
 // DecodeNeteaseFixture lets metadata fixtures inspect the encrypted client
@@ -87,7 +87,9 @@ func OnlineAccountTransport(next http.RoundTripper) http.RoundTripper {
 	return accountFixtureTransport{next}
 }
 
-func RestoreOnlineFixture(t *testing.T, c *online.Client, platform, owner, instance string) {
+func RestoreOnlineFixture(t *testing.T, c interface {
+	Account(context.Context, online.AccountRequest) (online.AccountResult, error)
+}, platform, owner, instance string) {
 	t.Helper()
 	secret, _ := json.Marshal(map[string]any{"platform": platform, "userId": owner, "instanceId": instance, "deviceId": "fixture-device", "accountId": "12345", "cookies": map[string]string{"MUSIC_U": "fixture-private-token"}, "musicKey": "fixture-private-token"})
 	if _, err := c.Account(context.Background(), online.AccountRequest{Action: "restore", Secret: secret}); err != nil {

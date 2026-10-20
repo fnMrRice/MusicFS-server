@@ -4,10 +4,10 @@ import (
 	"context"
 	"os"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/src/auth"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
 	"github.com/fnMrRice/MusicFS-server/src/storage/rpcbackend"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 )
 
 type crashBackend struct{ storage.Backend }

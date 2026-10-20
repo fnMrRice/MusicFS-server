@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"strings"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/instanceid"
 	"github.com/fnMrRice/MusicFS-server/src/pluginid"
 )
 

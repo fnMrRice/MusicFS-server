@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
 )
 
@@ -43,7 +43,7 @@ func buildWorker(t *testing.T) string {
 	if runtime.GOOS == "windows" {
 		path += ".exe"
 	}
-	cmd := exec.Command("go", "build", "-o", path, "./src/app/musicfs-plugin-local")
+	cmd := exec.Command("go", "build", "-o", path, "./plugins/source/localfiles/cmd/musicfs-plugin-local")
 	cmd.Dir = filepath.Join("..", "..", "..")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build: %v %s", err, out)

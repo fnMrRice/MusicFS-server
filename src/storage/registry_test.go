@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/src/auth"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 )
 
 type trackedBackend struct {

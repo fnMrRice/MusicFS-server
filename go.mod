@@ -5,12 +5,18 @@ go 1.26.0
 toolchain go1.26.9
 
 require (
+	github.com/fnMrRice/MusicFS-server/plugins/source/online v0.1.0
+	github.com/fnMrRice/MusicFS-server/sdk v0.1.0
 	github.com/google/uuid v1.6.0
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/sys v0.49.0
 	modernc.org/sqlite v1.60.1
 )
+
+replace github.com/fnMrRice/MusicFS-server/sdk => ./sdk
+
+replace github.com/fnMrRice/MusicFS-server/plugins/source/online => ./plugins/source/online
 
 require (
 	github.com/dustin/go-humanize v1.1.0 // indirect

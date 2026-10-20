@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/fnMrRice/MusicFS-server/src/instanceid"
+	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
 	"github.com/fnMrRice/MusicFS-server/src/pluginid"
 	"go.yaml.in/yaml/v3"
 )

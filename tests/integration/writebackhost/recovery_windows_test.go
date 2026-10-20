@@ -14,15 +14,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
 	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 	"github.com/fnMrRice/MusicFS-server/src/writeback"
 	"github.com/fnMrRice/MusicFS-server/src/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
@@ -70,7 +70,7 @@ func TestWritebackHostRecoversFileAndDatabaseBoundary(t *testing.T) {
 		t.Skip("MUSICFS_FFPROBE is required")
 	}
 	bin := filepath.Join(t.TempDir(), "local.exe")
-	cmd := exec.Command("go", "build", "-mod=readonly", "-o", bin, "./src/app/musicfs-plugin-local")
+	cmd := exec.Command("go", "build", "-mod=readonly", "-o", bin, "./plugins/source/localfiles/cmd/musicfs-plugin-local")
 	cmd.Dir = testkit.RepositoryRoot()
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build: %v %s", err, out)

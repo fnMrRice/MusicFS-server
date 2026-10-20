@@ -3,8 +3,8 @@ package playlists
 import (
 	"reflect"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/online"
 )
 
 // ObservationPage is an internal adapter result. Each entry's position is an

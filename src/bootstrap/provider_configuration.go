@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"sort"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
 func providerConfigRevision(instance config.Instance, binaryHash string, defaults pluginproto.ImportOptions) string {

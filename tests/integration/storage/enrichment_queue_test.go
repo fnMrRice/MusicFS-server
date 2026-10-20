@@ -5,9 +5,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/enrichment"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 )
 
 func enrichmentRequest(ids ...string) enrichment.JobRequest {

@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/scraper/local"
 	"github.com/fnMrRice/MusicFS-server/src/config"
 	"github.com/fnMrRice/MusicFS-server/src/enrichmentworker"
 	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/scraperlocal"
 )
 
 func registerScraperManagement(manager *plugincontrol.Manager, c config.Config, service *enrichmentworker.Service) error {

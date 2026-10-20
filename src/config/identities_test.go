@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/instanceid"
+	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
 )
 
 func TestLegacyConfigurationIdentitiesAndReferences(t *testing.T) {

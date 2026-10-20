@@ -45,12 +45,12 @@ audioDSP:
 
 ## 构建并使用示例
 
-仓库提供独立可执行示例 [musicfs-plugin-dsp-gain](../src/app/musicfs-plugin-dsp-gain/main.go)，握手名称固定为 `musicfs.dsp.gain`，节点版本为 1，参数与内建 gain 相同。它用于验证扩展边界，不要求把默认 gain 移出音频 Worker。
+仓库提供独立可执行示例 [musicfs-plugin-dsp-gain](../plugins/dsp/gain/cmd/musicfs-plugin-dsp-gain/main.go)，握手名称固定为 `musicfs.dsp.gain`，节点版本为 1，参数与内建 gain 相同。它用于验证扩展边界，不要求把默认 gain 移出音频 Worker。
 
 在 Server 仓库根目录使用 PowerShell：
 
 ```powershell
-go build -o ./bin/musicfs-plugin-dsp-gain.exe ./src/app/musicfs-plugin-dsp-gain
+go build -o ./bin/musicfs-plugin-dsp-gain.exe ./plugins/dsp/gain/cmd/musicfs-plugin-dsp-gain
 (Get-FileHash -Algorithm SHA256 -LiteralPath ./bin/musicfs-plugin-dsp-gain.exe).Hash.ToLowerInvariant()
 ```
 
@@ -153,11 +153,11 @@ v1 算法必须无状态：结果不依赖之前的 PCM 块、播放起点或 Re
 本次已通过：
 
 ```text
-go test ./src/audio/... ./src/plugins/audioffmpeg ./src/app/musicfs-plugin-dsp-gain
+go test ./src/audio/... ./plugins/decoder/ffmpeg ./plugins/dsp/gain/cmd/musicfs-plugin-dsp-gain
 ```
 
 - `src/audio/dspworker/process_test.go`：真实子进程的二进制 PCM 往返；超时、崩溃、取消与回收；拒绝校验和/身份不符、时标篡改、有状态声明、非零延迟、协议版本不符、超限帧和非有限样本。
-- `src/plugins/audioffmpeg/dsp_test.go`：有序链的可观察削波结果、参数/版本拒绝、配置深复制及处理身份变化。
+- `plugins/decoder/ffmpeg/dsp_test.go`：有序链的可观察削波结果、参数/版本拒绝、配置深复制及处理身份变化。
 - `tests/integration/playback/dsp_audio_test.go`：Windows 与 FFmpeg 6.1.1 的真实处理输出，经 RMS 验证内建 -3 dB 和外部 -6 dB 均执行；同时覆盖强制 processed、描述顺序、缓存隔离、seek 保留旧链、跨源恢复身份以及指纹规范化字节不变。
 
 真实播放集成测试需设置 `MUSICFS_FFMPEG` 与 `MUSICFS_FFPROBE` 后执行：

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	_ "github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/src/albums"
 	"github.com/fnMrRice/MusicFS-server/src/api"
 	"github.com/fnMrRice/MusicFS-server/src/auth"
@@ -28,7 +29,6 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/sourcedisplay"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
 	_ "github.com/fnMrRice/MusicFS-server/src/storage/rpcbackend"
-	_ "github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 )
 
 func checksum(path string) string {

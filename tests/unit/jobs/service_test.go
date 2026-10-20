@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/jobs"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
 type finishRepository struct {

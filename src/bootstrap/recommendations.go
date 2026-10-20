@@ -1,9 +1,9 @@
 package bootstrap
 
 import (
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/onlinehost"
 	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/recommendations"
 )
 

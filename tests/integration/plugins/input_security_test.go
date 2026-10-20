@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 )
 
 func TestAudioInputsCannotFollowDisguisedPlaylists(t *testing.T) {

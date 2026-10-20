@@ -4,7 +4,7 @@
 
 ## 构建安装目录
 
-使用根 go.mod 固定的 Go 工具链，在 Server 仓库根目录执行。目标目录必须不存在。正式构建要求工作树干净；`--allow-dirty` / `-AllowDirty` 只用于明确标记的验证制品。
+使用各模块 go.mod 固定的 Go 工具链，在 Server 仓库根目录执行。Server、`sdk`、`plugins/source/online` 各有独立 go.mod；构建脚本强制 `GOWORK=off` 并使用 `-mod=readonly`，不依赖调用者的 Go workspace。目标目录必须不存在。正式构建要求工作树干净；`--allow-dirty` / `-AllowDirty` 只用于明确标记的验证制品。
 
 ```powershell
 ./scripts/release.ps1 -TargetOS windows -Output ./build/releases/windows-amd64 -WebRoot ../web/dist
@@ -15,9 +15,11 @@
 sh scripts/release.sh --os linux --output ./build/releases/linux-amd64 --web-root ../web/dist
 ```
 
-Web 先在独立仓库按自己的工具链构建。`--web-root` 可省略；只复制静态制品，拒绝隐藏文件、链接、源码映射和超限文件，不复制 Web 源码或 Git。制品中的 `bin` 包含四个程序（Windows 带 `.exe`）：`musicfs`、`musicfs-plugins`、`musicfs-plugin-storage-sqlite`、`musicfs-plugin-dsp-gain`。发布构建移除调试信息；统一插件程序的七种角色通过 `components[].args` 选择，存储和 DSP 程序使用各自入口。`release.json` 记录源提交、脏树状态、平台、版本/协议和实际编译依赖，`SHA256SUMS` 覆盖所有交付文件。存在 `.incomplete` 表示失败，不可当成完成的制品。校验清单证明文件一致性，不代表有发布者签名。
+Web 先在独立仓库按自己的工具链构建。`--web-root` 可省略；只复制静态制品，拒绝隐藏文件、链接、源码映射和超限文件，不复制 Web 源码或 Git。制品中的 `bin` 包含八个程序（Windows 带 `.exe`）：`musicfs`、`musicfs-plugins`、`musicfs-plugin-netease`、`musicfs-plugin-qqmusic`、`musicfs-plugin-applemusic`、`musicfs-plugin-online`、`musicfs-plugin-storage-sqlite`、`musicfs-plugin-dsp-gain`。发布构建移除调试信息；统一插件程序的四种本地角色通过 `components[].args` 选择，在线平台、存储和 DSP 程序使用各自入口。`release.json` 记录源提交、脏树状态、平台、版本/协议、三个源码模块和实际编译依赖，`SHA256SUMS` 覆盖所有交付文件。存在 `.incomplete` 表示失败，不可当成完成的制品。校验清单证明文件一致性，不代表有发布者签名。
 
 安装包不包含 `docs/` 目录，运行、配置和协议文档保留在对应版本的源码仓库中。
+
+三个在线平台同时提供独立程序和 `musicfs-plugin-online --plugin netease|qqmusic|applemusic` 统一入口。自动发现优先使用对应独立程序，缺失时由同目录统一程序补足，按相同插件 ID 去重；统一程序的各平台仍分别启动进程。显式禁用和实例身份不因入口选择改变；已固定的程序摘要不会自动清除，详见[发现与迁移](configuration.md#内置插件程序与自动发现)。
 
 新安装包将 SQLite 独立存储程序作为必需基础设施，`release.json` 标记为 `required: true`；生成的配置固定 `storage.backend: plugin`、`../bin/musicfs-plugin-storage-sqlite(.exe)` 及本次打包文件的实际 SHA-256，缺少文件时打包失败。它不进入普通插件启停列表、不提供禁用开关；程序缺失、校验失败或加载失败时拒绝启动。源仓库示例和未声明 storage 的旧配置保留内置 SQLite 兼容，迁移说明见[存储插件](storage-plugins.md)。
 
@@ -45,7 +47,7 @@ FFmpeg/ffprobe 不进入安装包。Windows 可使用 [FFmpeg 官方下载页](h
 
 Chromaprint `fpcalc` 1.6.1 是默认禁用的指纹功能所需外部工具，须填写审核后的 SHA-256；见[指纹说明](fingerprinting.md)。安装其他版本并不会自动获得已验证状态。
 
-`release.json.dependencies` 区分 `compiled:true` 的二进制模块与只在模块图/测试中存在的项目；编译依赖必须收集到许可文件，否则打包失败。`licenses` 保留依赖原许可，根 LICENSE 保留本仓库许可。README 的 NCM/在线平台项目属于格式或设计参考，见[平台能力](platform-capabilities.md)；它们不被列为实际运行服务。Go 标准库随工具链编译；FFmpeg、fpcalc、容器基础系统及其包使用各自来源的许可，制品不替代对应来源材料。仓库与生成制品保持私有，不自动上传或发布。
+`release.json.modules` 列出 Server、SDK 和在线插件三个源码模块，包内保留各自的 go.mod/go.sum。`dependencies` 合并三个模块的依赖图并记录每项的 `modules` 归属，区分 `compiled:true` 的二进制模块与只在模块图/测试中存在的项目；实际编译的第三方依赖必须收集到许可文件，否则打包失败。源码中的 SDK/在线插件本地替换仅允许指向仓库中对应的真实目录，清单标记 `firstParty` 与 `source`，适用根 LICENSE，不伪装为遗漏许可的第三方依赖。其他本地或远程替换会拒绝打包。`licenses` 保留依赖原许可，根 LICENSE 保留本仓库许可。README 的 NCM/在线平台项目属于格式或设计参考，见[平台能力](platform-capabilities.md)；它们不被列为实际运行服务。Go 标准库随工具链编译；FFmpeg、fpcalc、容器基础系统及其包使用各自来源的许可，制品不替代对应来源材料。仓库与生成制品保持私有，不自动上传或发布。
 
 ## 容器示例（尚未运行验收）
 

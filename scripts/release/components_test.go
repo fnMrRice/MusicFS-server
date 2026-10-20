@@ -20,15 +20,15 @@ func TestComponentsAndBuildScriptsIncludeStandaloneExtensions(t *testing.T) {
 		}
 		registered[item.Program] = true
 	}
-	for _, program := range programs {
-		if !registered[program] {
-			t.Fatalf("packaged executable lacks release metadata: %s", program)
+	for _, program := range releasePrograms {
+		if !registered[program.name] {
+			t.Fatalf("packaged executable lacks release metadata: %s", program.name)
 		}
-		if _, err := os.Stat(filepath.Join(repository, "src", "app", program, "main.go")); err != nil {
-			t.Fatalf("packaged executable has no entry point: %s: %v", program, err)
+		if _, err := os.Stat(filepath.Join(repository, program.moduleDir, program.packagePath, "main.go")); err != nil {
+			t.Fatalf("packaged executable has no entry point: %s: %v", program.name, err)
 		}
 	}
-	for _, program := range []string{"musicfs-plugin-storage-sqlite", "musicfs-plugin-dsp-gain"} {
+	for _, program := range []string{"musicfs-plugin-storage-sqlite", "musicfs-plugin-dsp-gain", "musicfs-plugin-netease", "musicfs-plugin-qqmusic", "musicfs-plugin-applemusic"} {
 		if !slices.Contains(programs, program) {
 			t.Fatalf("standalone extension omitted from package: %s", program)
 		}
@@ -60,18 +60,34 @@ func TestComponentsAndBuildScriptsIncludeStandaloneExtensions(t *testing.T) {
 	}
 }
 
-func TestBundledRolesRemainAvailable(t *testing.T) {
-	count := 0
+func TestBundledRolesExcludeOnlineImplementations(t *testing.T) {
+	count, online := 0, 0
 	for _, item := range components() {
 		if item.Program == "musicfs-plugins" {
 			count++
 			if len(item.Args) != 2 || item.Args[0] != "--plugin" ||
-				!slices.Contains([]string{"local", "audio-ffmpeg", "ncm", "scraper-local", "netease", "qqmusic", "applemusic"}, item.Args[1]) {
+				!slices.Contains([]string{"local", "audio-ffmpeg", "ncm", "scraper-local"}, item.Args[1]) {
 				t.Fatalf("unexpected bundled role: %+v", item)
 			}
 		}
+		if item.Program == "musicfs-plugin-online" {
+			online++
+			if len(item.Args) != 2 || item.Args[0] != "--plugin" ||
+				!slices.Contains([]string{"netease", "qqmusic", "applemusic"}, item.Args[1]) ||
+				item.PluginID != "musicfs.plugin.source."+item.Args[1] {
+				t.Fatalf("unexpected unified online role: %+v", item)
+			}
+		}
 	}
-	if count != 7 {
-		t.Fatalf("bundled role count = %d, want 7", count)
+	if count != 4 {
+		t.Fatalf("bundled role count = %d, want 4", count)
+	}
+	if online != 3 {
+		t.Fatalf("unified online role count = %d, want 3", online)
+	}
+	t.Setenv("GOWORK", "/untrusted/go.work")
+	got := targetEnvironment("windows", "amd64")
+	if !slices.Contains(got, "GOWORK=off") || slices.Contains(got, "GOWORK=/untrusted/go.work") {
+		t.Fatal("release must build modules independently of the caller's workspace")
 	}
 }

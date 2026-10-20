@@ -2,7 +2,7 @@
 // transferred separately and never belong in persisted control-message JSON.
 package enrichment
 
-import "github.com/fnMrRice/MusicFS-server/src/pluginproto"
+import "github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 
 const MaxResources = 32
 const MaxCandidates = 64

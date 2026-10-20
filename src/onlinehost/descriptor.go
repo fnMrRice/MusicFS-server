@@ -3,7 +3,7 @@ package onlinehost
 import (
 	"reflect"
 
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
 // Retain the last verified identity while an instance is stopped or replaced.

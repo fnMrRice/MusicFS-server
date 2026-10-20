@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/online"
 	"github.com/fnMrRice/MusicFS-server/src/recommendations"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )

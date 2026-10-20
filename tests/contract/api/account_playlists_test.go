@@ -6,7 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/online"
+	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/onlinehost"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
@@ -14,7 +15,7 @@ import (
 func TestAccountPlaylistsHTTPScopesAndContract(t *testing.T) {
 	server, _, _ := libraryHTTP(t)
 	cookie, _ := login(t, server)
-	client, err := online.New(online.Netease, online.Scope{UserID: "admin", InstanceID: "7fe223d0-a3bd-5e87-87f8-305dc26d9041"}, online.Options{Transport: testkit.OnlineAccountTransport(onlineTransport{})})
+	client, err := onlineplugins.New(online.Netease, online.Scope{UserID: "admin", InstanceID: "7fe223d0-a3bd-5e87-87f8-305dc26d9041"}, onlineplugins.Options{Transport: testkit.OnlineAccountTransport(onlineTransport{})})
 	if err != nil {
 		t.Fatal(err)
 	}

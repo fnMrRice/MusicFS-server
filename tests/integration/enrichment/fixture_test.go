@@ -11,6 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
+	"github.com/fnMrRice/MusicFS-server/plugins/scraper/local"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/enrichmentworker"
@@ -18,10 +21,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
 	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/scraperlocal"
 	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 
@@ -102,7 +102,7 @@ func setup(t *testing.T) fixture {
 	if runtime.GOOS == "windows" {
 		workerPath += ".exe"
 	}
-	cmd := exec.Command("go", "build", "-mod=readonly", "-o", workerPath, "./src/app/musicfs-plugin-scraper-local")
+	cmd := exec.Command("go", "build", "-mod=readonly", "-o", workerPath, "./plugins/scraper/local/cmd/musicfs-plugin-scraper-local")
 	cmd.Dir = testkit.RepositoryRoot()
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build scraper: %v %s", err, out)

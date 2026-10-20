@@ -1,6 +1,6 @@
 package pluginconfig
 
-import "github.com/fnMrRice/MusicFS-server/src/pluginproto"
+import "github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 
 // Role is the official plugin declaration shared by workers and the host.
 // Hosts still validate the worker's manifest before admitting runtime work.

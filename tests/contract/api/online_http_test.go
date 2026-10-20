@@ -11,7 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/online"
+	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/onlinehost"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
@@ -57,7 +58,7 @@ func TestOnlineHTTPPrivateAuthenticatedMetadataAndErrors(t *testing.T) {
 	cookie, session := login(t, server)
 	runtimes := []onlinehost.Runtime{}
 	for _, item := range []struct{ owner, id, platform string }{{"admin", "7fe223d0-a3bd-5e87-87f8-305dc26d9041", online.Netease}, {"admin", "db019d81-1fbb-528c-a9f7-9c47006844a2", online.Netease}, {"admin", "b5e86bbe-524b-53fc-bde9-bbe3cbb02a80", online.QQMusic}, {"admin", "2e2b7962-89d2-5815-9804-0d395497f906", online.AppleMusic}, {"other", "843558e1-a158-56ac-834a-baffd12bb5c5", online.Netease}} {
-		provider, err := online.New(item.platform, online.Scope{UserID: item.owner, InstanceID: item.id}, online.Options{Transport: testkit.OnlineAccountTransport(onlineTransport{})})
+		provider, err := onlineplugins.New(item.platform, online.Scope{UserID: item.owner, InstanceID: item.id}, onlineplugins.Options{Transport: testkit.OnlineAccountTransport(onlineTransport{})})
 		if err != nil {
 			t.Fatal(err)
 		}

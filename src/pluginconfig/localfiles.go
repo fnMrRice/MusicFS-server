@@ -2,7 +2,7 @@
 // the plugin handshake and host configuration loader.
 package pluginconfig
 
-import "github.com/fnMrRice/MusicFS-server/src/pluginproto"
+import "github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 
 func LocalFiles() *pluginproto.Configuration {
 	return &pluginproto.Configuration{

@@ -12,12 +12,34 @@ server/
   go.sum
   README.md
   AGENTS.md
+  sdk/                    # Independent Go module, owned by Server
+    go.mod
+    pluginproto/          # Versioned wire protocol and schemas
+    online/               # Shared DTOs, no platform implementation
+    provider/             # Reusable provider worker
+  plugins/
+    source/
+      localfiles/         # Includes cmd/musicfs-plugin-local
+      online/             # Independent Go module, depends only on SDK
+        go.mod
+        cmd/              # Standalone and unified online executable entries
+        netease/
+        qqmusic/
+        applemusic/
+        internal/
+    decoder/
+      ffmpeg/             # Includes cmd/musicfs-plugin-audio-ffmpeg
+      ncm/                # Includes cmd/musicfs-plugin-ncm
+    scraper/
+      local/              # Includes cmd/musicfs-plugin-scraper-local
+    database/
+      sqlite/             # Includes cmd/musicfs-plugin-storage-sqlite
+    dsp/
+      gain/               # Includes cmd/musicfs-plugin-dsp-gain
   src/
     app/
       musicfs/main.go
-      musicfs-plugin-local/main.go
-      musicfs-plugin-audio-ffmpeg/main.go
-      musicfs-plugin-scraper-local/main.go
+      musicfs-plugins/main.go
     bootstrap/            # Composition and lifecycle
     config/
     logging/
@@ -25,19 +47,10 @@ server/
     auth/
     api/                  # HTTP routing, DTOs, handlers and middleware
     storage/
-      sqlite/
       migrations/         # Versioned SQL files and embed.go
     jobs/
-    pluginproto/          # Versioned wire protocol
     pluginhost/
     sourceaccess/         # Authorized source handles and input broker
-    plugins/
-      localfiles/
-      audioffmpeg/
-      scraperlocal/
-      netease/            # Added only in P7
-      qqmusic/
-      applemusic/
     library/
     playback/
     stream/
@@ -80,11 +93,11 @@ server/
   build/                  # Ignored build output
 ```
 
-根 go.mod 采用与实际仓库一致的 module 路径，例如 `github.com/fnMrRice/MusicFS-server`。`src` 是普通包目录，导入路径包含 `/src/library` 等部分；它不是 GOPATH，也不为每个模块建立 go.mod。P0 先检查并固定实际远程大小写，之后避免随意改 module 身份。
+根 go.mod 的 module 路径为 `github.com/fnMrRice/MusicFS-server`，`src` 是宿主业务包目录。插件实现按用途归入 `plugins/source`、`plugins/decoder`、`plugins/scraper`、`plugins/database`、`plugins/dsp`。分类目录不等同于 Go 模块：SDK 使用独立模块 `github.com/fnMrRice/MusicFS-server/sdk`，在线平台实现使用 `github.com/fnMrRice/MusicFS-server/plugins/source/online`，其余当前实现属于根模块；三者由同一 Server 仓库维护。SDK 不导入宿主业务，在线模块只依赖 SDK，不导入 Server 的 `src`。开发时通过各 go.mod 的明确本地 replace 关联，构建和检查均在 `GOWORK=off` 下执行；协议版本与实现版本分别维护。
 
-`src/app/<程序>` 只能包含 package main 的参数入口和组装调用。可测试的启动、配置和生命周期逻辑放 `src/bootstrap` 等普通包；其他包和 tests 不导入 package main。Server 和官方 worker 分别构建为可执行文件，所有入口仍在同一个 Go module。
+`src/app` 保留 Server 与本地角色组合程序的薄入口；单个插件入口位于各自 `plugins/<用途>/<实现>/cmd/<程序>`。可测试的启动、配置和生命周期逻辑放 `src/bootstrap` 等普通包；其他包和 tests 不导入 package main。Server、本地角色、SQLite 与 DSP 入口属于根模块；网易云、QQ 音乐、Apple Music 入口分别位于 `plugins/source/online/cmd/musicfs-plugin-<平台>`，可在该模块内单独构建。
 
-不要用 `src/internal` 隐藏要由根 tests 导入的模块：Go 的 internal 导入限制会阻止 src 外的测试引用。当前 src 业务包是项目实现接口，不因可被 Go 导入就承诺长期公开 SDK 兼容；外部插件只依赖版本化 wire 契约。真正发布 SDK 时另立版本和兼容测试，不随意开放整个服务层。
+不要用 `src/internal` 隐藏要由根 tests 导入的模块：Go 的 internal 导入限制会阻止 src 外的测试引用。当前 src 业务包仍是宿主实现接口，不承诺插件 SDK 兼容。插件使用版本化 wire 契约及 `sdk` 的 DTO、协议和 Worker 基础能力；SDK 的独立测试及示例验证其脱离宿主编译的边界。
 
 当前示例、加载器及配置读写服务统一采用[YAML配置](../configuration.md)，旧JSON配置不兼容；[配置验收](../validation/configuration.md)记录本轮结果。HTTP、JSON-RPC与Schema继续使用各自协议格式。
 
@@ -104,7 +117,7 @@ server/
 
 1. `domain` 仅放被多个模块共同使用的小类型：UserID、SourceTrackID、AssetID、JobID、Revision；不放 SQL、HTTP、子进程或万能业务管理器。
 2. `api` 把请求映射到应用服务；library/playback/enrichment 等服务通过自己需要的小接口访问存储和来源，不反向依赖 api。
-3. `storage/sqlite` 实现持久接口，`pluginhost` 实现 worker 控制，`sourceaccess` 实现授权读取；bootstrap 负责把实现注入服务。
+3. `plugins/database/sqlite` 实现持久接口，`pluginhost` 实现 worker 控制，`sourceaccess` 实现授权读取；bootstrap 负责把实现注入服务。
 4. 插件 wire DTO 与持久模型、浏览器 DTO 分离，在边界显式转换；平台字段不能沿 Provider 响应直接污染核心表。
 5. 不创建无人调用的接口和空实现；先由 P1/P2 的调用需求决定接口形状。
 
@@ -125,16 +138,16 @@ server/
 
 ```text
 go build -o build/musicfs ./src/app/musicfs
-go build -o build/musicfs-plugin-local ./src/app/musicfs-plugin-local
+go build -o build/musicfs-plugin-local ./plugins/source/localfiles/cmd/musicfs-plugin-local
 go test ./...
-go test -coverpkg=./src/... -coverprofile=build/coverage.out ./tests/...
+go test -coverpkg=./src/...,./plugins/... -coverprofile=build/coverage.out ./tests/...
 go vet ./...
 go test -race ./tests/...
 ```
 
-Windows 制品使用 `.exe` 后缀。格式化脚本枚举 src 与 tests 中的 Go 文件后调用 gofmt，不能把目录参数当成递归格式化已经生效。`-race` 在支持平台和具备所需工具链的 CI 运行；普通交叉构建、race 构建和真实目标机运行分别记录。
+Windows 制品使用 `.exe` 后缀。日常全量构建使用 `scripts/build.ps1` / `scripts/build.sh`；检查使用 `scripts/check.ps1` / `scripts/check.sh`。检查脚本覆盖 `src`、`tests`、`scripts/release`、`sdk` 与全部 `plugins`，并分别运行各 Go 模块的 vet 与测试。`-race` 在支持平台和具备所需工具链的 CI 运行；普通交叉构建、race 构建和真实目标机运行分别记录。
 
-外置 tests 的覆盖率显式指定 `-coverpkg=./src/...`，避免只统计测试包。全量 `go test ./...` 会发现根 module 中的测试；tests 下不另建 go.mod。集成测试明确通过 build tag 或测试开关启用，CI 和文档列出对应命令，不能把跳过外部依赖的成功输出当完整通过。
+外置 tests 的覆盖率显式指定 `-coverpkg=./src/...,./plugins/...`，包含宿主与根模块插件实现。根目录的 `go test ./...` 只发现根 module 中的测试，不跨越 `sdk/go.mod` 与 `plugins/source/online/go.mod`，必须另行进入两目录测试；根 `tests` 下不另建 go.mod。集成测试明确通过 build tag 或测试开关启用，CI 和文档列出对应命令，不能把跳过外部依赖的成功输出当完整通过。
 
 ### S-P0-05：最小 HTTP 与插件契约
 
@@ -163,6 +176,6 @@ Windows 制品使用 `.exe` 后缀。格式化脚本枚举 src 与 tests 中的 
 - [x] 合成媒体夹具与 P3/P4 验收记录可复用，来源/许可明确。
 - [x] 工程建立与各功能阶段分别记录，不用空包或构建成功证明可播放。
 
-逐步证据见[核对表](../validation/documentation-audit.md#p0工程与契约)、[夹具](../validation/fixtures.md)和[制品验收](../validation/release.md)。上方目录树是初始职责规划，当前默认两个程序、保留单插件兼容入口，以 `src/app` 与构建脚本为准；实现包不要求与规划一一同名。
+逐步证据见[核对表](../validation/documentation-audit.md#p0工程与契约)、[夹具](../validation/fixtures.md)和[制品验收](../validation/release.md)。上方目录树保留初始职责规划并反映 SDK/在线模块边界；当前默认构建 Server、本地角色统一程序、三个在线平台程序、在线统一程序、独立 SQLite 存储和 DSP gain，共八个程序。以各模块入口与构建脚本为准；正式安装包的存储默认及可选 DSP 见[部署说明](../deployment.md)，实现包不要求与规划一一同名。
 
 依据：[Go 模块组织](https://go.dev/doc/modules/layout)、[go.mod](https://go.dev/doc/modules/gomod-ref)、[Go 测试](https://pkg.go.dev/testing)。官方包/测试规则与本项目的目录选择分别说明，不将其他社区目录模板称为强制标准。

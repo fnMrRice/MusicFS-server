@@ -5,9 +5,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/matching"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 )
 
 func TestMatchingPersistenceCanonicalReplayAndCancellation(t *testing.T) {

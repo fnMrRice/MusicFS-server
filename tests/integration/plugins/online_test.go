@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/online"
 	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
 )
 
@@ -135,7 +135,7 @@ func TestActualOnlineWorkerCancellationAndInvalidResults(t *testing.T) {
 func TestActualOnlineEntrypointsAndUnsupportedPlatforms(t *testing.T) {
 	for _, platform := range []string{online.Netease, online.QQMusic, online.AppleMusic} {
 		t.Run(platform, func(t *testing.T) {
-			path := onlineBinary(t, "./src/app/musicfs-plugin-"+platform, "online-"+platform)
+			path := onlineBinary(t, "github.com/fnMrRice/MusicFS-server/plugins/source/online/cmd/musicfs-plugin-"+platform, "online-"+platform)
 			cfg := onlineConfig(t, path, platform)
 			w := onlineStart(t, cfg)
 			if d := w.Descriptor(); d.Platform != platform || d.Validate(platform) != nil {

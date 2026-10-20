@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"path/filepath"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
 	"github.com/fnMrRice/MusicFS-server/src/accountstore"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/instanceid"
 )
 
 // loadAccount upgrades only credentials from this instance's proven legacy

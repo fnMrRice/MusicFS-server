@@ -12,6 +12,8 @@ FFmpeg/NCM 的单次任务握手使用 `DecoderHello`，额外必需 `taskId`。
 
 在线 Provider 的资料修订为 `online-authenticated-v3`，`provider.online.describe` 必须返回插件提供的 `plugin: {id,name,localizedNames,features}`，其 ID 与握手身份一致；Host 缓存并透传已验证值，不自行生成平台名称。显示语义、生命周期与版本兼容见 [插件身份与名称](../../../plugin-identity.md)，具体 wire 模型见 [online.schema.json](online.schema.json)。
 
+Go 消费入口已迁到独立 `sdk` 模块，见 [SDK 使用与分发](../../../plugin-sdk.md)。在线插件的 `pluginVersion` 接受合法语义版本，不再固定为 `0.1.0`；通信版本与资料修订仍精确校验。能力可声明当前平台允许集合的子集，Manifest 启用能力须与描述中的 `supported=true` 集合一致。宿主保留对未知或未验证能力的拒绝；旧宿主可能拒绝新插件版本或能力子集，首次拆分升级先更新宿主。HTTP 数据结构与平台账号作用域保持不变。
+
 Manifest的 `configuration` 为插件提供的导入选项声明；不支持导入配置的音频插件发送null。Local Files 0.3.0声明 `local-import-v5`，字段为 `schemaRevision/importOptionsSchema/importDefaults/unavailableOptions`，标题与说明为纯文本。声明限制32 KiB、8层、每对象32属性；受限Schema支持有界字符串数组，拒绝外部引用/执行扩展。`ImportOptions` 和 `ScanScope` 保留必需 `excludePatterns` 数组，最多32条、每条UTF-8最多256字节；Host与发布范围共用根相对glob语义，见[扫描说明](../../../scanning.md)。规则排序绑定PlanDigest，cursor/grant不能在同任务中换规则；不兼容旧开发声明。
 
 `ImportOptions`、`ImportOverrides` 与 `ScanScope` 新增可选布尔字段 `skipHidden` 和 `respectNoMedia`。新实例默认均为 `true`，分别跳过点开头及 Windows 隐藏属性条目、跳过含 `.nomedia` 的目录及子树。旧持久计划省略时继续按 `false/false` 解释，旧摘要保持不变；配置声明的 `importDefaults` 则总是显式发送两个字段，包含 `false`。

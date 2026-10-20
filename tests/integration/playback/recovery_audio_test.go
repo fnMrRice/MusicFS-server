@@ -13,7 +13,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/plugins/audioffmpeg"
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 
@@ -27,7 +27,7 @@ func recoveryAudioProcessor(t *testing.T) (*audioffmpeg.Processor, string) {
 	if runtime.GOOS == "windows" {
 		worker += ".exe"
 	}
-	cmd := exec.Command("go", "build", "-mod=readonly", "-o", worker, "./src/app/musicfs-plugin-audio-ffmpeg")
+	cmd := exec.Command("go", "build", "-mod=readonly", "-o", worker, "./plugins/decoder/ffmpeg/cmd/musicfs-plugin-audio-ffmpeg")
 	cmd.Dir = testkit.RepositoryRoot()
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build worker: %v %s", err, out)

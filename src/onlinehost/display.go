@@ -3,8 +3,8 @@ package onlinehost
 import (
 	"context"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/online"
 )
 
 type DisplayProvider interface {

@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/pluginrpc"
 )
 
@@ -31,14 +31,14 @@ func components() []component {
 		{Program: "musicfs-plugin-ncm", PluginID: "musicfs.plugin.decoder.ncm", Version: "0.1.0", Protocol: pluginproto.ProtocolVersion, Capabilities: []string{"audio.decrypt"}, Requirements: []string{}},
 		{Program: "musicfs-plugin-scraper-local", PluginID: "musicfs.scraper.local", Version: "0.1.0", Protocol: pluginproto.ProtocolVersion, Capabilities: []string{"scrape.search", "scrape.fetch", "lyrics", "artwork"}, Requirements: []string{"authorized host content channel"}},
 	}
-	for _, platform := range []string{"netease", "qqmusic", "applemusic"} {
-		result = append(result, component{Program: "musicfs-plugin-" + platform, PluginID: pluginproto.OnlinePluginID(platform), Version: "0.1.0", Protocol: pluginproto.ProtocolVersion, Capabilities: pluginproto.OnlineCapabilities(platform), Requirements: []string{"host-controlled network", "no account login or audio resolution"}})
-	}
 	for i := 1; i < len(result); i++ {
 		result[i].Args = []string{"--plugin", strings.TrimPrefix(result[i].Program, "musicfs-plugin-")}
 		result[i].Program = "musicfs-plugins"
 	}
-
+	for _, platform := range []string{"netease", "qqmusic", "applemusic"} {
+		result = append(result, component{Program: "musicfs-plugin-" + platform, PluginID: pluginproto.OnlinePluginID(platform), Version: "0.1.0", Protocol: pluginproto.ProtocolVersion, Capabilities: pluginproto.OnlineCapabilities(platform), Requirements: []string{"host-controlled network", "platform account authorization for online data", "no full audio resolution"}})
+		result = append(result, component{Program: "musicfs-plugin-online", Args: []string{"--plugin", platform}, PluginID: pluginproto.OnlinePluginID(platform), Version: "0.1.0", Protocol: pluginproto.ProtocolVersion, Capabilities: pluginproto.OnlineCapabilities(platform), Requirements: []string{"alternative executable for the same provider identity", "host-controlled network", "platform account authorization for online data", "no full audio resolution"}})
+	}
 	result = append(result,
 		component{Program: "musicfs-plugin-storage-sqlite", Required: true, Version: "0.1.0", Protocol: pluginrpc.Protocol, Capabilities: []string{"storage.repositories", "storage.instance-state", "storage.snapshot"}, Requirements: []string{"mandatory persistence worker", "executable SHA-256 verification", "startup fails if unavailable"}},
 		component{Program: "musicfs-plugin-dsp-gain", PluginID: "musicfs.dsp.gain", Version: "0.1.0", Protocol: "DSP PCM v1 (MFD1)", Capabilities: []string{"audio.dsp.gain", "stateless-pcm"}, Requirements: []string{"explicit audioDSP chain and plugin configuration", "executable SHA-256", "enabled audio processor", "disabled by default"}},

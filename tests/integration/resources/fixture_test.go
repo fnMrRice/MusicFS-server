@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -44,7 +45,7 @@ func startServer(t *testing.T) fixture {
 		if runtime.GOOS == "windows" {
 			path += ".exe"
 		}
-		cmd := exec.Command("go", "build", "-mod=readonly", "-buildvcs=false", "-o", path, "./src/app/"+name)
+		cmd := exec.Command("go", "build", "-mod=readonly", "-buildvcs=false", "-o", path, testkit.ProgramPackage(name))
 		cmd.Dir = root
 		if output, e := cmd.CombinedOutput(); e != nil {
 			t.Fatalf("build %s: %v %s", name, e, output)

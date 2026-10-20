@@ -3,9 +3,9 @@ package onlinehost
 import (
 	"context"
 
-	"github.com/fnMrRice/MusicFS-server/src/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
 // InstanceName resolves only the requesting owner's current account name.

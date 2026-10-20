@@ -7,9 +7,9 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/fnMrRice/MusicFS-server/src/online"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/provideronline"
+	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
 func main() {
@@ -17,7 +17,7 @@ func main() {
 	if len(os.Args) > 1 {
 		mode = os.Args[1]
 	}
-	descriptor := provideronline.Describe(online.Netease)
+	descriptor := onlineplugins.Describe(online.Netease)
 	descriptor.Plugin.Name = "Fixture Music"
 	descriptor.Plugin.LocalizedNames = map[string]string{"zh-Hans": "测试音乐", "fr": "Musique de test"}
 	switch mode {
@@ -33,6 +33,8 @@ func main() {
 		descriptor.Plugin = nil
 	case "missing-source-feature":
 		descriptor.Plugin.Features = []string{}
+	case "capability-subset", "capability-mismatch":
+		descriptor.Capabilities = []online.Capability{{Name: "metadata.track", Supported: true, Reason: "Fixture capability"}}
 	}
 	var hello pluginproto.OnlineHello
 	peer := pluginproto.NewPeer(context.Background(), os.Stdin, os.Stdout, "w-", func(_ context.Context, method string, raw json.RawMessage) (any, error) {
@@ -48,6 +50,17 @@ func main() {
 			if mode == "wrong-multiplicity" {
 				manifest.SupportsMultipleInstances = false
 			}
+			switch mode {
+			case "new-release", "capability-subset", "capability-mismatch":
+				manifest.PluginVersion = "2.3.4-rc.1+fixture"
+			case "bad-version":
+				manifest.PluginVersion = "2.3.4-01"
+			case "bad-protocol":
+				manifest.ProtocolVersion = "2.0"
+			}
+			if mode == "capability-subset" {
+				manifest.Capabilities = []string{"metadata.track"}
+			}
 			return pluginproto.Ready{Manifest: manifest, InstanceID: hello.InstanceID, Nonce: hello.Nonce}, nil
 		}
 		var scope pluginproto.OnlineScope
@@ -61,7 +74,11 @@ func main() {
 		case "provider.online.describe":
 			return pluginproto.OnlineResult[pluginproto.OnlineDescriptor]{Context: scope.Context, Value: descriptor}, nil
 		case "provider.online.account":
-			return pluginproto.OnlineResult[online.AccountResult]{Context: scope.Context, Value: online.AccountResult{View: online.AccountView{State: "signedOut"}}}, nil
+			view := online.AccountView{State: "signedOut"}
+			if mode == "capability-subset" {
+				view = online.AccountView{State: "signedIn", AccountID: "fixture-account", Revision: "fixture-revision"}
+			}
+			return pluginproto.OnlineResult[online.AccountResult]{Context: scope.Context, Value: online.AccountResult{View: view}}, nil
 		default:
 			return nil, pluginproto.Failure("UNSUPPORTED", "Unsupported identity fixture method")
 		}

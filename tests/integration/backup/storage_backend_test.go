@@ -11,11 +11,11 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/src/backup"
 	"github.com/fnMrRice/MusicFS-server/src/config"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
-	"github.com/fnMrRice/MusicFS-server/src/storage/sqlite"
 )
 
 func TestRealStorageWorkerBackupRestoresWithoutItsExecutable(t *testing.T) {
@@ -24,7 +24,7 @@ func TestRealStorageWorkerBackupRestoresWithoutItsExecutable(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		executable += ".exe"
 	}
-	command := exec.Command("go", "build", "-o", executable, "./src/app/musicfs-plugin-storage-sqlite")
+	command := exec.Command("go", "build", "-o", executable, "./plugins/database/sqlite/cmd/musicfs-plugin-storage-sqlite")
 	command.Dir = filepath.Join("..", "..", "..")
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("build storage worker: %v %s", err, output)

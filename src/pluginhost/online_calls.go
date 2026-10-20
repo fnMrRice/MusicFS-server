@@ -6,9 +6,9 @@ import (
 	"errors"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/online"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
 func (w *OnlineWorker) newScope(ctx context.Context) (pluginproto.Context, error) {
@@ -35,6 +35,16 @@ func onlineCall[T any](parent context.Context, w *OnlineWorker, method string, s
 	var empty T
 	ctx, cancel := context.WithTimeout(parent, time.Duration(scope.TimeoutMs)*time.Millisecond)
 	defer cancel()
+	if err := w.requireOnlineCapability(method, request); err != nil {
+		view, authErr := w.PlatformSession(ctx)
+		if authErr != nil {
+			return empty, authErr
+		}
+		if view.State != "signedIn" || view.AccountID == "" || view.Revision == "" {
+			return empty, domain.Fail("PLATFORM_AUTH_REQUIRED", "Sign in to the music platform")
+		}
+		return empty, err
+	}
 	var raw json.RawMessage
 	if err := w.peer.Call(ctx, method, request, &raw); err != nil {
 		failure := onlineError(ctx, err)
@@ -59,7 +69,7 @@ func (w *OnlineWorker) Describe(ctx context.Context) (pluginproto.OnlineDescript
 	}
 	d, err := onlineCall[pluginproto.OnlineDescriptor](ctx, w, "provider.online.describe", scope, pluginproto.OnlineScope{Context: scope})
 	if err == nil {
-		if validation := d.Validate(w.config.Platform); validation != nil {
+		if validation := pluginproto.ValidateOnlineDescriptor(w.manifest, d, w.config.Platform); validation != nil {
 			return pluginproto.OnlineDescriptor{}, domain.Fail("PROTOCOL_MISMATCH", "Online plugin descriptor is invalid")
 		}
 	}

@@ -1,8 +1,8 @@
 package config
 
 import (
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 	"go.yaml.in/yaml/v3"
 	"path/filepath"
 	"runtime"

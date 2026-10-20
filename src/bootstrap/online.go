@@ -8,12 +8,12 @@ import (
 	"log/slog"
 	"path/filepath"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/instanceid"
 	"github.com/fnMrRice/MusicFS-server/src/onlinehost"
 	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
 )
 
 func configureOnline(ctx context.Context, c config.Config, log *slog.Logger) (*onlinehost.Service, []onlinehost.Runtime, func(), error) {

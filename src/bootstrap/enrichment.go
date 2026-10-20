@@ -4,13 +4,13 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
+	"github.com/fnMrRice/MusicFS-server/plugins/scraper/local"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/config"
 	"github.com/fnMrRice/MusicFS-server/src/enrichmentworker"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
-	"github.com/fnMrRice/MusicFS-server/src/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/ncmdecoder"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/scraperlocal"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
 )
 
