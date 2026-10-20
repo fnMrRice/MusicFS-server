@@ -26,10 +26,17 @@ var releasePrograms = []releaseProgram{
 	{"musicfs-plugin-online", "plugins/source/online", "./cmd/musicfs-plugin-online"},
 }
 
-var programs = func() []string {
-	result := make([]string, 0, len(releasePrograms))
-	for _, program := range releasePrograms {
+func (b builder) programs() []releaseProgram {
+	if b.splitPlugins {
+		return releasePrograms
+	}
+	return releasePrograms[:2]
+}
+
+func (b builder) programNames() []string {
+	result := make([]string, 0, len(b.programs()))
+	for _, program := range b.programs() {
 		result = append(result, program.name)
 	}
 	return result
-}()
+}

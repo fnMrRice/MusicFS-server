@@ -74,7 +74,7 @@ go test -mod=readonly ./tests/e2e -run '^TestNCMServerRoundTripAndDisabledPlugin
 
 ## 5. 手工验证
 
-1. 按[运行说明](running.md)构建当前八程序制品，配置NCM Worker与音乐目录，重启Server后重新扫描。用测试目录或自己的本地NCM样本验证，保留原文件副本及摘要。
+1. 按[运行说明](running.md)构建当前 Server 与全量统一插件两个程序，配置NCM Worker与音乐目录，重启Server后重新扫描。用测试目录或自己的本地NCM样本验证，保留原文件副本及摘要。
 2. 登录 Web、刷新来源列表，确认 NCM 条目的容器为 `ncm`、codec 来自内部 MP3/FLAC；未配置 ffprobe 时，时长和码率可以未知。
 3. 播放内部 MP3：页面应显示“服务端解密输出”，可以暂停、继续和停止；有时长时检查定位。开发者工具中输出为音频 MIME，Range 长度与解密表示一致。
 4. 配齐 FFmpeg/ffprobe 后播放内部 FLAC：页面应显示“服务端解密并转码输出”。输入目标位置并定位，确认新片段开始；勾选既有 -6 dB 选项并重新选曲后再检查增益处理。

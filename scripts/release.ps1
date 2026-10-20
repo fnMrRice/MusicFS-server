@@ -1,9 +1,10 @@
-param([ValidateSet('windows','linux')][string]$TargetOS='windows', [Parameter(Mandatory=$true)][string]$Output, [string]$WebRoot='', [switch]$AllowDirty)
+param([ValidateSet('windows','linux')][string]$TargetOS='windows', [Parameter(Mandatory=$true)][string]$Output, [string]$WebRoot='', [switch]$AllowDirty, [switch]$SplitPlugins)
 $ErrorActionPreference='Stop'
 Set-Location (Split-Path $PSScriptRoot)
 $env:GOWORK = 'off'
 $arguments=@('run','-mod=readonly','./scripts/release','--os',$TargetOS,'--output',$Output)
 if ($WebRoot) { $arguments+=@('--web-root',$WebRoot) }
 if ($AllowDirty) { $arguments+='--allow-dirty' }
+if ($SplitPlugins) { $arguments+='--split-plugins' }
 & go @arguments
 if ($LASTEXITCODE) { throw 'Release build failed' }

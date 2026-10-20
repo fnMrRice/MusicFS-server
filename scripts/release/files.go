@@ -54,8 +54,8 @@ func (b builder) configuration() error {
 	text := string(data)
 	text = strings.ReplaceAll(text, "../build/windows/", "../bin/")
 	if b.target == "linux" {
-		for _, name := range programs {
-			text = strings.ReplaceAll(text, name+".exe", name)
+		for _, program := range releasePrograms {
+			text = strings.ReplaceAll(text, program.name+".exe", program.name)
 		}
 	}
 	// Missing runtime dependencies remain pending; explicit opt-outs are preserved.
@@ -70,7 +70,7 @@ func (b builder) configuration() error {
 }
 
 func (b builder) requiredStorageConfiguration(text, executablePath string) ([]byte, error) {
-	program := "musicfs-plugin-storage-sqlite"
+	program := "musicfs-plugins"
 	if b.target == "windows" {
 		program += ".exe"
 	}
@@ -95,8 +95,9 @@ func (b builder) requiredStorageConfiguration(text, executablePath string) ([]by
 		return nil, errors.New("release configuration is not a YAML mapping")
 	}
 	var storage yaml.Node
-	if err = storage.Encode(map[string]string{
+	if err = storage.Encode(map[string]any{
 		"backend": "plugin", "executable": executablePath, "sha256": hex.EncodeToString(digest.Sum(nil)),
+		"args": []string{"--plugin", "storage-sqlite"},
 	}); err != nil {
 		return nil, err
 	}
@@ -124,7 +125,7 @@ func (b builder) containerConfiguration() error {
 	if err != nil {
 		return err
 	}
-	data, err := b.requiredStorageConfiguration(string(source), "/opt/musicfs/bin/musicfs-plugin-storage-sqlite")
+	data, err := b.requiredStorageConfiguration(string(source), "/opt/musicfs/bin/musicfs-plugins")
 	if err != nil {
 		return err
 	}

@@ -45,8 +45,8 @@ func TestBundledDiscoveryDefaultsAndPendingConfiguration(t *testing.T) {
 			t.Fatalf("invalid discovery: %+v", p)
 		}
 		if platform := config.OnlinePlatform(p.PluginID); platform != "" {
-			if filepath.Base(p.Executable) != "musicfs-plugin-"+platform || len(p.Args) != 0 {
-				t.Fatalf("online provider uses bundled dispatch: %+v", p)
+			if filepath.Base(p.Executable) != "musicfs-plugins" || len(p.Args) != 2 || p.Args[1] != platform {
+				t.Fatalf("online provider does not use the full bundle: %+v", p)
 			}
 		} else if len(p.Args) != 2 || p.Args[0] != "--plugin" {
 			t.Fatalf("local role has no bundled dispatch: %+v", p)

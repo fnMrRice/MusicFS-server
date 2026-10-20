@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/src/config"
@@ -14,13 +15,13 @@ import (
 
 func assertInstallationPersistence(t *testing.T, installed string, cfg config.Config) {
 	t.Helper()
-	program := "musicfs-plugin-storage-sqlite"
+	program := "musicfs-plugins"
 	if runtime.GOOS == "windows" {
 		program += ".exe"
 	}
 	path := filepath.Join(installed, "bin", program)
-	if cfg.Storage.Backend != "plugin" || filepath.Clean(cfg.Storage.Executable) != filepath.Clean(path) {
-		t.Fatal("installation does not default to its independent SQLite worker")
+	if cfg.Storage.Backend != "plugin" || filepath.Clean(cfg.Storage.Executable) != filepath.Clean(path) || !slices.Equal(cfg.Storage.Args, []string{"--plugin", "storage-sqlite"}) {
+		t.Fatal("installation does not default to its shared executable SQLite worker")
 	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -41,6 +42,7 @@ func assertInstallationPersistence(t *testing.T, installed string, cfg config.Co
 		Components []struct {
 			Program, PluginID, Version string
 			Required                   bool
+			Args                       []string
 		}
 	}
 	if err = json.Unmarshal(raw, &manifest); err != nil {
@@ -48,7 +50,7 @@ func assertInstallationPersistence(t *testing.T, installed string, cfg config.Co
 	}
 	storageRequired, compatibleAudio := false, false
 	for _, item := range manifest.Components {
-		if item.Program == "musicfs-plugin-storage-sqlite" {
+		if item.Program == "musicfs-plugins" && slices.Equal(item.Args, []string{"--plugin", "storage-sqlite"}) {
 			storageRequired = item.Required && item.PluginID == ""
 		}
 		if item.PluginID == "musicfs.plugin.decoder.ffmpeg" {

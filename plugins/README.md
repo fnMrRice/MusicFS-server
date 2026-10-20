@@ -4,6 +4,7 @@
 
 ```text
 plugins/
+  unified/               # 默认全量程序装配：九种角色，一次进程一个角色
   source/
     localfiles/          # 本地文件音乐源
     online/              # 独立 Go module：在线音乐源
@@ -25,7 +26,7 @@ plugins/
     gain/                # 增益处理节点与独立 DSP 程序
 ```
 
-除在线模块外，各插件的独立程序入口放在对应目录的 `cmd/musicfs-plugin-xxx`。Server 和本地插件组合程序入口仍在 `src/app/musicfs`、`src/app/musicfs-plugins`，只负责装配。公共插件 SDK 保持独立的 `sdk` 模块。
+默认构建 Server 和全量统一插件两个程序，入口在 `src/app/musicfs`、`src/app/musicfs-plugins`。统一插件入口调用 `plugins/unified`，以 `--plugin <角色>` 固定本次进程的职责。各用途目录和独立入口继续保留；需要单独文件时显式选择分拆构建或构建对应 `cmd/musicfs-plugin-xxx`。公共插件 SDK 保持独立的 `sdk` 模块。
 
 SQLite 插件使用宿主的 `src/storage` 接口、`src/storage/rpcbackend` 通道与 `src/storage/migrations` 迁移定义；数据库结构和迁移的所有权仍属于 Server。公共音频接口与宿主 DSP 调度位于 `src/audio`，具体增益算法位于 `plugins/dsp/gain`。
 

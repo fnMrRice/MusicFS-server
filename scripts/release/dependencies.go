@@ -105,7 +105,7 @@ func (b builder) compiledModules() (map[string]bool, error) {
 	for _, source := range sourceModules {
 		args := []string{"list", "-mod=readonly", "-buildvcs=false", "-deps", "-json"}
 		optionCount := len(args)
-		for _, program := range releasePrograms {
+		for _, program := range b.programs() {
 			if program.moduleDir == source.Directory {
 				args = append(args, program.packagePath)
 			}

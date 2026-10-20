@@ -43,19 +43,22 @@ plugins:
       - instanceId: 'd248bf34-1780-59d3-a557-9cf5d889e977'
         config: {}
   - pluginId: 'musicfs.plugin.source.netease'
-    executable: '../build/windows/musicfs-plugin-netease.exe'
+    executable: '../build/windows/musicfs-plugins.exe'
+    args: ['--plugin', 'netease']
     instances:
       - instanceId: 'a5e47aac-f949-5e45-9709-f28a0d8443df'
         ownerUserId: 'admin'
         config: {}
   - pluginId: 'musicfs.plugin.source.qqmusic'
-    executable: '../build/windows/musicfs-plugin-qqmusic.exe'
+    executable: '../build/windows/musicfs-plugins.exe'
+    args: ['--plugin', 'qqmusic']
     instances:
       - instanceId: 'fc2264bd-13bc-5dc6-be83-6c4428cf4d40'
         ownerUserId: 'admin'
         config: {}
   - pluginId: 'musicfs.plugin.source.applemusic'
-    executable: '../build/windows/musicfs-plugin-applemusic.exe'
+    executable: '../build/windows/musicfs-plugins.exe'
+    args: ['--plugin', 'applemusic']
     instances:
       - instanceId: '701b805f-494f-5509-897f-17c934b1a8ed'
         ownerUserId: 'admin'

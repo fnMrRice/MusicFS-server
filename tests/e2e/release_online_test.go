@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"testing"
 	"time"
 
@@ -35,16 +37,26 @@ func TestActualInstallationOnlineProgramsAndModules(t *testing.T) {
 			continue
 		}
 		count++
-		if len(plugin.Args) != 0 || len(plugin.Instances) != 1 || !plugin.CanStart(plugin.Instances[0]) {
-			t.Fatalf("packaged online provider is not independently configured: %+v", plugin)
+		if !slices.Equal(plugin.Args, []string{"--plugin", platform}) || len(plugin.Instances) != 1 || !plugin.CanStart(plugin.Instances[0]) {
+			t.Fatalf("packaged online provider is not configured for the shared executable: %+v", plugin)
 		}
-		t.Run(platform+"/standalone", func(t *testing.T) {
-			assertPackagedOnlineWorker(t, plugin, plugin.Executable, nil)
+		t.Run(platform+"/bundle", func(t *testing.T) {
+			assertPackagedOnlineWorker(t, plugin, plugin.Executable, plugin.Args)
 		})
-		t.Run(platform+"/unified", func(t *testing.T) {
-			path := filepath.Join(filepath.Dir(plugin.Executable), "musicfs-plugin-online"+filepath.Ext(plugin.Executable))
-			assertPackagedOnlineWorker(t, plugin, path, []string{"--plugin", platform})
-		})
+		for _, alternative := range []struct {
+			name string
+			args []string
+		}{{"musicfs-plugin-" + platform, nil}, {"musicfs-plugin-online", []string{"--plugin", platform}}} {
+			path := filepath.Join(filepath.Dir(plugin.Executable), alternative.name+filepath.Ext(plugin.Executable))
+			if _, err := os.Stat(path); os.IsNotExist(err) {
+				continue
+			} else if err != nil {
+				t.Fatal(err)
+			}
+			t.Run(platform+"/"+alternative.name, func(t *testing.T) {
+				assertPackagedOnlineWorker(t, plugin, path, alternative.args)
+			})
+		}
 	}
 	if count != 3 {
 		t.Fatalf("packaged online provider count = %d, want 3", count)
@@ -54,13 +66,48 @@ func TestActualInstallationOnlineProgramsAndModules(t *testing.T) {
 		t.Fatal(err)
 	}
 	var manifest struct {
-		Modules []struct{ Path, Directory string }
+		Programs   []string
+		Modules    []struct{ Path, Directory string }
+		Components []struct {
+			Program string
+			Args    []string
+		}
 	}
 	if err := json.Unmarshal(raw, &manifest); err != nil {
 		t.Fatal(err)
 	}
 	if len(manifest.Modules) != 3 {
 		t.Fatal("release manifest does not account for all three source modules")
+	}
+	if len(manifest.Programs) != 2 && len(manifest.Programs) != 8 {
+		t.Fatalf("installation has neither default nor split program catalog: %v", manifest.Programs)
+	}
+	binaries, err := os.ReadDir(filepath.Join(installed, "bin"))
+	if err != nil || len(binaries) != len(manifest.Programs) {
+		t.Fatalf("binary directory does not match the release program catalog: %v", err)
+	}
+	for _, program := range manifest.Programs {
+		name := program
+		if runtime.GOOS == "windows" {
+			name += ".exe"
+		}
+		info, err := os.Stat(filepath.Join(installed, "bin", name))
+		if err != nil || !info.Mode().IsRegular() || info.Size() == 0 {
+			t.Fatalf("packaged program is not a nonempty regular file: %s: %v", program, err)
+		}
+	}
+	roles := map[string]bool{}
+	for _, component := range manifest.Components {
+		if component.Program != "musicfs-plugins" {
+			continue
+		}
+		if len(component.Args) != 2 || component.Args[0] != "--plugin" || roles[component.Args[1]] {
+			t.Fatalf("invalid or duplicated shared role: %+v", component)
+		}
+		roles[component.Args[1]] = true
+	}
+	if len(roles) != 9 {
+		t.Fatalf("shared role count = %d, want 9", len(roles))
 	}
 	for _, module := range manifest.Modules {
 		if _, err := os.Stat(filepath.Join(installed, module.Directory, "go.mod")); err != nil {

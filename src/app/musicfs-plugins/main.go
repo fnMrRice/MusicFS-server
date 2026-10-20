@@ -3,39 +3,30 @@ package main
 
 import (
 	"context"
-	"flag"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
-	"github.com/fnMrRice/MusicFS-server/plugins/scraper/local"
-	"github.com/fnMrRice/MusicFS-server/plugins/source/localfiles"
+	"github.com/fnMrRice/MusicFS-server/plugins/unified"
 )
 
 func main() {
-	role := flag.String("plugin", "", "Plugin role: local, audio-ffmpeg, ncm, scraper-local")
-	flag.Parse()
-	if flag.NArg() != 0 {
-		fmt.Fprintln(os.Stderr, "Unexpected positional arguments")
-		os.Exit(2)
+	os.Exit(run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+}
+
+func run(args []string, input io.ReadCloser, output io.WriteCloser, stderr io.Writer) int {
+	worker, err := unified.Select(args)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 2
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
-	// The role is fixed before opening the protocol channel. Business requests
-	// cannot switch the platform or plugin implementation of a running process.
-	switch *role {
-	case "local":
-		localfiles.Run(ctx, os.Stdin, os.Stdout)
-	case "audio-ffmpeg":
-		audioffmpeg.RunWorker(ctx, os.Stdin, os.Stdout)
-	case "ncm":
-		_ = ncmdecoder.RunWorker(ctx, os.Stdin, os.Stdout)
-	case "scraper-local":
-		_ = scraperlocal.RunWorker(ctx, os.Stdin, os.Stdout)
-	default:
-		fmt.Fprintln(os.Stderr, "A supported --plugin role is required")
-		os.Exit(2)
+	if err = worker(ctx, input, output); err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, context.Canceled) {
+		fmt.Fprintln(stderr, "Plugin worker failed")
+		return 1
 	}
+	return 0
 }

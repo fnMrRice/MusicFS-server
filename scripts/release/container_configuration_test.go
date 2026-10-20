@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/src/config"
@@ -31,7 +32,7 @@ func TestLinuxContainerConfigurationPinsPackagedSQLite(t *testing.T) {
 				t.Fatal(err)
 			}
 			worker := []byte("Linux SQLite worker binary fixture")
-			if err := os.WriteFile(filepath.Join(output, "bin", "musicfs-plugin-storage-sqlite"), worker, 0700); err != nil {
+			if err := os.WriteFile(filepath.Join(output, "bin", "musicfs-plugins"), worker, 0700); err != nil {
 				t.Fatal(err)
 			}
 			b := builder{out: output, target: target}
@@ -53,7 +54,7 @@ func TestLinuxContainerConfigurationPinsPackagedSQLite(t *testing.T) {
 				t.Fatal(err)
 			}
 			hash := sha256.Sum256(worker)
-			if c.Storage.Backend != "plugin" || c.Storage.Executable != "/opt/musicfs/bin/musicfs-plugin-storage-sqlite" || c.Storage.SHA256 != hex.EncodeToString(hash[:]) {
+			if c.Storage.Backend != "plugin" || c.Storage.Executable != "/opt/musicfs/bin/musicfs-plugins" || c.Storage.SHA256 != hex.EncodeToString(hash[:]) || !slices.Equal(c.Storage.Args, []string{"--plugin", "storage-sqlite"}) {
 				t.Fatal("container configuration did not pin its Linux SQLite worker")
 			}
 			if c.DataRoot != "/var/lib/musicfs/data" || c.Plugins[0].Executable != "/opt/musicfs/bin/musicfs-plugins" {

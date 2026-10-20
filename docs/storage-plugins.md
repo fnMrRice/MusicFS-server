@@ -6,18 +6,18 @@
 
 ## 1. 配置与启动
 
-新发布包的生成配置默认使用独立 SQLite Worker，并写入包内程序的实际 SHA-256；该程序是必需组件，不能通过普通插件管理停用。为兼容已有部署，旧配置省略 `storage` 时仍使用内置 SQLite 适配，原数据路径、迁移和事务不变：
+新发布包的生成配置默认使用 `musicfs-plugins --plugin storage-sqlite` 启动独立 SQLite Worker，并写入统一程序的实际 SHA-256；SQLite 是必需角色，不能通过普通插件管理停用。统一文件不合并数据库与其他插件的进程。为兼容已有部署，旧配置省略 `storage` 时仍使用内置 SQLite 适配，原数据路径、迁移和事务不变：
 
 ```yaml
 storage:
   backend: sqlite
 ```
 
-在 Server 仓库构建独立实现，并计算实际程序摘要：
+在 Server 仓库构建默认统一程序，并计算实际程序摘要：
 
 ```powershell
-go build -o build/musicfs-plugin-storage-sqlite.exe ./plugins/database/sqlite/cmd/musicfs-plugin-storage-sqlite
-(Get-FileHash build/musicfs-plugin-storage-sqlite.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+go build -o build/musicfs-plugins.exe ./src/app/musicfs-plugins
+(Get-FileHash build/musicfs-plugins.exe -Algorithm SHA256).Hash.ToLowerInvariant()
 ```
 
 将输出摘要填入部署 YAML。以下占位值必须替换：
@@ -25,12 +25,14 @@ go build -o build/musicfs-plugin-storage-sqlite.exe ./plugins/database/sqlite/cm
 ```yaml
 storage:
   backend: plugin
-  executable: '../build/musicfs-plugin-storage-sqlite.exe'
+  executable: '../build/musicfs-plugins.exe'
   sha256: '<实际的64位SHA-256>'
-  args: []
+  args: ['--plugin', 'storage-sqlite']
 ```
 
 路径相对于配置文件解析。选择、程序、摘要和参数来自启动配置，不从尚未启动的数据库读取。启用外部后端时，主库和 `host.database.*` 的实例私有状态读写均进入持久化 Worker；主库保持一个受管进程，私有状态按作用域连接创建短期进程。配置加载阶段的私有状态仅允许只读，不创建或迁移数据库；写入初始化仍在取得 Server 数据锁之后进行。
+
+独立入口 `plugins/database/sqlite/cmd/musicfs-plugin-storage-sqlite` 保留，可显式单独构建并使用空 `args`；它不再是默认安装包中的单独文件。切换已固定的程序路径时需同步审核并更新摘要。
 
 未知后端、摘要不符、协议不兼容或初始化失败均拒绝启动，不回退到空库。内置 SQLite 与官方 SQLite Worker 使用同一数据布局，可在正常停服后切换；其他数据库实现需要自行完成一致的数据迁移，不能只修改名称假装转换成功。
 

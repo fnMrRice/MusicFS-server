@@ -20,7 +20,7 @@ func discoveredPlugin(t *testing.T, doc *config.Document, id string) config.Plug
 	return config.Plugin{}
 }
 
-func TestBundledOnlineMigrationPreservesUserSettings(t *testing.T) {
+func TestBundledOnlineSelectionPreservesUserSettings(t *testing.T) {
 	doc := bundledDocument(t, `plugins:
   - pluginId: musicfs.plugin.source.netease
     executable: './musicfs-plugins'
@@ -40,8 +40,8 @@ func TestBundledOnlineMigrationPreservesUserSettings(t *testing.T) {
         config: {}
 `)
 	online := discoveredPlugin(t, doc, "musicfs.plugin.source.netease")
-	if filepath.Base(online.Executable) != "musicfs-plugin-netease" || len(online.Args) != 0 {
-		t.Fatalf("legacy online dispatch was not migrated: %+v", online)
+	if filepath.Base(online.Executable) != "musicfs-plugins" || len(online.Args) != 2 || online.Args[1] != "netease" {
+		t.Fatalf("explicit full bundle dispatch was replaced: %+v", online)
 	}
 	instance := online.Instances[0]
 	if online.Enabled || instance.Enabled || instance.InstanceID != instanceid.Canonical("custom-online") ||
@@ -66,19 +66,19 @@ func TestOnlineDiscoveryIsIndependentAndUsesFixedNames(t *testing.T) {
 		t.Fatal("present standalone executable should be ready")
 	}
 	doc = discoveredDocument(t, "", []string{"musicfs-plugins"})
-	if len(doc.Config.Plugins) != 4 {
-		t.Fatal("missing online executables were discovered")
+	if len(doc.Config.Plugins) != 7 {
+		t.Fatal("full bundle did not supply all ordinary plugin identities")
 	}
 }
 
-func TestMissingOrPinnedOnlineMigrationRemainsPending(t *testing.T) {
+func TestMissingOrPinnedOnlineSelectionRemainsPending(t *testing.T) {
 	for _, test := range []struct {
 		name, executable, extra string
 		files                   []string
 	}{
-		{"missing-target", "musicfs-plugins", "    args: ['--plugin', 'netease']\n", []string{"musicfs-plugins"}},
-		{"missing-standalone", "musicfs-plugin-netease", "", []string{"musicfs-plugins"}},
-		{"pinned-old-binary", "musicfs-plugins", "    args: ['--plugin', 'netease']\n    sha256: '" + strings.Repeat("a", 64) + "'\n", []string{"musicfs-plugins", "musicfs-plugin-netease"}},
+		{"missing-full-bundle", "musicfs-plugins", "    args: ['--plugin', 'netease']\n", []string{"musicfs-plugin-netease", "musicfs-plugin-online"}},
+		{"missing-standalone", "musicfs-plugin-netease", "", nil},
+		{"pinned-old-binary", "musicfs-plugin-netease", "    sha256: '" + strings.Repeat("a", 64) + "'\n", []string{"musicfs-plugins"}},
 		{"custom-bundle-arguments", "musicfs-plugins", "    args: ['--plugin', 'netease', '--custom']\n", []string{"musicfs-plugins", "musicfs-plugin-netease"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -99,7 +99,7 @@ func TestMissingOrPinnedOnlineMigrationRemainsPending(t *testing.T) {
 	}
 }
 
-func TestOnlineMigrationPreservesExplicitExternalConfiguration(t *testing.T) {
+func TestOnlineDiscoveryPreservesExplicitExternalConfiguration(t *testing.T) {
 	doc := bundledDocument(t, `plugins:
   - pluginId: musicfs.plugin.source.qqmusic
     executable: './custom/qq-worker'

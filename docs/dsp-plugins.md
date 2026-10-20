@@ -21,7 +21,8 @@ audioDSP:
         gainDB: -6
   plugins:
     - name: musicfs.dsp.gain
-      executable: ../bin/musicfs-plugin-dsp-gain.exe
+      executable: ../bin/musicfs-plugins.exe
+      args: ['--plugin', 'dsp-gain']
       sha256: "<替换为可执行文件的64位SHA256>"
       timeoutMs: 5000
 ```
@@ -45,13 +46,13 @@ audioDSP:
 
 ## 构建并使用示例
 
-仓库提供独立可执行示例 [musicfs-plugin-dsp-gain](../plugins/dsp/gain/cmd/musicfs-plugin-dsp-gain/main.go)，握手名称固定为 `musicfs.dsp.gain`，节点版本为 1，参数与内建 gain 相同。它用于验证扩展边界，不要求把默认 gain 移出音频 Worker。
+默认安装包通过 `musicfs-plugins --plugin dsp-gain` 启动独立 DSP 进程。握手名称固定为 `musicfs.dsp.gain`，节点版本为 1，参数与内建 gain 相同。可选独立入口 [musicfs-plugin-dsp-gain](../plugins/dsp/gain/cmd/musicfs-plugin-dsp-gain/main.go) 保留；使用其单独文件时省略角色参数。它用于验证扩展边界，不要求把默认 gain 移出音频 Worker。
 
 在 Server 仓库根目录使用 PowerShell：
 
 ```powershell
-go build -o ./bin/musicfs-plugin-dsp-gain.exe ./plugins/dsp/gain/cmd/musicfs-plugin-dsp-gain
-(Get-FileHash -Algorithm SHA256 -LiteralPath ./bin/musicfs-plugin-dsp-gain.exe).Hash.ToLowerInvariant()
+go build -o ./bin/musicfs-plugins.exe ./src/app/musicfs-plugins
+(Get-FileHash -Algorithm SHA256 -LiteralPath ./bin/musicfs-plugins.exe).Hash.ToLowerInvariant()
 ```
 
 把输出摘要填入 YAML，确认音频处理器及其 FFmpeg/FFprobe 配置可用后重启 Server。示例中的 `../bin` 适用于 YAML 保存在仓库 `configs/` 下的情形；部署目录不同时调整路径。非 Windows 平台应重新构建对应可执行文件并更新路径、摘要，不能沿用 Windows 二进制。

@@ -4,7 +4,7 @@
 
 2026-10-20 实现增量：[有序 DSP 链与独立 DSP Worker](dsp-plugins.md)、[受信任持久化后端及独立 SQLite Worker](storage-plugins.md)已有对应实现。它们使用专用版本化契约，不向旧 Provider manifest 任意添加角色。其余 C++、任意音频拓扑和新角色仍按本文后续设计验收。
 
-同日模块增量：Go 协议、公共模型和在线 Worker 提取为独立 `sdk` module，网易云、QQ 音乐、Apple Music 实现迁到 `plugins/source/online` module，分别构建独立程序，并提供 `online/unified` 统一装配入口；宿主生产依赖不含平台实现。插件发布版本可独立更新，权限仍受官方来源策略限制。使用、兼容性及迁移见 [Go SDK](plugin-sdk.md)；独立模块不表示通用第三方发现或 C++ SDK 已交付。
+同日模块增量：Go 协议、公共模型和在线 Worker 提取为独立 `sdk` module，网易云、QQ 音乐、Apple Music 实现迁到 `plugins/source/online` module；Server 宿主生产依赖不含平台实现。默认通过根模块的 `plugins/unified` 将九种插件角色打入 `musicfs-plugins` 一个文件，各实例仍独立运行。在线与其他用途的独立入口保留为可选构建。插件版本与源码模块可独立演进，统一文件升级则须配套更新摘要，权限仍受官方来源策略限制。使用、兼容性及迁移见 [Go SDK](plugin-sdk.md)；独立模块不表示通用第三方发现或 C++ SDK 已交付。
 
 账号实例管理增量：在线实例的部署字段 `ownerUserId`（默认 `admin`）贯穿 Worker 握手、凭据范围与宿主查询；同一用户多个平台账号使用不同实例。管理列表默认按当前用户筛选账号实例，管理员 `allUsers=true` 仅扩大管理展示；平台账号操作仍按会话用户授权。已验证账号显示名通过只含公共身份的缓存快照读取，退出、过期或不可用时省略。当前登录仍仅支持管理员凭据，未交付用户注册或多用户管理界面，详见[配置说明](configuration.md)。
 
@@ -17,7 +17,7 @@ Server 的进程模型与 Client 的单进程 DLL 模型分别维护。两端可
 | 项目 | 当前事实 | 扩展前必须处理 |
 | --- | --- | --- |
 | 角色 | `provider`、`scraper`、`audio`；其他角色被拒绝 | 新角色先增加协议、注册、授权、调度和生命周期适配 |
-| 插件接入 | 官方插件按固定身份和已知配置接入；本地四角色使用统一程序，在线来源提供独立和统一程序 | 新插件 ID 需要 Host 注册/适配，不能只放入 manifest 或更换程序路径 |
+| 插件接入 | 官方插件按固定身份和已知配置接入；默认全量统一程序，独立入口可选 | 新插件 ID 需要 Host 注册/适配，不能只放入 manifest 或更换程序路径 |
 | 控制协议 | JSON-RPC 2.0 / stdio，协议版本精确为 `1.0` | 不是“任意 JSON-RPC 实现都兼容”；须符合角色专用握手、DTO、版本和能力检查 |
 | 数据通道 | 音频、NCM、本地 Scraper 已有任务限定 loopback 二进制通道 | 各通道契约不同；未交付通用节点 PCM 总线或共享内存 SDK |
 | 来源资源 | Local Files 为本地根、路径与稳定读取；在线主要为资料/账号 | 原生 NAS、在线整曲先扩展资源模型和受控读取，见[NAS / Bilibili 计划](implementation/nas-bilibili.md) |

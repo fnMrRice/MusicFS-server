@@ -2,6 +2,8 @@
 
 这是独立的 Go 模块，源码、依赖和测试与 Server 主模块分离；当前仍由同一私有仓库管理。SDK 位于 `../../../sdk`，此处不依赖 Server 的 `src` 包。单个平台可独立编译、测试和替换可执行文件。
 
+默认安装包由根模块的 `plugins/unified` 将本模块与其他用途插件装配成 `musicfs-plugins`，例如 `musicfs-plugins --plugin netease`。下述仅在线统一入口和单平台入口是可选构建，不再默认产生额外文件。
+
 ## 目录边界
 
 - `netease/driver`：网易云账号、EAPI 请求、搜索、实体详情、歌单与批次元数据。

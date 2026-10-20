@@ -12,7 +12,19 @@ import (
 )
 
 func TestUnifiedOnlinePluginSelectsIsolatedPlatformInstances(t *testing.T) {
-	path := onlineBinary(t, "github.com/fnMrRice/MusicFS-server/plugins/source/online/cmd/musicfs-plugin-online", "unified online with spaces")
+	for _, entry := range []struct{ name, path string }{
+		{"online", "github.com/fnMrRice/MusicFS-server/plugins/source/online/cmd/musicfs-plugin-online"},
+		{"all", "./src/app/musicfs-plugins"},
+	} {
+		t.Run(entry.name, func(t *testing.T) {
+			path := onlineBinary(t, entry.path, "unified plugins with spaces")
+			checkUnifiedOnlineInstances(t, path)
+		})
+	}
+}
+
+func checkUnifiedOnlineInstances(t *testing.T, path string) {
+	t.Helper()
 	workers := make([]*pluginhost.OnlineWorker, 0, 3)
 	for _, platform := range []string{online.Netease, online.QQMusic, online.AppleMusic} {
 		cfg := onlineConfig(t, path, platform)

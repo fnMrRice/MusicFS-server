@@ -18,6 +18,7 @@ server/
     online/               # Shared DTOs, no platform implementation
     provider/             # Reusable provider worker
   plugins/
+    unified/              # Composition of nine roles for musicfs-plugins
     source/
       localfiles/         # Includes cmd/musicfs-plugin-local
       online/             # Independent Go module, depends only on SDK
@@ -95,7 +96,7 @@ server/
 
 根 go.mod 的 module 路径为 `github.com/fnMrRice/MusicFS-server`，`src` 是宿主业务包目录。插件实现按用途归入 `plugins/source`、`plugins/decoder`、`plugins/scraper`、`plugins/database`、`plugins/dsp`。分类目录不等同于 Go 模块：SDK 使用独立模块 `github.com/fnMrRice/MusicFS-server/sdk`，在线平台实现使用 `github.com/fnMrRice/MusicFS-server/plugins/source/online`，其余当前实现属于根模块；三者由同一 Server 仓库维护。SDK 不导入宿主业务，在线模块只依赖 SDK，不导入 Server 的 `src`。开发时通过各 go.mod 的明确本地 replace 关联，构建和检查均在 `GOWORK=off` 下执行；协议版本与实现版本分别维护。
 
-`src/app` 保留 Server 与本地角色组合程序的薄入口；单个插件入口位于各自 `plugins/<用途>/<实现>/cmd/<程序>`。可测试的启动、配置和生命周期逻辑放 `src/bootstrap` 等普通包；其他包和 tests 不导入 package main。Server、本地角色、SQLite 与 DSP 入口属于根模块；网易云、QQ 音乐、Apple Music 入口分别位于 `plugins/source/online/cmd/musicfs-plugin-<平台>`，可在该模块内单独构建。
+`src/app` 保留 Server 与全量统一插件程序的薄入口；`plugins/unified` 负责九种角色的装配，各实现仍按用途独立维护；单个插件入口位于各自 `plugins/<用途>/<实现>/cmd/<程序>`。可测试的启动、配置和生命周期逻辑放 `src/bootstrap` 等普通包；其他包和 tests 不导入 package main。Server、本地角色、SQLite 与 DSP 入口属于根模块；网易云、QQ 音乐、Apple Music 入口分别位于 `plugins/source/online/cmd/musicfs-plugin-<平台>`，可在该模块内单独构建。
 
 不要用 `src/internal` 隐藏要由根 tests 导入的模块：Go 的 internal 导入限制会阻止 src 外的测试引用。当前 src 业务包仍是宿主实现接口，不承诺插件 SDK 兼容。插件使用版本化 wire 契约及 `sdk` 的 DTO、协议和 Worker 基础能力；SDK 的独立测试及示例验证其脱离宿主编译的边界。
 
@@ -145,7 +146,7 @@ go vet ./...
 go test -race ./tests/...
 ```
 
-Windows 制品使用 `.exe` 后缀。日常全量构建使用 `scripts/build.ps1` / `scripts/build.sh`；检查使用 `scripts/check.ps1` / `scripts/check.sh`。检查脚本覆盖 `src`、`tests`、`scripts/release`、`sdk` 与全部 `plugins`，并分别运行各 Go 模块的 vet 与测试。`-race` 在支持平台和具备所需工具链的 CI 运行；普通交叉构建、race 构建和真实目标机运行分别记录。
+Windows 制品使用 `.exe` 后缀。日常构建使用 `scripts/build.ps1` / `scripts/build.sh`，默认只输出 `musicfs` 和 `musicfs-plugins`；显式 `-SplitPlugins` / `--split-plugins` 时额外输出六个分拆程序；检查使用 `scripts/check.ps1` / `scripts/check.sh`。检查脚本覆盖 `src`、`tests`、`scripts/release`、`sdk` 与全部 `plugins`，并分别运行各 Go 模块的 vet 与测试。`-race` 在支持平台和具备所需工具链的 CI 运行；普通交叉构建、race 构建和真实目标机运行分别记录。
 
 外置 tests 的覆盖率显式指定 `-coverpkg=./src/...,./plugins/...`，包含宿主与根模块插件实现。根目录的 `go test ./...` 只发现根 module 中的测试，不跨越 `sdk/go.mod` 与 `plugins/source/online/go.mod`，必须另行进入两目录测试；根 `tests` 下不另建 go.mod。集成测试明确通过 build tag 或测试开关启用，CI 和文档列出对应命令，不能把跳过外部依赖的成功输出当完整通过。
 
@@ -176,6 +177,6 @@ Windows 制品使用 `.exe` 后缀。日常全量构建使用 `scripts/build.ps1
 - [x] 合成媒体夹具与 P3/P4 验收记录可复用，来源/许可明确。
 - [x] 工程建立与各功能阶段分别记录，不用空包或构建成功证明可播放。
 
-逐步证据见[核对表](../validation/documentation-audit.md#p0工程与契约)、[夹具](../validation/fixtures.md)和[制品验收](../validation/release.md)。上方目录树保留初始职责规划并反映 SDK/在线模块边界；当前默认构建 Server、本地角色统一程序、三个在线平台程序、在线统一程序、独立 SQLite 存储和 DSP gain，共八个程序。以各模块入口与构建脚本为准；正式安装包的存储默认及可选 DSP 见[部署说明](../deployment.md)，实现包不要求与规划一一同名。
+逐步证据见[核对表](../validation/documentation-audit.md#p0工程与契约)、[夹具](../validation/fixtures.md)和[制品验收](../validation/release.md)。上方目录树保留初始职责规划并反映 SDK/在线模块边界；当前默认构建 Server 与九角色统一插件程序，共两个程序；可选分拆构建额外提供三个在线平台、在线统一入口、SQLite 和 DSP gain，合计八个程序。以各模块入口与构建脚本为准；正式安装包的存储默认及可选 DSP 见[部署说明](../deployment.md)，实现包不要求与规划一一同名。
 
 依据：[Go 模块组织](https://go.dev/doc/modules/layout)、[go.mod](https://go.dev/doc/modules/gomod-ref)、[Go 测试](https://pkg.go.dev/testing)。官方包/测试规则与本项目的目录选择分别说明，不将其他社区目录模板称为强制标准。

@@ -1,6 +1,6 @@
 # P8：测试矩阵、打包、部署与交付
 
-状态：八程序安装制品、Windows/Arch WSL2新目录运行、直接TLS、离线完整备份恢复及Server生命周期协议已有实现与实测；Windows四轮并行后台任务/慢消费者/输出缓存资源基线已有记录。Docker/反向代理提供示例，尚未运行验收；最终联合检查与干净制品按独立记录收尾，未据此宣布所有外部环境通过。返回[实施入口](../implementation.md)，阶段证据见[文档核对](../validation/documentation-audit.md#p8交付与验收)与[实施记录](../validation/progress.md)。
+状态：原阶段八程序安装制品、Windows/Arch WSL2新目录运行、直接TLS、离线完整备份恢复及Server生命周期协议已有实现与实测；当前默认收敛为 Server 与全量统一插件两个程序，见[统一插件验收](../validation/unified-plugins.md)。Windows四轮并行后台任务/慢消费者/输出缓存资源基线已有记录。Docker/反向代理提供示例，尚未运行验收；最终联合检查与干净制品按独立记录收尾，未据此宣布所有外部环境通过。返回[实施入口](../implementation.md)，阶段证据见[文档核对](../validation/documentation-audit.md#p8交付与验收)与[实施记录](../validation/progress.md)。
 
 ## 1. 测试与验证矩阵
 

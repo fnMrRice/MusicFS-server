@@ -8,11 +8,11 @@
 
 | 模块 | 负责内容 | 允许依赖 |
 | --- | --- | --- |
-| 根 Server 模块 | HTTP、账号归属、任务、音乐库、存储、插件进程管理 | SDK；在线实现仅用于测试 |
+| 根 Server 模块 | Server 宿主与 `plugins/unified` 全量插件装配入口 | 宿主依赖 SDK；统一插件程序按需装配各用途实现 |
 | `sdk` | JSON-RPC 帧与取消、协议 DTO、通用错误、实例 ID、在线结果校验、Provider Worker | 标准库及 SDK 明确列出的基础库 |
 | `plugins/source/online` | 网易云、QQ 音乐、Apple Music 适配、三个独立程序与统一在线入口 | SDK 和插件自身代码 |
 
-宿主生产依赖不能包含在线平台适配器；SDK 和插件模块不能反向导入 `src/`。依赖边界由 `TestPluginModulesHaveNoHostImplementationDependencies` 使用真实 Go 依赖图验证。公共 DTO 与上游请求实现分开，宿主不再为了读取 `Track`、`AccountView` 等类型导入平台 HTTP 客户端。
+Server 宿主程序的生产依赖不能包含在线平台适配器；SDK 和独立在线模块不能反向导入 `src/`。`plugins/unified` 属于根模块，是允许引用各用途插件和专用 Worker 通道的装配层。依赖边界由 `TestPluginModulesHaveNoHostImplementationDependencies` 使用真实 Go 依赖图验证。公共 DTO 与上游请求实现分开，宿主不再为了读取 `Track`、`AccountView` 等类型导入平台 HTTP 客户端。
 
 SDK 包入口：
 
@@ -26,7 +26,7 @@ SDK 包入口：
 
 ## 构建与测试
 
-统一构建仍使用根目录 `scripts/build.ps1` 或 `scripts/build.sh`。脚本分别进入模块，使用 `GOWORK=off` 构建；不依赖开发者本机的 `go.work`。
+默认使用根目录 `scripts/build.ps1` 或 `scripts/build.sh` 构建两个程序：`musicfs` 和覆盖全部九种角色的 `musicfs-plugins`。所有模块仍以 `GOWORK=off` 构建，不依赖开发者本机的 `go.work`。显式指定 PowerShell `-SplitPlugins` 或 shell `--split-plugins` 才额外生成平台、SQLite、DSP 等独立文件；发布脚本支持同名选项。源码模块独立与最终交付文件数量互不绑定。
 
 单独构建在线插件，在 `plugins/source/online` 执行：
 
@@ -51,12 +51,14 @@ Windows PowerShell 先执行 `$env:GOWORK = 'off'`，再执行对应 `go build` 
 
 ## 分发与旧配置
 
-默认安装包包含八个程序：Server、四角色本地插件集合、SQLite 存储、DSP gain、三个在线独立程序与一个在线统一程序。`musicfs-plugins` 仅包含 Local Files、FFmpeg、NCM 和本地 Scraper；在线平台由单独的在线模块构建。
+默认安装包只包含 Server 和 `musicfs-plugins` 两个程序。`plugins/unified` 将音乐源、解码、刮削、SQLite 和 DSP 装配到同一个文件，命令仍为 `musicfs-plugins --plugin <角色>`。角色为 `local`、`audio-ffmpeg`、`ncm`、`scraper-local`、`netease`、`qqmusic`、`applemusic`、`storage-sqlite`、`dsp-gain`。每个进程启动时固定角色，保留各自协议和实例隔离；SQLite 仍是必需组件，DSP 仍按配置启用，不进入普通来源发现列表。
 
-自动发现仅检查既定目录中的固定程序名称，不搜索 PATH 或执行任意目录内容。优先使用每个平台的独立程序；缺失时使用同目录的在线统一程序和固定平台参数补位，不产生重复实例。旧配置使用 `musicfs-plugins --plugin netease|qqmusic|applemusic` 时，可迁到同目录对应独立程序，或在独立程序缺失时使用在线统一程序；保留实例 UUID、开关、权限及账号状态。明确指定的外部程序保持原配置。
+自动发现仅检查既定目录中的固定程序名称，不搜索 PATH 或执行任意目录内容。默认优先使用全量统一程序；不存在时兼容独立在线程序和仅在线统一程序，不产生重复实例。显式配置的有效独立入口仍可继续使用；已知独立入口缺失且没有固定摘要或自定义参数时，才可回退到统一程序。迁移保留实例 UUID、开关、权限及账号状态。旧四角色统一程序不支持在线角色，需要配套更新二进制；握手失败时不可宣告在线就绪。
 
-已有非空 SHA-256 固定摘要不能被自动清除或替换：旧统一程序的摘要不能证明新独立程序可信，此种配置需显式更新对应摘要。新程序缺失或尚未完成可信配置时不能宣告可用。账号数据保持由 Server 托管，升级不导出凭据、不重新创建实例。
+已有非空 SHA-256 固定摘要不能被自动清除或替换：切换文件或升级统一程序时须显式更新对应摘要。数据库和 DSP 使用显式部署路径、参数与摘要，不进行隐式可信文件替换；默认发布配置已写入统一程序及正确角色。账号数据保持由 Server 托管，升级不导出凭据、不重新创建实例。
 
 发布脚本记录各模块依赖及许可；模块化构建不改变管理员选择可信程序、校验摘要、受控进程和实例隔离的约束。SQLite、DSP 与其他角色的专用协议没有因此变成通用外部 SDK。
 
 本次验证范围、提交快照检查与限制见 [SDK 拆分验收](validation/plugin-sdk.md)。
+
+后续默认统一交付的验证见 [全量统一插件验收](validation/unified-plugins.md)。

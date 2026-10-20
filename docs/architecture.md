@@ -21,9 +21,9 @@ Server 管理音乐来源、统一音乐库、歌单、信息刮削和音频流�
 | Scheduler | 扫描、探测、摘要、指纹、同步、刮削、写回和恢复 |
 | Storage | 可替换的可信 Backend 与独立持久化 Worker；默认 SQLite WAL，Media Store、可重建缓存和独立密钥保护 |
 
-第一阶段采用 Go 实现模块化单体服务，SQLite 为当前存储方案。宿主源码在 `src/`，Server 与本地插件组合入口在 `src/app/`，各插件实现与独立入口按用途归到 `plugins/`；公共插件协议独立为 `sdk` module，在线平台实现、三个独立入口与一个统一入口独立为 `plugins/source/online` module，各模块保留自己的测试，跨模块契约与进程测试在根 `tests/`。模块依赖与发布兼容见 [Go SDK](plugin-sdk.md)，工程布局见 [P0 工程布局](implementation/00-project-layout.md)。首版官方插件为 Go 独立进程；后续需要 C++ 的插件使用 CMake / C++23 构建独立 Worker，经版本化 IPC 接入，不要求重写现有 Go 插件或为每种语言另建宿主。Client 使用单进程 DLL 插件，其播放器、主题和桌面框架由 Client 仓库设计；Server 与之分别构建和验收。内部依赖见[组件图](diagrams/components.puml)。
+第一阶段采用 Go 实现模块化单体服务，SQLite 为当前存储方案。宿主源码在 `src/`，Server 与全量插件组合入口在 `src/app/`，各插件实现与独立入口按用途归到 `plugins/`；公共插件协议独立为 `sdk` module，在线平台实现、三个独立入口与一个统一入口独立为 `plugins/source/online` module，各模块保留自己的测试，跨模块契约与进程测试在根 `tests/`。模块依赖与发布兼容见 [Go SDK](plugin-sdk.md)，工程布局见 [P0 工程布局](implementation/00-project-layout.md)。首版官方插件为 Go 独立进程；后续需要 C++ 的插件使用 CMake / C++23 构建独立 Worker，经版本化 IPC 接入，不要求重写现有 Go 插件或为每种语言另建宿主。Client 使用单进程 DLL 插件，其播放器、主题和桌面框架由 Client 仓库设计；Server 与之分别构建和验收。内部依赖见[组件图](diagrams/components.puml)。
 
-本地四种角色共用 `musicfs-plugins` 程序；在线平台可选择各平台独立程序或 `musicfs-plugin-online --plugin` 统一程序。各实例分别启动进程，握手身份必须匹配所选平台。启动时发现随包角色，尊重显式禁用；缺配置的实例保留为待配置，详见[发现与兼容](configuration.md#内置插件程序与自动发现)。该变化不引入 Go DLL 动态链接，也不扩大第三方 SDK 的已交付范围。
+默认只构建 `musicfs` 和 `musicfs-plugins` 两个程序。后者经 `plugins/unified` 装配全部九种插件角色，覆盖本地/在线音乐源、解码、刮削、SQLite 和 DSP；独立入口保留为可选构建。各实例分别启动进程，握手身份必须匹配启动时所选角色；SQLite 和 DSP 不进入普通插件自动发现。启动时发现普通随包角色，尊重显式禁用；缺配置的实例保留为待配置，详见[发现与兼容](configuration.md#内置插件程序与自动发现)。该变化不引入 Go DLL 动态链接，也不扩大第三方 SDK 的已交付范围。
 
 ## 2. 数据模型与资产身份
 

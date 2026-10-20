@@ -72,7 +72,7 @@ func discoverBundle(root *yaml.Node, base string) error {
 	for _, entry := range bundledPlugins {
 		path := bundle
 		args := []string{"--plugin", entry.selector}
-		if entry.program != "" {
+		if entry.program != "" && !regularExecutable(path) {
 			path = standalonePath(bundle, entry.program)
 			args = []string{}
 			if !regularExecutable(path) {
@@ -106,17 +106,12 @@ func discoverBundle(root *yaml.Node, base string) error {
 			if !filepath.IsAbs(candidate) {
 				candidate = filepath.Join(base, candidate)
 			}
-			legacy := entry.program != "" && canonicalPath(candidate) == canonicalPath(bundle)
 			fallback := entry.program != "" && canonicalPath(candidate) == canonicalPath(standalonePath(bundle, entry.program)) &&
-				!regularExecutable(candidate) && canonicalPath(path) == canonicalPath(standalonePath(bundle, "musicfs-plugin-online"))
-			if legacy || fallback {
-				// An old digest pins the old program, not its replacement. Require
-				// an explicit digest update instead of silently removing that pin.
-				approvedArgs := legacyOnlineArgs(node, entry.selector)
-				if fallback {
-					rawArgs := mappingValue(node, "args")
-					approvedArgs = rawArgs == nil || (rawArgs.Kind == yaml.SequenceNode && len(rawArgs.Content) == 0)
-				}
+				!regularExecutable(candidate)
+			if fallback {
+				// A digest pins the selected program, not its replacement.
+				rawArgs := mappingValue(node, "args")
+				approvedArgs := rawArgs == nil || (rawArgs.Kind == yaml.SequenceNode && len(rawArgs.Content) == 0)
 				if digest := mappingValue(node, "sha256"); (digest != nil && digest.Value != "") || !approvedArgs {
 					continue
 				}
@@ -127,18 +122,19 @@ func discoverBundle(root *yaml.Node, base string) error {
 					return err
 				}
 			} else if canonicalPath(candidate) != canonicalPath(path) {
+				fullBundle := canonicalPath(candidate) == canonicalPath(bundle)
 				standalone := entry.program != "" && canonicalPath(candidate) == canonicalPath(standalonePath(bundle, entry.program))
 				unified := entry.program != "" && canonicalPath(candidate) == canonicalPath(standalonePath(bundle, "musicfs-plugin-online"))
-				if !regularExecutable(candidate) || (!standalone && !unified) {
+				if !regularExecutable(candidate) || (!fullBundle && !standalone && !unified) {
 					continue // Explicit external executables retain their old semantics.
 				}
-				// Explicit official online executables retain their chosen form.
+				// Explicit official executables retain their chosen form.
 				configuredPath = candidate
 				if relative, err := filepath.Rel(base, candidate); err == nil {
 					configuredPath = relative
 				}
 				args = []string{}
-				if unified {
+				if fullBundle || unified {
 					args = []string{"--plugin", entry.selector}
 				}
 			}
@@ -195,8 +191,8 @@ func markPendingConfiguration(c *Config, bundle string) {
 		}
 		for ii := range p.Instances {
 			i := &p.Instances[ii]
-			i.PendingConfiguration = !regularExecutable(p.Executable) || (isBundle && platform != "")
-			if isOnlineBundle && !onlineSelectorArgs(p.Args, platform) {
+			i.PendingConfiguration = !regularExecutable(p.Executable)
+			if platform != "" && (isBundle || isOnlineBundle) && !onlineSelectorArgs(p.Args, platform) {
 				i.PendingConfiguration = true
 			}
 			switch p.PluginID {
@@ -231,16 +227,6 @@ func regularExecutable(path string) bool {
 func onlineSelectorArgs(args []string, platform string) bool {
 	return (len(args) == 1 && args[0] == "--plugin="+platform) ||
 		(len(args) == 2 && args[0] == "--plugin" && args[1] == platform)
-}
-
-func legacyOnlineArgs(node *yaml.Node, selector string) bool {
-	args := mappingValue(node, "args")
-	if args == nil {
-		return true
-	}
-	return args.Kind == yaml.SequenceNode && len(args.Content) == 2 &&
-		args.Content[0].Tag == "!!str" && args.Content[0].Value == "--plugin" &&
-		args.Content[1].Tag == "!!str" && args.Content[1].Value == selector
 }
 
 func (p Plugin) CanStart(i Instance) bool {

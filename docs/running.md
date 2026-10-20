@@ -13,13 +13,13 @@
 Copy-Item configs/server.example.yaml configs/server.local.yaml
 ```
 
-构建生成八个程序：`musicfs.exe`、`musicfs-plugins.exe`、`musicfs-plugin-netease.exe`、`musicfs-plugin-qqmusic.exe`、`musicfs-plugin-applemusic.exe`、`musicfs-plugin-online.exe`、`musicfs-plugin-storage-sqlite.exe`，以及默认不启用的 `musicfs-plugin-dsp-gain.exe`。脚本使用 `GOWORK=off`、`-mod=readonly` 分别构建 Server 与 `plugins/source/online` 模块；公共协议和 Worker 能力来自独立 `sdk` 模块。正式安装包默认把 SQLite 独立进程插件作为必需后端，不提供禁用开关；源仓库示例和旧配置保留内置 SQLite 兼容。本地媒体角色由配置中的 `args` 选择，仍分别启动进程；存储迁移与 DSP 的部署字段见[存储插件](storage-plugins.md)与[DSP 插件](dsp-plugins.md)。编辑 `configs/server.local.yaml`（旧JSON配置不兼容，字段及读写边界见[YAML配置](configuration.md)）：
+默认构建只生成 `musicfs.exe` 与 `musicfs-plugins.exe`。统一插件程序通过 `--plugin` 选择四种本地角色、三个在线平台、SQLite 或 DSP gain，每个角色仍是独立进程。需要保留独立程序时运行 `./scripts/build.ps1 -SplitPlugins`，输出原有八个程序；再次默认构建会清理该目标目录中固定名单内的旧独立产物，包含更早的四种本地独立入口，保留未知文件。脚本使用 `GOWORK=off`、`-mod=readonly`，SDK 和在线实现仍保持独立模块。正式安装包通过统一入口的 `storage-sqlite` 角色提供必需存储；源示例和旧配置保留内置 SQLite 兼容。存储与 DSP 部署字段见[存储插件](storage-plugins.md)与[DSP 插件](dsp-plugins.md)。编辑 `configs/server.local.yaml`（旧 JSON 配置不兼容，见[YAML 配置](configuration.md)）：
 
 - `plugins` 的 `musicfs.plugin.source.localfiles` 实例默认没有选定的导入目录，采用[默认目录授权](plugin-configuration.md#部署授权)。需要指定其他允许范围时，在 YAML 中设置 `permissions.readDirectories`。启动后用管理员账号打开 Web「设置 → 音乐来源」，点击「本地音乐」标题右侧的「管理目录」。弹窗中的目录树以允许访问的目录为根，展开并选择根或子目录；下方配置递归查找，按需勾选深度限制后保存。默认不限制递归深度；没有已选目录时标题下显示「暂无已选择目录」。之后通过扫描接口或脚本手动导入。实际选择与递归设置保存在插件配置数据库，YAML 不因选择而改写；旧 `config.musicRoots` 仍兼容。
 - `musicfs.plugin.decoder.ffmpeg` 实例的 `config.ffmpegPath`、`config.ffprobePath` 指向本机工具；配置齐全且未显式禁用时自动启动。缺少路径时显示待配置，仅验证标准PCM16 WAV原流时不需要启用；AIFF与当前NCM FLAC转码路径需要两种工具。
-- 四种本地角色的 `executable` 指向统一程序，`args` 选择角色；三个在线来源指向各自的 `musicfs-plugin-<平台>.exe`，无需选择参数。示例默认 Windows 构建路径，发现对应程序后，省略 enabled 时自动启用。把 `musicfs.plugin.decoder.ncm.enabled` 设为false并重启可停用本地NCM解密，其他格式仍可使用。旧在线统一入口的安全迁移、缺失程序及已固定摘要处理见[自动发现](configuration.md#内置插件程序与自动发现)。
+- 七种普通插件角色的 `executable` 均指向 `musicfs-plugins.exe`，`args` 选择本地或在线平台角色。示例默认 Windows 构建路径，发现程序后，省略 enabled 时自动启用；缺少角色配置时保持待配置。显式禁用、缺失程序及固定摘要处理见[自动发现](configuration.md#内置插件程序与自动发现)。
 - 各插件可配置 `sha256` 固定管理员审核过的二进制摘要（`Get-FileHash -Algorithm SHA256`）。省略时信任显式配置的本机可执行路径，只核对本次启动的读取一致性，不承诺跨重启钉住版本；更新制品后需同步显式摘要。
-- 也可把某个平台的 `executable` 指向 `musicfs-plugin-online.exe`，并配置 `args: ['--plugin', 'netease']`（QQ 音乐使用 `qqmusic`，Apple Music 使用 `applemusic`）。同目录缺少某个独立程序时，发现流程可使用统一入口补足；两种形式不会产生重复默认实例。
+- 分拆构建后，可显式指定某平台独立程序（无参数），或 `musicfs-plugin-online.exe` 加 `args: ['--plugin', 'netease']`；QQ 音乐与 Apple Music 分别选择 `qqmusic` 和 `applemusic`。默认发现优先使用全量统一入口，同一插件身份不重复创建实例。
 - 音乐目录与 `dataRoot/mediaRoot/cacheRoot` 保持分离。相对授权路径以 YAML 所在目录为基准；修改 YAML 权限需重启。Web 保存音乐目录通过管理接口应用，无需重启 Server；尚未选择目录时显示「待配置」。
 - `allowedOrigins` 必须与页面实际 URL 完全一致。默认只允许明确配置的 loopback HTTP，远程监听必须配置 TLS。
 
@@ -44,7 +44,7 @@ NCM无需新增页面操作：配置Worker、重新扫描后直接选曲。内�
 
 ## Linux 与同源部署
 
-使用 `sh scripts/build.sh` 构建相同八个程序（无 `.exe`），复制相同 YAML 示例，把路径前缀 `../build/windows/` 改为 `../build/linux/` 并删除程序名的 `.exe` 后缀。`pluginBundle` 和四种本地角色继续指向 `musicfs-plugins` 并保留 args，三个在线角色分别指向 `musicfs-plugin-netease`、`musicfs-plugin-qqmusic`、`musicfs-plugin-applemusic`。配置音频实例的 FFmpeg/ffprobe 路径后自动启用（显式禁用除外）。正式安装包的必需 SQLite 存储程序使用对应 Linux 路径和本次打包摘要；源示例仍可使用内置 SQLite。DSP 示例默认不启用，需要时在相应字段中指定路径和摘要。服务仍可通过 `--web-root` 提供独立 Web 制品。NCM 真实 Worker 已在 Arch WSL2 通过；Linux 配置与运行验收见[配置记录](validation/configuration.md)，与交叉构建结果分开，不由构建推断所有发行版支持。
+使用 `sh scripts/build.sh` 默认构建相同两个程序（无 `.exe`）；`sh scripts/build.sh --split-plugins` 可额外构建六个分拆程序。复制相同 YAML 示例，把 `../build/windows/` 改为 `../build/linux/` 并删除 `.exe` 后缀。`pluginBundle` 和七种普通插件角色均指向 `musicfs-plugins`，保留各自 args。配置音频实例的 FFmpeg/ffprobe 路径后自动启用（显式禁用除外）。正式安装包的必需 SQLite 角色使用统一程序路径和本次打包摘要。
 
 2026-10-10已在Arch WSL使用原生FFmpeg/ffprobe 6.1.6通过YAML处理后播放、实际PCM定位、音频启用边界和同配置重启验证；工具为官方签名源码的LGPLv2.1+本地构建，不随仓库分发。工具能力、定向结果与范围见[Linux音频记录](validation/configuration-linux-audio.md)。这项Server验证不代替Linux浏览器、人工听音或其他架构/系统验收，也不包含动态启停。
 

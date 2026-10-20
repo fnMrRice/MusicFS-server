@@ -33,7 +33,7 @@ func TestIndependentOnlinePluginsAndProcessIsolation(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	path := onlineBinary(t, "./src/app/musicfs-plugins", "local plugins with spaces")
+	path := onlineBinary(t, "./src/app/musicfs-plugins", "all plugins with spaces")
 	cfg := onlineConfig(t, programs["qqmusic"], "netease")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -49,7 +49,7 @@ func TestIndependentOnlinePluginsAndProcessIsolation(t *testing.T) {
 			t.Fatalf("standalone plugin accepted role arguments: %q, %v", stdout, err)
 		}
 	}
-	for _, args := range [][]string{nil, {"--plugin", "unknown"}, {"--plugin", "local", "unexpected"}, {"--plugin", "netease"}, {"--plugin", "qqmusic"}, {"--plugin", "applemusic"}} {
+	for _, args := range [][]string{nil, {"--plugin", "unknown"}, {"--plugin", "local", "unexpected"}, {"--plugin", "netease", "--plugin", "qqmusic"}} {
 		cmd := exec.CommandContext(ctx, path, args...)
 		stdout, err := cmd.Output()
 		var exit *exec.ExitError

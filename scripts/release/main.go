@@ -18,6 +18,7 @@ import (
 type builder struct {
 	root, out, target, arch, web string
 	env                          []string
+	splitPlugins                 bool
 }
 
 type manifest struct {
@@ -52,6 +53,7 @@ func run() error {
 	flag.StringVar(&b.arch, "arch", "amd64", "Target architecture (validated: amd64)")
 	flag.StringVar(&b.out, "output", "", "New installation bundle directory")
 	flag.StringVar(&b.web, "web-root", "", "Optional separately built Web artifact directory")
+	flag.BoolVar(&b.splitPlugins, "split-plugins", false, "Also include optional standalone plugin executables")
 	allowDirty := flag.Bool("allow-dirty", false, "Mark an uncommitted validation build; not a release")
 	flag.Parse()
 	if flag.NArg() != 0 || (b.target != "windows" && b.target != "linux") || b.arch != "amd64" || b.out == "" {
@@ -103,7 +105,7 @@ func run() error {
 	if err = os.WriteFile(filepath.Join(b.out, ".incomplete"), []byte("Build has not completed.\n"), 0600); err != nil {
 		return err
 	}
-	for _, program := range releasePrograms {
+	for _, program := range b.programs() {
 		file := program.name
 		if b.target == "windows" {
 			file += ".exe"
@@ -135,8 +137,8 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	m := manifest{Version: "0.1.0", Revision: strings.TrimSpace(string(rev)), Dirty: dirty, OS: b.target, Arch: b.arch, GoVersion: strings.TrimSpace(string(version)), BuiltAt: time.Now().UTC(), APIVersion: "1", PluginProtocol: "1.0", Programs: programs, ExternalTools: []string{"FFmpeg/ffprobe: external, libmp3lame required", "Chromaprint fpcalc 1.6.1: external, optional"}, Dependencies: deps, GoLicenses: goLicenses}
-	m.Components = components()
+	m := manifest{Version: "0.1.0", Revision: strings.TrimSpace(string(rev)), Dirty: dirty, OS: b.target, Arch: b.arch, GoVersion: strings.TrimSpace(string(version)), BuiltAt: time.Now().UTC(), APIVersion: "1", PluginProtocol: "1.0", Programs: b.programNames(), ExternalTools: []string{"FFmpeg/ffprobe: external, libmp3lame required", "Chromaprint fpcalc 1.6.1: external, optional"}, Dependencies: deps, GoLicenses: goLicenses}
+	m.Components = components(b.splitPlugins)
 	m.Modules = sourceModules
 	m.SchemaVersion, err = b.schemaVersion()
 	if err != nil {
@@ -155,7 +157,7 @@ func run() error {
 	if err = os.Remove(filepath.Join(b.out, ".incomplete")); err != nil {
 		return err
 	}
-	return json.NewEncoder(os.Stdout).Encode(map[string]any{"directory": b.out, "os": b.target, "arch": b.arch, "dirty": dirty, "programs": len(programs)})
+	return json.NewEncoder(os.Stdout).Encode(map[string]any{"directory": b.out, "os": b.target, "arch": b.arch, "dirty": dirty, "programs": len(b.programs())})
 }
 
 func targetEnvironment(target, arch string) []string {

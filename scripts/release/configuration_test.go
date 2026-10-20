@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -27,7 +28,7 @@ func TestPackagedConfigurationStartsWithoutImportDirectories(t *testing.T) {
 			if err := os.Mkdir(filepath.Join(output, "configs"), 0700); err != nil {
 				t.Fatal(err)
 			}
-			program := "musicfs-plugin-storage-sqlite"
+			program := "musicfs-plugins"
 			if target == "windows" {
 				program += ".exe"
 			}
@@ -52,7 +53,7 @@ func TestPackagedConfigurationStartsWithoutImportDirectories(t *testing.T) {
 				t.Fatal(err)
 			}
 			hash := sha256.Sum256(worker)
-			if supplied.Storage.Backend != "plugin" || supplied.Storage.Executable != "../bin/"+program || supplied.Storage.SHA256 != hex.EncodeToString(hash[:]) {
+			if supplied.Storage.Backend != "plugin" || supplied.Storage.Executable != "../bin/"+program || supplied.Storage.SHA256 != hex.EncodeToString(hash[:]) || !slices.Equal(supplied.Storage.Args, []string{"--plugin", "storage-sqlite"}) {
 				t.Fatal("packaged defaults do not require the exact bundled SQLite worker")
 			}
 			if len(supplied.AudioDSP.Chain) != 0 || len(supplied.AudioDSP.Plugins) != 0 {

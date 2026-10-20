@@ -2,7 +2,7 @@
 
 后续增量：[平台账号登录](../platform-login.md)已接入网易云 eapi、QQ 扫码及桌面账号接口、Apple MusicKit 用户令牌校验，以及 Worker / Host / Web 入口；完整实号授权仍待验收。下文阶段原始状态不包含此增量，不能据此宣称完整在线能力已交付。
 
-状态：2026-10-20。Local Files、音频处理、[NCM解密](../ncm.md)、[本地Scraper](../metadata.md)及网易/QQ/Apple三个[在线资料Worker](../online.md)均已有独立进程实现；账号增量以上述专项说明为准，尚无在线完整音频。默认构建 Server、四种本地角色共用的插件程序、SQLite 存储、DSP gain、三个独立在线程序和一个在线统一程序，共八个程序。[Go SDK 与在线插件](../plugin-sdk.md)已拆为独立模块，本地单插件薄入口仍保留。[存储](../storage-plugins.md)与[DSP](../dsp-plugins.md)已有各自受限的外部 Go 接口，不参加普通媒体角色自动发现。动态启用、配置应用和工作租约已交付；停用改为保存后重启生效，见[管理验收](../validation/plugin-management.md)；通用第三方发现、C++ Worker SDK 和恶意插件 OS 沙箱未交付。
+状态：2026-10-20。Local Files、音频处理、[NCM解密](../ncm.md)、[本地Scraper](../metadata.md)及网易/QQ/Apple三个[在线资料Worker](../online.md)均已有独立进程实现；账号增量以上述专项说明为准，尚无在线完整音频。默认构建 Server 与覆盖九种角色的全量统一插件，共两个程序；SQLite、DSP 和在线平台均在统一文件内按角色独立启动。[Go SDK 与在线插件](../plugin-sdk.md)已拆为独立模块，本地单插件薄入口仍保留。[存储](../storage-plugins.md)与[DSP](../dsp-plugins.md)已有各自受限的外部 Go 接口，不参加普通媒体角色自动发现。动态启用、配置应用和工作租约已交付；停用改为保存后重启生效，见[管理验收](../validation/plugin-management.md)；通用第三方发现、C++ Worker SDK 和恶意插件 OS 沙箱未交付。
 
 设计约束来自 [Server 架构](../architecture.md)和[音频处理设计](../audio-processing.md)。本文保留计划边界，已存在代码及已验证能力以验证记录为准。阶段编号与 Server / Web 共用；源文件尽量不超过 400 行，按职责拆分。
 
