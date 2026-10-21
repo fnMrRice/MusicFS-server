@@ -1,77 +1,74 @@
 @startuml
-title MusicFS Server - Internal Design (Not Implemented)
+title MusicFS Server 当前模块与插件边界
 left to right direction
 skinparam componentStyle rectangle
 skinparam shadowing false
 
-actor "Web / Desktop Client" as Consumer
-package "Server Core" {
-  component "API Gateway\nAuth / Validation / Revisions" as API
-  component "Library\nAssets / Matching / Timeline Evidence" as Library
-  component "Playlist\nSnapshots / Provenance / Hide Rules" as Playlist
-  component "Metadata Enrichment\nCandidates / Selection / Write-back Jobs" as Enrichment
-  component "Resolver\nAuthorization / Source / Profile" as Resolver
-  component "Scheduler\nScan / Hash / Fingerprint / Sync / Recovery" as Scheduler
-  component "Plugin Host\nRoles / Capabilities / Limits / Cancellation" as Host
-  component "Audio Pipeline\nDemux -> Decode -> PCM DSP -> Encode -> Mux" as Pipeline
-  component "Stream Gateway\nAttempt URL / Byte Range / Time Seek" as Stream
+actor "Web / Client" as UI
+package "Server 宿主" {
+  component "app\n程序入口 / 组装 / HTTP API" as App
+  component "core\n鉴权 / 配置 / 生命周期" as Core
+  component "library\n来源 / 扫描 / 查询 / 歌单" as Library
+  component "metadata\n识别 / 关联 / 补全 / 写回" as Metadata
+  component "playback\n会话 / 流 / 定位 / 缓存" as Playback
+  component "plugins\n进程 / 协议 / 账号 / 受控资源" as Host
+  component "storage\nBackend / 迁移 / 媒体 / 备份" as Storage
 }
-package "Server Plugins" {
-  component "Local Files Provider\nMounted NAS / Stable File IDs" as Local
-  component "Online Music Providers\nCatalog / Playlists / Recommendations" as Online
-  component "Scrapers\nLocal / Online / Platform Adapters" as Scrapers
-  component "Audio Processors\nDemux / Decode / DSP / Encode / Mux" as Audio
+package "独立插件进程" {
+  component "Local Files\n本机 / 已挂载目录" as Local
+  component "在线 Provider\n网易云 / QQ / Apple Music" as Online
+  component "本地 Scraper\n歌词 / 封面候选" as Scraper
+  component "FFmpeg / NCM\n处理 / 解密" as Audio
+  component "DSP Worker\n有序无状态节点" as DSP
+  component "SQLite Worker\n必需存储后端" as SQLite
 }
-database "SQLite WAL\nIndexes / Relations / Jobs\nNo File Bodies" as DB
-folder "Media Store\nLyrics / Artwork / Metadata / Fingerprints" as Media
-folder "Rebuildable Cache\nVersioned Audio Outputs" as Cache
-folder "Authorized Music Roots\nLocal / Mounted NAS" as Files
-component "Protected Credentials\nOS Store / External Master Key" as Secrets
+folder "授权音乐目录" as Files
+folder "Media Store\n歌词 / 封面 / 指纹等正文" as Media
+folder "可重建音频缓存" as Cache
+folder "按实例保护的平台凭据" as Credentials
 
-Consumer --> API : "Shared contracts"
-Consumer --> Stream : "Authorized attempt URL"
-API --> Library
-API --> Playlist
-API --> Enrichment
-API --> Resolver
-API --> Scheduler
-Playlist --> Library
-Enrichment --> Scheduler
-Enrichment --> Media : "Publish immutable files"
-Enrichment --> Library : "Revision-checked binding"
-Scheduler --> Host
-Resolver --> Library
-Resolver --> Host
-Resolver --> Pipeline : "Build authorized plan"
-Pipeline --> Host : "Control / capabilities"
-Pipeline --> Audio : "Bounded binary audio data"
-Pipeline --> Cache
-Pipeline --> Stream : "Versioned output / time map"
+UI --> App : 版本化 HTTP / SSE
+App --> Core
+App --> Library
+App --> Metadata
+App --> Playback
+App --> Host
+App --> Storage
+Library --> Host : 来源 / 扫描
+Metadata --> Host : 任务与授权
+Playback --> Host : 输入与音频插件
+Library --> Storage
+Metadata --> Storage
+Playback --> Storage
 Host --> Local
 Host --> Online
-Host --> Scrapers
-Host --> Audio : "Lifecycle / limits"
-Host --> Secrets : "Scoped credentials"
-Local --> Files : "Read / explicit safe tag write"
-Host --> Files : "Task-scoped read access"
-Host --> DB : "Controlled persistence API"
-Library --> DB
-Playlist --> DB
-Enrichment --> DB
-Scheduler --> DB
-Stream --> Files : "Version-checked byte reads"
-Stream --> Cache
-Stream --> Host : "Authorized remote source"
-note bottom of DB
-  Single write queue plus revision / generation checks.
-  Plugins do not directly modify core tables.
+Host --> Scraper
+Host --> Audio
+Host --> Credentials
+Host --> Files : 授权根 / 任务读取
+Local --> Files : 受限读取
+Audio --> DSP : 受控 PCM 通道
+Playback --> Cache
+Storage --> SQLite : 专用 Backend 协议
+Storage --> Media : 不可变文件与发布协调
+
+note bottom of Host
+  默认由 musicfs-plugins 的九种角色分别启动进程。
+  普通插件停用保存后重启生效。
+  SQLite / DSP 只读管理，配置变更后重启。
+  进程隔离不是操作系统沙箱。
 end note
-note bottom of Media
-  Database and filesystem publication are separate.
-  Recover using persisted stages and referenced-file manifests.
+note bottom of Storage
+  SQLite 保留内置兼容模式。
+  Schema、迁移、事务语义与文件发布归宿主。
+  数据库只保存正文索引与引用。
 end note
-note bottom of Pipeline
-  Direct or remux paths may bypass decoding when compatible.
-  Processed output never inherits input byte offsets.
+note bottom of Online
+  登录接口已接入，真实账号待验；整曲交付未实现。
+  原生 NAS、Bilibili、远端 Scraper 另见设计。
+end note
+note bottom of App
+  按功能分组，不表示严格分层或完整调用图。
+  受控资源与音频数据通道不暴露给客户端。
 end note
 @enduml

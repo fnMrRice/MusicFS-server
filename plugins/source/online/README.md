@@ -25,6 +25,7 @@
 在此模块目录运行：
 
 ```powershell
+$env:GOWORK = 'off'
 go build -o musicfs-plugin-online.exe ./cmd/musicfs-plugin-online
 go build -o musicfs-plugin-netease.exe ./cmd/musicfs-plugin-netease
 go build -o musicfs-plugin-qqmusic.exe ./cmd/musicfs-plugin-qqmusic
@@ -41,6 +42,6 @@ go vet ./...
 
 ## 能力与限制
 
-本次拆分保持既有认证、授权、分页、取消和请求限制，不新增在线音乐能力。账号及部分平台请求已有模拟回归测试；真实账号验证仍待完成。QQ、Apple Music 未经验证的业务能力继续在描述符中标为不支持；三个插件均不解析完整音频资源。
+所有业务请求要求本实例账号已校验，并遵守授权、分页、取消和请求限制。账号及部分平台请求已有模拟回归测试；真实账号验证仍待完成。QQ、Apple Music 未经验证的业务能力继续在描述符中标为不支持；三个插件均不解析完整音频资源。
 
 测试默认使用模拟传输；真实平台登录检查需显式设置现有测试开关。测试包含本地 TLS 服务，运行环境需要允许回环连接。

@@ -81,4 +81,4 @@
 
 [`src/plugins`](plugins/) 是宿主代码；仓库根 [`plugins/`](../plugins/) 是具体插件实现和独立入口；公共协议与可复用插件能力在独立的 [`sdk/`](../sdk/) 模块。不要把三者混放。对外 HTTP、插件协议和数据库格式的兼容性仍按对应契约维护，目录整理本身不增加功能。
 
-宿主测试继续放在根 [`tests/`](../tests/)，按 `unit`、`integration`、`contract`、`e2e` 分类，辅助代码、夹具和测试入口也留在该目录。SDK 与插件独立模块保留各自的测试边界。完整工程约定见 [P0 工程布局](../docs/implementation/00-project-layout.md)，业务设计见 [Server 内部架构](../docs/architecture.md)。
+宿主测试继续放在根 [`tests/`](../tests/)，按 `unit`、`integration`、`contract`、`e2e` 分类，辅助代码、夹具和测试入口也留在该目录。SDK 与插件独立模块保留各自的测试边界。完整工程约定见 [开发与检查](../docs/development/README.md)，业务设计见 [Server 内部架构](../docs/architecture.md)。
