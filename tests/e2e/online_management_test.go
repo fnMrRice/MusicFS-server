@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
-	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
-	"github.com/fnMrRice/MusicFS-server/src/recommendations"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/recommendations"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
 
 func managedOnlineFixture(t *testing.T) string {

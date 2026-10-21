@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
-	"github.com/fnMrRice/MusicFS-server/src/processedcache"
+	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 )
 
 // These are repository authorization tests over real scanned assets. The

@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
-	"github.com/fnMrRice/MusicFS-server/src/auth"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/auth"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/timeline"
+	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 )
 
 func target(t library.Track) timeline.Target {

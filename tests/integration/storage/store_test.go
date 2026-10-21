@@ -3,7 +3,7 @@ package storage_test
 import (
 	"context"
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
-	"github.com/fnMrRice/MusicFS-server/src/auth"
+	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"path/filepath"
 	"testing"
 	"time"

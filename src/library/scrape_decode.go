@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 )
 
 // DecodeNCM prepares the inputs before Host.Open. The caller supplies a separate

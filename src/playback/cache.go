@@ -5,9 +5,9 @@ import (
 	"io"
 	"strings"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/processedcache"
+	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 )
 
 type cacheScope struct {

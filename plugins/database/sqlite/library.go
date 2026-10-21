@@ -9,9 +9,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 )
 
 func (s *Store) Publish(ctx context.Context, supplied jobs.Job, publication library.ScanPublication) error {

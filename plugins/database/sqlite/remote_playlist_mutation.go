@@ -7,8 +7,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 )
 
 func saveRemotePlaylist(ctx context.Context, tx *sql.Tx, p *playlists.RemotePlaylist, insert bool) error {

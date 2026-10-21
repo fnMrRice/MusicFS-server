@@ -7,8 +7,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/matching"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 )
 
 func readRecording(ctx context.Context, tx *sql.Tx, owner, id string) (matching.Recording, error) {

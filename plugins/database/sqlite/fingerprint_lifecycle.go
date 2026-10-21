@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/identification"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 )
 
 func fingerprintStale(err error) bool {

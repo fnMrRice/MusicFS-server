@@ -3,7 +3,7 @@ package audioffmpeg
 import (
 	"context"
 
-	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
 
 type lifecycleBinding struct {

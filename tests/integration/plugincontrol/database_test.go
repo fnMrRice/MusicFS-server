@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
-	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
 
 func TestLocalSettingsDatabaseAndDirectoryAuthority(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 )
 
 func (s *Store) PlaybackReset(ctx context.Context) error {

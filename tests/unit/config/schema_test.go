@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/config"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"go.yaml.in/yaml/v3"

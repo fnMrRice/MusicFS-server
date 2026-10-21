@@ -16,12 +16,12 @@ SourceAccess authorized input
 
 | 生产位置 | 主要工作 | 根 tests |
 | --- | --- | --- |
-| src/audio | profile、处理计划、PCM 契约、图生命周期、时间映射 | unit/audio、integration/playback |
-| src/audio/dsp | 首个增益节点及参数/重置/延迟报告 | unit/audio、contract/plugins |
+| src/playback/audio | profile、处理计划、PCM 契约、图生命周期、时间映射 | unit/audio、integration/playback |
+| src/playback/audio/dsp | 首个增益节点及参数/重置/延迟报告 | unit/audio、contract/plugins |
 | src/plugins/audioffmpeg | FFmpeg 构建探测、decoder/encoder/mux 适配 | integration/plugins、integration/playback |
 | src/app/musicfs-plugin-audio-ffmpeg | 薄 worker 入口 | testapps 替身、integration/plugins |
-| src/sourceaccess | 任务限定 input broker 与版本约束 | integration/playback |
-| src/playback、src/stream | processed 尝试、定位、新输出和消费者取消 | contract/api、integration/playback |
+| src/plugins/sourceaccess | 任务限定 input broker 与版本约束 | integration/playback |
+| src/playback、src/playback/stream | processed 尝试、定位、新输出和消费者取消 | contract/api、integration/playback |
 
 ## 2. P4A：先验证封装和真实流输出
 

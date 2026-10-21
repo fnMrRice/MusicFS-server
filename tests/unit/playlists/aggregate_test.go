@@ -3,7 +3,7 @@ package playlists_test
 import (
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 )
 
 func stringPointer(v string) *string { return &v }

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/lifecycle"
+	"github.com/fnMrRice/MusicFS-server/src/core/lifecycle"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

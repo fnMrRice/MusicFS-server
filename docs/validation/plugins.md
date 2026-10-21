@@ -9,13 +9,13 @@
 | PL-P0-01 | `src/pluginproto/manifest.go`、`provider.go`：版本、实例、角色、观测与资源 DTO | `feat(PL-P0-01): 定义版本化插件清单与来源协议` |
 | PL-P0-02 | `envelope.go`、`framing.go`：1 MiB UTF-8 Content-Length 帧、业务错误；后续 `peer.go` 实现双向调用、取消和重复终态拒绝 | `feat(PL-P0-02): 实现有界插件消息帧与契约测试` |
 | PL-P0-03 | `resources.go`：受控枚举与宿主命名空间状态 DTO | `feat(PL-P0-03): 定义受限资源与宿主状态协议` |
-| PL-P1-01 | `src/pluginhost/registry.go`：绝对可执行路径、SHA-256、停用检查；启动不经过 Shell；主配置支持管理员固定 Worker 摘要 | `feat(PL-P1-01): 固定受信任插件路径与校验和`；`feat(PL-P1-01): 支持管理员固定 worker 摘要` |
+| PL-P1-01 | `src/plugins/pluginhost/registry.go`：绝对可执行路径、SHA-256、停用检查；启动不经过 Shell；主配置支持管理员固定 Worker 摘要 | `feat(PL-P1-01): 固定受信任插件路径与校验和`；`feat(PL-P1-01): 支持管理员固定 worker 摘要` |
 | PL-P1-02 / PL-P2-01 | `pluginhost/process.go`、`resources.go`、`state.go`；Local Files 正式入口与测试进程 | `feat(PL-P2-01): 建立真实 Local Files worker 与持久来源身份`；`fix(S-P2-01): 加固真实插件握手取消与故障回收` |
-| S-P2-02 / PL-P2-02 | `src/sourceaccess`：`os.Root`、句柄身份、版本、scope、过期、受限资源 | `feat(S-P2-02): 统一受限根与版本绑定的来源读取` |
+| S-P2-02 / PL-P2-02 | `src/plugins/sourceaccess`：`os.Root`、句柄身份、版本、scope、过期、受限资源 | `feat(S-P2-02): 统一受限根与版本绑定的来源读取` |
 | PL-P2-03 / PL-P2-04 | `src/plugins/localfiles`：宿主持久分配随机 ID、分页、确定改名保留 ID、基础 WAV/MIME 观测 | 同 Local Files 提交；完整元数据由下一项补充 |
 | S-P2-04 | `src/plugins/audioffmpeg/metadata.go`：受控本机输入通道与 ffprobe 元数据 | `feat(S-P2-04): 通过受限 broker 探测音频元数据与工具能力` |
 | PL-P4-01 / S-P4-01 | `audioffmpeg/capabilities.go`：实际工具版本、构建、编码器/解码器/封装器、固定输出组合 | 同 S-P2-04 的元数据与工具能力提交 |
-| PL-P4-02 / S-P4-03 / S-P4-04 | `src/audio`、`audio/dsp/gain.go`、`audioffmpeg/pipeline.go`：真实独立 Go PCM 节点 | `feat(S-P4-03): 定义 PCM 数据边界与独立 Go 增益节点`；`feat(S-P4-04): 将 Go DSP 接入解码编码流式管线` |
+| PL-P4-02 / S-P4-03 / S-P4-04 | `src/playback/audio`、`audio/dsp/gain.go`、`audioffmpeg/pipeline.go`：真实独立 Go PCM 节点 | `feat(S-P4-03): 定义 PCM 数据边界与独立 Go 增益节点`；`feat(S-P4-04): 将 Go DSP 接入解码编码流式管线` |
 | PL-P4-03 / S-P4-02 / S-P4-07 | `audioffmpeg/processor.go`、`worker.go`、`process_*.go`、独立音频入口：任务通道、背压与进程树回收 | `feat(S-P4-02): 通过任务限定二进制通道运行音频 worker` |
 | PL-P4-04 / S-P4-05 | `tests/integration/plugins/audio_test.go`：真实转码、增益、非零时间定位与中途断连 | `test(S-P4-06): 验证增益定位精度与处理流首块时序` |
 | S-P4 输入边界补充 | `metadata.go`、`pipeline.go` 限定实际音频 demuxer；伪 HLS 不得访问远端 | `fix(S-P4-01): 限定音频解封装器并拒绝外部播放列表` |
@@ -43,10 +43,10 @@
 $env:MUSICFS_FFMPEG = '<controlled absolute ffmpeg.exe path>'
 $env:MUSICFS_FFPROBE = '<controlled absolute ffprobe.exe path>'
 go test -count=1 -v ./tests/unit/plugins ./tests/contract/plugins ./tests/integration/plugins
-go vet ./src/pluginproto ./src/pluginhost ./src/sourceaccess ./src/plugins/... ./src/audio/...
+go vet ./src/pluginproto ./src/plugins/pluginhost ./src/plugins/sourceaccess ./src/plugins/... ./src/playback/audio/...
 $env:GOOS = 'linux'
 $env:GOARCH = 'amd64'
-go build ./src/pluginproto ./src/pluginhost ./src/sourceaccess ./src/plugins/... ./src/audio/... ./src/app/musicfs-plugin-local ./src/app/musicfs-plugin-audio-ffmpeg
+go build ./src/pluginproto ./src/plugins/pluginhost ./src/plugins/sourceaccess ./src/plugins/... ./src/playback/audio/... ./src/app/musicfs-plugin-local ./src/app/musicfs-plugin-audio-ffmpeg
 ```
 
 命令全部通过；使用的 Windows 沙箱阻止 FFmpeg 访问本机输入通道，真实音频集成测试在提升后的本地执行环境运行。沙箱临时目录还限制文件重命名，因此测试临时目录设为仓库内忽略的 `build/test-tmp`。测试未设置工具环境变量时显式跳过真实音频测试，不能据跳过结果声称音频链通过。

@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 )
 
 func (s *Store) ScanAutomationResults(ctx context.Context, owner, scan, cursor string, limit int) (enrichment.AutomationPage, error) {

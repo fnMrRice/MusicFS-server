@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"flag"
-	"github.com/fnMrRice/MusicFS-server/src/bootstrap"
+	"github.com/fnMrRice/MusicFS-server/src/app/bootstrap"
 	"strings"
 	"testing"
 )

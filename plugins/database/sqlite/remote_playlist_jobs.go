@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"reflect"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 )
 
 func activeRemoteJob(ctx context.Context, tx *sql.Tx, ticket playlists.SyncJob) (playlists.SyncJob, playlists.RemotePlaylist, error) {

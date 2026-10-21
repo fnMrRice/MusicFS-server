@@ -6,11 +6,11 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore"
-	"github.com/fnMrRice/MusicFS-server/src/writeback"
-	"github.com/fnMrRice/MusicFS-server/src/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
 type writebackFixture struct {

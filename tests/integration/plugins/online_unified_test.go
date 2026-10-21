@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
-	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginhost"
 )
 
 func TestUnifiedOnlinePluginSelectsIsolatedPlatformInstances(t *testing.T) {

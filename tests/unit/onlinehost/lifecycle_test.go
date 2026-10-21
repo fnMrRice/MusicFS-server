@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/onlinehost"
-	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/onlinehost"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
 
 type authenticatedBlocked struct{ *blocked }

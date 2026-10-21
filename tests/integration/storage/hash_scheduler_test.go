@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/identification"
-	"github.com/fnMrRice/MusicFS-server/src/identification/hashworker"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/hashworker"
 )
 
 func TestHashSchedulerAutomaticOptInAndConcurrency(t *testing.T) {

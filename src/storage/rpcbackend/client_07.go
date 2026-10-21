@@ -4,9 +4,9 @@ package rpcbackend
 
 import (
 	"context"
-	"github.com/fnMrRice/MusicFS-server/src/albums"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore"
-	"github.com/fnMrRice/MusicFS-server/src/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/library/albums"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
 func (c *Client) UpdateSourceAlbum(a0 context.Context, a1 string, a2 string, a3 albums.UpdateSourceAlbumRequest, a4 string) (r0 albums.SourceAlbum, err error) {

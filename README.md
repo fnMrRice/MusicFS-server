@@ -14,6 +14,7 @@ MusicFS的Go后端服务。已实现本地扫描/音乐库、鉴权与原流Rang
 
 文档入口：
 
+- [源码导航](src/README.md)：`src/` 按 `app`、`core`、`library`、`metadata`、`playback`、`plugins`、`storage` 七个功能模块组织，列出各模块和子包职责。
 - [NFS/SMB NAS Provider](docs/nas-providers.md)、[Bilibili 音频 Provider](docs/bilibili-provider.md)：新增设计，均待实现；B 站匿名优先，收藏夹为主、音频区独立歌单为补充。
 - [NAS / Bilibili 增量实施](docs/implementation/nas-bilibili.md)与[开源参考](docs/provider-references.md)：依赖调查、受控远端资源、分阶段交付和验收。
 

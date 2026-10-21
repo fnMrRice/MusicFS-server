@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/fnMrRice/MusicFS-server/src/catalog"
+	"github.com/fnMrRice/MusicFS-server/src/library/catalog"
 )
 
 func catalogText(value *string) string {

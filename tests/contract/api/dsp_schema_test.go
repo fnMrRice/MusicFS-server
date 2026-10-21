@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/src/playback"
-	"github.com/fnMrRice/MusicFS-server/src/timeline"
+	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

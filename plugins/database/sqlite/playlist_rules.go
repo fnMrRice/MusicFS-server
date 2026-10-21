@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 )
 
 func canonicalPlaylistBindings(in []playlists.PlaylistBinding) ([]playlists.PlaylistBinding, error) {

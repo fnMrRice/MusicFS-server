@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 )
 
 const jobColumns = "id,owner,target,kind,generation,state,observed,complete,error,COALESCE(last_success_at,(SELECT history.last_success_at FROM jobs history WHERE history.owner=jobs.owner AND history.target=jobs.target AND history.plan_digest=jobs.plan_digest AND history.state='succeeded' AND history.last_success_at IS NOT NULL ORDER BY julianday(history.last_success_at) DESC LIMIT 1)),plan,plan_digest,attempt_count,max_attempts,next_attempt_at,last_attempt_at,created_at,updated_at"

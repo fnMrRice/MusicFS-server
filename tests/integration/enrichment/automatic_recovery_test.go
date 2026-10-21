@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
-	"github.com/fnMrRice/MusicFS-server/src/enrichmentworker"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichmentworker"
 )
 
 type interruptedAction struct {

@@ -20,8 +20,8 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
-	"github.com/fnMrRice/MusicFS-server/src/audio"
-	"github.com/fnMrRice/MusicFS-server/src/identification/fingerprint"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/fingerprint"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 )
 
 func melodyWave(seconds int) []byte {

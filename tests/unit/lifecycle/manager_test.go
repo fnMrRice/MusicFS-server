@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/lifecycle"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/lifecycle"
 )
 
 type clock struct {

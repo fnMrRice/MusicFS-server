@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/matching"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
 )
 

@@ -5,9 +5,9 @@ import (
 	"sort"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 )
 
 func validatePublication(j jobs.Job, p library.ScanPublication) (map[string]pluginproto.ScanCoverage, error) {

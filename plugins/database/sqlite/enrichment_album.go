@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 )
 
 // The original album request is the idempotency identity; expanded targets

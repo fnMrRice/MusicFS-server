@@ -8,10 +8,10 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
-	"github.com/fnMrRice/MusicFS-server/src/pluginid"
-	"github.com/fnMrRice/MusicFS-server/src/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginid"
 )
 
 const identityMigrationMessage = "Plugin instance identity changed during upgrade; submit a new request"

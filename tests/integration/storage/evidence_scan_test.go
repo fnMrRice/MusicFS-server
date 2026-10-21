@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/identification"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 )
 
 func TestSameAssetScanWithdrawsClaimsAndReconcilesSuccessfulProbe(t *testing.T) {

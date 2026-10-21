@@ -13,8 +13,8 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
-	"github.com/fnMrRice/MusicFS-server/src/onlinehost"
-	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/onlinehost"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginhost"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

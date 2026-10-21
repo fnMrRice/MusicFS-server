@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

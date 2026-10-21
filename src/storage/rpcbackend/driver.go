@@ -10,8 +10,8 @@ import (
 	"reflect"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
-	"github.com/fnMrRice/MusicFS-server/src/plugindb"
-	"github.com/fnMrRice/MusicFS-server/src/pluginrpc"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginrpc"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
 )
 

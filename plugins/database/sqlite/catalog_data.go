@@ -11,9 +11,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/fnMrRice/MusicFS-server/src/catalog"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/catalog"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 )
 
 type catalogTrack struct {

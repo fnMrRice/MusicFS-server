@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 )
 
 func TestWatchDirectoriesReuseDepthExclusionsAndRootAuthorization(t *testing.T) {

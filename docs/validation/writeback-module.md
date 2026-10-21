@@ -1,6 +1,6 @@
 # S-P6-05 显式写回：独立模块验收
 
-本页记录 `src/writeback` 的独立能力；配置、API、持久 SQL 任务、library 协调和稳定来源映射由组合层接入后，才能宣称整步完成。
+本页记录 `src/metadata/writeback` 的独立能力；配置、API、持久 SQL 任务、library 协调和稳定来源映射由组合层接入后，才能宣称整步完成。
 
 ## 当前范围
 

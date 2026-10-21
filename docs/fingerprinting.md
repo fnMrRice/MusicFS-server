@@ -4,7 +4,7 @@
 
 ## 工具与配置
 
-当前固定使用官方 Chromaprint `fpcalc` 1.6.1、CLI 算法 2。Server 通过本地独立程序提取，不包含外部检索或上传路径；没有向 AcoustID 等服务自动上传指纹。准确版本、源码提交、CLI 编号及许可证见[算法来源](../src/identification/fingerprint/REFERENCES.md)。`fpcalc`、FFmpeg/ffprobe 均是显式外部依赖；工具二进制不提交到仓库。
+当前固定使用官方 Chromaprint `fpcalc` 1.6.1、CLI 算法 2。Server 通过本地独立程序提取，不包含外部检索或上传路径；没有向 AcoustID 等服务自动上传指纹。准确版本、源码提交、CLI 编号及许可证见[算法来源](../src/metadata/identification/fingerprint/REFERENCES.md)。`fpcalc`、FFmpeg/ffprobe 均是显式外部依赖；工具二进制不提交到仓库。
 
 YAML 的 `fingerprinting` 默认禁用。启用时指定 `fpcalcPath` 与实际文件的 `fpcalcSha256`，同时启用音频插件及其实例。路径相对配置文件解析，工具 SHA-256 和版本在启动/执行时校验。完整字段与有效示例见[配置说明](configuration.md)及[示例配置](../configs/server.example.yaml)。并发默认为 1、最多 2；超时默认 30 秒、配置最多 120 秒。音频规范化自身仍有 30 秒上限。
 

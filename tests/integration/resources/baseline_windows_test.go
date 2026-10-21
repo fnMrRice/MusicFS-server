@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/lifecycle"
+	"github.com/fnMrRice/MusicFS-server/src/core/lifecycle"
 	"golang.org/x/sys/windows"
 	_ "modernc.org/sqlite"
 )

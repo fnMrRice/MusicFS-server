@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
 
 func TestPluginGateOfflineCausePreservesAdmissionAndForceCleanup(t *testing.T) {

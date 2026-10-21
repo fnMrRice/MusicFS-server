@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/matching"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 )
 
 func TestWritebackCommitAtomicallyRebindsContentAndInvalidatesEvidence(t *testing.T) {

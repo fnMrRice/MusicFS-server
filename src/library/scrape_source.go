@@ -13,9 +13,9 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
 	"github.com/fnMrRice/MusicFS-server/plugins/scraper/local"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
-	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 )
 
 // ScrapeInput is a host-only, single-task bundle. Set Target.Revision from the

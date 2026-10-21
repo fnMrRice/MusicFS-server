@@ -2,9 +2,9 @@
 
 状态：工程与契约已落地；验证边界见[实施记录](../validation/progress.md)。返回[Server 实施入口](../implementation.md)。本章保留用户指定 `src/`、`src/app/`、根 `tests/` 结构的任务与门槛。
 
-## 1. 目标目录
+## 1. 工程目录
 
-以下是随阶段逐步创建的目标，不要求 P0 生成所有空目录。
+以下按当前源码布局列出主要目录的职责；`src/` 的七个功能模块与子包说明见[源码导航](../../src/README.md)。目录存在不代表对应长期设计均已实现，具体能力及验证边界仍以实施记录为准。
 
 ```text
 server/
@@ -12,92 +12,104 @@ server/
   go.sum
   README.md
   AGENTS.md
-  sdk/                    # Independent Go module, owned by Server
+  sdk/                    # Server 维护的独立 Go 模块
     go.mod
-    pluginproto/          # Versioned wire protocol and schemas
-    online/               # Shared DTOs, no platform implementation
-    provider/             # Reusable provider worker
+    pluginproto/          # 版本化通信协议与 Schema
+    online/               # 公共 DTO，不包含平台实现
+    provider/             # 可复用的 Provider Worker
   plugins/
-    unified/              # Composition of nine roles for musicfs-plugins
+    unified/              # 为 musicfs-plugins 装配九种角色
     source/
-      localfiles/         # Includes cmd/musicfs-plugin-local
-      online/             # Independent Go module, depends only on SDK
+      localfiles/         # 包含 cmd/musicfs-plugin-local
+      online/             # 只依赖 SDK 的独立 Go 模块
         go.mod
-        cmd/              # Standalone and unified online executable entries
+        cmd/              # 在线平台独立与统一程序入口
         netease/
         qqmusic/
         applemusic/
         internal/
     decoder/
-      ffmpeg/             # Includes cmd/musicfs-plugin-audio-ffmpeg
-      ncm/                # Includes cmd/musicfs-plugin-ncm
+      ffmpeg/             # 包含 cmd/musicfs-plugin-audio-ffmpeg
+      ncm/                # 包含 cmd/musicfs-plugin-ncm
     scraper/
-      local/              # Includes cmd/musicfs-plugin-scraper-local
+      local/              # 包含 cmd/musicfs-plugin-scraper-local
     database/
-      sqlite/             # Includes cmd/musicfs-plugin-storage-sqlite
+      sqlite/             # 包含 cmd/musicfs-plugin-storage-sqlite
     dsp/
-      gain/               # Includes cmd/musicfs-plugin-dsp-gain
+      gain/               # 包含 cmd/musicfs-plugin-dsp-gain
   src/
-    app/
+    app/                  # 程序入口、组装与 HTTP 接口
       musicfs/main.go
       musicfs-plugins/main.go
-    bootstrap/            # Composition and lifecycle
-    config/
-    musicdirs/            # Conventional music-directory discovery
-    logging/
-    domain/               # Stable domain IDs and small value types
-    auth/
-    api/                  # HTTP routing, DTOs, handlers and middleware
-    storage/
-      migrations/         # Versioned SQL files and embed.go
-    jobs/
-    pluginhost/
-    sourceaccess/         # Authorized source handles and input broker
-    library/
-    playback/
-    stream/
-    audio/
-      dsp/
-    identification/
-    mediastore/
-    enrichment/
-    writeback/
-    playlists/
-    recommendations/
-  tests/
-    unit/
-      config/config_test.go
-      library/library_test.go
-      playback/session_test.go
-    contract/
+      bootstrap/
       api/
-      plugins/
-    integration/
-      storage/
-      scan/
-      plugins/
-      playback/
-      recovery/
-    e2e/
-    testkit/              # Importable helpers, never production imports
-    testapps/             # Fake/crashing plugin programs
-    testdata/
+    core/                 # 服务基础
+      auth/
+      config/
+      domain/
+      lifecycle/
+    library/              # 根包：来源、扫描入库与资产版本
+      albums/
+      catalog/
+      personal/
+      playlists/
+      recommendations/
+      jobs/
+      scanwatch/
+      musicdirs/
+      sourcedisplay/
+    metadata/             # 识别、关联、资料补全与原文件写回
+      identification/
+      matching/
+      enrichment/
+      enrichmentworker/
+      writeback/
+      writebackhost/
+    playback/             # 根包：播放会话、选择、定位与恢复
       audio/
-      manifests/
-      platform-responses/
+        dspchain/
+        dspworker/
+      stream/
+      timeline/
+      processedcache/
+    plugins/              # 宿主侧接入；具体插件在仓库根 plugins/
+      pluginhost/
+      plugincontrol/
+      pluginconfig/
+      plugindb/
+      pluginid/
+      pluginrpc/
+      onlinehost/
+      accountstore/
+      sourceaccess/
+    storage/              # 根包：持久化接口与后端入口
+      migrations/
+      rpcbackend/
+      mediastore/
+      backup/
+  tests/
+    unit/                 # 按业务包划分的单元测试
+    contract/             # HTTP API 和插件协议契约
+    integration/          # 数据库、文件系统和进程组合测试
+    e2e/                  # 跨制品流程
+    testkit/              # 共享辅助代码，生产包不得导入
+    testapps/             # 伪插件与异常场景程序
+    testdata/             # 共享夹具
   docs/
-    contracts/            # OpenAPI and JSON Schema, created in P0
+    contracts/            # OpenAPI 与 JSON Schema
     implementation/
-    validation/           # Recorded validation, created when executed
+    validation/           # 实际执行的验证记录
   configs/
-    server.example.yaml   # Current versioned YAML configuration
+    server.example.yaml   # 当前版本的 YAML 示例配置
   scripts/
-  build/                  # Ignored build output
+  build/                  # 已忽略的构建输出
 ```
 
 根 go.mod 的 module 路径为 `github.com/fnMrRice/MusicFS-server`，`src` 是宿主业务包目录。插件实现按用途归入 `plugins/source`、`plugins/decoder`、`plugins/scraper`、`plugins/database`、`plugins/dsp`。分类目录不等同于 Go 模块：SDK 使用独立模块 `github.com/fnMrRice/MusicFS-server/sdk`，在线平台实现使用 `github.com/fnMrRice/MusicFS-server/plugins/source/online`，其余当前实现属于根模块；三者由同一 Server 仓库维护。SDK 不导入宿主业务，在线模块只依赖 SDK，不导入 Server 的 `src`。开发时通过各 go.mod 的明确本地 replace 关联，构建和检查均在 `GOWORK=off` 下执行；协议版本与实现版本分别维护。
 
-`src/app` 保留 Server 与全量统一插件程序的薄入口；`plugins/unified` 负责九种角色的装配，各实现仍按用途独立维护；单个插件入口位于各自 `plugins/<用途>/<实现>/cmd/<程序>`。可测试的启动、配置和生命周期逻辑放 `src/bootstrap` 等普通包；其他包和 tests 不导入 package main。Server、本地角色、SQLite 与 DSP 入口属于根模块；网易云、QQ 音乐、Apple Music 入口分别位于 `plugins/source/online/cmd/musicfs-plugin-<平台>`，可在该模块内单独构建。
+`src` 的七个一级目录按功能聚合现有包，不建立新的 Go module，也不声明严格分层。`library`、`playback`、`storage` 的根包保留；其余包迁入所属模块，包名及既有依赖关系保持，例如 `core/config` 仍引用业务配置模型。`src/plugins` 只放宿主侧管理和接入，具体插件继续放仓库根 `plugins`，SDK 保持独立。目录整理不改变 HTTP、插件协议、数据库格式或已实现功能。
+
+`src/app` 保留 Server 与全量统一插件程序的薄入口；`plugins/unified` 负责九种角色的装配，各实现仍按用途独立维护；单个插件入口位于各自 `plugins/<用途>/<实现>/cmd/<程序>`。可测试的启动、配置和生命周期逻辑放 `src/app/bootstrap` 等普通包；其他包和 tests 不导入 package main。Server、本地角色、SQLite 与 DSP 入口属于根模块；网易云、QQ 音乐、Apple Music 入口分别位于 `plugins/source/online/cmd/musicfs-plugin-<平台>`，可在该模块内单独构建。
 
 不要用 `src/internal` 隐藏要由根 tests 导入的模块：Go 的 internal 导入限制会阻止 src 外的测试引用。当前 src 业务包仍是宿主实现接口，不承诺插件 SDK 兼容。插件使用版本化 wire 契约及 `sdk` 的 DTO、协议和 Worker 基础能力；SDK 的独立测试及示例验证其脱离宿主编译的边界。
 
@@ -181,6 +193,6 @@ Windows 制品使用 `.exe` 后缀。日常构建使用 `scripts/build.ps1` / `s
 - [x] 合成媒体夹具与 P3/P4 验收记录可复用，来源/许可明确。
 - [x] 工程建立与各功能阶段分别记录，不用空包或构建成功证明可播放。
 
-逐步证据见[核对表](../validation/documentation-audit.md#p0工程与契约)、[夹具](../validation/fixtures.md)和[制品验收](../validation/release.md)。上方目录树保留初始职责规划并反映 SDK/在线模块边界；当前默认构建 Server 与九角色统一插件程序，共两个程序；可选分拆构建额外提供三个在线平台、在线统一入口、SQLite 和 DSP gain，合计八个程序。以各模块入口与构建脚本为准；正式安装包的存储默认及可选 DSP 见[部署说明](../deployment.md)，实现包不要求与规划一一同名。
+逐步证据见[核对表](../validation/documentation-audit.md#p0工程与契约)、[夹具](../validation/fixtures.md)和[制品验收](../validation/release.md)。上方目录树反映当前源码分组和 SDK/在线模块边界；当前默认构建 Server 与九角色统一插件程序，共两个程序；可选分拆构建额外提供三个在线平台、在线统一入口、SQLite 和 DSP gain，合计八个程序。以各模块入口与构建脚本为准；正式安装包的存储默认及可选 DSP 见[部署说明](../deployment.md)，实现包不要求与阶段规划一一同名。
 
 依据：[Go 模块组织](https://go.dev/doc/modules/layout)、[go.mod](https://go.dev/doc/modules/gomod-ref)、[Go 测试](https://pkg.go.dev/testing)。官方包/测试规则与本项目的目录选择分别说明，不将其他社区目录模板称为强制标准。

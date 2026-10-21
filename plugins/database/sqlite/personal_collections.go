@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/personal"
+	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 )
 
 func personalTable(kind string) (string, string) {

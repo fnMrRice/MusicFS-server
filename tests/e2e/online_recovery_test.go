@@ -14,8 +14,8 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

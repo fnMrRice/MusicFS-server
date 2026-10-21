@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/api"
-	"github.com/fnMrRice/MusicFS-server/src/auth"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/app/api"
+	"github.com/fnMrRice/MusicFS-server/src/core/auth"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

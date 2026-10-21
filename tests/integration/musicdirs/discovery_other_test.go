@@ -5,7 +5,7 @@ package musicdirs_test
 import (
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/musicdirs"
+	"github.com/fnMrRice/MusicFS-server/src/library/musicdirs"
 )
 
 func TestDiscoverMusicDirectoriesSkipsNonWindowsDrives(t *testing.T) {

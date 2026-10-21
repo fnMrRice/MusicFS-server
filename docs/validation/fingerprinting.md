@@ -13,7 +13,7 @@ Windows amd64 使用 Go 1.26.9、FFmpeg/ffprobe 6.1.1 和官方 fpcalc 1.6.1；L
 | Linux FFmpeg 6.1.6，完整端到端验证构建 | `807cb202b07d3f0468587e85cc21c257d22870e28ab51e93a1499a603d95f9ae` |
 | Linux ffprobe 6.1.6，同上构建 | `93a06f07183e34822537241da04e3b548ac7e72a215c7b2029c2cc69c4345bef` |
 
-工具全部保存在忽略的构建目录，不改系统安装、不提交二进制。准确算法版本、源码提交与许可证见[参考记录](../../src/identification/fingerprint/REFERENCES.md)。Linux 最初的规范化构建包含 FLAC 解码但没有生成测试样本所需的 FLAC 编码/封装，因此第一次完整运行仅新增指纹 E2E 在准备样本时报错；保留失败记录，补建独立工具后重跑。未用跳过该场景的方式宣布通过。
+工具全部保存在忽略的构建目录，不改系统安装、不提交二进制。准确算法版本、源码提交与许可证见[参考记录](../../src/metadata/identification/fingerprint/REFERENCES.md)。Linux 最初的规范化构建包含 FLAC 解码但没有生成测试样本所需的 FLAC 编码/封装，因此第一次完整运行仅新增指纹 E2E 在准备样本时报错；保留失败记录，补建独立工具后重跑。未用跳过该场景的方式宣布通过。
 
 ## 已执行检查
 

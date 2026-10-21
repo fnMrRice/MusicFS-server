@@ -7,8 +7,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
 type contentMutation struct {

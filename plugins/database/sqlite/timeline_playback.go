@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/timeline"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 )
 
 func (s *Store) CommitRecovery(ctx context.Context, c timeline.Commit) error {

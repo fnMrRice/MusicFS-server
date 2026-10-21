@@ -9,13 +9,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
-	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
-	"github.com/fnMrRice/MusicFS-server/src/writeback"
-	"github.com/fnMrRice/MusicFS-server/src/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginhost"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

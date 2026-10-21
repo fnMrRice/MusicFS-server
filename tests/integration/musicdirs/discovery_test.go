@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/musicdirs"
+	"github.com/fnMrRice/MusicFS-server/src/library/musicdirs"
 )
 
 func TestDefaultUserMusicDirectoryDoesNotRequireExistingDirectory(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/config"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
 )
 
 func assertInstallationPersistence(t *testing.T, installed string, cfg config.Config) {

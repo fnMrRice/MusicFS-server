@@ -7,9 +7,9 @@
 | 位置 | 职责 | 根 tests |
 | --- | --- | --- |
 | src/playback | Resolve、会话、尝试、用户偏好、停止与幂等 | unit/playback、integration/playback |
-| src/stream | 固定表示的 GET/HEAD、Range、鉴权与取消 | unit/stream、integration/playback |
-| src/api | 会话创建/停止/恢复、流地址返回 | contract/api、integration/api |
-| src/sourceaccess | 受限固定版本输入和打开资源生命周期 | integration/scan、integration/playback |
+| src/playback/stream | 固定表示的 GET/HEAD、Range、鉴权与取消 | unit/stream、integration/playback |
+| src/app/api | 会话创建/停止/恢复、流地址返回 | contract/api、integration/api |
+| src/plugins/sourceaccess | 受限固定版本输入和打开资源生命周期 | integration/scan、integration/playback |
 | src/storage/sqlite | 会话元信息、幂等结果、过期状态 | integration/storage |
 
 ## 2. 实现步骤
@@ -87,6 +87,6 @@
 - [x] 未覆盖格式/浏览器/平台单列；后续跨源恢复只使用独立适用的人工时间证据。
 - [ ] 人工扬声器听音；非零PCM、频率标记和浏览器事件不替代人工确认。
 
-浏览器证据见[Web兼容记录](../../../web/docs/compatibility.md)与[NCM验证](../../../web/docs/ncm-validation.md)，Server真实原流见[实施记录](../validation/progress.md)；P7有限恢复增量见[恢复说明与实测](../recovery.md)。初始 `src/stream` 职责实际由 `src/playback` 和API流处理实现，不为目录名创建空包。
+浏览器证据见[Web兼容记录](../../../web/docs/compatibility.md)与[NCM验证](../../../web/docs/ncm-validation.md)，Server真实原流见[实施记录](../validation/progress.md)；P7有限恢复增量见[恢复说明与实测](../recovery.md)。初始 `src/playback/stream` 职责实际由 `src/playback` 和API流处理实现，不为目录名创建空包。
 
 依据：[ServeContent](https://pkg.go.dev/net/http#ServeContent)、[HTTP Range](https://www.rfc-editor.org/rfc/rfc9110.html#name-range)。真实浏览器验证不能由 handler 单元测试替代。

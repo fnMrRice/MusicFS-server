@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
-	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

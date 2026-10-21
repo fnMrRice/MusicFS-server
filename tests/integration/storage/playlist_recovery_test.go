@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 )
 
 func TestPlaylistHiddenChildAndImmutableSnapshotSurviveRestart(t *testing.T) {

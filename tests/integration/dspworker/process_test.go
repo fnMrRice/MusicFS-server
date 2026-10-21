@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/audio"
-	"github.com/fnMrRice/MusicFS-server/src/audio/dspworker"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio/dspworker"
 )
 
 func helperConfig(t *testing.T, mode string) dspworker.Config {

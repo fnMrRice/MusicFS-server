@@ -9,10 +9,10 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/identification"
-	"github.com/fnMrRice/MusicFS-server/src/identification/hashworker"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/hashworker"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

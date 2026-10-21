@@ -4,8 +4,8 @@ import (
 	"context"
 	"sort"
 
-	"github.com/fnMrRice/MusicFS-server/src/catalog"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/catalog"
 )
 
 func (s *Store) CatalogFacets(ctx context.Context, owner, provider string) (catalog.Facets, error) {

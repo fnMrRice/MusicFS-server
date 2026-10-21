@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
 func (s *Store) ApplyEnrichment(ctx context.Context, owner, candidateID, expectedObjectID string, expected int64, key string, guard mediastore.Guard) (mediastore.Selection, error) {

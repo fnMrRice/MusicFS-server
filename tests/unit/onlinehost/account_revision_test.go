@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
-	"github.com/fnMrRice/MusicFS-server/src/onlinehost"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/onlinehost"
 )
 
 type revisionProvider struct {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 )
 
 func TestRemotePlaylistReconfigurationDoesNotCombineRemovalEvidence(t *testing.T) {

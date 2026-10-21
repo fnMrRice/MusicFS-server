@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 )
 
 var backendName = regexp.MustCompile(`^[a-z][a-z0-9-]{0,63}$`)

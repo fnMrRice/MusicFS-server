@@ -23,6 +23,20 @@ Server 管理音乐来源、统一音乐库、歌单、信息刮削和音频流�
 
 第一阶段采用 Go 实现模块化单体服务，SQLite 为当前存储方案。宿主源码在 `src/`，Server 与全量插件组合入口在 `src/app/`，各插件实现与独立入口按用途归到 `plugins/`；公共插件协议独立为 `sdk` module，在线平台实现、三个独立入口与一个统一入口独立为 `plugins/source/online` module，各模块保留自己的测试，跨模块契约与进程测试在根 `tests/`。模块依赖与发布兼容见 [Go SDK](plugin-sdk.md)，工程布局见 [P0 工程布局](implementation/00-project-layout.md)。首版官方插件为 Go 独立进程；后续需要 C++ 的插件使用 CMake / C++23 构建独立 Worker，经版本化 IPC 接入，不要求重写现有 Go 插件或为每种语言另建宿主。Client 使用单进程 DLL 插件，其播放器、主题和桌面框架由 Client 仓库设计；Server 与之分别构建和验收。内部依赖见[组件图](diagrams/components.puml)。
 
+宿主的实际源码按七个功能模块组织，完整子包职责见[源码导航](../src/README.md)：
+
+| 源码目录 | 职责 |
+| --- | --- |
+| `src/app` | 程序入口、启动组装和 HTTP API |
+| `src/core` | 认证、配置、共享小类型和服务生命周期 |
+| `src/library` | 曲库、扫描、查询、专辑、歌单、推荐及个人音乐数据 |
+| `src/metadata` | 摘要/指纹识别、录音关联、资料补全和文件写回 |
+| `src/playback` | 播放会话、音频处理、HTTP 流、时间对齐和处理输出缓存 |
+| `src/plugins` | 插件宿主管理、通信、在线来源接入、凭据与授权读取 |
+| `src/storage` | 持久化接口、迁移、后端适配、媒体文件和备份 |
+
+目录分组不代表严格的分层依赖：例如 `core/config` 仍使用各业务的配置模型；现有 Go 包名和调用关系保持。扫描任务放在 `library/jobs`，识别、补全、写回等调度仍由各业务包承担，并未合并为通用调度器。`src/plugins` 属于宿主，仓库根 `plugins` 承载具体插件，公共 `sdk` 保持独立；本次整理不改变对外协议或扩展功能。
+
 默认只构建 `musicfs` 和 `musicfs-plugins` 两个程序。后者经 `plugins/unified` 装配全部九种插件角色，覆盖本地/在线音乐源、解码、刮削、SQLite 和 DSP；独立入口保留为可选构建。各实例分别启动进程，握手身份必须匹配启动时所选角色；SQLite 和 DSP 不进入普通插件自动发现。启动时发现普通随包角色，尊重显式禁用；缺配置的实例保留为待配置，详见[发现与兼容](configuration.md#内置插件程序与自动发现)。该变化不引入 Go DLL 动态链接，也不扩大第三方 SDK 的已交付范围。
 
 ## 2. 数据模型与资产身份

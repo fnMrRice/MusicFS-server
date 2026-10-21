@@ -30,8 +30,8 @@
 | Server `src/plugins/smb`、`nfs`、`bilibili` | 各平台适配、只读连接、枚举/解析、能力声明；按职责拆分文件 |
 | Server `src/pluginproto`、`pluginhost`、`sourceaccess` | 远端资源、任务授权、二进制读取、取消、版本证据；不把远端资源伪装为 `os.File` |
 | Server `src/library`、`onlinehost`、`playback` | NAS 扫描发布、在线来源/资产建档、代理与处理输入、版本固定和恢复 |
-| Server `src/playlists`、`storage` | 收藏夹/音频歌单命名空间、展开策略、provenance、保守同步及必要迁移 |
-| Server `src/config`、`pluginconfig`、`bootstrap`、`plugincontrol` | 严格实例配置、秘密引用、目标限制、能力与动态生命周期；沿用现有管理实现 |
+| Server `src/library/playlists`、`storage` | 收藏夹/音频歌单命名空间、展开策略、provenance、保守同步及必要迁移 |
+| Server `src/core/config`、`pluginconfig`、`bootstrap`、`plugincontrol` | 严格实例配置、秘密引用、目标限制、能力与动态生命周期；沿用现有管理实现 |
 | Server `src/app/musicfs-plugins`、`scripts` | 接入现有统一插件程序的角色选择与发现；保留独立 Worker 进程，不把设计中的插件提前计入已构建数量 |
 | Server `docs/contracts` | 精确 OpenAPI/事件/SDK 由 Server 维护；此次只写计划，实施时同步冻结 |
 | Web | NAS 配置与状态、B 站链接导入、收藏夹/音频歌单类型、多 P 预览、可选账号与权限错误；复用已有播放会话 |

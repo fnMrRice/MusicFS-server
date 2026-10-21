@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/processedcache"
+	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 )
 
 type memory struct {

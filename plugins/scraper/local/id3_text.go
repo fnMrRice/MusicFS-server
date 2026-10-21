@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"unicode/utf8"
 
-	"github.com/fnMrRice/MusicFS-server/src/mediastore/content"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore/content"
 )
 
 func terminated(b []byte, encoding byte) ([]byte, []byte, error) {

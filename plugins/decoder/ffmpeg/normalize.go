@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/audio"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 )
 
 type NormalizeRequest struct {

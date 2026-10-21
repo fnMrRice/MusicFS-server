@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/playlists"
-	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
 
 type leasedPlaylistRemote struct {

@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/backup"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/storage/backup"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
 func TestBackupRejectsChecksumValidOmittedMediaReference(t *testing.T) {

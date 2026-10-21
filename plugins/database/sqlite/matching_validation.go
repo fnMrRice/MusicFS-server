@@ -5,10 +5,10 @@ import (
 	"math"
 	"reflect"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/identification"
-	"github.com/fnMrRice/MusicFS-server/src/identification/candidates"
-	"github.com/fnMrRice/MusicFS-server/src/matching"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/candidates"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 )
 
 func validateCandidate(c candidates.Candidate, left, right matching.CandidateSource, anchor string) error {

@@ -2,14 +2,14 @@
 
 核对日期：2026-10-10。本次核对Server的生产入口、00—08实施章节、公共契约、测试与既有验证记录；本项仅作静态核对，不将历史测试次数改成当前回归结果。每步提交由[实施记录](progress.md)维护；另行完成的本轮完整检查、Edge十项回归及干净制品结果集中在[最终联合验收](final-validation.md)。表中“已实现”仅限写明的功能与环境；未测环境保留原计划门槛，没有删除。
 
-本次原阶段核对时构建八个程序，后续分发变化以[配置说明](../configuration.md)为准。`src/app`只有薄入口，实际组装在 `src/bootstrap`。旧JSON配置和未上线开发契约不作兼容保留。后续授权已实现动态插件启停及实例配置在线应用，见[增量验收](plugin-management.md)；原阶段表格不代替新增功能验证。
+本次原阶段核对时构建八个程序，后续分发变化以[配置说明](../configuration.md)为准。`src/app`只有薄入口，实际组装在 `src/app/bootstrap`。旧JSON配置和未上线开发契约不作兼容保留。后续授权已实现动态插件启停及实例配置在线应用，见[增量验收](plugin-management.md)；原阶段表格不代替新增功能验证。
 
 ## P0：工程与契约
 
 | 步骤 | 核对结果与证据 |
 | --- | --- |
 | S-P0-01 | 已固定Go/module/依赖与忽略规则；[依赖](../dependencies.md)、[双平台制品](release.md)。交叉构建和Linux原生运行分开记录 |
-| S-P0-02 | 已按API→服务→持久/来源接口注入，bootstrap组装；[包约定](packages.md)。最初 `src/stream` 职责由playback/API实现，无需空包 |
+| S-P0-02 | 已按API→服务→持久/来源接口注入，bootstrap组装；[包约定](packages.md)。最初 `src/playback/stream` 职责由playback/API实现，无需空包 |
 | S-P0-03 | 根tests分层与独立testkit已使用；生产不导入tests，浏览器测试归独立Web仓库 |
 | S-P0-04 | Windows/Unix build/check脚本、gofmt/vet/覆盖率/race入口已实现；实际全量结果见[进度](progress.md) |
 | S-P0-05 | OpenAPI/HTTP与分角色插件Schema、真实DTO及正反样本已实现；未支持能力明确拒绝，协议主版本拒绝不等于旧开发契约兼容 |

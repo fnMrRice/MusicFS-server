@@ -7,13 +7,13 @@
 | 生产位置 | 职责 | 对应根 tests 位置 |
 | --- | --- | --- |
 | src/app/musicfs | 参数入口、调用 bootstrap、进程退出码 | tests/e2e/startup |
-| src/bootstrap | 组装、就绪、资源清理和有界退出 | tests/unit/bootstrap、tests/integration/recovery |
-| src/config | 加载、合并、校验、脱敏视图 | tests/unit/config |
+| src/app/bootstrap | 组装、就绪、资源清理和有界退出 | tests/unit/bootstrap、tests/integration/recovery |
+| src/core/config | 加载、合并、校验、脱敏视图 | tests/unit/config |
 | src/logging | slog 配置、请求关联、敏感字段过滤 | tests/unit/logging |
-| src/api | 路由、中间件、统一响应、健康检查 | tests/contract/api、tests/integration/api |
-| src/auth | 引导凭据、Cookie 会话、CSRF、用户上下文 | tests/unit/auth、tests/integration/api |
+| src/app/api | 路由、中间件、统一响应、健康检查 | tests/contract/api、tests/integration/api |
+| src/core/auth | 引导凭据、Cookie 会话、CSRF、用户上下文 | tests/unit/auth、tests/integration/api |
 | src/storage/sqlite、src/storage/migrations | 连接、迁移、事务、版本和备份接口 | tests/integration/storage |
-| src/jobs | 持久状态、调度、重试、取消和代次 | tests/unit/jobs、tests/integration/recovery |
+| src/library/jobs | 持久状态、调度、重试、取消和代次 | tests/unit/jobs、tests/integration/recovery |
 
 ## 2. 实现步骤
 

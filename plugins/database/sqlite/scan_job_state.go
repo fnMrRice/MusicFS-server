@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 )
 
 func (s *Store) Claim(ctx context.Context) (jobs.Job, error) {

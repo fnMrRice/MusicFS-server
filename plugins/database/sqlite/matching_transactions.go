@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/matching"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 )
 
 func matchingRevision(ctx context.Context, tx *sql.Tx, owner string) (int64, error) {

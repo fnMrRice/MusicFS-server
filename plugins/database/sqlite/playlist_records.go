@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 )
 
 func readPersonalPlaylist(ctx context.Context, tx *sql.Tx, owner, id string) (playlists.Playlist, error) {

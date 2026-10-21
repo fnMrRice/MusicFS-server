@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 )
 
 func TestOfficialManifestInstancePolicy(t *testing.T) {

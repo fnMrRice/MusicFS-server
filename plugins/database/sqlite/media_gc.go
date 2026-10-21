@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
 const garbageUnreferenced = ` NOT EXISTS(SELECT 1 FROM media_content_objects c WHERE c.id=p.object_id)

@@ -3,7 +3,7 @@ package auth_test
 import (
 	"context"
 	"errors"
-	"github.com/fnMrRice/MusicFS-server/src/auth"
+	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"testing"
 	"time"
 )

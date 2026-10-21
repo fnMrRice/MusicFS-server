@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/musicdirs"
+	"github.com/fnMrRice/MusicFS-server/src/library/musicdirs"
 )
 
 func TestLogicalDriveRoots(t *testing.T) {

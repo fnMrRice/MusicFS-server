@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/auth"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/personal"
+	"github.com/fnMrRice/MusicFS-server/src/core/auth"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
 )
 

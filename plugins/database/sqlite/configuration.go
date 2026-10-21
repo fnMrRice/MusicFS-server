@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/fnMrRice/MusicFS-server/src/config"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
 )
 
 const configOperationColumns = "id,idempotency_key,digest,config_path,previous_revision,next_revision,plugin_id,instance_id,enabled,status"

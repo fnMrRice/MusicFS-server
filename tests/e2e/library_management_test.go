@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
-	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
 
 func libraryManagementChange(t *testing.T, c *client, path string, input any) plugincontrol.Operation {

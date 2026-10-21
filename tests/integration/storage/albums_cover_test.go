@@ -6,11 +6,11 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
-	"github.com/fnMrRice/MusicFS-server/src/albums"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/matching"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/library/albums"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
 func albumArtwork(t *testing.T, s *sqlite.Store, owner string, track library.Track) mediastore.ContentObject {

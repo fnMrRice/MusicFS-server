@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/accountstore"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/accountstore"
 )
 
 func TestEncryptedPersistentScopedCredentialAndDeletion(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 )
 
 func (e *Engine) embedded(ctx context.Context, resource enrichment.Resource, reader io.ReaderAt) error {

@@ -8,8 +8,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 )
 
 func readEnrichmentJob(ctx context.Context, tx *sql.Tx, owner, id string) (enrichment.Job, error) {

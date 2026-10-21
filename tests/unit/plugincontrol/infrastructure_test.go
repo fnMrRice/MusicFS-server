@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
-	"github.com/fnMrRice/MusicFS-server/src/audio"
-	"github.com/fnMrRice/MusicFS-server/src/audio/dspworker"
-	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio/dspworker"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
 
 type infrastructureRepository struct {

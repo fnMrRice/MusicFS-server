@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
-	"github.com/fnMrRice/MusicFS-server/src/auth"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/auth"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 )
 
 type Stream struct {

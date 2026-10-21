@@ -8,8 +8,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/catalog"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/catalog"
 )
 
 func (s *Store) CreateCatalogQuery(ctx context.Context, owner string, input catalog.Query, limit int, key string) (catalog.Page, error) {

@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/identification"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 )
 
 func reconcileHashConflict(ctx context.Context, tx *sql.Tx, owner string, a *identification.Asset) error {

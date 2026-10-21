@@ -13,9 +13,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

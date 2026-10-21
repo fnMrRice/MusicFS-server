@@ -8,7 +8,7 @@ import (
 
 	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
-	"github.com/fnMrRice/MusicFS-server/src/onlinehost"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/onlinehost"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

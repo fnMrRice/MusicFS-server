@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/processedcache"
-	"github.com/fnMrRice/MusicFS-server/src/timeline"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
+	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 )
 
 func (s *Store) ListProcessedCache(ctx context.Context) ([]processedcache.Record, error) {

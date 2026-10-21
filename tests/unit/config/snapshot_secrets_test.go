@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/config"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
 )
 
 func TestSnapshotFormattingDoesNotExposeStartupCredentials(t *testing.T) {

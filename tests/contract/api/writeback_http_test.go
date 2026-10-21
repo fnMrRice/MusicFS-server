@@ -10,11 +10,11 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore"
-	"github.com/fnMrRice/MusicFS-server/src/writeback"
-	"github.com/fnMrRice/MusicFS-server/src/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

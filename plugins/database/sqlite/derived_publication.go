@@ -8,9 +8,9 @@ import (
 	"io"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
 func derivedMetadata(p mediastore.Publication) (mediastore.DerivedMetadata, string, error) {

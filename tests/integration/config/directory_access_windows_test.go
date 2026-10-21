@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/config"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
 )
 
 func TestAllowedDirectoryRejectsJunctionEscape(t *testing.T) {

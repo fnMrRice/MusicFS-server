@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 )
 
 func TestOnlyExplicitTransientErrorsRetryWithFiniteBudget(t *testing.T) {

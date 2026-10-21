@@ -11,9 +11,9 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/plugins/source/localfiles"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
+	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginhost"
 )
 
 func TestLocalDisplayHelperProcess(t *testing.T) {

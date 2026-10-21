@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/auth"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/timeline"
+	"github.com/fnMrRice/MusicFS-server/src/core/auth"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 )
 
 func (s *Service) Control(ctx context.Context, who auth.Session, id, operation string, r ControlRequest, key string) (Description, error) {

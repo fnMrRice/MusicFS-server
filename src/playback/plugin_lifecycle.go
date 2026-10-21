@@ -5,7 +5,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
-	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
 
 // UpdateAudio affects new sessions only. Existing sessions retain their verified

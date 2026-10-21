@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/plugindb"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
 )
 
 func TestReadLegacyScopeLeavesOldServerStateIntact(t *testing.T) {

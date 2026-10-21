@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/identification"
-	"github.com/fnMrRice/MusicFS-server/src/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 )
 
 type Track struct {

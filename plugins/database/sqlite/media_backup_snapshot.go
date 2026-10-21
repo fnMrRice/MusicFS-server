@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"github.com/fnMrRice/MusicFS-server/src/storage/migrations"
 )
 

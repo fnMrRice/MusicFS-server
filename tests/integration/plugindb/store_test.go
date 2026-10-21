@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/plugindb"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
 )
 
 func TestIsolationPersistenceAndConcurrentRevision(t *testing.T) {

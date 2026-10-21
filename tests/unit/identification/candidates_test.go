@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/identification/candidates"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/candidates"
 )
 
 func TestCandidatesVerifiedFileHashPreservesSeparateSources(t *testing.T) {

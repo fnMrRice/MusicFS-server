@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/audio"
-	"github.com/fnMrRice/MusicFS-server/src/identification/fingerprint"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/fingerprint"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 )
 
 func TestFingerprintIdentityRejectsIncompatibleAndAlteredEvidence(t *testing.T) {

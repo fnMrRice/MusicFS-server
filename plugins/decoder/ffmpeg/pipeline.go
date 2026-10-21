@@ -12,8 +12,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/audio"
-	"github.com/fnMrRice/MusicFS-server/src/audio/dspworker"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio/dspworker"
 )
 
 type Plan struct {

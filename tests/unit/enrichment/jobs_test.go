@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 )
 
 func TestMetadataJobValidationAndPublicProjection(t *testing.T) {

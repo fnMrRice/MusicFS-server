@@ -3,7 +3,7 @@ package library
 import (
 	"context"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 )
 
 // AuthorizeProvider validates configured ownership without requiring a running

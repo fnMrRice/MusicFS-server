@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/processedcache"
+	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 )
 
 type failedDeleteRepository struct{ memory }

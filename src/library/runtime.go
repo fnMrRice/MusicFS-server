@@ -3,8 +3,8 @@ package library
 import (
 	"context"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
 
 // Runtime detaches the plugin identity. Other nested maps and configuration

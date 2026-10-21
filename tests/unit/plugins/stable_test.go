@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 )
 
 func stableSource(t *testing.T, data []byte) (*sourceaccess.Access, *sourceaccess.Handle, string) {

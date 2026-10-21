@@ -14,7 +14,7 @@
 
 - `go test -mod=readonly -count=1 -timeout=10m ./tests/integration/plugins ./plugins/unified ./src/app/musicfs-plugins` 完整通过。覆盖单程序多平台、非法/重复参数、握手身份不符、依赖边界，以及在线进程关闭后 SQLite 读写和 DSP PCM/时序保持有效。
 - `TestBundledPluginsAutostartPendingAndPersistedDisable` 在只有全量统一插件文件时通过，覆盖七个普通插件的发现、待配置状态和重启后的禁用持久化。
-- `tests/unit/config` 与 `src/config` 全测试通过，覆盖两种选择参数、显式入口保留、已知缺失独立文件回退、固定摘要保护和不重复创建实例。Windows junction 测试在正常本机权限下复验通过。
+- `tests/unit/config` 与 `src/core/config` 全测试通过，覆盖两种选择参数、显式入口保留、已知缺失独立文件回退、固定摘要保护和不重复创建实例。Windows junction 测试在正常本机权限下复验通过。
 - 发布测试通过，覆盖默认两个/显式分拆八个程序的清单和组件、统一 SQLite 参数及摘要、模块依赖和许可证收集。
 - Windows amd64 双程序安装包生成成功；实际包通过三个在线角色握手、SQLite session 持久化读写和 DSP gain PCM 检查。清单包含两个程序、九个角色、三个源码模块和 35 个依赖，已编译第三方依赖无缺失许可证，SQLite 必需标记正确，完成后无 `.incomplete`。
 - Windows 显式分拆构建生成八个程序，随后默认构建回到两个程序，旧本地独立产物被清理，未知文件保持原样。Linux amd64 默认两个程序交叉编译通过；PowerShell 解析和 Shell 语法检查通过。沙箱曾报告 Go stat-cache 写入权限警告，构建退出码均为零。

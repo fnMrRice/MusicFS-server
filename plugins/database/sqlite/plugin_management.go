@@ -7,8 +7,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
 
 func (s *Store) SavePluginOperation(ctx context.Context, op plugincontrol.Operation) error {

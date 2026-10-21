@@ -12,10 +12,10 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
-	"github.com/fnMrRice/MusicFS-server/src/timeline"
+	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
 
 // preparedInput owns an unpublished immutable snapshot and its source lease.

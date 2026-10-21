@@ -12,10 +12,10 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
-	"github.com/fnMrRice/MusicFS-server/src/backup"
-	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
+	"github.com/fnMrRice/MusicFS-server/src/storage/backup"
 )
 
 func TestRealStorageWorkerBackupRestoresWithoutItsExecutable(t *testing.T) {

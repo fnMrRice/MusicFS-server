@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/pluginrpc"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginrpc"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
 )
 

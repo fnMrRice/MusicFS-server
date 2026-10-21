@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/onlinehost"
-	"github.com/fnMrRice/MusicFS-server/src/playlists"
-	"github.com/fnMrRice/MusicFS-server/src/sourcedisplay"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/library/sourcedisplay"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/onlinehost"
 )
 
 type sourceRepo struct{ items []sourcedisplay.Item }

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginhost"
 )
 
 func TestIndependentOnlinePluginsAndProcessIsolation(t *testing.T) {

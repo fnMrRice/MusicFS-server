@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/bootstrap"
-	"github.com/fnMrRice/MusicFS-server/src/lifecycle"
+	"github.com/fnMrRice/MusicFS-server/src/app/bootstrap"
+	"github.com/fnMrRice/MusicFS-server/src/core/lifecycle"
 )
 
 func TestLifecycleActualCLIExitsAfterLastLease(t *testing.T) {

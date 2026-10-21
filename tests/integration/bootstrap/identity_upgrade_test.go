@@ -13,10 +13,10 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
-	"github.com/fnMrRice/MusicFS-server/src/bootstrap"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/app/bootstrap"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
-	"github.com/fnMrRice/MusicFS-server/src/writeback"
 )
 
 func assertIdentityPreflight(t *testing.T, root string) {

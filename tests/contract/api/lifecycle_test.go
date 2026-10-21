@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/api"
-	"github.com/fnMrRice/MusicFS-server/src/auth"
-	"github.com/fnMrRice/MusicFS-server/src/lifecycle"
+	"github.com/fnMrRice/MusicFS-server/src/app/api"
+	"github.com/fnMrRice/MusicFS-server/src/core/auth"
+	"github.com/fnMrRice/MusicFS-server/src/core/lifecycle"
 )
 
 func lifecycleAPI(t *testing.T) (*api.Server, *lifecycle.Manager) {

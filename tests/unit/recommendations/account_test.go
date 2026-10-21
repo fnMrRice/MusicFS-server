@@ -5,8 +5,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/recommendations"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/recommendations"
 )
 
 type accountProvider struct {

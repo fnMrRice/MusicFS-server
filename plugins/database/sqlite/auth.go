@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/auth"
+	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 )
 
 func (s *Store) SaveAuth(ctx context.Context, a auth.Session) error {

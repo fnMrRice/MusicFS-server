@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/timeline"
+	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 )
 
 func TestDSPAlignmentRequiresExactProcessingChain(t *testing.T) {

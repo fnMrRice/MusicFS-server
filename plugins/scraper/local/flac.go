@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 )
 
 func (e *Engine) flac(ctx context.Context, r enrichment.Resource, reader io.ReaderAt) error {

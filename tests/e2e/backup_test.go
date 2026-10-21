@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/backup"
-	"github.com/fnMrRice/MusicFS-server/src/bootstrap"
-	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/app/bootstrap"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/storage/backup"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
 func TestBackupCLIStopsLiveAccessAndRestoresActualServer(t *testing.T) {

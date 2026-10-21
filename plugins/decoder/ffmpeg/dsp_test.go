@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/audio"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 )
 
 func TestDSPChainExecutesInConfiguredOrder(t *testing.T) {

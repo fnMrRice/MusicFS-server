@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/jobs"
-	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 )
 
 func (s *Service) scan(ctx context.Context, j jobs.Job) (int, error) {

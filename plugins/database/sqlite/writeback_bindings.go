@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/identification"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
 // The bytes and original object provenance remain immutable. A fresh binding

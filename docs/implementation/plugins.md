@@ -151,7 +151,7 @@ tests/
 4. FFmpeg 等外部程序缺失时只将相关能力标不可用；Local Files 发现及已兼容原流播放应能独立运行。
 5. 配置更新生成新修订；不对正在运行的任务静默更改账号、根目录、DSP 参数或编码设置。
 
-拟建文件：`src/pluginhost/registry.go`、`credentials.go`。测试错误路径、版本不符、空配置、禁用实例与敏感值脱敏。
+拟建文件：`src/plugins/pluginhost/registry.go`、`credentials.go`。测试错误路径、版本不符、空配置、禁用实例与敏感值脱敏。
 
 ### PL-P1-02：构建可控的测试 Worker
 
@@ -172,7 +172,7 @@ tests/
 5. 短时间反复退出触发熔断，需冷却或人工重启；其他 Provider 及已建立的独立原流请求继续工作。
 6. 停用按[插件管理补充](plugin-management.md)执行：插件与实例分别保存开关，重启 Server 后生效；当前 Worker、任务、播放和新工作准入保持，旧 drain/force 参数不触发排空或取消。已入库音乐、已发布媒体对象和历史证据保留；当前运行管理已有[专项验收](../validation/plugin-management.md)，不将其外推为安装/市场能力。
 
-拟建文件：`src/pluginhost/process.go`、`rpc.go`，`tests/integration/plugins/process_test.go`。通过正常启动、错版本、崩溃、卡住、超量日志、重复取消、Server 停机后无遗留 Worker 验收。
+拟建文件：`src/plugins/pluginhost/process.go`、`rpc.go`，`tests/integration/plugins/process_test.go`。通过正常启动、错版本、崩溃、卡住、超量日志、重复取消、Server 停机后无遗留 Worker 验收。
 
 ### PL-P2-02：授权根目录与安全枚举
 
@@ -183,7 +183,7 @@ tests/
 5. NAS 失挂后留下的空目录不能当正常空库。根身份不符、权限拒绝或挂载无法确认时标 offline / incomplete，保留既有来源。
 6. 文件类型初筛按支持集合，随后验证实际内容；未知、损坏或标签无法解析的候选逐项标记，单文件失败不取消全根扫描。
 
-拟建文件：`src/pluginhost/resources.go`，`src/plugins/localfiles/config.go`、`scan.go`。fixtures 含空库、嵌套目录、中文名、长路径、大小写差异、重复内容、软链接 / junction、模拟离线根；NAS 实测单列结果，不能以本机目录测试替代。
+拟建文件：`src/plugins/pluginhost/resources.go`，`src/plugins/localfiles/config.go`、`scan.go`。fixtures 含空库、嵌套目录、中文名、长路径、大小写差异、重复内容、软链接 / junction、模拟离线根；NAS 实测单列结果，不能以本机目录测试替代。
 
 ### PL-P2-03：持久身份与观测页
 
@@ -242,12 +242,12 @@ P2 出口：两个独立本地实例相互隔离、扫描可取消 / 恢复、�
 
 1. 第一条完整链为解复用 / 解码子进程输出 PCM，Go Worker 的注册节点处理 PCM，再交编码 / 封装子进程；音频不经过 JSON 控制消息。
 2. 首版 PCM 固定一种规范格式，例如经过验证的 float32 little-endian、交错声道；输入采样率和声道布局显式协商，转换节点可观察。
-3. 在 `src/audio` 定义公共 PCM 契约和小接口 `Configure / Process / Reset / Drain / Close`，在 `src/audio/dsp` 实现并注册 bypass / gain 节点；`src/plugins/audioffmpeg` 只承担 FFmpeg 解码 / 编码适配和链组装，不重复定义公共节点接口。gain 参数限范围并处理 NaN / Inf / 越界值。
+3. 在 `src/playback/audio` 定义公共 PCM 契约和小接口 `Configure / Process / Reset / Drain / Close`，在 `src/playback/audio/dsp` 实现并注册 bypass / gain 节点；`src/plugins/audioffmpeg` 只承担 FFmpeg 解码 / 编码适配和链组装，不重复定义公共节点接口。gain 参数限范围并处理 NaN / Inf / 越界值。
 4. 通过增益样例测量 PCM 峰值 / RMS，证明处理生效；将样例中一段静音、一个标记脉冲用于时间与缓冲验证。
 5. FFmpeg 自带过滤器可封装成另一个受控适配器，但不能把接受 `-af` 参数等同于已经提供任意第三方 MusicFS DSP 插件接口。
 6. 编码输出包含浏览器可消费的封装。先选择一个端到端验证的组合；MP3、AAC/fMP4、Opus/WebM 是候选，最终能力矩阵以实际浏览器测试为准。
 
-拟建文件：`src/audio/pcm.go`、`src/audio/nodes.go`、`src/audio/dsp/gain.go`，以及 `src/plugins/audioffmpeg/decoder.go`、`encoder.go`、`pipeline.go`。公共契约黑盒测试放 `tests/unit/audio`，DSP 黑盒测试放 `tests/unit/audio/dsp`，插件适配测试放 `tests/unit/plugins/audioffmpeg`，真实链的进程与通道测试放 `tests/integration/plugins`；避免一个 `pipeline.go` 包揽探测、进程、DSP、缓存和协议。
+拟建文件：`src/playback/audio/pcm.go`、`src/playback/audio/nodes.go`、`src/playback/audio/dsp/gain.go`，以及 `src/plugins/audioffmpeg/decoder.go`、`encoder.go`、`pipeline.go`。公共契约黑盒测试放 `tests/unit/audio`，DSP 黑盒测试放 `tests/unit/audio/dsp`，插件适配测试放 `tests/unit/plugins/audioffmpeg`，真实链的进程与通道测试放 `tests/integration/plugins`；避免一个 `pipeline.go` 包揽探测、进程、DSP、缓存和协议。
 
 ### PL-P4-03：输入 Broker、背压与进程清理
 
@@ -326,7 +326,7 @@ fixtures 包含同录音不同编码、仅改标签、前导静音、截短、�
 5. 成功通知核心建立新资产 / 摘要任务，保留 SourceTrack、Recording、歌单与人工关系。tag-only 修改也不得沿用旧 SHA-512。
 6. 选定标签库及文件系统安全替换行为需要单独样例验证；NAS 不具备已验证恢复能力则保持只读。
 
-当前写回由独立 `src/writeback` 文件操作模块与 `src/writebackhost` 业务组装实现，配合Local身份映射和SQLite发布；并未把原件写回塞进Local worker。测试默认原件不变、未选标签保留、失败保留原件、并发冲突、崩溃恢复和稳定SourceTrack，见[写回说明](../writeback.md)及[验收](../validation/writeback.md)。仅Windows本地NTFS FLAC可用，不外推NAS。
+当前写回由独立 `src/metadata/writeback` 文件操作模块与 `src/metadata/writebackhost` 业务组装实现，配合Local身份映射和SQLite发布；并未把原件写回塞进Local worker。测试默认原件不变、未选标签保留、失败保留原件、并发冲突、崩溃恢复和稳定SourceTrack，见[写回说明](../writeback.md)及[验收](../validation/writeback.md)。仅Windows本地NTFS FLAC可用，不外推NAS。
 
 ## 10. P7：在线 Provider、推荐歌单与聚合
 

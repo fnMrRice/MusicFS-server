@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/catalog"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/library/catalog"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

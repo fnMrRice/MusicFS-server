@@ -9,7 +9,7 @@ import (
 	"strconv"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 )
 
 const PluginID = "musicfs.scraper.local"

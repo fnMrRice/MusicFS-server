@@ -7,10 +7,10 @@
 | 生产目录 | 职责 | 根 tests |
 | --- | --- | --- |
 | src/plugins/netease、qqmusic、applemusic | 各平台独立适配、状态与能力映射 | unit/plugins、contract/plugins、integration/plugins |
-| src/recommendations | 按来源/账号获取、分页和缓存 | unit/recommendations、integration/api |
-| src/playlists | 快照、绑定、聚合、隐藏、同步代次 | unit/playlists、integration/recovery |
+| src/library/recommendations | 按来源/账号获取、分页和缓存 | unit/recommendations、integration/api |
+| src/library/playlists | 快照、绑定、聚合、隐藏、同步代次 | unit/playlists、integration/recovery |
 | src/playback | 候选选择、权限检查、恢复预算与时间证据 | unit/playback、integration/playback |
-| src/api、src/storage/sqlite | 公开契约与持久化 | contract/api、integration/storage |
+| src/app/api、src/storage/sqlite | 公开契约与持久化 | contract/api、integration/storage |
 
 开源参考名称、链接、许可证与核查说明写入 [Server README](../../README.md)，具体插件步骤见[插件文档](plugins.md)。参考项目不是自动引入的运行依赖，也不是平台接口稳定性的保证。
 

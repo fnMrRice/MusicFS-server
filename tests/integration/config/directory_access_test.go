@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/config"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
 )
 
 func TestDirectoryPathWindowsAllowsExplicitUNC(t *testing.T) {

@@ -6,11 +6,11 @@
 
 | 生产目录 | 拆分职责 | 根 tests |
 | --- | --- | --- |
-| src/identification | probe、hash、fingerprint、candidate、evidence、manual-link 各自服务 | unit/identification |
+| src/metadata/identification | probe、hash、fingerprint、candidate、evidence、manual-link 各自服务 | unit/identification |
 | src/library | RecordingSourceLink、MatchExclusion、资产失效与关联修订 | unit/library、integration/scan |
 | src/storage/sqlite | 证据/候选索引、任务与冲突事务 | integration/storage |
-| src/mediastore | 指纹明细文件的最小持久发布能力，P6 扩展媒体类型 | integration/recovery |
-| src/api | 匹配候选查询、人工关联/解除/排除 | contract/api、integration/api |
+| src/storage/mediastore | 指纹明细文件的最小持久发布能力，P6 扩展媒体类型 | integration/recovery |
+| src/app/api | 匹配候选查询、人工关联/解除/排除 | contract/api、integration/api |
 
 ## 2. 实现步骤
 

@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
-	"github.com/fnMrRice/MusicFS-server/src/bootstrap"
-	"github.com/fnMrRice/MusicFS-server/src/config"
+	"github.com/fnMrRice/MusicFS-server/src/app/bootstrap"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 )
 

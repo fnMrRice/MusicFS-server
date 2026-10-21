@@ -8,8 +8,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 )
 
 func (s *Store) CancelEnrichment(ctx context.Context, owner, id string) (enrichment.Job, error) {

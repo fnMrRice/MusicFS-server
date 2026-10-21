@@ -42,7 +42,7 @@
 
 ```text
 go test -mod=readonly -buildvcs=false -race ./tests/integration/storage -run 'TestMedia(Garbage|Backup)' -count=1
-go vet -mod=readonly -buildvcs=false ./src/storage/sqlite ./src/mediastore/...
+go vet -mod=readonly -buildvcs=false ./src/storage/sqlite ./src/storage/mediastore/...
 ```
 
 Windows 定向普通测试通过（2.948 秒），定向 race 测试通过（16.054 秒）。双平台整体验收结果由本步骤收尾记录补充。

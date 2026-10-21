@@ -29,4 +29,4 @@ Windows 定向验证通过：
 - 真实 HTTP 服务先按默认只导入普通音乐；显式关闭过滤后导入全部。随后移除普通文件、点文件、Windows 隐藏目录内文件和标记目录内文件；默认扫描只将普通文件标记缺失，排除分支记录保持可用。删除 `.nomedia` 后只恢复该分支对账，显式关闭隐藏过滤才对隐藏来源确认缺失。
 - 监听保留 `.nomedia` 所在目录自身，停止注册其后代。真实 Windows 通知验证根标记删除后自动导入、重新添加标记并删除音乐后扫描保留记录、再次删除标记后自动确认缺失。该测试通过用时 3.00 秒；不等待 30 秒周期补漏。
 
-新增针对性测试包括 `scan_filters_test.go`、Windows 属性与符号链接测试、Host `scan_receipt_test.go`、SQLite 过滤范围集成测试，以及两项真实 Windows HTTP/通知回归。`src/pluginhost`、`tests/unit/plugins`、`tests/unit/config` 全包测试通过；过滤项与递归相关合同、集成测试通过。相关源码 `go vet` 与 Linux amd64 Server 交叉构建再次通过；仍未运行 Linux 端到端测试。
+新增针对性测试包括 `scan_filters_test.go`、Windows 属性与符号链接测试、Host `scan_receipt_test.go`、SQLite 过滤范围集成测试，以及两项真实 Windows HTTP/通知回归。`src/plugins/pluginhost`、`tests/unit/plugins`、`tests/unit/config` 全包测试通过；过滤项与递归相关合同、集成测试通过。相关源码 `go vet` 与 Linux amd64 Server 交叉构建再次通过；仍未运行 Linux 端到端测试。

@@ -8,9 +8,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/identification"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 )
 
 func readAsset(ctx context.Context, tx *sql.Tx, owner, id string) (identification.Asset, error) {

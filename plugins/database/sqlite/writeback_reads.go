@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore"
-	"github.com/fnMrRice/MusicFS-server/src/writeback"
-	"github.com/fnMrRice/MusicFS-server/src/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
 func normalizeWriteback(r writebackhost.Request) (writebackhost.Request, error) {

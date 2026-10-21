@@ -9,8 +9,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/timeline"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 )
 
 func timelineReplay(ctx context.Context, tx *sql.Tx, owner, route, key string, request any) (string, *timeline.Evidence, error) {

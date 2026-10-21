@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
-	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginhost"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 )
 
 func rebindFixture(t *testing.T) (*pluginhost.Worker, pluginhost.Config, pluginhost.LocalRebind) {

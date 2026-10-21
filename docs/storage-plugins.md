@@ -63,6 +63,8 @@ storage:
 
 持久化协议标识为 `musicfs-persistence/1`，使用独立 stdio 连接、随机握手 nonce 和完整 Go 接口/导出字段形状摘要。2026-10-21 起，`persistence.hello` 的 ready 响应新增必填 `pluginVersion`，宿主在接纳连接前校验其有效 SemVer；缺失或无效时拒绝握手并回收进程。该字段独立于协议标识和接口形状摘要，适用于 Backend、Maintenance 及实例状态模式。Server、统一插件程序及独立 SQLite 入口须配套升级并更新固定摘要；旧 Worker 即使协议和合同仍匹配，也会因未提供发行版本被拒绝。底层入口签名为 `pluginrpc.Serve(ctx, input, output, version, contracts, factory)`。
 
+2026-10-21 的源码功能分组保持现有持久化合同指纹：`src/plugins/pluginrpc` 对本次迁移的包使用原有稳定协议类型身份，目录变化不改变 Backend、Maintenance 或实例状态接口的握手结果。真实的类型、字段、方法和返回值变化仍参与完整校验；这不放宽前述发行版本及程序摘要要求。
+
 只有显式 Backend、Maintenance 或实例状态接口的方法可调用。修改接口后运行：
 
 ```text

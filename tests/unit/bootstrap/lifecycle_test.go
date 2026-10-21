@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/bootstrap"
+	"github.com/fnMrRice/MusicFS-server/src/app/bootstrap"
 )
 
 func TestLifecycleCLIExposesOwnershipButNotUnsafeTiming(t *testing.T) {

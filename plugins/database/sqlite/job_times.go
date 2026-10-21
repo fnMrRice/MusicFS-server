@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 )
 
 func readJobTimes(j *jobs.Job, created, updated string, next, last sql.NullString) error {

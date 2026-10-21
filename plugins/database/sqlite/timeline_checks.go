@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/timeline"
+	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 )
 
 func timelineTarget(ctx context.Context, tx *sql.Tx, owner string, target timeline.Target) (library.Track, error) {

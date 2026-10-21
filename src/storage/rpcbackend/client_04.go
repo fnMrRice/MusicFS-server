@@ -4,16 +4,16 @@ package rpcbackend
 
 import (
 	"context"
-	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
-	"github.com/fnMrRice/MusicFS-server/src/identification"
-	"github.com/fnMrRice/MusicFS-server/src/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore"
-	"github.com/fnMrRice/MusicFS-server/src/personal"
-	"github.com/fnMrRice/MusicFS-server/src/playlists"
-	"github.com/fnMrRice/MusicFS-server/src/processedcache"
-	"github.com/fnMrRice/MusicFS-server/src/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/library/personal"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"time"
 )
 

@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
-	"github.com/fnMrRice/MusicFS-server/src/audio"
-	"github.com/fnMrRice/MusicFS-server/src/audio/dspworker"
-	"github.com/fnMrRice/MusicFS-server/src/auth"
+	"github.com/fnMrRice/MusicFS-server/src/core/auth"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio/dspworker"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
 	_ "github.com/fnMrRice/MusicFS-server/src/storage/rpcbackend"
 )

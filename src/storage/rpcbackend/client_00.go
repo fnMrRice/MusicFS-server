@@ -4,16 +4,16 @@ package rpcbackend
 
 import (
 	"context"
-	"github.com/fnMrRice/MusicFS-server/src/albums"
-	"github.com/fnMrRice/MusicFS-server/src/catalog"
-	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
-	"github.com/fnMrRice/MusicFS-server/src/identification"
-	"github.com/fnMrRice/MusicFS-server/src/matching"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore"
-	"github.com/fnMrRice/MusicFS-server/src/playlists"
-	"github.com/fnMrRice/MusicFS-server/src/writeback"
-	"github.com/fnMrRice/MusicFS-server/src/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
+	"github.com/fnMrRice/MusicFS-server/src/library/albums"
+	"github.com/fnMrRice/MusicFS-server/src/library/catalog"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
 func (c *Client) AlbumChanges(a0 context.Context, a1 string, a2 albums.Target, a3 int64, a4 int) (r0 []albums.Change, err error) {

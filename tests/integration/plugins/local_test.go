@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
-	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginhost"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 )
 
 func wave(t *testing.T, path string) {

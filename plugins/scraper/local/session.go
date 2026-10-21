@@ -8,8 +8,8 @@ import (
 	"io"
 	"reflect"
 
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore/content"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore/content"
 )
 
 func (s *Session) Search(ctx context.Context, fields, languages []string, query *enrichment.Query) (enrichment.SearchResult, error) {

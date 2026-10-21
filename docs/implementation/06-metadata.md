@@ -6,11 +6,11 @@
 
 | 生产目录 | 拆分职责 | 根 tests |
 | --- | --- | --- |
-| src/mediastore | 对象 ID、类型校验、临时写入、发布、引用与回收 | unit/mediastore、integration/recovery |
-| src/enrichment | 任务、候选、预览、选用、人工锁与自动策略 | unit/enrichment、integration/plugins |
+| src/storage/mediastore | 对象 ID、类型校验、临时写入、发布、引用与回收 | unit/mediastore、integration/recovery |
+| src/metadata/enrichment | 任务、候选、预览、选用、人工锁与自动策略 | unit/enrichment、integration/plugins |
 | src/plugins/scraperlocal | 内嵌标签/封面/歌词及授权旁置资源候选 | unit/plugins/scraperlocal、contract/plugins、integration/plugins |
-| src/writeback | 策略、版本锁、备份、安全替换、恢复日志 | unit/writeback、integration/recovery |
-| src/storage/sqlite、src/api | 索引/关联/修订、内容和任务端点 | integration/storage、contract/api |
+| src/metadata/writeback | 策略、版本锁、备份、安全替换、恢复日志 | unit/writeback、integration/recovery |
+| src/storage/sqlite、src/app/api | 索引/关联/修订、内容和任务端点 | integration/storage、contract/api |
 
 ## 2. 实现步骤
 

@@ -6,8 +6,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/identification"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 )
 
 func TestFingerprintQueueBindsAssetRangeAndExtractor(t *testing.T) {

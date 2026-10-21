@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/api"
-	"github.com/fnMrRice/MusicFS-server/src/auth"
+	"github.com/fnMrRice/MusicFS-server/src/app/api"
+	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 )
 
 type mediaDeadlineRecorder struct {

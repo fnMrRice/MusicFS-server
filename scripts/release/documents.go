@@ -30,7 +30,7 @@ func (b builder) documents() error {
 			}
 		}
 	}
-	files, err := b.command("git", "ls-files", "-z", "--", "deploy", "scripts/scan.ps1", "src/identification/fingerprint/REFERENCES.md")
+	files, err := b.command("git", "ls-files", "-z", "--", "deploy", "scripts/scan.ps1", "src/metadata/identification/fingerprint/REFERENCES.md")
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func (b builder) documents() error {
 }
 
 func releaseDocument(name string) bool {
-	return deploymentFiles[name] || name == "scripts/scan.ps1" || name == "src/identification/fingerprint/REFERENCES.md"
+	return deploymentFiles[name] || name == "scripts/scan.ps1" || name == "src/metadata/identification/fingerprint/REFERENCES.md"
 }
 
 func (b builder) checkedDocument(name string) error {

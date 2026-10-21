@@ -6,7 +6,7 @@ import (
 	"hash/crc32"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/mediastore/content"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore/content"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

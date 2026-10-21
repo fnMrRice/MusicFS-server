@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
-	"github.com/fnMrRice/MusicFS-server/src/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 )
 
 func page(position int, ids ...string) playlists.ObservationPage {

@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/playlists"
-	"github.com/fnMrRice/MusicFS-server/src/sourcedisplay"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/library/sourcedisplay"
 )
 
 func TestSourceDisplayOwnerIsolationOrderAndRemoteIdentity(t *testing.T) {

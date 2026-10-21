@@ -135,7 +135,7 @@ metadata:
 
 管理接口修改音乐目录时，已有根 ID 不能换绑到另一目录；新目录必须使用新 ID。已有根可保留路径并修改显示名。新增根只授予读取／扫描范围，不继承任何旧根写回授权；写回授权仍需显式配置并在重启时验证。
 
-`src/config` 提供以下内部接口，使用同一解析器及 SQLite 操作日志；HTTP 动态管理通过 `src/plugincontrol` 调用，管理 CLI 尚未实现。
+`src/core/config` 提供以下内部接口，使用同一解析器及 SQLite 操作日志；HTTP 动态管理通过 `src/plugins/plugincontrol` 调用，管理 CLI 尚未实现。
 
 | 接口 | 当前职责 |
 | --- | --- |

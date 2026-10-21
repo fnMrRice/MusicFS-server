@@ -13,12 +13,12 @@ import (
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/auth"
-	"github.com/fnMrRice/MusicFS-server/src/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
-	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
-	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginhost"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

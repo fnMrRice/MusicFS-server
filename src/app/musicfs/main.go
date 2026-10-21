@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/fnMrRice/MusicFS-server/src/bootstrap"
+	"github.com/fnMrRice/MusicFS-server/src/app/bootstrap"
 )
 
 func main() {

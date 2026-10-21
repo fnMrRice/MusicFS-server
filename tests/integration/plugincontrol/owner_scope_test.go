@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/plugindisplay"
-	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

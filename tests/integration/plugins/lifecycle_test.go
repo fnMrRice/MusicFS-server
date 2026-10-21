@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginhost"
 )
 
 func TestWorkerHelperProcess(t *testing.T) {

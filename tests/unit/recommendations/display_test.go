@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/recommendations"
+	"github.com/fnMrRice/MusicFS-server/src/library/recommendations"
 )
 
 func TestRecommendationNamesFollowAccountsAcrossCacheHitsAndLogout(t *testing.T) {

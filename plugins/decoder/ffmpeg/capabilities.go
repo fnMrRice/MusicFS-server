@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/audio"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 )
 
 type Capabilities struct {

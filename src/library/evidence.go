@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/identification"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 )
 
 func providerEvidence(o pluginproto.Observation) ([]identification.Evidence, error) {

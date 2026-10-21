@@ -9,8 +9,8 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore/content"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore/content"
 )
 
 const maxMetadataBytes = 16 << 20

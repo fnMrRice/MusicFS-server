@@ -4,17 +4,17 @@ package rpcbackend
 
 import (
 	"context"
-	"github.com/fnMrRice/MusicFS-server/src/albums"
-	"github.com/fnMrRice/MusicFS-server/src/auth"
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
-	"github.com/fnMrRice/MusicFS-server/src/identification/candidates"
-	"github.com/fnMrRice/MusicFS-server/src/matching"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore"
-	"github.com/fnMrRice/MusicFS-server/src/personal"
-	"github.com/fnMrRice/MusicFS-server/src/playlists"
-	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
-	"github.com/fnMrRice/MusicFS-server/src/sourcedisplay"
-	"github.com/fnMrRice/MusicFS-server/src/timeline"
+	"github.com/fnMrRice/MusicFS-server/src/core/auth"
+	"github.com/fnMrRice/MusicFS-server/src/library/albums"
+	"github.com/fnMrRice/MusicFS-server/src/library/personal"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/library/sourcedisplay"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/candidates"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
+	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
 func (c *Client) RevokeTimeline(a0 context.Context, a1 string, a2 string, a3 int64, a4 string) (r0 timeline.Evidence, err error) {

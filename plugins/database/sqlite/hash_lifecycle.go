@@ -6,8 +6,8 @@ import (
 	"errors"
 	"reflect"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/identification"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 )
 
 func activeHash(ctx context.Context, tx *sql.Tx, j identification.HashJob) (identification.HashJob, error) {

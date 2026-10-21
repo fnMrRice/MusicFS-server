@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/timeline"
+	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 )
 
 func TestDirectedManualAlignmentAndStrictProfile(t *testing.T) {

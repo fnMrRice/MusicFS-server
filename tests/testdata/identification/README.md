@@ -4,6 +4,6 @@
 
 原曲为 32 秒合成旋律、和弦与节奏；变体包含 FLAC、MP3 64k/192k、AAC 128k、前导静音 3 秒、10–30 秒局部、另一次合成演绎、现场式变速/回声、不同混音、不同旋律、静音和 440/880 Hz 纯音。规范输入为 FFmpeg 6.1.1 的 mono/s16le/11025 Hz；独立 Linux FFmpeg 6.1.6 实验核对了全部 PCM 字节与原始指纹的一致性。
 
-工具为官方 `fpcalc 1.6.1`，参数 `-format s16le -rate 11025 -channels 1 -algorithm 2 -length 0 -raw -json -`，只读标准输入。详细来源与许可见 [提取模块说明](../../../src/identification/fingerprint/REFERENCES.md)。Go 单元测试只读取固定向量，不需要运行或下载音频工具。
+工具为官方 `fpcalc 1.6.1`，参数 `-format s16le -rate 11025 -channels 1 -algorithm 2 -length 0 -raw -json -`，只读标准输入。详细来源与许可见 [提取模块说明](../../../src/metadata/identification/fingerprint/REFERENCES.md)。Go 单元测试只读取固定向量，不需要运行或下载音频工具。
 
 这些数据证明具体边界，并不建立录音识别的准确率：440 与 880 Hz 纯音指纹完全相同，另一次合成演绎也足够接近而成为待确认候选。局部范围不同、低信息片段和版本不兼容不能贡献指纹匹配依据。实验的“现场式”与“混音”变体不是有录音版本标注的真实演出语料。

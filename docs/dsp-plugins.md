@@ -69,7 +69,7 @@ Go 插件入口调用：
 dspworker.Serve(ctx, os.Stdin, os.Stdout, name, "0.1.0", factory)
 ```
 
-`name` 和新增的 `version` 参数均为字符串；示例中的 `"0.1.0"` 应替换为插件自己的有效发行版本，官方 gain 两个入口共用 `bundledplugin.GainVersion`。`factory` 类型为 `audio.Factory`，从 `map[string]float64` 参数创建 `audio.Node`。节点须额外实现 `Stateless() bool` 并返回 `true`；`DelayFrames()` 必须为 0。SDK 在握手时配置固定 PCM 格式，调用 `Process/Reset/Drain`，退出时调用 `Close`。完整入口见上述示例，SDK 位于 [src/audio/dspworker](../src/audio/dspworker)。
+`name` 和新增的 `version` 参数均为字符串；示例中的 `"0.1.0"` 应替换为插件自己的有效发行版本，官方 gain 两个入口共用 `bundledplugin.GainVersion`。`factory` 类型为 `audio.Factory`，从 `map[string]float64` 参数创建 `audio.Node`。节点须额外实现 `Stateless() bool` 并返回 `true`；`DelayFrames()` 必须为 0。SDK 在握手时配置固定 PCM 格式，调用 `Process/Reset/Drain`，退出时调用 `Close`。完整入口见上述示例，SDK 位于 [src/playback/audio/dspworker](../src/playback/audio/dspworker)。
 
 其他语言可按下述帧协议编写独立程序。当前没有已验证的 C++ DSP 示例；Go 接口本身不是跨语言 ABI。
 
@@ -161,10 +161,10 @@ v1 算法必须无状态：结果不依赖之前的 PCM 块、播放起点或 Re
 2026-10-20 已通过以下检查；该历史记录不代表本次发行版本必填增量已完成验证：
 
 ```text
-go test ./src/audio/... ./plugins/decoder/ffmpeg ./plugins/dsp/gain/cmd/musicfs-plugin-dsp-gain
+go test ./src/playback/audio/... ./plugins/decoder/ffmpeg ./plugins/dsp/gain/cmd/musicfs-plugin-dsp-gain
 ```
 
-- `src/audio/dspworker/process_test.go`：真实子进程的二进制 PCM 往返；超时、崩溃、取消与回收；拒绝校验和/身份不符、时标篡改、有状态声明、非零延迟、协议版本不符、超限帧和非有限样本。
+- `src/playback/audio/dspworker/process_test.go`：真实子进程的二进制 PCM 往返；超时、崩溃、取消与回收；拒绝校验和/身份不符、时标篡改、有状态声明、非零延迟、协议版本不符、超限帧和非有限样本。
 - `plugins/decoder/ffmpeg/dsp_test.go`：有序链的可观察削波结果、参数/版本拒绝、配置深复制及处理身份变化。
 - `tests/integration/playback/dsp_audio_test.go`：Windows 与 FFmpeg 6.1.1 的真实处理输出，经 RMS 验证内建 -3 dB 和外部 -6 dB 均执行；同时覆盖强制 processed、描述顺序、缓存隔离、seek 保留旧链、跨源恢复身份以及指纹规范化字节不变。
 

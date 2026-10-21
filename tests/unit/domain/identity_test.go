@@ -1,7 +1,7 @@
 package domain_test
 
 import (
-	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"testing"
 )
 

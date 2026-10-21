@@ -39,7 +39,7 @@ Go 1.26.9；当前工作区固定依赖`x/sys 0.49.0`、`yaml/v3 3.0.5`等，没
 | --- | --- |
 | Windows，同全量检查的D盘TMP，`-coverpkg=./src/...` | 8.256s |
 | Windows，同一夹具，`-race` | 11.250s |
-| Arch/WSL原生`/tmp`，`-coverpkg=./src/scanwatch` | 13.375s |
+| Arch/WSL原生`/tmp`，`-coverpkg=./src/library/scanwatch` | 13.375s |
 | Arch/WSL原生`/tmp`，`-race` | 14.589s |
 
 主验收随后对最终整个`tests/integration/scanwatch`包（包含调度测试）补验：Windows vet通过，`-coverpkg=./src/...`为4.556s，race为4.937s，均通过。并行全量Windows race使用了修正前的两层夹具，该次原生负断言失败由这里的最终完整包结果补齐，不能把旧夹具运行本身记作通过。

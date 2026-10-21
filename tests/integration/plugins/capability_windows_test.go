@@ -3,7 +3,7 @@ package plugins_test
 import (
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/writeback"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
 )
 
 func TestWritebackCapabilityCoexistsWithLocalWorker(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 )
 
 func (e *Engine) id3(ctx context.Context, r enrichment.Resource, reader io.ReaderAt, header []byte) error {

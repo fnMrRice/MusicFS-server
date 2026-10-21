@@ -4,17 +4,17 @@ package rpcbackend
 
 import (
 	"context"
+	"github.com/fnMrRice/MusicFS-server/sdk/fault"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/albums"
-	"github.com/fnMrRice/MusicFS-server/src/auth"
-	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
-	"github.com/fnMrRice/MusicFS-server/src/identification"
-	"github.com/fnMrRice/MusicFS-server/src/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/core/auth"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore"
-	"github.com/fnMrRice/MusicFS-server/src/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/library/albums"
+	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
 func (c *Client) DeferWriteback(a0 context.Context, a1 string, a2 string) (err error) {
@@ -67,7 +67,7 @@ func (c *Client) FailFingerprint(a0 context.Context, a1 identification.Fingerpri
 	return err
 }
 
-func (c *Client) FailRemoteSync(a0 context.Context, a1 playlists.SyncJob, a2 *domain.Error) (err error) {
+func (c *Client) FailRemoteSync(a0 context.Context, a1 playlists.SyncJob, a2 *fault.Error) (err error) {
 	err = c.Invoke(a0, "FailRemoteSync", []any{a1, a2}, []any{})
 	return err
 }

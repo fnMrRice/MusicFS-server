@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 )
 
 func TestOldAudioWorkerHelper(t *testing.T) {

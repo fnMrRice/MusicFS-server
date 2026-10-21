@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/albums"
+	"github.com/fnMrRice/MusicFS-server/src/library/albums"
 )
 
 func TestAlbumInputsHaveBoundedCanonicalIdentity(t *testing.T) {

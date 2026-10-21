@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/jobs"
-	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
-	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
-	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginhost"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 )
 
 type Runtime struct {

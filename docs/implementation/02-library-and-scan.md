@@ -6,12 +6,12 @@
 
 | 位置 | 主要内容 | 测试位置 |
 | --- | --- | --- |
-| src/pluginproto、src/pluginhost | 握手、能力、实例、请求路由、取消和进程生命周期 | tests/contract/plugins、tests/integration/plugins |
+| src/pluginproto、src/plugins/pluginhost | 握手、能力、实例、请求路由、取消和进程生命周期 | tests/contract/plugins、tests/integration/plugins |
 | src/plugins/localfiles | 根目录枚举、过滤、稳定 externalId 映射、完整性报告 | tests/unit/plugins/localfiles、tests/integration/scan |
-| src/sourceaccess | 授权根、资源引用解析、版本检查、受限打开和 input broker | tests/unit/sourceaccess、tests/integration/scan |
+| src/plugins/sourceaccess | 授权根、资源引用解析、版本检查、受限打开和 input broker | tests/unit/sourceaccess、tests/integration/scan |
 | src/library | 来源/资产建档、扫描暂存、库修订、查询与可用性 | tests/unit/library、tests/integration/scan |
 | src/storage/sqlite | 实例、根身份、扫描代次、曲目/资产和快照持久化 | tests/integration/storage |
-| src/api | 扫描任务与 source-tracks 列表 handler | tests/contract/api、tests/integration/api |
+| src/app/api | 扫描任务与 source-tracks 列表 handler | tests/contract/api、tests/integration/api |
 
 SourceTrack 使用稳定内部 ID，并保存 providerInstanceId + externalId 唯一约束。SourceAsset 是具体字节版本；记录可得的大小、codec/container、时长、码率和观测版本。RootIdentity 区分配置路径、预期卷/挂载身份和当前可达性。ScanGeneration 标记目标根、有效代次、完整性和上次成功结果。
 

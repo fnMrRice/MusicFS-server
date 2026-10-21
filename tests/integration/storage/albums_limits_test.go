@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/albums"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/albums"
 )
 
 func TestAlbumReferenceLimitFailsBeforeChangingAnyMember(t *testing.T) {

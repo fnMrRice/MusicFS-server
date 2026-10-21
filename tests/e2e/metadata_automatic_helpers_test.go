@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

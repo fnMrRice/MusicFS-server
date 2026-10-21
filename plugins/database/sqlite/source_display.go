@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/playlists"
-	"github.com/fnMrRice/MusicFS-server/src/sourcedisplay"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/library/sourcedisplay"
 )
 
 func (s *Store) SourceDisplay(ctx context.Context, owner string, refs []playlists.SourceRef) (sourcedisplay.Page, error) {

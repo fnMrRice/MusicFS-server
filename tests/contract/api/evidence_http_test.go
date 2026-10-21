@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/identification"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

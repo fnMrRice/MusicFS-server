@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
-	"github.com/fnMrRice/MusicFS-server/src/identification/fingerprint"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/fingerprint"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
 func TestFingerprintFileAndDatabaseRecoveryAtEachPublicationBoundary(t *testing.T) {

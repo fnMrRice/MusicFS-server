@@ -13,13 +13,13 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/audio"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/identification"
-	"github.com/fnMrRice/MusicFS-server/src/identification/fingerprint"
-	"github.com/fnMrRice/MusicFS-server/src/identification/fingerprintworker"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/fingerprint"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/fingerprintworker"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

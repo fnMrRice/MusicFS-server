@@ -15,7 +15,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
-	streamhttp "github.com/fnMrRice/MusicFS-server/src/stream"
+	streamhttp "github.com/fnMrRice/MusicFS-server/src/playback/stream"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

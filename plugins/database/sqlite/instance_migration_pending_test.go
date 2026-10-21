@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
-	"github.com/fnMrRice/MusicFS-server/src/enrichment"
-	"github.com/fnMrRice/MusicFS-server/src/writeback"
-	"github.com/fnMrRice/MusicFS-server/src/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

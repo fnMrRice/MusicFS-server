@@ -6,8 +6,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/matching"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 )
 
 func createRecording(ctx context.Context, tx *sql.Tx, owner string) (string, error) {

@@ -7,8 +7,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 )
 
 func ensureRemoteSource(ctx context.Context, tx *sql.Tx, owner string, b playlists.Binding, external string) (playlists.RemoteSource, error) {

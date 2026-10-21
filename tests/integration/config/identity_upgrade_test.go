@@ -17,9 +17,9 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
-	"github.com/fnMrRice/MusicFS-server/src/bootstrap"
-	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/writeback"
+	"github.com/fnMrRice/MusicFS-server/src/app/bootstrap"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
 )
 
 func legacyLocalConfiguration(t *testing.T) (string, string, config.LocalSettings) {

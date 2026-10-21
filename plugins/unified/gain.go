@@ -6,8 +6,8 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/plugins/dsp/gain"
 	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
-	"github.com/fnMrRice/MusicFS-server/src/audio"
-	"github.com/fnMrRice/MusicFS-server/src/audio/dspworker"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio/dspworker"
 )
 
 func runGain(ctx context.Context, input io.ReadCloser, output io.WriteCloser) error {

@@ -16,9 +16,9 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/plugins/unified"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/audio"
-	"github.com/fnMrRice/MusicFS-server/src/audio/dspworker"
-	"github.com/fnMrRice/MusicFS-server/src/pluginrpc"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio/dspworker"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginrpc"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
 )
 

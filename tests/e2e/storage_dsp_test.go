@@ -13,13 +13,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/audio"
-	"github.com/fnMrRice/MusicFS-server/src/audio/dspworker"
-	"github.com/fnMrRice/MusicFS-server/src/backup"
-	"github.com/fnMrRice/MusicFS-server/src/config"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
-	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio/dspworker"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/src/storage/backup"
 )
 
 func TestExternalStorageAndDSPServerRestartAndPortableRestore(t *testing.T) {

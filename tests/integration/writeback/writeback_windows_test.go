@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
-	"github.com/fnMrRice/MusicFS-server/src/writeback"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 )
 
 func setup(t *testing.T) (string, []byte, writeback.Policy, writeback.Request, *host, *writeback.FileJournal) {

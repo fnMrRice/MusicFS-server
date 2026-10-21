@@ -11,7 +11,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/matching"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

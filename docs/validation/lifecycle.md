@@ -19,7 +19,7 @@
 
 ```powershell
 go test -mod=readonly -race ./tests/unit/lifecycle ./tests/unit/bootstrap ./tests/contract/api ./tests/e2e -run TestLifecycle -count=1
-go vet -mod=readonly ./src/lifecycle ./src/api ./src/bootstrap
+go vet -mod=readonly ./src/core/lifecycle ./src/app/api ./src/app/bootstrap
 ```
 
 测试仅使用合成/空库和独立临时目录，无真实音乐、账号或公网请求。Windows race 需要已配置的 C 编译器；受限沙箱无法完整运行本机服务时，在获得执行许可的宿主环境运行。

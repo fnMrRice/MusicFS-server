@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/personal"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 )
 
 func (s *Store) PersonalProfile(ctx context.Context, owner string) (personal.Profile, error) {

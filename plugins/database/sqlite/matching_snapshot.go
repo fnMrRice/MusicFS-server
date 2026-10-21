@@ -9,10 +9,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/identification/candidates"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/matching"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/candidates"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 )
 
 // The binding covers every current index, even indexes beyond the bounded

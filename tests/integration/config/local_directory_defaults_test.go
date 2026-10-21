@@ -10,9 +10,9 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/config"
-	"github.com/fnMrRice/MusicFS-server/src/musicdirs"
-	"github.com/fnMrRice/MusicFS-server/src/plugindb"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
+	"github.com/fnMrRice/MusicFS-server/src/library/musicdirs"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
 )
 
 func defaultDirectoriesDocument(t *testing.T, permissions string) (*config.Document, map[string]string) {

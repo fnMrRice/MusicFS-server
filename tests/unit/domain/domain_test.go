@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/fault"
-	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 )
 
 func TestSDKAndHostErrorsHaveIdenticalTypes(t *testing.T) {

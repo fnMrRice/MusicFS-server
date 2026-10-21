@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
 func TestContentSelectionGuardRetainsOldBindingAndReplaysBeforeIO(t *testing.T) {

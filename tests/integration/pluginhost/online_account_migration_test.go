@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
-	"github.com/fnMrRice/MusicFS-server/src/accountstore"
-	"github.com/fnMrRice/MusicFS-server/src/pluginhost"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/accountstore"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginhost"
 )
 
 func TestAccountMigrationAuthenticatesLegacyScopeAndRebindsUUID(t *testing.T) {

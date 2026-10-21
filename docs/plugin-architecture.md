@@ -25,7 +25,7 @@ Server 的进程模型与 Client 的单进程 DLL 模型分别维护。两端可
 | 安全隔离 | Broker 校验 Host 提供的权限；仅管理员配置的受信任程序 | 独立进程不等于 OS 沙箱；第三方不可信插件必须先验证额外隔离 |
 | 原生实现 | 当前官方插件为 Go；尚无 C++ Worker 一致性验收 | C++23 工具链、协议绑定、实际数据通道及平台制品需验证 |
 
-具体固定身份校验位于 `src/pluginhost/process.go`、`online_process.go`、`sdk/pluginproto/online.go`、`plugins/decoder/ffmpeg/processor.go`、`plugins/scraper/local/host.go`。当前 Go SDK 可独立依赖，官方在线插件可分别构建，但不能据此宣称任意第三方插件已可自动接入。
+具体固定身份校验位于 `src/plugins/pluginhost/process.go`、`online_process.go`、`sdk/pluginproto/online.go`、`plugins/decoder/ffmpeg/processor.go`、`plugins/scraper/local/host.go`。当前 Go SDK 可独立依赖，官方在线插件可分别构建，但不能据此宣称任意第三方插件已可自动接入。
 
 ## 2. 按职责拆分的插件矩阵
 

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/identification/candidates"
-	"github.com/fnMrRice/MusicFS-server/src/identification/fingerprint"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/candidates"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/fingerprint"
 )
 
 func TestCandidatesFingerprintBindingAndCompatibility(t *testing.T) {

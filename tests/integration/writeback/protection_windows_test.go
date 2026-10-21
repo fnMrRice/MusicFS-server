@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
-	"github.com/fnMrRice/MusicFS-server/src/writeback"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 )
 
 type observingJournal struct {

@@ -9,8 +9,8 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/domain"
-	"github.com/fnMrRice/MusicFS-server/src/identification"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 )
 
 func currentBinding(ctx context.Context, tx *sql.Tx, owner string, b identification.Binding) (identification.Asset, error) {

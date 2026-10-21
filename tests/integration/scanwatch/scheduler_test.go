@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/src/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/scanwatch"
-	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
+	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/library/scanwatch"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/src/stream"
+	"github.com/fnMrRice/MusicFS-server/src/playback/stream"
 )
 
 func TestRangeSyntaxIsSeparateFromSatisfiability(t *testing.T) {
