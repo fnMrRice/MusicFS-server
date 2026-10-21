@@ -16,9 +16,9 @@ FFmpeg/NCM 的单次任务握手使用 `DecoderHello`，额外必需 `taskId`。
 
 在线 Provider 的资料修订为 `online-authenticated-v3`，`provider.online.describe` 必须返回插件提供的 `plugin: {id,name,localizedNames,features}`，其 ID 与握手身份一致；Host 缓存并透传已验证值，不自行生成平台名称。显示语义、生命周期与版本兼容见 [插件身份与名称](../../../plugin-identity.md)，具体 wire 模型见 [online.schema.json](online.schema.json)。
 
-音乐来源可提供独立的展示统计 `{value, unit, localizedUnits}`；数字、默认单位与译名全部由插件负责。`value` 是 0—9007199254740991 的整数，`unit` 及每项译名是 1—128 个 Unicode 字符的纯文本；语言标签与身份译名采用相同校验，`localizedUnits` 必需且可为空对象。统计不能代替实例身份或权限。Web 不显示实例数量；插件上报的“个用户”“个来源”等单位也不由前端固定映射。
+音乐来源可提供独立的展示统计 `{value, unit, localizedUnits}`；在线来源的数字、默认单位与译名由插件负责。本地音乐的管理摘要由宿主按有效部署权限生成允许访问目录数，这是权限展示的例外；包含零值、待配置与未启动状态，不使用已添加目录数量，也不向 Worker 传递未选授权路径。`value` 是 0—9007199254740991 的整数，`unit` 及每项译名是 1—128 个 Unicode 字符的纯文本；语言标签与身份译名采用相同校验，`localizedUnits` 必需且可为空对象。统计不能代替实例身份或权限。Web 不显示实例数量；插件上报的“个用户”“个来源”等单位也不由前端固定映射。
 
-本地来源增加 `plugin.displayCount`：Host 在初始化后发送 `{instanceId, rootIds}`，仅传当前配置选中的根 ID，不传物理路径；根 ID 非空、不可重复、最多 1024 项。Worker 要求 instanceId 与握手绑定一致，响应直接为统计对象；Local Files 以选中的目录来源生成数量和“个来源”译名。Host 在独立的 1 秒超时内查询，验证结果并缓存，管理查询不触发 RPC；旧插件不支持、查询失败、超时或统计格式非法时均省略统计，不阻断插件启动。在线来源通过[账号响应](account.md)的可选 `displayCount` 提供相同结构。此展示字段不增加目录访问能力或账号权限，Worker 与 Host 的严格响应解码须配套更新。
+历史 `plugin.displayCount` RPC 继续接受 `{instanceId, rootIds}`，仅传当前选中根 ID 并返回旧的来源统计，保留进程协议兼容。当前管理列表不使用这项统计，而由宿主返回允许访问目录数及“个允许访问的目录”译名，新增或移除已添加目录不影响权限数量。在线来源仍通过[账号响应](account.md)的可选 `displayCount` 提供统计；管理查询读取缓存、不触发 RPC。此展示字段不增加目录访问能力或账号权限。
 
 Go 消费入口已迁到独立 `sdk` 模块，见 [SDK 使用与分发](../../../plugin-sdk.md)。在线插件的 `pluginVersion` 接受合法语义版本，不再固定为 `0.1.0`；通信版本与资料修订仍精确校验。能力可声明当前平台允许集合的子集，Manifest 启用能力须与描述中的 `supported=true` 集合一致。宿主保留对未知或未验证能力的拒绝；旧宿主可能拒绝新插件版本或能力子集，首次拆分升级先更新宿主。平台账号作用域保持不变；插件管理 `version` 必填规则见前文。
 
@@ -64,3 +64,6 @@ NCM 的 input/output 通道均只监听 `127.0.0.1` 随机端口，路径包含�
 ## 本地插件配置持久化
 
 Local Files 目录与导入/监听设置通过管理 API 持久化到 Server 的插件配置数据库；YAML 的实例 permissions.readDirectories 限定目录访问范围。宿主提供按实例隔离的 host.database.get/compareAndSet，受管目录设置仍经权限检查与排空重建。具体接口、旧配置兼容及客户端影响见[插件配置数据库与目录管理](../../../plugin-configuration.md)。
+
+
+宿主持久扫描计划 `ScanPlan` 新增可选 `rootOptions` 映射，键限本次所选根 ID，值为该根完整有效导入选项；优先级为插件默认、实例默认、目录覆盖、本次请求覆盖。目录覆盖包含递归、深度、隐藏项、`.nomedia`、排除规则和歌词导入。计划摘要绑定目录选项，扫描枚举、监听目录、发布清理及歌词触发均使用目标目录的有效值。省略映射的旧计划含义及摘要不变；Worker 仍接收现有按根 `ScanScope`，不增加物理路径或权限。新增计划须由更新后的宿主恢复，不能降级为忽略目录选项的旧宿主。任务响应以可选 `effectiveRootOptions` 公开这些目录选项，未列出的目录使用 `effectiveOptions`。

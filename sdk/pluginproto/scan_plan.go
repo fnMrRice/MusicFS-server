@@ -38,14 +38,15 @@ type ScanRoot struct {
 }
 
 type ScanPlan struct {
-	PlanVersion    int           `json:"planVersion"`
-	Mode           string        `json:"mode"`
-	PluginID       string        `json:"pluginId"`
-	PluginVersion  string        `json:"pluginVersion"`
-	SchemaRevision string        `json:"schemaRevision"`
-	ConfigRevision string        `json:"configRevision"`
-	Roots          []ScanRoot    `json:"roots"`
-	Options        ImportOptions `json:"options"`
+	PlanVersion    int                      `json:"planVersion"`
+	Mode           string                   `json:"mode"`
+	PluginID       string                   `json:"pluginId"`
+	PluginVersion  string                   `json:"pluginVersion"`
+	SchemaRevision string                   `json:"schemaRevision"`
+	ConfigRevision string                   `json:"configRevision"`
+	Roots          []ScanRoot               `json:"roots"`
+	Options        ImportOptions            `json:"options"`
+	RootOptions    map[string]ImportOptions `json:"rootOptions,omitempty"`
 }
 
 type ScanScope struct {
@@ -78,12 +79,24 @@ func (p ScanPlan) Canonical() (ScanPlan, error) {
 	}
 	p.Options.ExcludePatterns, _ = CanonicalExclusions(p.Options.ExcludePatterns)
 	p.Roots = append([]ScanRoot(nil), p.Roots...)
+	rootOptions := make(map[string]ImportOptions, len(p.RootOptions))
 	sort.Slice(p.Roots, func(i, j int) bool { return p.Roots[i].RootID < p.Roots[j].RootID })
 	for i, root := range p.Roots {
 		if !scanLabel(root.RootID) || !scanLabel(root.RootIdentity) || (i > 0 && p.Roots[i-1].RootID == root.RootID) {
 			return ScanPlan{}, fault.Fail("INVALID_ARGUMENT", "Invalid or repeated scan root")
 		}
+		if options, ok := p.RootOptions[root.RootID]; ok {
+			if err := options.Validate(); err != nil {
+				return ScanPlan{}, err
+			}
+			options.ExcludePatterns, _ = CanonicalExclusions(options.ExcludePatterns)
+			rootOptions[root.RootID] = options
+		}
 	}
+	if len(rootOptions) != len(p.RootOptions) {
+		return ScanPlan{}, fault.Fail("INVALID_ARGUMENT", "Import options reference an unselected root")
+	}
+	p.RootOptions = rootOptions
 	return p, nil
 }
 
@@ -107,7 +120,11 @@ func (p ScanPlan) Scope(rootID string) (ScanScope, error) {
 	}
 	for _, root := range canonical.Roots {
 		if root.RootID == rootID {
-			return ScanScope{RootID: root.RootID, RootIdentity: root.RootIdentity, Recursive: canonical.Options.Recursive, MaxDepth: canonical.Options.MaxDepth, ExcludePatterns: canonical.Options.ExcludePatterns, SkipHidden: canonical.Options.SkipHidden, RespectNoMedia: canonical.Options.RespectNoMedia}, nil
+			options := canonical.Options
+			if selected, ok := canonical.RootOptions[rootID]; ok {
+				options = selected
+			}
+			return ScanScope{RootID: root.RootID, RootIdentity: root.RootIdentity, Recursive: options.Recursive, MaxDepth: options.MaxDepth, ExcludePatterns: options.ExcludePatterns, SkipHidden: options.SkipHidden, RespectNoMedia: options.RespectNoMedia}, nil
 		}
 	}
 	return ScanScope{}, fault.Fail("ACCESS_DENIED", "Root is outside the scan plan")

@@ -328,7 +328,7 @@
     },
     "MusicRoot": {
       "type": "object", "additionalProperties": false, "required": ["id", "name", "path"],
-      "properties": {"id": {"$ref": "#/$defs/ID"}, "name": {"type": "string", "minLength": 1}, "path": {"$ref": "#/$defs/NonemptyPath"}}
+      "properties": {"id": {"$ref": "#/$defs/ID"}, "name": {"type": "string", "minLength": 1}, "path": {"$ref": "#/$defs/NonemptyPath"}, "importDefaults": {"$ref": "#/$defs/ImportOverrides"}}
     },
     "LocalSettings": {
       "type": "object", "additionalProperties": false,

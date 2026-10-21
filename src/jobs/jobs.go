@@ -10,18 +10,19 @@ import (
 )
 
 type Job struct {
-	ID                 string                    `json:"jobId"`
-	Owner              string                    `json:"-"`
-	ProviderInstanceID string                    `json:"providerInstanceId"`
-	Kind               string                    `json:"-"`
-	Generation         int64                     `json:"-"`
-	Plan               pluginproto.ScanPlan      `json:"-"`
-	PlanDigest         string                    `json:"-"`
-	RootIDs            []string                  `json:"rootIds"`
-	EffectiveOptions   pluginproto.ImportOptions `json:"effectiveOptions"`
-	SchemaRevision     string                    `json:"schemaRevision"`
-	Status             string                    `json:"status"`
-	Progress           struct {
+	ID                   string                               `json:"jobId"`
+	Owner                string                               `json:"-"`
+	ProviderInstanceID   string                               `json:"providerInstanceId"`
+	Kind                 string                               `json:"-"`
+	Generation           int64                                `json:"-"`
+	Plan                 pluginproto.ScanPlan                 `json:"-"`
+	PlanDigest           string                               `json:"-"`
+	RootIDs              []string                             `json:"rootIds"`
+	EffectiveOptions     pluginproto.ImportOptions            `json:"effectiveOptions"`
+	EffectiveRootOptions map[string]pluginproto.ImportOptions `json:"effectiveRootOptions,omitempty"`
+	SchemaRevision       string                               `json:"schemaRevision"`
+	Status               string                               `json:"status"`
+	Progress             struct {
 		Observed int `json:"observed"`
 	} `json:"progress"`
 	Complete      bool          `json:"complete"`

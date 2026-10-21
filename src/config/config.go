@@ -6,9 +6,10 @@ import (
 )
 
 type MusicRoot struct {
-	ID   string `yaml:"id" json:"id"`
-	Name string `yaml:"name" json:"name"`
-	Path string `yaml:"path" json:"path"`
+	ID             string                       `yaml:"id" json:"id"`
+	Name           string                       `yaml:"name" json:"name"`
+	Path           string                       `yaml:"path" json:"path"`
+	ImportDefaults *pluginproto.ImportOverrides `yaml:"importDefaults,omitempty" json:"importDefaults,omitempty"`
 }
 
 type Plugin struct {

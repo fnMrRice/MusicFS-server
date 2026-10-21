@@ -19,15 +19,16 @@ type Runtime struct {
 	ID, Name, Owner string
 	// Plugin is a bundled plugin declaration supplied by bootstrap. A verified
 	// worker takes precedence; neither configuration nor instance aliases set it.
-	Plugin         *pluginproto.PluginIdentity
-	Worker         *pluginhost.Worker
-	StableHash     bool
-	ConfigRevision string
-	ImportDefaults pluginproto.ImportOptions
-	RootNames      map[string]string
-	WriteBack      map[string]RootWriteBack
-	Configuration  *pluginproto.Configuration
-	Gate           *plugincontrol.Gate
+	Plugin             *pluginproto.PluginIdentity
+	Worker             *pluginhost.Worker
+	StableHash         bool
+	ConfigRevision     string
+	ImportDefaults     pluginproto.ImportOptions
+	RootImportDefaults map[string]pluginproto.ImportOptions
+	RootNames          map[string]string
+	WriteBack          map[string]RootWriteBack
+	Configuration      *pluginproto.Configuration
+	Gate               *plugincontrol.Gate
 }
 type Probe func(context.Context, io.ReadSeeker, int64) (Observation, error)
 type ProbeSession func(context.Context) (context.Context, Probe, func(), error)

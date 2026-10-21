@@ -180,7 +180,7 @@ func validateDocumentShape(root *yaml.Node) error {
 	if plugins == nil {
 		return nil
 	}
-	musicRoot := mappingShape(map[string]fieldShape{"id": stringShape, "name": stringShape, "path": stringShape}, "id", "name", "path")
+	musicRoot := mappingShape(map[string]fieldShape{"id": stringShape, "name": stringShape, "path": stringShape, "importDefaults": importDefaultsShape()}, "id", "name", "path")
 	for _, plugin := range plugins.Content {
 		id := yamlField(plugin, "pluginId")
 		var settings fieldShape

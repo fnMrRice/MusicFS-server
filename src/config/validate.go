@@ -161,6 +161,11 @@ func (c Config) validatePlugins(writable []string) error {
 			if _, err := EffectiveImportDefaults(plugin.PluginID, instance); err != nil {
 				return err
 			}
+			for _, root := range instance.Config.MusicRoots {
+				if _, err := EffectiveRootImportDefaults(instance, root); err != nil {
+					return err
+				}
+			}
 			identityKey := strings.ToLower(instance.InstanceID)
 			if !instanceid.Valid(instance.InstanceID) || instances[identityKey] {
 				return errors.New("instanceId must be a UUID and globally unique ignoring case")

@@ -15,7 +15,7 @@ Copy-Item configs/server.example.yaml configs/server.local.yaml
 
 默认构建只生成 `musicfs.exe` 与 `musicfs-plugins.exe`。统一插件程序通过 `--plugin` 选择四种本地角色、三个在线平台、SQLite 或 DSP gain，每个角色仍是独立进程。需要保留独立程序时运行 `./scripts/build.ps1 -SplitPlugins`，输出原有八个程序；再次默认构建会清理该目标目录中固定名单内的旧独立产物，包含更早的四种本地独立入口，保留未知文件。脚本使用 `GOWORK=off`、`-mod=readonly`，SDK 和在线实现仍保持独立模块。正式安装包通过统一入口的 `storage-sqlite` 角色提供必需存储；源示例和旧配置保留内置 SQLite 兼容。存储与 DSP 部署字段见[存储插件](storage-plugins.md)与[DSP 插件](dsp-plugins.md)。编辑 `configs/server.local.yaml`（旧 JSON 配置不兼容，见[YAML 配置](configuration.md)）：
 
-- `plugins` 的 `musicfs.plugin.source.localfiles` 实例默认没有选定的导入目录，采用[默认目录授权](plugin-configuration.md#部署授权)。需要指定其他允许范围时，在 YAML 中设置 `permissions.readDirectories`。启动后用管理员账号打开 Web「设置 → 音乐来源」，点击「本地音乐」标题右侧的「管理目录」。弹窗中的目录树以允许访问的目录为根，展开并选择根或子目录；下方配置递归查找，按需勾选深度限制后保存。默认不限制递归深度；没有已选目录时标题下显示「暂无已选择目录」。之后通过扫描接口或脚本手动导入。实际选择与递归设置保存在插件配置数据库，YAML 不因选择而改写；旧 `config.musicRoots` 仍兼容。
+- `plugins` 的 `musicfs.plugin.source.localfiles` 实例默认没有选定的导入目录，采用[默认目录授权](plugin-configuration.md#部署授权)。需要指定其他允许范围时，在 YAML 中设置 `permissions.readDirectories`。启动后用管理员账号打开 Web「设置 → 音乐源」，点击「本地音乐」标题右侧的「添加本地目录」，只能从授权根或子目录中选择；下方只列出已添加目录，每行右侧提供减号删除和编辑配置。查找设置按目录保存，默认递归且不限深度，之后通过扫描接口或脚本手动导入。插件管理摘要独立显示允许访问的目录数量，添加或删除音乐目录不改变该数量。实际选择与查找设置保存在插件配置数据库，YAML 不因选择而改写；旧 `config.musicRoots` 仍兼容。
 - `musicfs.plugin.decoder.ffmpeg` 实例的 `config.ffmpegPath`、`config.ffprobePath` 指向本机工具；配置齐全且未显式禁用时自动启动。缺少路径时显示待配置，仅验证标准PCM16 WAV原流时不需要启用；AIFF与当前NCM FLAC转码路径需要两种工具。
 - 七种普通插件角色的 `executable` 均指向 `musicfs-plugins.exe`，`args` 选择本地或在线平台角色。示例默认 Windows 构建路径，发现程序后，省略 enabled 时自动启用；缺少角色配置时保持待配置。显式禁用、缺失程序及固定摘要处理见[自动发现](configuration.md#内置插件程序与自动发现)。
 - 各插件可配置 `sha256` 固定管理员审核过的二进制摘要（`Get-FileHash -Algorithm SHA256`）。省略时信任显式配置的本机可执行路径，只核对本次启动的读取一致性，不承诺跨重启钉住版本；更新制品后需同步显式摘要。

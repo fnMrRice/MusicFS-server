@@ -46,24 +46,38 @@ func (s *Service) BuildScanPlan(ctx context.Context, owner, provider string, inp
 	if r.Configuration == nil || input.SchemaRevision != r.Configuration.SchemaRevision {
 		return pluginproto.ScanPlan{}, domain.Fail("CONFLICT", "Import configuration has changed; refresh the provider")
 	}
-	options, err := pluginproto.MergeImportOptions(r.ImportDefaults, input.Options)
-	if err != nil {
-		return pluginproto.ScanPlan{}, err
-	}
-	if err = r.Configuration.ValidateOptions(options); err != nil {
-		return pluginproto.ScanPlan{}, err
+	options, defaultErr := pluginproto.MergeImportOptions(r.ImportDefaults, input.Options)
+	if defaultErr == nil {
+		defaultErr = r.Configuration.ValidateOptions(options)
 	}
 	roots := map[string]string{}
 	for _, root := range r.Worker.Access.Roots() {
 		roots[root.ID] = root.ExpectedIdentity
 	}
 	plan := pluginproto.ScanPlan{PlanVersion: pluginproto.ScanPlanVersion, Mode: input.Mode, PluginID: r.Worker.Manifest.PluginID, PluginVersion: r.Worker.Manifest.PluginVersion, SchemaRevision: input.SchemaRevision, ConfigRevision: r.ConfigRevision, Options: options}
+	plan.RootOptions = map[string]pluginproto.ImportOptions{}
 	for _, id := range input.RootIDs {
 		identity, ok := roots[id]
 		if !ok {
 			return pluginproto.ScanPlan{}, domain.Fail("ACCESS_DENIED", "Root is outside the provider authorization")
 		}
 		plan.Roots = append(plan.Roots, pluginproto.ScanRoot{RootID: id, RootIdentity: identity})
+		if defaults, exists := r.RootImportDefaults[id]; exists {
+			rootOptions, err := pluginproto.MergeImportOptions(defaults, input.Options)
+			if err != nil {
+				return pluginproto.ScanPlan{}, err
+			}
+			if err := r.Configuration.ValidateOptions(rootOptions); err != nil {
+				return pluginproto.ScanPlan{}, err
+			}
+			plan.RootOptions[id] = rootOptions
+		} else if defaultErr != nil {
+			return pluginproto.ScanPlan{}, defaultErr
+		}
+	}
+	// An unused instance default cannot invalidate explicitly configured roots.
+	if defaultErr != nil && len(plan.Roots) > 0 {
+		plan.Options = r.ImportDefaults
 	}
 	return plan.Canonical()
 }
@@ -76,6 +90,11 @@ func validateRuntimePlan(r Runtime, plan pluginproto.ScanPlan) error {
 	}
 	if err := r.Configuration.ValidateOptions(plan.Options); err != nil {
 		return err
+	}
+	for _, options := range plan.RootOptions {
+		if err := r.Configuration.ValidateOptions(options); err != nil {
+			return err
+		}
 	}
 	roots := map[string]string{}
 	for _, root := range r.Worker.Access.Roots() {

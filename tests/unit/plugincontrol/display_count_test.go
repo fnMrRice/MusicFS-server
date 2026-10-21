@@ -113,19 +113,20 @@ func TestDisplayCountRequiresCompleteConsistentPluginData(t *testing.T) {
 func TestDisplayCountIncludesSharedLocalSource(t *testing.T) {
 	const id = "3bdd4699-d687-43f4-a96f-1ff50d5b2cce"
 	manager, err := plugincontrol.New(context.Background(), config.Config{Plugins: []config.Plugin{{
-		PluginID: "musicfs.plugin.source.localfiles", Instances: []config.Instance{{InstanceID: id}},
+		PluginID: "musicfs.plugin.source.localfiles", Instances: []config.Instance{{InstanceID: id, Permissions: &config.Permissions{ReadDirectories: []string{"first", "second"}}, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "selected", Name: "Selected", Path: "first"}}}}},
 	}}}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer manager.Close()
 	if err := manager.Register(id, plugincontrol.Hooks{DisplayCount: func() *plugindisplay.Count {
-		return displayCount(12, "sources", "个来源")
+		t.Fatal("permission summary queried worker selected-root statistics")
+		return nil
 	}}, false); err != nil {
 		t.Fatal(err)
 	}
 	count := manager.SnapshotForScope(context.Background(), "another-user", false).Items[0].DisplayCount
-	if count == nil || count.Value != 12 || count.Unit != "sources" {
+	if count == nil || count.Value != 2 || count.Unit != "allowed directories" || count.LocalizedUnits["zh-Hans"] != "个允许访问的目录" {
 		t.Fatal("shared plugin count was incorrectly filtered", count)
 	}
 }

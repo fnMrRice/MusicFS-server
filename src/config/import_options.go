@@ -26,6 +26,21 @@ func EffectiveImportDefaults(pluginID string, instance Instance) (pluginproto.Im
 	return options, declaration.ValidateOptions(options)
 }
 
+// Root defaults overlay instance defaults; omitted overrides retain inheritance.
+func EffectiveRootImportDefaults(instance Instance, root MusicRoot) (pluginproto.ImportOptions, error) {
+	base, err := EffectiveImportDefaults("musicfs.plugin.source.localfiles", instance)
+	if err != nil {
+		return base, err
+	}
+	if root.ImportDefaults != nil {
+		base, err = pluginproto.MergeImportOptions(base, *root.ImportDefaults)
+		if err != nil {
+			return base, err
+		}
+	}
+	return base, pluginconfig.LocalFiles().ValidateOptions(base)
+}
+
 func importDefaultsShape() fieldShape {
 	properties := pluginconfig.LocalFiles().ImportOptionsSchema["properties"].(map[string]any)
 	fields := make(map[string]fieldShape, len(properties))

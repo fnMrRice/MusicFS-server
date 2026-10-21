@@ -185,6 +185,7 @@ func startManagedLibraryWatch(ctx context.Context, lib *library.Service, instanc
 		return nil, nil
 	}
 	plan := pluginproto.ScanPlan{PlanVersion: pluginproto.ScanPlanVersion, Mode: "full", PluginID: r.Worker.Manifest.PluginID, PluginVersion: r.Worker.Manifest.PluginVersion, SchemaRevision: r.Configuration.SchemaRevision, ConfigRevision: r.ConfigRevision, Options: r.ImportDefaults}
+	plan.RootOptions = r.RootImportDefaults
 	for _, root := range r.Worker.Access.Roots() {
 		plan.Roots = append(plan.Roots, pluginproto.ScanRoot{RootID: root.ID, RootIdentity: root.ExpectedIdentity})
 	}

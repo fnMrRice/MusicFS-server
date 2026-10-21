@@ -149,6 +149,12 @@ func cloneConfig(c Config) Config {
 				instance.Config.Watch = &watch
 			}
 			instance.Config.MusicRoots = append([]MusicRoot(nil), instance.Config.MusicRoots...)
+			for k := range instance.Config.MusicRoots {
+				root := &instance.Config.MusicRoots[k]
+				if root.ImportDefaults != nil {
+					root.ImportDefaults = root.ImportDefaults.Clone()
+				}
+			}
 			if instance.ImportDefaults != nil {
 				instance.ImportDefaults = instance.ImportDefaults.Clone()
 			}

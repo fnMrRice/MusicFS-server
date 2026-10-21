@@ -33,7 +33,7 @@ func TestPluginDisplayCountsFollowDirectoriesAndAccountLifecycle(t *testing.T) {
 	cfg, base := yamlServiceConfig(t)
 	cfg.Plugins = []config.Plugin{
 		{PluginID: localPlugin, Executable: build(t, "musicfs-plugin-local"), Enabled: true,
-			Instances: []config.Instance{{InstanceID: localID, Enabled: true, Config: config.InstanceConfig{MusicRoots: roots}}}},
+			Instances: []config.Instance{{InstanceID: localID, Enabled: true, Permissions: &config.Permissions{ReadDirectories: []string{roots[0].Path, roots[1].Path}}, Config: config.InstanceConfig{MusicRoots: roots}}}},
 		onlinePlugin("netease", managedOnlineFixture(t), onlineID),
 	}
 	path := writeYAMLConfiguration(t, cfg)
@@ -50,7 +50,7 @@ func TestPluginDisplayCountsFollowDirectoriesAndAccountLifecycle(t *testing.T) {
 			t.Fatalf("display count changed configured instances: %+v", item.Instances)
 		}
 	}
-	assertCount(localPlugin, 2, "个来源")
+	assertCount(localPlugin, 2, "个允许访问的目录")
 	assertCount(onlinePluginID, 0, "个用户")
 	authenticateManagedOnline(t, c, onlineID)
 	assertCount(onlinePluginID, 1, "个用户")
@@ -61,11 +61,11 @@ func TestPluginDisplayCountsFollowDirectoriesAndAccountLifecycle(t *testing.T) {
 	assertCount(onlinePluginID, 0, "个用户")
 	op := libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/"+localID+"/configuration", map[string]any{"musicRoots": roots[:1]})
 	waitLibraryOperation(t, c, op.ID)
-	assertCount(localPlugin, 1, "个来源")
+	assertCount(localPlugin, 2, "个允许访问的目录")
 	op = libraryManagementChange(t, c, "/api/v1/admin/plugin-instances/"+localID+"/configuration", map[string]any{"musicRoots": []config.MusicRoot{}})
 	waitLibraryOperation(t, c, op.ID)
 	item := pluginDisplaySnapshot(t, c)[localPlugin]
-	if item.DisplayCount != nil || len(item.Instances) != 1 || item.Instances[0].RuntimeState != "pending_configuration" {
-		t.Fatalf("stopped plugin retained or synthesized a count: %+v", item)
+	if item.DisplayCount == nil || item.DisplayCount.Value != 2 || len(item.Instances) != 1 || item.Instances[0].RuntimeState != "pending_configuration" {
+		t.Fatalf("pending plugin lost its deployment permission count: %+v", item)
 	}
 }

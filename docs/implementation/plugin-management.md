@@ -44,6 +44,8 @@ Server 提供插件/实例状态查询、开关与设置管理，要求管理员
 
 2026-10-21 发行版本增量：`GET /admin/plugins` 的每个插件项必须包含有效 `version`。七种普通随包插件从 [sdk/bundledplugin/releases.go](../../sdk/bundledplugin/releases.go) 读取与 Worker 同源的发行声明；没有实例或尚无有效握手版本时仍返回声明，包括未启动、待配置、已禁用和启动失败的情况。成功握手的有效版本优先，不使用 Server 版本、实例修订或空字符串填充。未知插件 ID 仍由配置及管理层拒绝。版本可展示不等于 Worker 已就绪，客户端仍须读取实例运行状态；旧 Server 缺字段时的界面兼容提示不放宽当前 API 必填约束。
 
+2026-10-21 本地目录增量：本地音乐 `displayCount` 由宿主统计有效授权根，单位为“个允许访问的目录”，待配置、已禁用或 Worker 未运行时仍展示。添加、编辑和移除音乐目录不改变已确定的授权范围；Worker 不接收未添加路径。目录配置 GET 通过 `rootImportDefaultsSupported:true` 声明逐目录覆盖能力，`roots[].importDefaults` 返回有效值；PUT 可在 `musicRoots[]` 内保存对应目录的覆盖，不改变其他目录。客户端把插件管理中的权限数量与音乐源中的已添加列表分开呈现，完整兼容规则见[目录管理](../plugin-configuration.md)。
+
 2026-10-20 实例归属增量：两条插件列表默认只返回当前 MusicFS 用户的在线账号实例，共享非账号插件实例仍保留；管理员显式设置 `allUsers=true` 可查看所有用户实例，省略或 `false` 均保持本人范围。管理快照的账号实例携带 `ownerUserId`，可选 `accountName` 仅来自当前已验证、未过期且可用的平台账号显示快照，未登录或离线时省略；该字段不能作为授权依据，也不包含令牌、Cookie 或登录链接。
 
 部署在在线插件实例 `instanceId` 同级配置 `ownerUserId`，缺省兼容为 `admin`；不同 MusicFS 用户、同一用户的不同平台账号使用独立 UUID 实例并分别登录。当前产品仍只有 `admin` 登录入口，尚无多用户创建/注册功能；配置归属不等于提供新用户登录。`allUsers` 仅扩大管理展示，不扩大 `/online-instances` 或账号登录/退出请求的用户范围。旧客户端须兼容可选字段；原来依赖全量管理列表的管理员客户端应显式传 `allUsers=true`。配置及凭据边界见[YAML 配置](../configuration.md)。
@@ -63,7 +65,7 @@ Server 提供插件/实例状态查询、开关与设置管理，要求管理员
 
 普通来源和播放按当前运行状态准入。停用已保存、尚未重启时不返回 `PLUGIN_DISABLED`；重启后实际停用，或设置变更正在排空时，才按原准入规则拒绝新工作。缺必需配置的实例保持 `pending_configuration`，有效开关和准入为 false；没有待重启开关时原因为 `CONFIGURATION_REQUIRED`。来源列表保留条目并明确可用性。
 
-配置投影不返回音乐根路径、工具路径、程序路径或凭据；路径为 write-only。省略已有根路径保留原绑定，已有根 ID 不能改绑目录；新增目录使用新 ID。`musicRoots/watch/importDefaults` 整组替换，未提供的顶层字段保持不变；改配置的排空与停用保存是不同操作。
+配置投影不返回音乐根路径、工具路径、程序路径或凭据；路径为 write-only。省略已有根路径保留原绑定，已有根 ID 不能改绑目录；新增目录使用新 ID。`musicRoots/watch/importDefaults` 整组替换，未提供的顶层字段保持不变；`musicRoots[]` 中已有根省略 `importDefaults` 时保留该根原有覆盖，避免旧客户端写入抹除逐目录设置。改配置的排空与停用保存是不同操作。
 
 保存修订及运行状态变化可触发 `capabilities.changed`，数据仍仅为 `{revision,sequence}`。每次 SSE 首连/重连发送当前通知，客户端重新读取授权列表；通知不意味着能力已经停用。每个登录会话最多 8 条连接，15 秒心跳复核登录，30 分钟重连。
 

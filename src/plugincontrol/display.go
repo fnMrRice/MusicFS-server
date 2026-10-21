@@ -5,6 +5,7 @@ import (
 	"maps"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/plugindisplay"
+	"github.com/fnMrRice/MusicFS-server/src/config"
 )
 
 // SnapshotFor resolves request-scoped account names without retaining them in
@@ -32,7 +33,12 @@ func (m *Manager) snapshotFor(ctx context.Context, owner string, scoped, allUser
 		if runtime.hooks.AccountName != nil {
 			accounts[id] = runtime.hooks.AccountName
 		}
-		if runtime.hooks.DisplayCount != nil {
+		if runtime.plugin.PluginID == "musicfs.plugin.source.localfiles" {
+			// Deployment permissions remain meaningful before a worker starts.
+			// Never send unselected directory paths to the provider process.
+			count := localAllowedDirectoryCount(runtime.instance)
+			counts[id] = func() *plugindisplay.Count { return count.Clone() }
+		} else if runtime.hooks.DisplayCount != nil {
 			counts[id] = runtime.hooks.DisplayCount
 		}
 	}
@@ -63,6 +69,12 @@ func (m *Manager) snapshotFor(ctx context.Context, owner string, scoped, allUser
 		}
 	}
 	return snapshot
+}
+
+func localAllowedDirectoryCount(instance config.Instance) *plugindisplay.Count {
+	return &plugindisplay.Count{Value: int64(len(config.AllowedDirectories(instance))), Unit: "allowed directories", LocalizedUnits: map[string]string{
+		"zh": "个允许访问的目录", "zh-Hans": "个允许访问的目录", "zh-Hant": "個允許存取的目錄", "ja": "個のアクセス許可ディレクトリ",
+	}}
 }
 
 // Counts are collected only after scope filtering and outside the manager lock.

@@ -147,13 +147,16 @@ func prepareLocalSettings(c Config, change Change) (Config, LocalSettings, error
 				roots := []MusicRoot{}
 				selectedPaths := map[string]bool{}
 				for _, input := range *s.MusicRoots {
-					r := MusicRoot{ID: input.ID, Name: input.Name}
+					r := MusicRoot{ID: input.ID, Name: input.Name, ImportDefaults: input.ImportDefaults}
 					if input.Path != nil {
 						r.Path = *input.Path
 					}
 					for _, old := range i.Config.MusicRoots {
 						if old.ID != r.ID {
 							continue
+						}
+						if input.ImportDefaults == nil && old.ImportDefaults != nil {
+							r.ImportDefaults = old.ImportDefaults.Clone()
 						}
 						if input.Path == nil {
 							r.Path = old.Path

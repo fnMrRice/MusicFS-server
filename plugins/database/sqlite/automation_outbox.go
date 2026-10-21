@@ -14,7 +14,11 @@ import (
 
 func enqueueScanAutomation(ctx context.Context, tx *sql.Tx, j jobs.Job, root, source, asset, version string) error {
 	reasons := []string{"automatic"}
-	if j.Plan.Options.ImportLyrics {
+	options := j.Plan.Options
+	if selected, ok := j.Plan.RootOptions[root]; ok {
+		options = selected
+	}
+	if options.ImportLyrics {
 		reasons = append(reasons, "importLyrics")
 	}
 	for _, reason := range reasons {

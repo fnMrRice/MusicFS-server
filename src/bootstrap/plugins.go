@@ -41,13 +41,21 @@ func configurePlugins(ctx context.Context, c config.Config, log *slog.Logger) ([
 					binaryHash = expectedChecksum(plugin.SHA256, plugin.Executable)
 				}
 				rootNames := map[string]string{}
+				rootDefaults := map[string]pluginproto.ImportOptions{}
 				for _, root := range instance.Config.MusicRoots {
 					rootNames[root.ID] = root.Name
+					if root.ImportDefaults != nil {
+						rootOptions, rootErr := config.EffectiveRootImportDefaults(instance, root)
+						if rootErr != nil {
+							defaultsErr = rootErr
+						}
+						rootDefaults[root.ID] = rootOptions
+					}
 				}
 				// The bundled plugin owns its declaration even before roots are selected.
 				// A successfully verified worker declaration supersedes this fallback.
 				r := library.Runtime{ID: instance.InstanceID, Name: name, Owner: "admin", StableHash: true, Plugin: localfiles.Identity(),
-					ImportDefaults: defaults, Configuration: declaration, RootNames: rootNames,
+					ImportDefaults: defaults, RootImportDefaults: rootDefaults, Configuration: declaration, RootNames: rootNames,
 					ConfigRevision: providerConfigRevision(instance, binaryHash, defaults)}
 				err = defaultsErr
 				if enabled && err == nil {

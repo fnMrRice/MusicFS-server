@@ -47,6 +47,7 @@ func readJob(row rowScanner) (jobs.Job, error) {
 		j.RootIDs = append(j.RootIDs, root.RootID)
 	}
 	j.EffectiveOptions, j.SchemaRevision = j.Plan.Options, j.Plan.SchemaRevision
+	j.EffectiveRootOptions = j.Plan.RootOptions
 	if failure.Valid {
 		var detail domain.Error
 		if json.Unmarshal([]byte(failure.String), &detail) != nil || detail.Code == "" || detail.Message == "" {

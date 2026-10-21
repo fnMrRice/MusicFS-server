@@ -25,6 +25,13 @@ func (c Config) validateMetadata() error {
 					return err
 				}
 				needed = needed || defaults.ImportLyrics
+				for _, root := range instance.Config.MusicRoots {
+					options, err := EffectiveRootImportDefaults(instance, root)
+					if err != nil {
+						return err
+					}
+					needed = needed || options.ImportLyrics
+				}
 			}
 		}
 	}

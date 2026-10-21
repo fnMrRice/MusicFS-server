@@ -13,9 +13,10 @@ import (
 // binding; a new root must explicitly supply its path. Executables are installed
 // through deployment, never replaced through a settings request.
 type RootSettings struct {
-	ID   string  `json:"id"`
-	Name string  `json:"name"`
-	Path *string `json:"path,omitempty"`
+	ID             string                       `json:"id"`
+	Name           string                       `json:"name"`
+	Path           *string                      `json:"path,omitempty"`
+	ImportDefaults *pluginproto.ImportOverrides `json:"importDefaults,omitempty"`
 }
 type InstanceSettings struct {
 	Name           *string                      `json:"name,omitempty"`
@@ -88,7 +89,7 @@ func applyInstanceSettings(doc *Document, change Change, node *yaml.Node) error 
 		}
 		roots := make([]MusicRoot, 0, len(*s.MusicRoots))
 		for _, input := range *s.MusicRoots {
-			r := MusicRoot{ID: input.ID, Name: input.Name}
+			r := MusicRoot{ID: input.ID, Name: input.Name, ImportDefaults: input.ImportDefaults}
 			if input.Path != nil {
 				r.Path = *input.Path
 			} else {
@@ -105,6 +106,9 @@ func applyInstanceSettings(doc *Document, change Change, node *yaml.Node) error 
 			for _, old := range existing {
 				if old.ID != r.ID {
 					continue
+				}
+				if input.ImportDefaults == nil && old.ImportDefaults != nil {
+					r.ImportDefaults = old.ImportDefaults.Clone()
 				}
 				resolve := func(path string) string {
 					if !filepath.IsAbs(path) {
