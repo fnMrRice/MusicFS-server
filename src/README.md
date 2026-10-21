@@ -10,7 +10,7 @@
 | [`metadata/`](metadata/) | 音频识别、录音关联、歌词/封面补全及原文件写回 |
 | [`playback/`](playback/) | 播放会话、音频处理、流交付、时间对齐与处理缓存 |
 | [`plugins/`](plugins/) | 宿主侧的插件管理、进程通信、在线来源接入与授权读取 |
-| [`storage/`](storage/) | 持久化接口、数据库迁移、媒体文件存储与备份恢复 |
+| [`storage/`](storage/) | 持久化接口、后端选择与通信、媒体文件存储与备份恢复 |
 
 ## 各模块内部
 
@@ -61,7 +61,7 @@
 - `pluginconfig`、`pluginid`：官方插件声明、配置表单和标识规范化。
 - `plugincontrol`：启用状态、实例设置、管理操作和新工作准入。
 - `pluginhost`：插件进程、握手、调用、资源授权和运行状态。
-- `plugindb`：按插件实例隔离的数据与配置存储。
+- `plugindb`：按插件实例隔离的状态接口、后端选择与远程调用；具体建表与存储实现归数据库插件。
 - `pluginrpc`：持久化插件的接口校验、编码、远程调用和回调。
 - `onlinehost`：在线搜索、资料、歌单及账号状态的宿主业务接入。
 - `accountstore`：加密保存音乐平台凭据。
@@ -70,10 +70,11 @@
 ### storage：数据与文件持久化
 
 - 根包 `storage`：数据库持久化接口与后端入口。
-- `migrations`：版本化数据库迁移。
 - `rpcbackend`：独立持久化插件的宿主适配。
 - `mediastore`：歌词、封面、缩略图和指纹明细等文件的发布、引用和清理；`content` 校验歌词与图片内容。
 - `backup`：数据库、配置和媒体内容的备份校验与恢复。
+
+SQLite 主库的内嵌 SQL 与版本化迁移位于 [`plugins/database/sqlite/migrations`](../plugins/database/sqlite/migrations/)，实例状态库的建表、迁移和只读读取位于 [`plugins/database/sqlite/state`](../plugins/database/sqlite/state/)。宿主通过数据库驱动调用初始化，取得数据锁后才允许写入；配置预加载保持只读。
 
 ## 目录与依赖边界
 

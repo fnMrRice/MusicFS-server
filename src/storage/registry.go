@@ -43,6 +43,7 @@ func (r *Registry) Register(driver Driver) error {
 	if !backendName.MatchString(driver.Name) || driver.Version != ContractVersion || !pluginproto.ValidPluginVersion(driver.PluginVersion) ||
 		!snapshotName(driver.SnapshotName) || !snapshotName(driver.RestoredName) ||
 		driver.Open == nil || driver.OpenMaintenance == nil ||
+		driver.OpenPluginState == nil || driver.ReadPluginState == nil ||
 		driver.BackupSchemaVersion == nil || driver.InspectBackup == nil {
 		return domain.Fail("INVALID_ARGUMENT", "Invalid storage backend registration")
 	}

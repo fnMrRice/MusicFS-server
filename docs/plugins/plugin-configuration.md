@@ -1,6 +1,6 @@
 # 插件配置数据库与目录管理
 
-Local Files 的目录列表、名称、扫描默认值和监听设置由管理接口维护，持久化到 Server 管理的 `dataRoot/providers/plugin-config.sqlite`。数据库按插件 ID 与实例 ID 隔离；普通来源、刮削和音频插件不拿数据库文件路径、连接串或任意 SQL 权限。YAML 继续管理部署信息、启用开关和显式目录访问权限；未显式配置权限时使用下述默认授权。
+Local Files 的目录列表、名称、扫描默认值和监听设置由管理接口维护，持久化到 Server 管理的 `dataRoot/providers/plugin-config.sqlite`。具体建库、迁移及读写由所选数据库插件提供，SQLite 实现位于 `plugins/database/sqlite/state`；配置预加载只读，写入初始化在宿主取得数据锁后进行。数据库按插件 ID 与实例 ID 隔离；普通来源、刮削和音频插件不拿数据库文件路径、连接串或任意 SQL 权限。YAML 继续管理部署信息、启用开关和显式目录访问权限；未显式配置权限时使用下述默认授权。
 
 ## 部署授权
 

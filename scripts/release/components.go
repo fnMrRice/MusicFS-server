@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite/migrations"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginrpc"
-	"github.com/fnMrRice/MusicFS-server/src/storage/migrations"
 )
 
 type component struct {
@@ -61,7 +61,7 @@ func components(splitPlugins bool) []component {
 }
 
 func (b builder) schemaVersion() (int, error) {
-	files := os.DirFS(filepath.Join(b.root, "src", "storage", "migrations"))
+	files := os.DirFS(filepath.Join(b.root, "plugins", "database", "sqlite", "migrations"))
 	entries, err := migrations.LoadFrom(files)
 	if err != nil {
 		return 0, err

@@ -1,5 +1,5 @@
-// Package plugindb provides host-owned, instance-scoped JSON storage.
-package plugindb
+// Package state 提供 SQLite 插件按实例隔离的 JSON 私有状态存储。
+package state
 
 import (
 	"context"
@@ -18,8 +18,6 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginid"
 	_ "modernc.org/sqlite"
 )
-
-const ConfigurationKey = "host-configuration"
 
 var keyPattern = regexp.MustCompile(`^[a-z0-9_-]{1,80}$`)
 
@@ -71,8 +69,8 @@ func (s *Store) Get(ctx context.Context, key string) (pluginproto.StateValue, er
 	return v, err
 }
 
-// CompareAndSet is atomic across host connections. Null is a stored value,
-// never a deletion, so revisions cannot be reset by deleting and recreating keys.
+// CompareAndSet 在多个连接间保持原子性。null 作为值保存而不删除键，
+// 防止通过删除并重新创建键来重置版本。
 func (s *Store) CompareAndSet(ctx context.Context, r pluginproto.StateRequest) (pluginproto.StateValue, error) {
 	if !keyPattern.MatchString(r.Key) || r.Revision < 0 || len(r.Value) > 512<<10 || !json.Valid(r.Value) {
 		return pluginproto.StateValue{}, domain.Fail("INVALID_ARGUMENT", "Invalid database value")

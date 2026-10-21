@@ -23,6 +23,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
@@ -85,10 +86,9 @@ type Options struct {
 	SHA256     string
 }
 
-// Driver supplies both runtime and offline maintenance support. Contract v1
-// snapshots use the server's portable SQLite schema regardless of runtime
-// database technology. Restore therefore never executes a backed-up plugin.
-// Backup names describe local artifacts, not database connection strings.
+// Driver 提供运行、离线维护与插件私有状态存储，负责主库和私有状态的初始化及迁移。
+// v1 备份契约统一使用可移植的 SQLite 结构，与运行时数据库类型无关；
+// 恢复不执行备份中的插件，备份名称表示本地文件而非数据库连接字符串。
 type Driver struct {
 	Name                string
 	Version             int
@@ -97,6 +97,8 @@ type Driver struct {
 	RestoredName        string
 	Open                func(context.Context, Options) (Backend, error)
 	OpenMaintenance     func(context.Context, Options) (Maintenance, error)
+	OpenPluginState     plugindb.OpenFactory
+	ReadPluginState     plugindb.ReadFactory
 	BackupSchemaVersion func() (int, error)
 	InspectBackup       func(context.Context, string) ([]mediastore.BackupObject, error)
 }

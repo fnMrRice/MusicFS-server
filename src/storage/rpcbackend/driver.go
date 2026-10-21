@@ -10,6 +10,7 @@ import (
 	"reflect"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginrpc"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
@@ -42,6 +43,14 @@ func Driver() storage.Driver {
 		OpenMaintenance: func(ctx context.Context, options storage.Options) (storage.Maintenance, error) {
 			return open(ctx, options, "maintenance", reflect.TypeFor[storage.Maintenance]())
 		},
+		OpenPluginState: func(ctx context.Context, cfg plugindb.BackendConfig, path, plugin, instance string) (plugindb.Backend, error) {
+			cfg.Name = "plugin"
+			return plugindb.OpenBackend(ctx, cfg, path, plugin, instance)
+		},
+		ReadPluginState: func(ctx context.Context, cfg plugindb.BackendConfig, path, plugin, instance, key string) (pluginproto.StateValue, error) {
+			cfg.Name = "plugin"
+			return plugindb.ReadBackend(ctx, cfg, path, plugin, instance, key)
+		},
 	}
 }
 
@@ -70,7 +79,7 @@ func Serve(ctx context.Context, input io.ReadCloser, output io.WriteCloser, driv
 	}
 	return pluginrpc.Serve(ctx, input, output, driver.PluginVersion, contracts, func(ctx context.Context, mode string, raw json.RawMessage) (any, reflect.Type, io.Closer, error) {
 		if mode == "plugin-state" || mode == "plugin-state-read" {
-			return plugindb.WorkerFactory(ctx, mode, raw)
+			return plugindb.WorkerFactory(ctx, mode, raw, driver.OpenPluginState, driver.ReadPluginState)
 		}
 		var options storage.Options
 		if json.Unmarshal(raw, &options) != nil {

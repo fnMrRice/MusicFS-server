@@ -17,6 +17,8 @@ plugins/
       tests/
   database/
     sqlite/              # SQLite 后端与独立存储程序
+      migrations/        # 主库 Schema、内嵌 SQL 与迁移加载器
+      state/             # 实例状态库建表、迁移与只读读取
   decoder/
     ffmpeg/              # FFmpeg 解码、编码与处理适配
     ncm/                 # NCM 容器解密
@@ -28,6 +30,6 @@ plugins/
 
 默认构建 Server 和全量统一插件两个程序，入口在 `src/app/musicfs`、`src/app/musicfs-plugins`。统一插件入口调用 `plugins/unified`，以 `--plugin <角色>` 固定本次进程的职责。各用途目录和独立入口继续保留；需要单独文件时显式选择分拆构建或构建对应 `cmd/musicfs-plugin-xxx`。公共插件 SDK 保持独立的 `sdk` 模块。
 
-SQLite 插件使用宿主的 `src/storage` 接口、`src/storage/rpcbackend` 通道与 `src/storage/migrations` 迁移定义；数据库结构和迁移的所有权仍属于 Server。公共音频接口与宿主 DSP 调度位于 `src/playback/audio`，具体增益算法位于 `plugins/dsp/gain`。
+SQLite 插件实现宿主的 `src/storage` 与 `src/plugins/plugindb` 契约，并使用 `src/storage/rpcbackend` 通道。具体数据库结构、主库迁移资源及实例状态库初始化由插件维护，在返回可用后端前完成；宿主保留业务数据与事务契约、后端选择、启动锁和生命周期协调。Server 仓库继续拥有这些契约及插件代码；内置后端和静态备份校验仍使用 SQLite 插件实现。公共音频接口与宿主 DSP 调度位于 `src/playback/audio`，具体增益算法位于 `plugins/dsp/gain`。
 
 `plugins/source/online` 仅依赖 SDK，各平台独立程序只链接自身驱动。统一程序 `musicfs-plugin-online --plugin netease|qqmusic|applemusic` 包含三个平台的装配代码，每个进程只运行所选平台。其余分类插件目前仍属于根 Server 模块；目录调整不代表所有角色已拆成独立 SDK 或远程仓库。构建、协议兼容、旧配置迁移与测试见 [SDK 说明](../docs/plugins/plugin-sdk.md)及各用途文档。

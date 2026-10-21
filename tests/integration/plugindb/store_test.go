@@ -7,16 +7,16 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite/state"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
 )
 
 func TestIsolationPersistenceAndConcurrentRevision(t *testing.T) {
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "plugins.sqlite")
-	open := func(plugin, instance string) *plugindb.Store {
+	open := func(plugin, instance string) *state.Store {
 		t.Helper()
-		db, err := plugindb.Open(ctx, path, plugin, instance)
+		db, err := state.Open(ctx, path, plugin, instance)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -28,7 +28,7 @@ func TestIsolationPersistenceAndConcurrentRevision(t *testing.T) {
 	if _, err := a.CompareAndSet(ctx, r); err != nil {
 		t.Fatal(err)
 	}
-	for _, db := range []*plugindb.Store{sibling, other} {
+	for _, db := range []*state.Store{sibling, other} {
 		v, err := db.Get(ctx, r.Key)
 		if err != nil || v.Revision != 0 || len(v.Value) != 0 {
 			t.Fatalf("database scope leaked: %+v %v", v, err)
@@ -37,9 +37,9 @@ func TestIsolationPersistenceAndConcurrentRevision(t *testing.T) {
 	r.Revision = 1
 	var wins atomic.Int32
 	var group sync.WaitGroup
-	for _, db := range []*plugindb.Store{a, b} {
+	for _, db := range []*state.Store{a, b} {
 		group.Add(1)
-		go func(db *plugindb.Store) {
+		go func(db *state.Store) {
 			defer group.Done()
 			if _, err := db.CompareAndSet(ctx, r); err == nil {
 				wins.Add(1)

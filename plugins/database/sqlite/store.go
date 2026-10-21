@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/fnMrRice/MusicFS-server/src/storage/migrations"
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite/migrations"
 	_ "modernc.org/sqlite"
 )
 

@@ -34,6 +34,8 @@ storage:
 
 路径相对于配置文件解析。选择、程序、摘要和参数来自启动配置，不从尚未启动的数据库读取。启用外部后端时，主库和 `host.database.*` 的实例私有状态读写均进入持久化 Worker；主库保持一个受管进程，私有状态按作用域连接创建短期进程。配置加载阶段的私有状态仅允许只读，不创建或迁移数据库；写入初始化仍在取得 Server 数据锁之后进行。
 
+主库建库 SQL、内嵌资源和迁移加载器由 [`plugins/database/sqlite/migrations`](../../plugins/database/sqlite/migrations/README.md) 维护；实例配置及私有状态库的建表、迁移与只读读取由 `plugins/database/sqlite/state` 维护。插件在打开可写后端时自动完成初始化，成功后才返回 Backend 或发送 ready，部署时无需另行执行建库脚本。初始化失败拒绝该连接，不将部分就绪的数据库交给宿主。只读工厂不创建目录、数据库或表，也不执行迁移。
+
 独立入口 `plugins/database/sqlite/cmd/musicfs-plugin-storage-sqlite` 保留，可显式单独构建并使用空 `args`；它不再是默认安装包中的单独文件。切换已固定的程序路径时需同步审核并更新摘要。
 
 未知后端、摘要不符、协议不兼容或初始化失败均拒绝启动，不回退到空库。内置 SQLite 与官方 SQLite Worker 使用同一数据布局，可在正常停服后切换；其他数据库实现需要自行完成一致的数据迁移，不能只修改名称假装转换成功。
@@ -47,13 +49,15 @@ storage:
 | Server 定义的规则 | 后端执行责任 |
 | --- | --- |
 | 来源权限、稳定身份、修订、幂等、人工锁和完整发布语义 | 在对应业务事务中检查、更新和提交，不能拆成独立读写后再拼接 |
-| Schema 版本和发布升级流程 | 在返回可用 Backend 前完成匹配版本的迁移；不支持的版本拒绝 |
+| 业务数据契约、启动锁和发布升级流程 | 维护具体 Schema 与迁移版本、内嵌建库资源，在返回可用后端前完成初始化；不支持的版本拒绝 |
 | 文件引用与删除协调 | 保持文件保护回调覆盖提交或受保护删除的完整范围 |
 | 备份清单和恢复验收 | 提供完整、可静态校验的便携 SQLite 快照及引用集合 |
 
 原 SQLite 实现中的事务内权限和修订检查继续保留。后端实现者必须遵守这些契约；普通 Provider、Scraper、DSP 无权调用该接口或执行任意 SQL。
 
 同程序内扩展可注册完整 `storage.Driver`。外部扩展使用 `storage/rpcbackend.Serve` 包装实现，宿主通过 `storage.backend=plugin` 选择可执行程序，不需要把新实现编译进宿主。首版外部 SDK 使用 Go：插件与宿主须匹配完整 Repository/DTO 合同；它不承诺任意旧版本二进制兼容或 C++ 通用 ABI。
+
+Driver 同时提供主库、维护、实例状态初始化 `OpenPluginState` 及实例状态只读工厂 `ReadPluginState`，私有状态的实现随所选数据库驱动提供；`src/plugins/plugindb` 只保留状态接口、选择和 RPC 调度。宿主继续定义实例命名空间、原子比较更新、事务和文件发布契约，并协调数据锁及生命周期。当前内置后端和静态备份校验仍使用 SQLite 插件代码；源码迁移不代表宿主已经消除全部 SQLite 依赖。
 
 `storage.Driver` 必须分别声明 `Version: storage.ContractVersion` 和 `PluginVersion`：前者是整数接口合同版本，后者是最多 128 字符的有效 SemVer 发行版本。注册后端及启动 `rpcbackend.Serve` 时都拒绝缺失、空白或无效发行版本。官方 `sqlite.Driver()` 使用 [sdk/bundledplugin/releases.go](../../sdk/bundledplugin/releases.go) 中的 `SQLiteVersion`，当前为 `0.1.0`；内置后端和独立 Worker 共用这一声明。外部入口将完整 Driver 交给 `rpcbackend.Serve(ctx, os.Stdin, os.Stdout, driver)`，ready 的发行号由 `driver.PluginVersion` 提供，不能用合同整数代替。
 

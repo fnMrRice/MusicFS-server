@@ -9,11 +9,14 @@ import (
 	"path/filepath"
 	"reflect"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite/state"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginrpc"
 )
 
-// Backend preserves the instance namespace and atomic compare-and-set contract.
+const ConfigurationKey = "host-configuration"
+
+// Backend 保留实例命名空间与原子比较并写入语义。
 type Backend interface {
 	Get(context.Context, string) (pluginproto.StateValue, error)
 	CompareAndSet(context.Context, pluginproto.StateRequest) (pluginproto.StateValue, error)
@@ -26,6 +29,12 @@ type BackendConfig struct {
 	SHA256     string
 	Args       []string
 }
+
+// OpenFactory 由数据库驱动提供，在宿主取得数据锁后完成初始化和迁移。
+type OpenFactory func(context.Context, BackendConfig, string, string, string) (Backend, error)
+
+// ReadFactory 由数据库驱动提供，在取得数据锁之前只读访问已有状态。
+type ReadFactory func(context.Context, BackendConfig, string, string, string, string) (pluginproto.StateValue, error)
 
 type stateOptions struct{ Path, Plugin, Instance string }
 type remoteStore struct{ *pluginrpc.Process }
@@ -44,7 +53,7 @@ func OpenBackend(ctx context.Context, cfg BackendConfig, path, plugin, instance 
 		if cfg.Name != "" && cfg.Name != "sqlite" {
 			return nil, fmt.Errorf("unsupported plugin state backend")
 		}
-		return Open(ctx, path, plugin, instance)
+		return state.Open(ctx, path, plugin, instance)
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return nil, err
@@ -57,7 +66,7 @@ func ReadBackend(ctx context.Context, cfg BackendConfig, path, plugin, instance,
 		if cfg.Name != "" && cfg.Name != "sqlite" {
 			return pluginproto.StateValue{}, fmt.Errorf("unsupported plugin state backend")
 		}
-		return Read(ctx, path, plugin, instance, key)
+		return state.Read(ctx, path, plugin, instance, key)
 	}
 	remote, err := openRemote(ctx, cfg, path, plugin, instance, "plugin-state-read")
 	if err != nil {
@@ -77,19 +86,21 @@ func openRemote(ctx context.Context, cfg BackendConfig, path, plugin, instance, 
 	return &remoteStore{process}, nil
 }
 
-type readStore struct{ options stateOptions }
+type readStore struct {
+	options stateOptions
+	read    ReadFactory
+}
 
 func (r *readStore) Get(ctx context.Context, key string) (pluginproto.StateValue, error) {
-	return Read(ctx, r.options.Path, r.options.Plugin, r.options.Instance, key)
+	return r.read(ctx, BackendConfig{}, r.options.Path, r.options.Plugin, r.options.Instance, key)
 }
 func (r *readStore) CompareAndSet(context.Context, pluginproto.StateRequest) (pluginproto.StateValue, error) {
 	return pluginproto.StateValue{}, fmt.Errorf("plugin state is read-only before startup")
 }
 func (r *readStore) Close() error { return nil }
 
-// WorkerFactory is the private-state half of the persistence SDK. Read mode
-// performs no migration or creation before the host acquires its data lock.
-func WorkerFactory(ctx context.Context, mode string, raw json.RawMessage) (any, reflect.Type, io.Closer, error) {
+// WorkerFactory 将私有状态请求交给所选数据库驱动，读取模式不会调用初始化工厂。
+func WorkerFactory(ctx context.Context, mode string, raw json.RawMessage, open OpenFactory, read ReadFactory) (any, reflect.Type, io.Closer, error) {
 	var options stateOptions
 	if json.Unmarshal(raw, &options) != nil || !filepath.IsAbs(options.Path) || options.Plugin == "" || options.Instance == "" {
 		return nil, nil, nil, fmt.Errorf("invalid plugin state options")
@@ -98,11 +109,27 @@ func WorkerFactory(ctx context.Context, mode string, raw json.RawMessage) (any, 
 	var err error
 	switch mode {
 	case "plugin-state":
-		store, err = Open(ctx, options.Path, options.Plugin, options.Instance)
+		if open == nil {
+			return nil, nil, nil, fmt.Errorf("plugin state initialization is not supported")
+		}
+		store, err = open(ctx, BackendConfig{}, options.Path, options.Plugin, options.Instance)
 	case "plugin-state-read":
-		store = &readStore{options}
+		if read == nil {
+			return nil, nil, nil, fmt.Errorf("plugin state reads are not supported")
+		}
+		store = &readStore{options: options, read: read}
 	default:
 		err = fmt.Errorf("unsupported plugin state mode")
 	}
-	return store, reflect.TypeFor[Backend](), store, err
+	missing := store == nil || reflect.ValueOf(store).Kind() == reflect.Pointer && reflect.ValueOf(store).IsNil()
+	if err != nil {
+		if !missing {
+			_ = store.Close()
+		}
+		return nil, nil, nil, err
+	}
+	if missing {
+		return nil, nil, nil, fmt.Errorf("plugin state factory returned no store")
+	}
+	return store, reflect.TypeFor[Backend](), store, nil
 }

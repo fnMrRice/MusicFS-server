@@ -9,6 +9,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite/state"
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
@@ -88,7 +89,7 @@ func TestLegacyPluginScopesPreserveSettingsAndInstances(t *testing.T) {
 		}
 	}
 	path := legacyDatabase(t, values)
-	first, err := plugindb.Open(ctx, path, mappings[0].current, mappings[0].instance)
+	first, err := state.Open(ctx, path, mappings[0].current, mappings[0].instance)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +110,7 @@ func TestLegacyPluginScopesPreserveSettingsAndInstances(t *testing.T) {
 		t.Fatalf("opening one instance did not migrate all scopes intact: expected=%+v got=%+v", expected, got)
 	}
 	for index, mapping := range mappings {
-		db, err := plugindb.Open(ctx, path, mapping.current, mapping.instance)
+		db, err := state.Open(ctx, path, mapping.current, mapping.instance)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -125,7 +126,7 @@ func TestLegacyPluginScopesPreserveSettingsAndInstances(t *testing.T) {
 	if len(after) != len(values) {
 		t.Fatalf("migration changed row count: %d != %d", len(after), len(values))
 	}
-	db, err := plugindb.Open(ctx, path, mappings[0].old, mappings[0].instance)
+	db, err := state.Open(ctx, path, mappings[0].old, mappings[0].instance)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +135,7 @@ func TestLegacyPluginScopesPreserveSettingsAndInstances(t *testing.T) {
 	if err != nil {
 		t.Fatalf("legacy alias failed to write canonical scope: %v", err)
 	}
-	reopened, err := plugindb.Open(ctx, path, mappings[0].current, mappings[0].instance)
+	reopened, err := state.Open(ctx, path, mappings[0].current, mappings[0].instance)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +159,7 @@ func TestPluginScopeConflictsLeaveEntireDatabaseUnchanged(t *testing.T) {
 			}
 			path := legacyDatabase(t, values)
 			before := readStoredValues(t, path)
-			db, err := plugindb.Open(context.Background(), path, "musicfs.plugin.decoder.ncm", "another")
+			db, err := state.Open(context.Background(), path, "musicfs.plugin.decoder.ncm", "another")
 			if db != nil {
 				db.Close()
 				t.Fatal("conflicting database returned a usable store")

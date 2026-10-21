@@ -12,7 +12,7 @@ package "Server 宿主" {
   component "metadata\n识别 / 关联 / 补全 / 写回" as Metadata
   component "playback\n会话 / 流 / 定位 / 缓存" as Playback
   component "plugins\n进程 / 协议 / 账号 / 受控资源" as Host
-  component "storage\nBackend / 迁移 / 媒体 / 备份" as Storage
+  component "storage\nBackend 契约 / 媒体 / 备份" as Storage
 }
 package "独立插件进程" {
   component "Local Files\n本机 / 已挂载目录" as Local
@@ -20,7 +20,7 @@ package "独立插件进程" {
   component "本地 Scraper\n歌词 / 封面候选" as Scraper
   component "FFmpeg / NCM\n处理 / 解密" as Audio
   component "DSP Worker\n有序无状态节点" as DSP
-  component "SQLite Worker\n必需存储后端" as SQLite
+  component "SQLite Worker\n主库 / 实例状态库\n建库 / Schema / 迁移" as SQLite
 }
 folder "授权音乐目录" as Files
 folder "Media Store\n歌词 / 封面 / 指纹等正文" as Media
@@ -59,8 +59,10 @@ note bottom of Host
   进程隔离不是操作系统沙箱。
 end note
 note bottom of Storage
-  SQLite 保留内置兼容模式。
-  Schema、迁移、事务语义与文件发布归宿主。
+  SQLite 提供内置与独立 Worker 模式，属于必需后端。
+  宿主保留业务契约、数据锁、生命周期与文件发布协调。
+  数据库插件完成初始化后才返回可用后端。
+  配置预加载只读，不创建或迁移数据库。
   数据库只保存正文索引与引用。
 end note
 note bottom of Online

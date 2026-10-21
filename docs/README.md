@@ -85,6 +85,6 @@
 - [待验收清单](validation/README.md)、[复验方法](validation/verification.md)、[测试夹具](validation/fixtures.md)：只保留未关闭项目与可复用方法。
 - [源码导航](../src/README.md)、[插件源码](../plugins/README.md)、[SDK 源码](../sdk/README.md)、[在线插件模块](../plugins/source/online/README.md)。
 - [补全任务内部说明](../src/metadata/enrichmentworker/README.md)、[候选比较](../src/metadata/identification/candidates/README.md)、[指纹算法来源](../src/metadata/identification/fingerprint/REFERENCES.md)、[指纹夹具](../tests/testdata/identification/README.md)。
-- [数据库迁移](../src/storage/migrations/README.md)、[本地 Scraper](../plugins/scraper/local/README.md)、[NCM 格式来源](../plugins/decoder/ncm/REFERENCES.md)。
+- [数据库迁移](../plugins/database/sqlite/migrations/README.md)、[本地 Scraper](../plugins/scraper/local/README.md)、[NCM 格式来源](../plugins/decoder/ncm/REFERENCES.md)。
 - PlantUML 源码：[当前组件](diagrams/components.puml)、[NAS / Bilibili 设计](diagrams/nas-bilibili.puml)。
 - 跨仓库入口：[总体架构](../../docs/architecture.md)、[共同插件边界](../../docs/plugin-boundaries.md)、[C++ 构建约定](../../docs/native-plugins.md)、[Web](../../web/README.md)、[Client](../../client/README.md)。

@@ -123,6 +123,8 @@ func TestDefaultSQLiteAndRegistrationValidation(t *testing.T) {
 		func(d *storage.Driver) { d.PluginVersion = "1.0.0-01" },
 		func(d *storage.Driver) { d.Open = nil },
 		func(d *storage.Driver) { d.OpenMaintenance = nil },
+		func(d *storage.Driver) { d.OpenPluginState = nil },
+		func(d *storage.Driver) { d.ReadPluginState = nil },
 		func(d *storage.Driver) { d.InspectBackup = nil },
 		func(d *storage.Driver) { d.BackupSchemaVersion = nil },
 		func(d *storage.Driver) { d.SnapshotName = "../db.sqlite" },

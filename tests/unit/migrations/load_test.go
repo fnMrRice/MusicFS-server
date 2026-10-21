@@ -6,7 +6,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/fnMrRice/MusicFS-server/src/storage/migrations"
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite/migrations"
 )
 
 func migrationFiles(contents map[string]string) fstest.MapFS {

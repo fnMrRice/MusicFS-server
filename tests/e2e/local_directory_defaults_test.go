@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite/state"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
 )
 
 func TestDefaultLocalDirectoryPermissionWorkflow(t *testing.T) {
@@ -34,7 +34,7 @@ func TestDefaultLocalDirectoryPermissionWorkflow(t *testing.T) {
 	cfg, base := yamlServiceConfig(t)
 	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true}}}}
 	// Keep this workflow independent of directories on the test host's drives.
-	db, err := plugindb.Open(context.Background(), config.PluginDatabasePath(cfg), "musicfs.plugin.source.localfiles", "local")
+	db, err := state.Open(context.Background(), config.PluginDatabasePath(cfg), "musicfs.plugin.source.localfiles", "local")
 	if err != nil {
 		t.Fatal(err)
 	}

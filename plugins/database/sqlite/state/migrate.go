@@ -1,4 +1,4 @@
-package plugindb
+package state
 
 import (
 	"context"
@@ -10,9 +10,8 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginid"
 )
 
-// Migrate whole scopes atomically so settings, discovery snapshots and worker
-// state keep their revisions and instance boundaries. Multiple populated scopes
-// for one identity require explicit reconciliation, even with disjoint keys.
+// 整个作用域原子迁移，保留配置、发现快照和工作进程状态的版本及实例边界。
+// 同一身份对应多个非空作用域时，即使键没有重叠，也必须先解决冲突。
 func migratePluginScopes(ctx context.Context, db *sql.DB) error {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {

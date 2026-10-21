@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite/state"
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
@@ -28,7 +29,7 @@ func TestReadLegacyScopeLeavesOldServerStateIntact(t *testing.T) {
 	}
 	read := func(wantRevision int64) {
 		t.Helper()
-		value, err := plugindb.Read(ctx, path, "musicfs.plugin.source.localfiles", instanceid.Canonical("local"), plugindb.ConfigurationKey)
+		value, err := state.Read(ctx, path, "musicfs.plugin.source.localfiles", instanceid.Canonical("local"), plugindb.ConfigurationKey)
 		if err != nil || value.Revision != wantRevision || string(value.Value) != values[0].value {
 			t.Fatalf("legacy read changed or lost its scope: %+v %v", value, err)
 		}
@@ -52,7 +53,7 @@ func TestReadLegacyScopeLeavesOldServerStateIntact(t *testing.T) {
 		t.Fatal(err)
 	}
 	read(8)
-	runtime, err := plugindb.Open(ctx, path, "musicfs.plugin.source.localfiles", instanceid.Canonical("local"))
+	runtime, err := state.Open(ctx, path, "musicfs.plugin.source.localfiles", instanceid.Canonical("local"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +71,7 @@ func TestReadRejectsAmbiguousScopesWithoutWriting(t *testing.T) {
 	}
 	path := legacyDatabase(t, values)
 	before := readStoredValues(t, path)
-	_, err := plugindb.Read(context.Background(), path, "musicfs.plugin.source.localfiles", instanceid.Canonical("local"), "legacy-only")
+	_, err := state.Read(context.Background(), path, "musicfs.plugin.source.localfiles", instanceid.Canonical("local"), "legacy-only")
 	var detail *domain.Error
 	if !errors.As(err, &detail) || detail.Code != "CONFLICT" {
 		t.Fatalf("expected explicit conflict instead of choosing a scope: %v", err)
@@ -82,7 +83,7 @@ func TestReadRejectsAmbiguousScopesWithoutWriting(t *testing.T) {
 
 func TestReadDoesNotCreateMissingDatabase(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "missing", "plugins.sqlite")
-	_, err := plugindb.Read(context.Background(), path, "musicfs.plugin.source.localfiles", instanceid.Canonical("local"), plugindb.ConfigurationKey)
+	_, err := state.Read(context.Background(), path, "musicfs.plugin.source.localfiles", instanceid.Canonical("local"), plugindb.ConfigurationKey)
 	if err == nil {
 		t.Fatal("missing database was silently accepted")
 	}

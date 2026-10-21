@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite/migrations"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
-	"github.com/fnMrRice/MusicFS-server/src/storage/migrations"
 )
 
 func backupSchemaVersion() (int, error) {

@@ -10,7 +10,7 @@ import (
 
 func TestReleaseSchemaVersionUsesTargetMigrationHistory(t *testing.T) {
 	root := t.TempDir()
-	directory := filepath.Join(root, "src", "storage", "migrations")
+	directory := filepath.Join(root, "plugins", "database", "sqlite", "migrations")
 	if err := os.MkdirAll(directory, 0700); err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestReleaseSchemaVersionRejectsIncompleteHistory(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			root := t.TempDir()
-			directory := filepath.Join(root, "src", "storage", "migrations")
+			directory := filepath.Join(root, "plugins", "database", "sqlite", "migrations")
 			if err := os.MkdirAll(directory, 0700); err != nil {
 				t.Fatal(err)
 			}

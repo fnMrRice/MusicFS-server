@@ -1,4 +1,4 @@
-package plugindb
+package state
 
 import (
 	"context"
@@ -14,9 +14,8 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginid"
 )
 
-// Read resolves legacy scopes without migrating or creating a database. Initial
-// configuration loading runs before the server data lock and must not change
-// scopes that another, possibly older, server is still using.
+// Read 只读解析实例作用域，不建库也不迁移。启动配置加载发生在获取数据锁之前，
+// 因此不能修改其他服务进程仍在使用的数据库。
 func Read(ctx context.Context, path, plugin, instance, key string) (pluginproto.StateValue, error) {
 	var value pluginproto.StateValue
 	if plugin == "" || instance == "" {

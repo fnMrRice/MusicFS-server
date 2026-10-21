@@ -5,8 +5,11 @@ import (
 	"math"
 	"path/filepath"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite/state"
 	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
 )
 
@@ -45,6 +48,12 @@ func Driver() storage.Driver {
 		},
 		BackupSchemaVersion: BackupSchemaVersion,
 		InspectBackup:       InspectBackup,
+		OpenPluginState: func(ctx context.Context, _ plugindb.BackendConfig, path, plugin, instance string) (plugindb.Backend, error) {
+			return state.Open(ctx, path, plugin, instance)
+		},
+		ReadPluginState: func(ctx context.Context, _ plugindb.BackendConfig, path, plugin, instance, key string) (pluginproto.StateValue, error) {
+			return state.Read(ctx, path, plugin, instance, key)
+		},
 	}
 }
 

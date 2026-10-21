@@ -14,7 +14,7 @@ Server 是 Go 模块化单体，统一管理来源、曲库、歌单、资料补
 | src/metadata | 摘要/指纹、人工关联、独立 Scraper 调度与受限写回 |
 | src/playback | 来源/输出选择、会话、音频处理、流、定位恢复与缓存 |
 | src/plugins | 插件进程、协议、实例配置、凭据和受控资源 |
-| src/storage | Backend 契约、迁移、媒体文件及备份恢复 |
+| src/storage | Backend 契约、后端选择与通信、媒体文件及备份恢复 |
 
 目录按功能聚合，不构成严格分层；扫描、识别、补全和写回仍由各业务调度。具体插件在根 plugins/，公共 SDK 和在线平台实现分别是独立 Go 模块，见[开发说明](development/README.md)。
 
@@ -51,7 +51,7 @@ Server 是 Go 模块化单体，统一管理来源、曲库、歌单、资料补
 
 YAML 保存部署、权限和普通插件开关；Local Files 的实际目录及扫描/监听设置由管理 API 保存到宿主管理的插件配置数据库。permissions.readDirectories 是授权范围，添加目录不扩大权限，保存不自动扫描；默认授权及迁移见[实例配置](plugins/plugin-configuration.md)。插件声明角色、名称、版本和多实例能力，实例 UUID、插件 ID 和管理员别名彼此分离。
 
-SQLite 是必需后端，提供内置兼容与独立 Worker 模式；Schema、迁移和事务语义仍归 Server。DSP 支持有序无状态节点，首版要求固定格式/帧数、零延迟和无尾音。数据库与 DSP 在管理列表只读展示，变更部署配置后重启，见[存储插件](plugins/storage-plugins.md)与[DSP 插件](plugins/dsp-plugins.md)。
+SQLite 是必需后端，提供内置与独立 Worker 模式。主库的 Schema、内嵌 SQL 和迁移加载器位于 `plugins/database/sqlite/migrations`，实例状态库的建表、迁移及只读读取位于 `plugins/database/sqlite/state`；插件完成初始化后才返回可用后端。宿主保留业务数据与事务契约、后端选择、数据锁和生命周期协调，配置预加载只读且不建库；Server 仓库继续维护契约及插件实现。DSP 支持有序无状态节点，首版要求固定格式/帧数、零延迟和无尾音。数据库与 DSP 在管理列表只读展示，变更部署配置后重启，见[存储插件](plugins/storage-plugins.md)与[DSP 插件](plugins/dsp-plugins.md)。
 
 ## 来源与歌单
 

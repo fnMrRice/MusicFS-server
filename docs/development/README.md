@@ -11,9 +11,11 @@
 | `plugins/source/online/go.mod` | 在线平台实现，只依赖 SDK，不导入 Server 的 src |
 | `src/app`、`src/core` | 程序入口、组装、API，以及鉴权、配置与生命周期 |
 | `src/library`、`src/metadata` | 曲库、扫描、歌单，以及识别、补全和写回 |
-| `src/playback`、`src/storage` | 播放、流、时间映射，以及持久化、迁移和备份 |
+| `src/playback`、`src/storage` | 播放、流、时间映射，以及持久化契约、后端选择和备份 |
 | `src/plugins` | 宿主侧插件管理、通信、账号与授权资源 |
 | `plugins` | 按 source、decoder、scraper、database、dsp 分类的具体实现；unified 装配九种角色 |
+
+数据库 Schema、建库与迁移资源归具体数据库插件：SQLite 主库位于 `plugins/database/sqlite/migrations`，实例状态库位于 `plugins/database/sqlite/state`。宿主维护业务契约、实例隔离、启动锁及生命周期协调。
 
 三个 Go 模块通过明确的本地 `replace` 关联，构建和检查使用 `GOWORK=off`。src 的目录分组不构成严格分层，也不新增模块；例如 core/config 仍使用业务配置模型。生产包不得导入测试或程序入口包。
 
@@ -63,7 +65,7 @@ $env:CGO_ENABLED = '1'
 ## 契约与维护
 
 - 文档移动后运行 `python scripts/check-docs.py`，检查分类导航、相对链接及跨仓库入站链接；原分类与合并工具保留在 `scripts/reorganize-docs.py`，只有显式传入 `--apply` 才修改文件。
-- Server 维护 OpenAPI、事件 Schema、插件协议和数据库迁移；变更须同步检查 SDK、客户端兼容性及总体架构。
+- Server 仓库维护 OpenAPI、事件 Schema、插件协议、数据契约及数据库插件中的迁移；变更须同步检查 SDK、客户端兼容性及总体架构。
 - 协议版本与实现版本分别维护；未知能力返回明确错误，不以空结果冒充支持。
 - 发布时重新校验资产、任务代次、修订和权限；数据库事务不跨平台网络或普通 Provider 调用持有，存储后端的受控回调按 Backend 契约协调。
 - 新的 C++ 插件使用 CMake/C++23 独立 Worker，遵循[共同构建约定](../../../docs/native-plugins.md)，与 Client 原生库分别构建和验收。
