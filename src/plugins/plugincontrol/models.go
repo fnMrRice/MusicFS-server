@@ -39,6 +39,7 @@ type Instance struct {
 	Reason            *string  `json:"reason"`
 }
 type Plugin struct {
+	SettingsAvailable         bool                        `json:"settingsAvailable,omitempty"`
 	PluginID                  string                      `json:"pluginId"`
 	Plugin                    *pluginproto.PluginIdentity `json:"plugin"`
 	Version                   string                      `json:"version"`

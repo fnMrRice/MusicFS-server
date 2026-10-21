@@ -25,6 +25,8 @@ type Track struct {
 	Availability string                `json:"availability"`
 	AssetID      string                `json:"assetId"`
 	Asset        *identification.Asset `json:"asset"`
+	RecordingID  *string               `json:"recordingId"`
+	Versions     []Track               `json:"versions,omitempty"`
 	Owner        string                `json:"-"`
 	ExternalID   string                `json:"-"`
 	RootID       string                `json:"-"`
@@ -59,9 +61,10 @@ type RootWriteBack struct {
 	Replacement   string   `json:"replacement"`
 }
 type Page struct {
-	Items           []Track `json:"items"`
-	NextCursor      *string `json:"nextCursor"`
-	LibraryRevision string  `json:"libraryRevision"`
+	Items            []Track `json:"items"`
+	NextCursor       *string `json:"nextCursor"`
+	LibraryRevision  string  `json:"libraryRevision"`
+	MatchingRevision *int64  `json:"matchingRevision,omitempty"`
 }
 type Observation struct {
 	pluginproto.Observation

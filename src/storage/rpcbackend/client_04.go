@@ -10,12 +10,42 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
-	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
-	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"time"
 )
+
+func (c *Client) ManualLink(a0 context.Context, a1 string, a2 matching.LinkRequest, a3 string) (r0 matching.Mutation, err error) {
+	err = c.Invoke(a0, "ManualLink", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) MatchingAction(a0 context.Context, a1 string, a2 string) (r0 *settings.Job, err error) {
+	err = c.Invoke(a0, "MatchingAction", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) MatchingLibrary(a0 context.Context, a1 string) (r0 matching.LibrarySnapshot, err error) {
+	err = c.Invoke(a0, "MatchingLibrary", []any{a1}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) MatchingOwners(a0 context.Context) (r0 []string, err error) {
+	err = c.Invoke(a0, "MatchingOwners", []any{}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) MatchingRevision(a0 context.Context, a1 string) (r0 int64, err error) {
+	err = c.Invoke(a0, "MatchingRevision", []any{a1}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) MatchingRun(a0 context.Context, a1 string) (r0 matching.Run, err error) {
+	err = c.Invoke(a0, "MatchingRun", []any{a1}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) NextAutomation(a0 context.Context) (r0 enrichment.AutomationWork, err error) {
 	err = c.Invoke(a0, "NextAutomation", []any{}, []any{&r0})
@@ -107,34 +137,4 @@ func (c *Client) ProviderScanState(a0 context.Context, a1 string, a2 string) (r0
 func (c *Client) Publish(a0 context.Context, a1 jobs.Job, a2 library.ScanPublication) (err error) {
 	err = c.Invoke(a0, "Publish", []any{a1, a2}, []any{})
 	return err
-}
-
-func (c *Client) PublishEvidence(a0 context.Context, a1 string, a2 identification.Ticket, a3 identification.Result) (err error) {
-	err = c.Invoke(a0, "PublishEvidence", []any{a1, a2, a3}, []any{})
-	return err
-}
-
-func (c *Client) PublishProcessedCache(a0 context.Context, a1 processedcache.Record, a2 processedcache.Authorization) (err error) {
-	err = c.Invoke(a0, "PublishProcessedCache", []any{a1, a2}, []any{})
-	return err
-}
-
-func (c *Client) PutFavorite(a0 context.Context, a1 string, a2 string) (r0 personal.Entry, err error) {
-	err = c.Invoke(a0, "PutFavorite", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) QueueEnrichment(a0 context.Context, a1 string, a2 enrichment.JobRequest, a3 string) (r0 enrichment.Job, r1 bool, err error) {
-	err = c.Invoke(a0, "QueueEnrichment", []any{a1, a2, a3}, []any{&r0, &r1})
-	return r0, r1, err
-}
-
-func (c *Client) QueueFingerprint(a0 context.Context, a1 string, a2 identification.FingerprintTarget, a3 string, a4 bool) (r0 identification.FingerprintJob, r1 bool, err error) {
-	err = c.Invoke(a0, "QueueFingerprint", []any{a1, a2, a3, a4}, []any{&r0, &r1})
-	return r0, r1, err
-}
-
-func (c *Client) QueueHash(a0 context.Context, a1 string, a2 identification.HashTarget, a3 string, a4 bool) (r0 identification.HashJob, r1 bool, err error) {
-	err = c.Invoke(a0, "QueueHash", []any{a1, a2, a3, a4}, []any{&r0, &r1})
-	return r0, r1, err
 }

@@ -25,6 +25,17 @@ type matchingAPI interface {
 }
 
 func (s *Server) RegisterMatching(service matchingAPI) {
+	s.Handle("GET /api/v1/matching/candidates", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
+		after, limit, err := matchingPage(r, 20, 100)
+		if err != nil {
+			return err
+		}
+		page, err := service.Candidates(r.Context(), session.User.ID, "", after, limit)
+		if err != nil {
+			return err
+		}
+		return WriteJSON(w, http.StatusOK, page)
+	})
 	s.Handle("GET /api/v1/matching/revision", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		revision, err := service.MatchingRevision(r.Context(), session.User.ID)
 		if err != nil {

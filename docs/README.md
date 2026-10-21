@@ -33,6 +33,7 @@
 | [身份与名称](plugins/plugin-identity.md) | 插件 ID、实例 UUID、显示名与多实例声明 |
 | [管理](plugins/plugin-management.md) | 状态、操作、启用、重启停用和 SSE |
 | [实例配置与目录](plugins/plugin-configuration.md) | 插件配置数据库、目录授权与管理 API |
+| [声明式设置页面](plugins/settings.md) | 插件字段、按钮、值校验与持久化 |
 | [DSP](plugins/dsp-plugins.md) | 有序处理链、PCM Worker 与定位限制 |
 | [存储后端](plugins/storage-plugins.md) | 必需 SQLite、Backend 契约与独立 Worker |
 
@@ -42,6 +43,8 @@
 | --- | --- |
 | [扫描](library/scanning.md) | 范围、排除、监听、重试与完整发布 |
 | [曲库查询](library/catalog-query.md) | 搜索、筛选、排序和固定结果分页 |
+| [录音聚合曲库](library/recording-groups.md) | 人工合并后按歌曲显示与多版本展开 |
+| [自动重复识别](library/duplicate-detection.md) | 插件候选、后台识别、进度与人工确认 |
 | [来源专辑](library/albums.md) | 显式成员、发行关联和专辑封面 |
 | [个人数据](library/personal-library.md) | 资料、收藏与最近播放 |
 | [个人与聚合歌单](library/playlists.md) | 本地编辑、出处、隐藏与重建 |

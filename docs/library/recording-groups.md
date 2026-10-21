@@ -1,0 +1,28 @@
+# 按录音显示曲库
+
+曲目列表可以依据用户确认的 Recording 关联显示为一行，并展开该录音的不同版本与来源。这是 Server 的曲库查询能力；人工关联、解除关联和聚合显示均不依赖重复识别插件。插件只产生待确认建议，不能代替用户合并歌曲。
+
+## 查询
+
+```http
+GET /api/v1/source-tracks?groupBy=recording&limit=50
+```
+
+保留普通曲目页的 `items`、`nextCursor`、`libraryRevision`，另返回非负整数 `matchingRevision`。每项仍为可播放的代表来源曲目，增加：
+
+- `recordingId`：人工确认的录音 ID；尚未关联或明确解除的来源为 `null`。
+- `versions`：该录音全部本人来源曲目，包含代表来源。尚未关联的项目包含一个版本。成员不嵌套 `versions`。
+
+代表来源优先选择 `availability=available`，再按显示名称与来源 ID 排序。代表来源的 `sourceTrackId` 仍指向原来源，播放请求不改成 Recording ID。展开后可以明确播放其他版本；关联不保证跨版本时间轴一致，也不会删除文件、去掉版本或扩大来源权限。
+
+分组前读取本用户的全部来源，因此同一录音的成员即使原先分布在不同曲目页，也会完整出现在 `versions`。`providerInstanceId` 过滤选择包含该来源实例的组；组内仍返回所有本人来源，避免隐藏其他版本。未关联来源按各自的 `sourceTrackId` 独立显示。
+
+## 分页与人工修订
+
+首次查询在同一事务中固定曲库、人工关联修订和所有组成员。游标绑定用户、来源过滤和 `groupBy=recording` 模式，不能用于普通曲目页或其他用户。后续页面继续读取相同快照，保存十分钟；过期或绑定不符返回 `CURSOR_EXPIRED`，应从首屏重新读取。
+
+人工合并使用既有 `POST /matching/links` 与 `expectedRevision`。客户端可采用聚合页的 `matchingRevision`；操作成功后重新加载聚合曲库。旧页仍保持其原修订，新决定不会悄悄混入旧游标；提交旧修订时返回 `CONFLICT`，应重新读取并由用户确认。解除和拆分也遵循同样规则。
+
+每页最多 200 个组，每个 Recording 最多 256 个来源；快照最多 100,000 个来源、64 MiB。超限明确返回 `RATE_LIMITED`，不会静默截断成员。普通查询省略 `groupBy` 时继续逐来源分页，不改变既有客户端行为。
+
+人工决定与权限规则详见[本地候选与人工录音关联](../metadata/matching.md)。

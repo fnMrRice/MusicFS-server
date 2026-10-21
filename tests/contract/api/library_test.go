@@ -63,6 +63,11 @@ func TestLibraryHTTPAuthorizationAndModel(t *testing.T) {
 		schema string
 		status int
 	}{{"/api/v1/provider-instances", "Providers", 200}, {"/api/v1/source-tracks", "SourceTracks", 200},
+		{"/api/v1/source-tracks?groupBy=recording", "SourceTracks", 200},
+		{"/api/v1/source-tracks?groupBy=recording&providerInstanceId=843558e1-a158-56ac-834a-baffd12bb5c5", "Error", 404},
+		{"/api/v1/source-tracks?groupBy=unsupported", "Error", 400},
+		{"/api/v1/source-tracks?groupBy=recording&groupBy=recording", "Error", 400},
+		{"/api/v1/source-tracks?groupBy=recording&cursor=expired", "Error", 410},
 		{"/api/v1/source-tracks?providerInstanceId=843558e1-a158-56ac-834a-baffd12bb5c5", "Error", 404},
 		{"/api/v1/source-tracks?limit=201", "Error", 400}, {"/api/v1/source-tracks?limit=", "Error", 400},
 		{"/api/v1/source-tracks?limit=abc", "Error", 400}, {"/api/v1/source-tracks?cursor=expired", "Error", 410}} {
@@ -82,6 +87,15 @@ func TestLibraryHTTPAuthorizationAndModel(t *testing.T) {
 				var page library.Page
 				if err := json.Unmarshal(w.Body.Bytes(), &page); err != nil || len(page.Items) != 1 || page.Items[0].ProviderID != "316664dc-7106-5acd-8df7-88c9d0d9baef" {
 					t.Fatal("wrong authorized library page", err)
+				}
+			}
+			if test.path == "/api/v1/source-tracks?groupBy=recording" {
+				var page library.Page
+				if err := json.Unmarshal(w.Body.Bytes(), &page); err != nil || len(page.Items) != 1 || page.MatchingRevision == nil || *page.MatchingRevision != 0 {
+					t.Fatal("invalid grouped library revision", err)
+				}
+				if len(page.Items[0].Versions) != 1 || page.Items[0].Versions[0].ID != page.Items[0].ID || page.Items[0].RecordingID != nil {
+					t.Fatal("unmatched grouped track lost its source")
 				}
 			}
 		})

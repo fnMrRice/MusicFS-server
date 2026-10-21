@@ -16,7 +16,7 @@ Linux 使用 `sh scripts/build.sh`，将示例中的 ../build/windows/ 改为 ..
 编辑配置：
 
 - Local Files 默认没有选定的音乐目录。允许访问的范围由默认授权或 permissions.readDirectories 决定，实际目录在启动后通过管理接口添加，见[目录授权](../plugins/plugin-configuration.md#部署授权)。
-- FFmpeg 实例配置 ffmpegPath、ffprobePath；缺少工具时保持待配置。仅播放兼容原流无需启用处理插件；AIFF 与当前 NCM FLAC 处理路径需要两种工具。
+- FFmpeg 插件及实例两层启用，并配置 ffmpegPath、ffprobePath；缺少工具时保持待配置。当前原流支持兼容 WAV 及已识别容器、编码的 MP3，FLAC、AIFF 与 NCM 内部 FLAC 走处理路径。此前未配置 ffprobe 扫描的 MP3 可能缺少格式信息，补齐工具后重新扫描。NCM 还需启用解密插件及其实例。
 - 普通插件默认 `execution: builtin`，无需程序路径。只有显式 `execution: process` 才使用 executable、args 和程序摘要。缺配置保持待配置，显式列表及禁用优先，见[自动发现](configuration.md#内置插件程序与自动发现)。
 - 数据、媒体、缓存与音乐目录分离。相对路径以 YAML 所在目录为基准；修改部署权限后重启。
 - allowedOrigins 与页面实际 URL 完全一致。远程监听必须配置 TLS；静态页面与 API 保持同源。

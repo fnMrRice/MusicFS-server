@@ -29,6 +29,10 @@ func New(repo Repository, details FingerprintDetails, scorer candidates.Scorer) 
 }
 
 func (s *Service) Refresh(ctx context.Context, owner, sourceID string, sourceIDs []string) (CandidatePage, error) {
+	return s.refresh(ctx, owner, sourceID, sourceIDs, false, s.scorer)
+}
+
+func (s *Service) refresh(ctx context.Context, owner, sourceID string, sourceIDs []string, partial bool, scorer candidates.Scorer) (CandidatePage, error) {
 	if len(sourceIDs) > MaxSources {
 		return CandidatePage{}, domain.Fail("INVALID_ARGUMENT", "Too many candidate sources")
 	}
@@ -44,6 +48,7 @@ func (s *Service) Refresh(ctx context.Context, owner, sourceID string, sourceIDs
 	if err != nil {
 		return CandidatePage{}, err
 	}
+	snapshot.Partial = partial
 	if snapshot.Owner != owner || snapshot.Anchor.Input.Asset.SourceTrackID != sourceID || len(snapshot.Sources) > MaxSources {
 		return CandidatePage{}, domain.Fail("RESOURCE_CHANGED", "Candidate snapshot changed")
 	}
@@ -51,7 +56,7 @@ func (s *Service) Refresh(ctx context.Context, owner, sourceID string, sourceIDs
 	if err != nil {
 		return CandidatePage{}, err
 	}
-	items, err := candidates.Find(ctx, s.scorer, anchor, others, snapshot.Blocked)
+	items, err := candidates.Find(ctx, scorer, anchor, others, snapshot.Blocked)
 	if err != nil {
 		return CandidatePage{}, comparisonError(err)
 	}

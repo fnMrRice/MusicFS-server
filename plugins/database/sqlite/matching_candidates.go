@@ -79,8 +79,17 @@ func (s *Store) SaveCandidates(ctx context.Context, owner string, snapshot match
 		}
 		records, digests = append(records, r), append(digests, digest)
 	}
-	if _, err = tx.ExecContext(ctx, "UPDATE matching_candidates SET status='stale' WHERE owner=? AND status='pending' AND (left_source=? OR right_source=?)", owner, anchor, anchor); err != nil {
-		return page, err
+	if snapshot.Partial {
+		for _, source := range snapshot.Sources {
+			id := source.Input.Asset.SourceTrackID
+			if _, err = tx.ExecContext(ctx, "UPDATE matching_candidates SET status='stale' WHERE owner=? AND status='pending' AND ((left_source=? AND right_source=?) OR (left_source=? AND right_source=?))", owner, anchor, id, id, anchor); err != nil {
+				return page, err
+			}
+		}
+	} else {
+		if _, err = tx.ExecContext(ctx, "UPDATE matching_candidates SET status='stale' WHERE owner=? AND status='pending' AND (left_source=? OR right_source=?)", owner, anchor, anchor); err != nil {
+			return page, err
+		}
 	}
 	for i, record := range records {
 		c := record.Candidate
@@ -145,84 +154,61 @@ func (s *Store) Candidates(ctx context.Context, owner, source, after string, lim
 		return page, err
 	}
 	defer tx.Rollback()
-	if err = visibleSources(ctx, tx, owner, []string{source}); err != nil {
-		return page, err
+	if source != "" {
+		if err = visibleSources(ctx, tx, owner, []string{source}); err != nil {
+			return page, err
+		}
 	}
 	if page.Revision, err = matchingRevision(ctx, tx, owner); err != nil {
 		return page, err
 	}
 	lastScore := 101
 	if after != "" {
-		err = tx.QueryRowContext(ctx, "SELECT score FROM matching_candidates WHERE owner=? AND id=? AND (left_source=? OR right_source=?)", owner, after, source, source).Scan(&lastScore)
+		err = tx.QueryRowContext(ctx, "SELECT score FROM matching_candidates WHERE owner=? AND id=? AND (?='' OR left_source=? OR right_source=?)", owner, after, source, source, source).Scan(&lastScore)
 		if errors.Is(err, sql.ErrNoRows) {
 			return page, domain.Fail("CURSOR_EXPIRED", "Candidate cursor is no longer available")
 		} else if err != nil {
 			return page, err
 		}
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT document FROM matching_candidates WHERE owner=? AND status='pending' AND (left_source=? OR right_source=?) AND (score<? OR (score=? AND id>?)) ORDER BY score DESC,id LIMIT ?`, owner, source, source, lastScore, lastScore, after, limit+1)
-	if err != nil {
-		return page, err
-	}
-	var records []candidateRecord
-	for rows.Next() {
-		var raw []byte
-		var record candidateRecord
-		if err = rows.Scan(&raw); err != nil {
-			rows.Close()
-			return page, err
+	cache := map[string]matching.CandidateSource{}
+	// 跳过失效证据后填满有效页，避免连续空页阻断后续当前候选。
+	for len(page.Items) <= limit {
+		records, e := readMatchingCandidates(ctx, tx, owner, source, lastScore, after, 100)
+		if e != nil {
+			return page, e
 		}
-		if err = json.Unmarshal(raw, &record); err != nil {
-			rows.Close()
-			return page, err
+		if len(records) == 0 {
+			break
 		}
-		records = append(records, record)
+		for _, record := range records {
+			after, lastScore = record.Candidate.ID, record.Candidate.Score
+			fresh, e := currentCandidate(ctx, tx, owner, record, cache)
+			if e != nil {
+				return page, e
+			}
+			if fresh {
+				page.Items = append(page.Items, record.Candidate)
+				if len(page.Items) > limit {
+					break
+				}
+			}
+		}
 	}
-	err = rows.Err()
-	rows.Close()
-	if err != nil {
-		return page, err
-	}
-	if len(records) > limit {
-		records = records[:limit]
-		next := records[limit-1].Candidate.ID
+	if len(page.Items) > limit {
+		page.Items = page.Items[:limit]
+		next := page.Items[limit-1].ID
 		page.NextAfter = &next
 	}
-	cache := map[string]matching.CandidateSource{}
-	for _, record := range records {
-		fresh := true
-		for i, ref := range []candidates.AssetRef{record.Candidate.Left, record.Candidate.Right} {
-			value, ok := cache[ref.SourceTrackID]
-			if !ok {
-				value, err = matchingSource(ctx, tx, owner, ref.SourceTrackID)
-				if err != nil {
-					var failure *domain.Error
-					if errors.As(err, &failure) && (failure.Code == "NOT_FOUND" || failure.Code == "RESOURCE_CHANGED") {
-						fresh = false
-						break
-					}
-					return page, err
-				}
-				cache[ref.SourceTrackID] = value
-			}
-			binding := record.LeftBinding
-			if i == 1 {
-				binding = record.RightBinding
-			}
-			if value.Input.Asset != ref || value.BindingRevision != binding {
-				fresh = false
-				break
-			}
+	if source == "" && len(page.Items) > 0 {
+		display, e := matchingDisplay(ctx, tx, owner)
+		if e != nil {
+			return page, e
 		}
-		if !fresh {
-			continue
-		}
-		blocked, err := matchingBlocked(ctx, tx, owner, record.Candidate.Left.SourceTrackID, record.Candidate.Right.SourceTrackID)
-		if err != nil {
-			return page, err
-		}
-		if !blocked {
-			page.Items = append(page.Items, record.Candidate)
+		for i := range page.Items {
+			item := &page.Items[i]
+			left, right := display[item.Left.SourceTrackID], display[item.Right.SourceTrackID]
+			item.LeftTrack, item.RightTrack = &left, &right
 		}
 	}
 	return page, nil

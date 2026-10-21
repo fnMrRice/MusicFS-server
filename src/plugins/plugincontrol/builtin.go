@@ -32,7 +32,7 @@ func (m *Manager) builtinPluginsLocked() []Plugin {
 	}
 	result := make([]Plugin, 0, len(items))
 	for _, item := range items {
-		result = append(result, Plugin{PluginID: item.id, Plugin: pluginconfig.Identity(item.id), Version: bundledplugin.Version(item.id), Execution: "builtin", ConfiguredEnabled: item.configured,
+		result = append(result, Plugin{SettingsAvailable: item.id == "musicfs.plugin.matching.standard", PluginID: item.id, Plugin: pluginconfig.Identity(item.id), Version: bundledplugin.Version(item.id), Execution: "builtin", ConfiguredEnabled: item.configured,
 			Builtin: &BuiltinStatus{Configured: item.configured, Capabilities: item.capabilities}, Instances: []Instance{}})
 	}
 	return result

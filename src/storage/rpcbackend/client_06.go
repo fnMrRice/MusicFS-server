@@ -8,14 +8,49 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
-	"github.com/fnMrRice/MusicFS-server/src/library/sourcedisplay"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/candidates"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) RemotePlaylists(a0 context.Context, a1 string, a2 string, a3 int) (r0 []playlists.RemotePlaylist, err error) {
+	err = c.Invoke(a0, "RemotePlaylists", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) RemoteSnapshot(a0 context.Context, a1 string, a2 string, a3 int64) (r0 playlists.Snapshot, err error) {
+	err = c.Invoke(a0, "RemoteSnapshot", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) RemoteSource(a0 context.Context, a1 string, a2 string) (r0 playlists.RemoteSource, err error) {
+	err = c.Invoke(a0, "RemoteSource", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) RemoteSyncJob(a0 context.Context, a1 string, a2 string) (r0 playlists.SyncJob, err error) {
+	err = c.Invoke(a0, "RemoteSyncJob", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) ReplayWriteback(a0 context.Context, a1 string, a2 writebackhost.Request, a3 string) (r0 writebackhost.Job, r1 bool, err error) {
+	err = c.Invoke(a0, "ReplayWriteback", []any{a1, a2, a3}, []any{&r0, &r1})
+	return r0, r1, err
+}
+
+func (c *Client) ReserveEnrichmentPreview(a0 context.Context, a1 enrichment.Work, a2 int64) (err error) {
+	err = c.Invoke(a0, "ReserveEnrichmentPreview", []any{a1, a2}, []any{})
+	return err
+}
+
+func (c *Client) Result(a0 context.Context, a1 string, a2 string, a3 string, a4 string) (r0 []uint8, err error) {
+	err = c.Invoke(a0, "Result", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) RevokeTimeline(a0 context.Context, a1 string, a2 string, a3 int64, a4 string) (r0 timeline.Evidence, err error) {
 	err = c.Invoke(a0, "RevokeTimeline", []any{a1, a2, a3, a4}, []any{&r0})
@@ -30,6 +65,11 @@ func (c *Client) SaveAuth(a0 context.Context, a1 auth.Session) (err error) {
 func (c *Client) SaveCandidates(a0 context.Context, a1 string, a2 matching.Snapshot, a3 []candidates.Candidate) (r0 matching.CandidatePage, err error) {
 	err = c.Invoke(a0, "SaveCandidates", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
+}
+
+func (c *Client) SaveMatchingRun(a0 context.Context, a1 matching.Run) (err error) {
+	err = c.Invoke(a0, "SaveMatchingRun", []any{a1}, []any{})
+	return err
 }
 
 func (c *Client) SavePersonalProfile(a0 context.Context, a1 string, a2 *string) (r0 personal.Profile, err error) {
@@ -94,45 +134,5 @@ func (c *Client) SetWritebackState(a0 context.Context, a1 string, a2 string, a3 
 
 func (c *Client) SourceAlbum(a0 context.Context, a1 string, a2 string) (r0 albums.SourceAlbum, err error) {
 	err = c.Invoke(a0, "SourceAlbum", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SourceAlbums(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 []albums.SourceAlbum, err error) {
-	err = c.Invoke(a0, "SourceAlbums", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SourceDisplay(a0 context.Context, a1 string, a2 []playlists.SourceRef) (r0 sourcedisplay.Page, err error) {
-	err = c.Invoke(a0, "SourceDisplay", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) Split(a0 context.Context, a1 string, a2 matching.SplitRequest, a3 string) (r0 matching.Mutation, err error) {
-	err = c.Invoke(a0, "Split", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) Timeline(a0 context.Context, a1 string, a2 string) (r0 timeline.Evidence, err error) {
-	err = c.Invoke(a0, "Timeline", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) Unlink(a0 context.Context, a1 string, a2 matching.UnlinkRequest, a3 string) (r0 matching.Mutation, err error) {
-	err = c.Invoke(a0, "Unlink", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) UnlockContent(a0 context.Context, a1 string, a2 mediastore.UnlockRequest, a3 string) (r0 mediastore.Selection, err error) {
-	err = c.Invoke(a0, "UnlockContent", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) UnlockCover(a0 context.Context, a1 string, a2 albums.UnlockCoverRequest, a3 string) (r0 albums.CoverSelection, err error) {
-	err = c.Invoke(a0, "UnlockCover", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) UpdateRelease(a0 context.Context, a1 string, a2 string, a3 albums.UpdateReleaseRequest, a4 string) (r0 albums.Release, err error) {
-	err = c.Invoke(a0, "UpdateRelease", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
 }

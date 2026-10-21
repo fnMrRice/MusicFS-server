@@ -30,6 +30,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	_ "github.com/fnMrRice/MusicFS-server/src/storage/rpcbackend"
@@ -214,7 +215,12 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	if fingerprints != nil {
 		fingerprintDetails = fingerprints
 	}
-	handler.RegisterMatching(matching.New(store, fingerprintDetails, standard.Plugin{}))
+	matchingService := matching.New(store, fingerprintDetails, standard.Plugin{})
+	handler.RegisterMatching(matchingService)
+	matchingAutomation := matching.NewAutomation(store, store, matchingService, standard.Detector())
+	handler.RegisterPluginSettings(settings.New(store, matchingAutomation.Provider()))
+	beforeMatching := cleanup
+	cleanup = func() { matchingAutomation.Close(); beforeMatching() }
 	player, err := playback.New(ctx, store, lib, processor, playback.Config{CacheRoot: c.CacheRoot, MaxSessions: c.MaxSessions, MaxCacheBytes: c.MaxCacheBytes, NCMDecoder: decoder, RequireDSP: len(c.AudioDSP.Chain) > 0})
 	if err != nil {
 		cleanup()
@@ -283,5 +289,6 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 		cleanup()
 		return nil, nil, err
 	}
+	matchingAutomation.Start(ctx)
 	return handler, cleanup, nil
 }

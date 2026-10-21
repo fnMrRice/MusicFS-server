@@ -158,6 +158,11 @@ func TestMatchingHTTPManualDecisionsCandidatesPrivacyAndAudit(t *testing.T) {
 	if first.Revision != 0 || len(first.Items) != 1 || !first.Items[0].RequiresConfirmation || first.Items[0].Status != "pending" {
 		t.Fatalf("missing review candidate: %+v", first)
 	}
+	var whole matching.CandidatePage
+	read("/matching/candidates?limit=1", "MatchCandidates", &whole)
+	if whole.Revision != 0 || len(whole.Items) != 1 || whole.Items[0].LeftTrack == nil || whole.Items[0].RightTrack == nil || len(whole.Items[0].LeftTrack.Versions) != 1 {
+		t.Fatal("whole library candidates omit authorized source displays")
+	}
 	second := refresh()
 	if len(second.Items) != 1 || second.Items[0].ID != first.Items[0].ID || !second.Items[0].CreatedAt.Equal(first.Items[0].CreatedAt) || second.Revision != first.Revision {
 		t.Fatal("same snapshot refresh was not naturally idempotent")

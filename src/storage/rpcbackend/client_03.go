@@ -13,6 +13,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
@@ -53,6 +54,11 @@ func (c *Client) GetLink(a0 context.Context, a1 string, a2 string) (r0 matching.
 
 func (c *Client) GetPluginOperation(a0 context.Context, a1 string, a2 string) (r0 plugincontrol.Operation, err error) {
 	err = c.Invoke(a0, "GetPluginOperation", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) GetPluginSettings(a0 context.Context, a1 string, a2 string) (r0 settings.Record, err error) {
+	err = c.Invoke(a0, "GetPluginSettings", []any{a1, a2}, []any{&r0})
 	return r0, err
 }
 
@@ -111,6 +117,11 @@ func (c *Client) InvalidatePublication(a0 context.Context, a1 string, a2 string,
 	return err
 }
 
+func (c *Client) ListGroupedTracks(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 library.Page, err error) {
+	err = c.Invoke(a0, "ListGroupedTracks", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) ListProcessedCache(a0 context.Context) (r0 []processedcache.Record, err error) {
 	err = c.Invoke(a0, "ListProcessedCache", []any{}, []any{&r0})
 	return r0, err
@@ -123,15 +134,5 @@ func (c *Client) ListScrapeDocuments(a0 context.Context, a1 string, a2 string) (
 
 func (c *Client) ListTracks(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 library.Page, err error) {
 	err = c.Invoke(a0, "ListTracks", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) ManualLink(a0 context.Context, a1 string, a2 matching.LinkRequest, a3 string) (r0 matching.Mutation, err error) {
-	err = c.Invoke(a0, "ManualLink", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) MatchingRevision(a0 context.Context, a1 string) (r0 int64, err error) {
-	err = c.Invoke(a0, "MatchingRevision", []any{a1}, []any{&r0})
 	return r0, err
 }

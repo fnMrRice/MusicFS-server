@@ -3,6 +3,7 @@
 package matching
 
 import (
+	"github.com/fnMrRice/MusicFS-server/src/library"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
@@ -21,6 +22,8 @@ type CandidateSource struct {
 // Sources is an explicit, bounded comparison pool. The metadata snapshot and
 // fingerprint binding revisions are checked again before candidate publication.
 type Snapshot struct {
+	// Partial 表示只替换明确比较的来源对，供后台分批识别使用。
+	Partial         bool
 	Owner           string
 	Revision        int64
 	LibraryRevision int64
@@ -32,8 +35,10 @@ type Snapshot struct {
 type Candidate struct {
 	ID string `json:"candidateId"`
 	candidates.Candidate
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"createdAt"`
+	Status     string         `json:"status"`
+	CreatedAt  time.Time      `json:"createdAt"`
+	LeftTrack  *library.Track `json:"leftTrack,omitempty"`
+	RightTrack *library.Track `json:"rightTrack,omitempty"`
 }
 
 type CandidatePage struct {

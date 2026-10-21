@@ -64,7 +64,20 @@ func (s *Server) RegisterLibrary(service *library.Service) {
 				return domain.Fail("INVALID_ARGUMENT", "limit must be between 1 and 200")
 			}
 		}
-		page, err := service.List(r.Context(), session.User.ID, query.Get("providerInstanceId"), query.Get("cursor"), limit)
+		for _, key := range []string{"groupBy", "providerInstanceId", "cursor"} {
+			if len(query[key]) > 1 {
+				return domain.Fail("INVALID_ARGUMENT", "Library parameters must be specified once")
+			}
+		}
+		groupBy := query.Get("groupBy")
+		if groupBy != "" && groupBy != "recording" {
+			return domain.Fail("INVALID_ARGUMENT", "Unsupported library grouping")
+		}
+		list := service.List
+		if groupBy == "recording" {
+			list = service.ListGrouped
+		}
+		page, err := list(r.Context(), session.User.ID, query.Get("providerInstanceId"), query.Get("cursor"), limit)
 		if err != nil {
 			return err
 		}

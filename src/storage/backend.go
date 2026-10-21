@@ -24,6 +24,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
@@ -45,7 +46,10 @@ type Backend interface {
 	identification.FingerprintRepository
 	jobs.Repository
 	library.Repository
+	library.GroupedRepository
 	matching.Repository
+	matching.AutomationRepository
+	settings.Repository
 	mediastore.Repository
 	mediastore.ContentRepository
 	mediastore.DerivedRepository
