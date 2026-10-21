@@ -10,6 +10,7 @@
 | golang.org/x/sys | 0.49.0 | 文件锁、稳定读取和进程管理 |
 | golang.org/x/text | 0.43.0 | SDK 文本处理 |
 | go.yaml.in/yaml/v3 | 3.0.5 | YAML 语法树、校验和保留注释写入 |
+| gopkg.in/natefinch/lumberjack.v2 | 2.2.1 | 日志文件轮转；事件记录使用标准库 log/slog，压缩与保留由 src/core/logging 统一管理 |
 | github.com/santhosh-tekuri/jsonschema/v6 | 6.0.3 | 协议测试及受限配置 Schema 校验 |
 | FFmpeg / ffprobe | 使用过 Windows 6.1.1、Linux 6.1.6 构建 | 外部探测、解码和编码，能力按实际构建检测 |
 | Chromaprint fpcalc | 1.6.1，CLI 算法 2 | 默认关闭的本地指纹提取，显式固定 SHA-256 |

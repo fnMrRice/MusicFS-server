@@ -116,6 +116,7 @@ func (s *Store) Current() Config {
 }
 
 func cloneConfig(c Config) Config {
+	c.Logging.Plugins = maps.Clone(c.Logging.Plugins)
 	c.Storage.Options = maps.Clone(c.Storage.Options)
 	c.Storage.Args = slices.Clone(c.Storage.Args)
 	c.AudioDSP.Chain = append(c.AudioDSP.Chain[:0:0], c.AudioDSP.Chain...)

@@ -32,7 +32,11 @@ func (s *Service) Submit(ctx context.Context, user, target string, plan pluginpr
 	if err := s.Err(); err != nil {
 		return Job{}, false, err
 	}
-	return s.repo.Enqueue(ctx, user, target, plan, key)
+	job, merged, err := s.repo.Enqueue(ctx, user, target, plan, key)
+	if err == nil {
+		slog.InfoContext(ctx, "Scan task queued", "jobId", job.ID, "instanceId", target, "merged", merged, "roots", len(plan.Roots))
+	}
+	return job, merged, err
 }
 func (s *Service) Get(ctx context.Context, user, id string) (Job, error) {
 	j, err := s.repo.GetJob(ctx, user, id)
@@ -54,6 +58,7 @@ func (s *Service) Start(ctx context.Context) error {
 	}
 	ctx, s.cancel = context.WithCancel(ctx)
 	s.done = make(chan struct{})
+	slog.DebugContext(ctx, "Scan scheduler started")
 	go s.run(ctx)
 	return nil
 }
@@ -80,6 +85,8 @@ func (s *Service) run(ctx context.Context) {
 		s.mu.Lock()
 		h := s.handlers[job.Kind]
 		s.mu.Unlock()
+		started := time.Now()
+		slog.InfoContext(ctx, "Scan task started", "jobId", job.ID, "instanceId", job.ProviderInstanceID, "attempt", job.AttemptCount)
 		var n int
 		if h == nil {
 			err = domain.Fail("UNSUPPORTED", "Unsupported scan task type")
@@ -90,6 +97,7 @@ func (s *Service) run(ctx context.Context) {
 			s.stopFailed()
 			return
 		}
+		s.logFinished(job, n, time.Since(started))
 	}
 }
 
@@ -113,6 +121,7 @@ func (s *Service) finish(job Job, n int, failure error) bool {
 		if attempt == 2 {
 			break
 		}
+		slog.DebugContext(ctx, "Scan task state persistence retry", "jobId", job.ID, "attempt", attempt+1, "errorCode", "TEMPORARY_FAILURE")
 		timer := time.NewTimer(time.Duration(attempt+1) * 100 * time.Millisecond)
 		select {
 		case <-ctx.Done():

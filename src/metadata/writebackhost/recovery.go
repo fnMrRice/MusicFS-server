@@ -3,6 +3,7 @@ package writebackhost
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
@@ -17,6 +18,9 @@ func (s *Service) recoverStartup(ctx context.Context) error {
 		page, err := s.journal.Pending(ctx, after, 128)
 		if err != nil {
 			return err
+		}
+		if slog.Default().Enabled(ctx, slog.Level(-8)) {
+			slog.Log(ctx, slog.Level(-8), "Writeback recovery page received", "items", len(page))
 		}
 		for _, r := range page {
 			ids[r.ID] = true
@@ -35,6 +39,7 @@ func (s *Service) recoverStartup(ctx context.Context) error {
 		return err
 	}
 	for _, r := range pending {
+		slog.InfoContext(ctx, "Writeback startup recovery started", "jobId", r.ID, "instanceId", r.Target.InstanceID)
 		recoveryCtx, cancel := context.WithTimeout(ctx, 30*time.Minute)
 		job, err := s.repo.GetWriteback(recoveryCtx, r.Owner, r.ID)
 		if err == nil && job.Request.Overwrite && !s.cfg.AllowOverwrite {
@@ -81,6 +86,7 @@ func (s *Service) Recover(ctx context.Context, owner, id string) (Job, error) {
 		return j, domain.Fail("RATE_LIMITED", "Writeback recovery queue is full")
 	}
 	s.retries[id] = owner
+	slog.InfoContext(ctx, "Writeback recovery queued", "jobId", id)
 	return s.Get(ctx, owner, id)
 }
 
@@ -101,6 +107,7 @@ func (s *Service) runRecovery() bool {
 	defer s.active.Store(nil)
 	ctx, cancel := context.WithTimeout(s.ctx, 30*time.Minute)
 	defer cancel()
+	slog.DebugContext(ctx, "Writeback recovery attempt started", "jobId", id)
 	w, err := s.repo.WritebackWork(ctx, owner, id)
 	if err == nil {
 		_, err = s.editor.Recover(ctx, owner, id)
@@ -131,20 +138,37 @@ func (s *Service) settle(owner, id string, target writeback.Target, operationErr
 		code = "TIMEOUT"
 	}
 	if err == nil && r.Stage == "committed" {
+		if s.lib.WritebackPending(owner, target.InstanceID, id) {
+			slog.WarnContext(ctx, "Writeback source protection requires recovery", "jobId", id, "instanceId", target.InstanceID, "errorCode", code)
+		} else {
+			slog.InfoContext(ctx, "Writeback task completed", "jobId", id, "instanceId", target.InstanceID)
+		}
 		return
 	}
 	if err == nil && r.Stage == "aborted" {
-		_ = s.repo.SetWritebackState(ctx, owner, id, "failed", code)
+		s.recordOutcome(ctx, owner, id, target, "failed", code)
 		s.clearBarrier(ctx, owner, id, target)
 		return
 	}
 	if errors.As(err, &de) && de.Code == "NOT_FOUND" {
-		_ = s.repo.SetWritebackState(ctx, owner, id, "failed", code)
+		s.recordOutcome(ctx, owner, id, target, "failed", code)
 		s.clearBarrier(ctx, owner, id, target)
 		return
 	}
 	_ = s.lib.BlockProvider(owner, target.InstanceID, id)
-	_ = s.repo.SetWritebackState(ctx, owner, id, "recovery", code)
+	s.recordOutcome(ctx, owner, id, target, "recovery", code)
+}
+
+func (s *Service) recordOutcome(ctx context.Context, owner, id string, target writeback.Target, state, code string) {
+	if err := s.repo.SetWritebackState(ctx, owner, id, state, code); err != nil {
+		slog.ErrorContext(ctx, "Writeback task state persistence failed", "jobId", id, "instanceId", target.InstanceID, "errorCode", "TEMPORARY_FAILURE")
+		return
+	}
+	level, message := slog.LevelWarn, "Writeback task failed"
+	if state == "recovery" {
+		level, message = slog.LevelError, "Writeback task requires recovery"
+	}
+	slog.Log(ctx, level, message, "jobId", id, "instanceId", target.InstanceID, "state", state, "errorCode", code)
 }
 
 func (s *Service) clearBarrier(ctx context.Context, owner, id string, target writeback.Target) {

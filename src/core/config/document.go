@@ -100,13 +100,19 @@ func parseDocument(raw []byte, path string, overrides map[string]string, expecte
 	if err := applyOverrides(&c, overrides); err != nil {
 		return nil, err
 	}
+	if c.Logging.Level == "" {
+		return nil, errors.New("logging.level must be trace, debug, info, warn or error")
+	}
 	resolvePaths(&c, filepath.Dir(abs))
 	c.NormalizeRuntime()
+	if err := c.Logging.Validate(); err != nil {
+		return nil, err
+	}
 	if err := c.Storage.Validate(); err != nil {
 		return nil, err
 	}
 	if expected != nil && !SameStartupSettings(*expected, c) {
-		return nil, errors.New("storage, data roots or DSP configuration changed; restart is required")
+		return nil, errors.New("storage, data roots, logging or DSP configuration changed; restart is required")
 	}
 	if err := loadLocalDirectoryDefaults(context.Background(), &c); err != nil {
 		return nil, err
@@ -150,7 +156,7 @@ func documentPath(path string) (string, error) {
 }
 
 func applyOverrides(c *Config, overrides map[string]string) error {
-	fields := map[string]*string{"LISTEN": &c.Listen, "DATA_ROOT": &c.DataRoot, "MEDIA_ROOT": &c.MediaRoot, "CACHE_ROOT": &c.CacheRoot, "WEB_ROOT": &c.WebRoot, "ADMIN_TOKEN": &c.AdminToken}
+	fields := map[string]*string{"LISTEN": &c.Listen, "DATA_ROOT": &c.DataRoot, "MEDIA_ROOT": &c.MediaRoot, "CACHE_ROOT": &c.CacheRoot, "WEB_ROOT": &c.WebRoot, "ADMIN_TOKEN": &c.AdminToken, "LOG_LEVEL": &c.Logging.Level}
 	for key := range overrides {
 		if _, ok := fields[key]; !ok {
 			return errors.New("unsupported configuration override")

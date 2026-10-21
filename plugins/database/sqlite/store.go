@@ -10,13 +10,18 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
+
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite/migrations"
 	_ "modernc.org/sqlite"
 )
 
 type Store struct{ DB *sql.DB }
 
-func Open(ctx context.Context, path string) (*Store, error) {
+func Open(ctx context.Context, path string) (store *Store, openErr error) {
+	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", "")
+	finish := pluginlog.Operation(ctx, "database.open")
+	defer func() { finish(openErr) }()
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return nil, errors.New("cannot create database directory")
 	}
@@ -35,6 +40,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		db.Close()
 		return nil, err
 	}
+	pluginlog.Logger(ctx).InfoContext(ctx, "Database ready", "event", "plugin.lifecycle.started")
 	return s, nil
 }
 func (s *Store) Close() error { return s.DB.Close() }
@@ -51,6 +57,7 @@ func (s *Store) migrate(ctx context.Context, path string) error {
 		return err
 	}
 	latest := steps[len(steps)-1].Version
+	pluginlog.Logger(ctx).DebugContext(ctx, "Database schema checked", "currentVersion", current, "latestVersion", latest)
 	if current > latest {
 		return errors.New("database schema is newer than this server")
 	}
@@ -82,10 +89,14 @@ func (s *Store) migrate(ctx context.Context, path string) error {
 			return err
 		}
 		current = v
+		pluginlog.Logger(ctx).InfoContext(ctx, "Database migration completed", "schemaVersion", v)
 	}
 	return nil
 }
-func (s *Store) Backup(ctx context.Context, dest string) error {
+func (s *Store) Backup(ctx context.Context, dest string) (backupErr error) {
+	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", "")
+	finish := pluginlog.Operation(ctx, "database.backup")
+	defer func() { finish(backupErr) }()
 	if _, err := os.Stat(dest); !os.IsNotExist(err) {
 		return errors.New("backup destination must not exist")
 	}

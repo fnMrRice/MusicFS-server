@@ -2,7 +2,7 @@ package plugins_test
 
 import (
 	"context"
-	"errors"
+	"database/sql"
 	"sync"
 	"testing"
 	"time"
@@ -14,9 +14,8 @@ import (
 )
 
 type coordinatedScanQueue struct {
-	jobs.Repository
 	mu       sync.Mutex
-	next     *jobs.Job
+	job      jobs.Job
 	finished chan error
 }
 
@@ -26,24 +25,52 @@ func (q *coordinatedScanQueue) Enqueue(_ context.Context, owner, provider string
 	if err != nil {
 		return jobs.Job{}, false, err
 	}
-	j := jobs.Job{ID: domain.NewID(), Owner: owner, ProviderInstanceID: provider, Kind: "scan-full", Generation: 1, Plan: plan, PlanDigest: digest}
+	now := time.Now().UTC()
+	j := jobs.Job{ID: domain.NewID(), Owner: owner, ProviderInstanceID: provider, Kind: "scan-full", Plan: plan, PlanDigest: digest, Status: "queued", MaxAttempts: jobs.MaxAttempts, CreatedAt: now, UpdatedAt: now}
 	q.mu.Lock()
-	q.next = &j
+	q.job = j
 	q.mu.Unlock()
 	return j, false, nil
 }
 func (q *coordinatedScanQueue) Claim(context.Context) (jobs.Job, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	if q.next == nil {
-		return jobs.Job{}, errors.New("no pending scan")
+	now := time.Now().UTC()
+	if q.job.Status != "queued" && (q.job.Status != "retry_wait" || q.job.NextAttemptAt == nil || now.Before(*q.job.NextAttemptAt)) {
+		return jobs.Job{}, sql.ErrNoRows
 	}
-	j := *q.next
-	q.next = nil
-	return j, nil
+	q.job.Status = "running"
+	q.job.Generation++
+	q.job.AttemptCount++
+	q.job.RetryCount = q.job.AttemptCount - 1
+	q.job.NextAttemptAt, q.job.LastAttemptAt, q.job.UpdatedAt = nil, &now, now
+	q.job.Progress.Observed = 0
+	return q.job, nil
 }
-func (q *coordinatedScanQueue) Finish(_ context.Context, _ jobs.Job, _ int, err error) error {
-	q.finished <- err
+func (q *coordinatedScanQueue) GetJob(_ context.Context, owner, id string) (jobs.Job, error) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if q.job.ID != id || q.job.Owner != owner {
+		return jobs.Job{}, domain.Fail("NOT_FOUND", "Job not found")
+	}
+	return q.job, nil
+}
+func (q *coordinatedScanQueue) Finish(_ context.Context, given jobs.Job, observed int, failure error) error {
+	q.mu.Lock()
+	if q.job.ID != given.ID || q.job.Owner != given.Owner || q.job.Generation != given.Generation || q.job.Status != "running" {
+		q.mu.Unlock()
+		return domain.Fail("CONFLICT", "Scan task is no longer active")
+	}
+	now := time.Now().UTC()
+	decision := jobs.DecideRetry(failure, q.job.AttemptCount, now)
+	q.job.Status, q.job.Error, q.job.NextAttemptAt = decision.Status, decision.Error, decision.NextAttemptAt
+	q.job.Progress.Observed = observed
+	q.job.Complete, q.job.UpdatedAt = failure == nil, now
+	if failure == nil {
+		q.job.LastSuccessAt = &now
+	}
+	q.mu.Unlock()
+	q.finished <- failure
 	return nil
 }
 
@@ -78,7 +105,7 @@ func TestScanRetainsProviderReadThroughPublication(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer queue.Close()
-	_, _, err := lib.Scan(ctx, "owner", "local", library.ScanInput{Mode: "full", SchemaRevision: configuration.SchemaRevision, RootIDs: []string{"music"}}, "scan-coordination")
+	job, _, err := lib.Scan(ctx, "owner", "local", library.ScanInput{Mode: "full", SchemaRevision: configuration.SchemaRevision, RootIDs: []string{"music"}}, "scan-coordination")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,6 +128,10 @@ func TestScanRetainsProviderReadThroughPublication(t *testing.T) {
 		}
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
+	}
+	current, err := queue.Get(ctx, "owner", job.ID)
+	if err != nil || current.Status != "succeeded" || !current.Complete || current.AttemptCount != 1 {
+		t.Fatal("completed scan state was not retained", current.Status, current.Complete, current.AttemptCount, err)
 	}
 	lease, err := lib.TryExclusive(ctx, "owner", "local", domain.NewID())
 	if err != nil {

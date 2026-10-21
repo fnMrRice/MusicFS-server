@@ -3,6 +3,7 @@ package playback
 import (
 	"context"
 	"io"
+	"log/slog"
 	"os"
 	"sync"
 	"time"
@@ -27,7 +28,16 @@ type Stream struct {
 }
 
 func (s *Stream) Close() { s.once.Do(func() { s.Cancel(); s.File.Close(); s.release() }) }
-func (s *Stream) Process(output io.Writer) error {
+func (s *Stream) Process(output io.Writer) (err error) {
+	started := time.Now()
+	slog.DebugContext(s.Context, "Playback processing started", "sessionId", s.Description.SessionID)
+	defer func() {
+		if err != nil {
+			logPlaybackFailure(s.Context, "Playback processing failed", err, "sessionId", s.Description.SessionID, "durationMs", time.Since(started).Milliseconds())
+		} else {
+			slog.DebugContext(s.Context, "Playback processing completed", "sessionId", s.Description.SessionID, "durationMs", time.Since(started).Milliseconds())
+		}
+	}()
 	if s.process != nil {
 		return s.process(output)
 	}
@@ -36,7 +46,13 @@ func (s *Stream) Process(output io.Writer) error {
 func (s *Stream) processDirect(output io.Writer) error {
 	return s.processor.Process(s.Context, audioffmpeg.Plan{TaskID: s.Description.AttemptID, AssetID: s.Description.AssetID, Profile: "mp3-128", GainDB: s.gain, PositionMs: s.Description.PositionOriginMs}, s.File, s.Size, output)
 }
-func (s *Service) OpenStream(ctx context.Context, who auth.Session, id, attempt string, head bool) (*Stream, error) {
+func (s *Service) OpenStream(ctx context.Context, who auth.Session, id, attempt string, head bool) (result *Stream, resultErr error) {
+	consumers := 0
+	defer func() {
+		if result != nil && slog.Default().Enabled(ctx, slog.Level(-8)) {
+			slog.Log(ctx, slog.Level(-8), "Playback stream opened", "sessionId", id, "head", head, "consumers", consumers)
+		}
+	}()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	a, err := s.find(who, id)
@@ -66,6 +82,7 @@ func (s *Service) OpenStream(ctx context.Context, who auth.Session, id, attempt 
 		a.consumers[attempt]++
 	}
 	a.lastAccess = time.Now()
+	consumers = a.active
 	stream := &Stream{Description: a.description, File: f, Size: a.size, ETag: a.etag, Context: streamCtx, processor: a.processor, gain: a.gain}
 	if s.cache != nil && a.description.DeliveryMode == "processed" {
 		scope := s.cacheScope(a)
@@ -74,7 +91,6 @@ func (s *Service) OpenStream(ctx context.Context, who auth.Session, id, attempt 
 	stream.Cancel = func() { unlink(); closeFile(); cancel() }
 	stream.release = func() {
 		s.mu.Lock()
-		defer s.mu.Unlock()
 		a.active--
 		s.readers[path]--
 		if s.readers[path] == 0 {
@@ -88,6 +104,11 @@ func (s *Service) OpenStream(ctx context.Context, who auth.Session, id, attempt 
 		}
 		a.lastAccess = time.Now()
 		s.collect()
+		consumers := a.active
+		s.mu.Unlock()
+		if slog.Default().Enabled(context.Background(), slog.Level(-8)) {
+			slog.Log(context.Background(), slog.Level(-8), "Playback stream closed", "sessionId", id, "consumers", consumers)
+		}
 	}
 	return stream, nil
 }

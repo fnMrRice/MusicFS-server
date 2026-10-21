@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"io"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -74,7 +75,11 @@ func (s *Service) Submit(ctx context.Context, owner, track, key string, startMs,
 		return identification.FingerprintJob{}, false, err
 	}
 	request := identification.FingerprintRequest{StartMs: startMs, DurationMs: durationMs, ExtractorIdentity: extractor.Identity()}
-	return s.repo.QueueFingerprint(ctx, owner, identification.FingerprintTarget{HashTarget: target, FingerprintRequest: request}, key, false)
+	j, merged, err := s.repo.QueueFingerprint(ctx, owner, identification.FingerprintTarget{HashTarget: target, FingerprintRequest: request}, key, false)
+	if err == nil {
+		slog.InfoContext(ctx, "Fingerprint task queued", "jobId", j.ID, "merged", merged)
+	}
+	return j, merged, err
 }
 
 func (s *Service) Get(ctx context.Context, owner, id string) (identification.FingerprintJob, error) {
@@ -83,6 +88,7 @@ func (s *Service) Get(ctx context.Context, owner, id string) (identification.Fin
 func (s *Service) Cancel(ctx context.Context, owner, id string) (identification.FingerprintJob, error) {
 	j, err := s.repo.CancelFingerprint(ctx, owner, id)
 	if err == nil {
+		slog.InfoContext(ctx, "Fingerprint task cancellation recorded", "jobId", id, "state", j.Status)
 		s.mu.Lock()
 		cancel := s.running[id]
 		s.mu.Unlock()
@@ -108,6 +114,7 @@ func (s *Service) Start(ctx context.Context) error {
 	run, cancel := context.WithCancel(ctx)
 	s.cancel = cancel
 	s.started = true
+	slog.DebugContext(ctx, "Fingerprint workers started", "concurrency", s.config.MaxConcurrent)
 	for i := 0; i < s.config.MaxConcurrent; i++ {
 		s.wg.Add(1)
 		go s.worker(run)
@@ -143,6 +150,7 @@ func (s *Service) worker(ctx context.Context) {
 		if err != nil {
 			delay := 100 * time.Millisecond
 			if !errors.Is(err, sql.ErrNoRows) {
+				slog.DebugContext(ctx, "Fingerprint claim deferred", "errorCode", failureCode(err))
 				delay = time.Second
 			}
 			if !pause(ctx, delay) {

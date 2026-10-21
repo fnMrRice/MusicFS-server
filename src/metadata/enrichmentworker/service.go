@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"slices"
 	"sync"
 	"time"
@@ -144,7 +145,11 @@ func (s *Service) Submit(ctx context.Context, owner string, request enrichment.J
 			ctx = lease.Context()
 		}
 	}
-	return s.repo.QueueEnrichment(ctx, owner, request, key)
+	job, merged, err := s.repo.QueueEnrichment(ctx, owner, request, key)
+	if err == nil {
+		slog.InfoContext(ctx, "Metadata task queued", "jobId", job.JobID, "targets", len(request.SourceTrackIDs), "instances", len(request.InstanceIDs), "merged", merged)
+	}
+	return job, merged, err
 }
 
 func (s *Service) Get(ctx context.Context, owner, id string) (enrichment.Job, error) {
@@ -153,6 +158,7 @@ func (s *Service) Get(ctx context.Context, owner, id string) (enrichment.Job, er
 func (s *Service) Cancel(ctx context.Context, owner, id string) (enrichment.Job, error) {
 	j, err := s.repo.CancelEnrichment(ctx, owner, id)
 	if err == nil {
+		slog.InfoContext(ctx, "Metadata task cancellation recorded", "jobId", id, "state", j.State)
 		s.mu.Lock()
 		for _, running := range s.running {
 			if running.jobID == id {
@@ -190,6 +196,7 @@ func (s *Service) Start(ctx context.Context) error {
 	run, cancel := context.WithCancel(ctx)
 	s.cancel = cancel
 	s.started = true
+	slog.DebugContext(ctx, "Metadata workers started", "concurrency", s.config.MaxConcurrent)
 	for i := 0; i < s.config.MaxConcurrent; i++ {
 		s.wg.Add(1)
 		go s.worker(run)
@@ -220,6 +227,7 @@ func (s *Service) worker(ctx context.Context) {
 		}
 		delay := 100 * time.Millisecond
 		if !errors.Is(err, sql.ErrNoRows) {
+			slog.DebugContext(ctx, "Metadata claim deferred", "errorCode", failureCode(err))
 			delay = time.Second
 		}
 		timer := time.NewTimer(delay)

@@ -9,6 +9,7 @@
 | [本地运行与扫描](operations/running.md) | 构建、启动、目录选择与扫描 |
 | [部署](operations/deployment.md) | 双程序制品、外部工具、容器与 TLS 示例 |
 | [配置](operations/configuration.md) | YAML、覆盖顺序、权限、自动发现与应用方式 |
+| [日志](operations/logging.md) | 服务端与插件文件、30天压缩保留、等级与运行时管理 |
 | [备份与恢复](operations/backup.md) | 停服备份、校验、新目录恢复与回滚 |
 | [生命周期](operations/lifecycle.md) | 启动归属、本机租约、多客户端与退出 |
 

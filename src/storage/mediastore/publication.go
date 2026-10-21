@@ -3,6 +3,7 @@ package mediastore
 import (
 	"context"
 	"io"
+	"log/slog"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
@@ -35,6 +36,7 @@ func (s *Service) Publish(ctx context.Context, owner, kind, mime string, target 
 	if err := s.repo.BeginPublication(ctx, p); err != nil {
 		return p, err
 	}
+	slog.DebugContext(ctx, "Media publication prepared", "publicationId", p.ID, "kind", kind)
 	obj, err := s.files.Write(ctx, id, kind, mime, input, limit, validate)
 	if err != nil {
 		return p, err
@@ -43,6 +45,9 @@ func (s *Service) Publish(ctx context.Context, owner, kind, mime string, target 
 		return p, err
 	}
 	p.Object, p.Status = obj, "written"
+	if slog.Default().Enabled(ctx, slog.Level(-8)) {
+		slog.Log(ctx, slog.Level(-8), "Media publication bytes written", "publicationId", p.ID, "sizeBytes", obj.Size)
+	}
 	if err = ctx.Err(); err != nil {
 		return p, err
 	}
@@ -53,6 +58,9 @@ func (s *Service) Publish(ctx context.Context, owner, kind, mime string, target 
 		return p, err
 	}
 	p.Status = "published"
+	if slog.Default().Enabled(ctx, slog.Level(-8)) {
+		slog.Log(ctx, slog.Level(-8), "Media object published", "publicationId", p.ID)
+	}
 	if err = ctx.Err(); err != nil {
 		return p, err
 	}
@@ -64,6 +72,7 @@ func (s *Service) Publish(ctx context.Context, owner, kind, mime string, target 
 		return p, err
 	}
 	p.Status = "finished"
+	slog.DebugContext(ctx, "Media publication completed", "publicationId", p.ID, "kind", kind, "sizeBytes", obj.Size, "durationMs", time.Since(now).Milliseconds())
 	return p, nil
 }
 
@@ -80,6 +89,7 @@ func (s *Service) Recover(ctx context.Context) error {
 		if len(items) == 0 {
 			return nil
 		}
+		slog.DebugContext(ctx, "Media recovery batch loaded", "items", len(items))
 		for _, p := range items {
 			if err = ctx.Err(); err != nil {
 				return err
@@ -95,12 +105,14 @@ func (s *Service) Recover(ctx context.Context) error {
 				if err = s.files.RemoveStaging(p.Object.ID); err != nil {
 					return err
 				}
+				slog.InfoContext(ctx, "Incomplete media publication abandoned", "publicationId", p.ID, "previousStage", p.Status)
 			case "referenced":
 				in, err := s.files.Open(p.Object)
 				if err != nil {
 					if err = s.repo.InvalidatePublication(ctx, p.Owner, p.ID, "RESOURCE_CHANGED"); err != nil {
 						return err
 					}
+					slog.WarnContext(ctx, "Media publication invalidated during recovery", "publicationId", p.ID, "errorCode", "RESOURCE_CHANGED")
 					after = p.ID
 					continue
 				}
@@ -110,6 +122,7 @@ func (s *Service) Recover(ctx context.Context) error {
 				if err = s.repo.SetPublicationStage(ctx, p.Owner, p.ID, "referenced", "finished"); err != nil {
 					return err
 				}
+				slog.InfoContext(ctx, "Media publication recovered", "publicationId", p.ID)
 			default:
 				return domain.Fail("CONFLICT", "Invalid pending media publication phase")
 			}

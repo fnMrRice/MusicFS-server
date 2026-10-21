@@ -38,8 +38,7 @@ func PluginDatabaseBackend(c Config) plugindb.BackendConfig {
 		SHA256: c.Storage.SHA256, Args: append([]string(nil), c.Storage.Args...)}
 }
 
-// SameStartupSettings prevents a reloaded YAML file from mixing a new storage
-// configuration with the already open database and its data-directory lock.
+// SameStartupSettings 阻止重载后的部署设置与正在使用的数据库、日志目录和 DSP 混用。
 func SameStartupSettings(a, b Config) bool {
 	if a.Storage.Backend == "" {
 		a.Storage.Backend = "sqlite"
@@ -48,7 +47,8 @@ func SameStartupSettings(a, b Config) bool {
 		b.Storage.Backend = "sqlite"
 	}
 	return a.DataRoot == b.DataRoot && a.MediaRoot == b.MediaRoot && a.CacheRoot == b.CacheRoot &&
-		reflect.DeepEqual(a.Storage, b.Storage) && reflect.DeepEqual(a.AudioDSP, b.AudioDSP)
+		reflect.DeepEqual(a.Storage, b.Storage) && reflect.DeepEqual(a.AudioDSP, b.AudioDSP) &&
+		reflect.DeepEqual(a.Logging.normalized(a.DataRoot), b.Logging.normalized(b.DataRoot))
 }
 
 func (s StorageConfig) Validate() error {

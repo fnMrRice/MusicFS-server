@@ -142,7 +142,7 @@ func validateDocumentShape(root *yaml.Node) error {
 		"enabled": boolShape, "instances": sequenceShape(instance),
 	}, "pluginId", "instances")
 	shape := mappingShape(map[string]fieldShape{
-		"storage": storageShape(), "audioDSP": audioDSPShape(),
+		"storage": storageShape(), "audioDSP": audioDSPShape(), "logging": loggingShape(),
 		"pluginBundle":  stringShape,
 		"configVersion": intShape, "listen": stringShape, "dataRoot": stringShape,
 		"mediaRoot": stringShape, "cacheRoot": stringShape, "webRoot": stringShape,
@@ -171,6 +171,9 @@ func validateDocumentShape(root *yaml.Node) error {
 		}),
 	}, "configVersion")
 	if err := validateShape(root, shape, "config"); err != nil {
+		return err
+	}
+	if err := validateLoggingNodes(root); err != nil {
 		return err
 	}
 	if version := yamlField(root, "configVersion"); version.Value != "1" {

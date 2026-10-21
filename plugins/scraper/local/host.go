@@ -16,7 +16,9 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/sdk/inprocess"
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/src/core/logging"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 )
@@ -71,7 +73,11 @@ func NewHost(config Config) (*Host, error) {
 	return &Host{config: config, slots: make(chan struct{}, config.MaxConcurrent)}, nil
 }
 
-func (h *Host) Open(parent context.Context, scope pluginproto.Context, target enrichment.Target, inputs []Input) (*Session, error) {
+func (h *Host) Open(parent context.Context, scope pluginproto.Context, target enrichment.Target, inputs []Input) (opened *Session, openErr error) {
+	parent = pluginlog.Context(parent, PluginID, h.config.InstanceID)
+	finish := pluginlog.Operation(parent, "scraper.open")
+	defer func() { finish(openErr) }()
+	pluginlog.Logger(parent).Log(parent, pluginlog.LevelTrace, "Scraper inputs admitted", "resourceCount", len(inputs), "builtin", h.config.Builtin)
 	if err := parent.Err(); err != nil {
 		return nil, err
 	}
@@ -136,7 +142,13 @@ func (h *Host) Open(parent context.Context, scope pluginproto.Context, target en
 	} else {
 		cmd := exec.CommandContext(ctx, h.config.WorkerPath, h.config.WorkerArgs...)
 		configureProcess(cmd)
-		cmd.Dir, cmd.Stderr, cmd.WaitDelay = h.config.WorkDir, io.Discard, time.Second
+		stderr := logging.PluginStderr(PluginID, h.config.InstanceID)
+		cmd.Dir, cmd.Stderr, cmd.WaitDelay = h.config.WorkDir, stderr, time.Second
+		defer func() {
+			if cmd.Process == nil {
+				_ = stderr.Close()
+			}
+		}()
 		cmd.Env = []string{}
 		for _, key := range []string{"SystemRoot", "WINDIR", "TEMP", "TMP"} {
 			if value := os.Getenv(key); value != "" {
@@ -161,10 +173,11 @@ func (h *Host) Open(parent context.Context, scope pluginproto.Context, target en
 		if err != nil {
 			cmd.Process.Kill()
 			cmd.Wait()
+			stderr.Close()
 			return nil, fmt.Errorf("UNSUPPORTED: scraper process containment unavailable")
 		}
 		peer = pluginproto.NewPeer(ctx, stdout, stdin, "h-", nil)
-		go func() { _ = cmd.Wait(); cancel(); _ = peer.Close(); close(processDone) }()
+		go func() { _ = cmd.Wait(); _ = stderr.Close(); cancel(); _ = peer.Close(); close(processDone) }()
 	}
 	cleaned := make(chan struct{})
 	go func() {

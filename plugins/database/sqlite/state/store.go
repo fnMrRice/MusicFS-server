@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginid"
@@ -26,7 +27,10 @@ type Store struct {
 	scope string
 }
 
-func Open(ctx context.Context, path, plugin, instance string) (*Store, error) {
+func Open(ctx context.Context, path, plugin, instance string) (store *Store, openErr error) {
+	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", instance)
+	finish := pluginlog.Operation(ctx, "database.state.open")
+	defer func() { finish(openErr) }()
 	if plugin == "" || instance == "" {
 		return nil, domain.Fail("ACCESS_DENIED", "Database scope is required")
 	}
@@ -57,7 +61,10 @@ func Open(ctx context.Context, path, plugin, instance string) (*Store, error) {
 
 func (s *Store) Close() error { return s.db.Close() }
 
-func (s *Store) Get(ctx context.Context, key string) (pluginproto.StateValue, error) {
+func (s *Store) Get(ctx context.Context, key string) (value pluginproto.StateValue, getErr error) {
+	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", "")
+	finish := pluginlog.Operation(ctx, "database.state.get")
+	defer func() { finish(getErr) }()
 	var v pluginproto.StateValue
 	if !keyPattern.MatchString(key) {
 		return v, domain.Fail("INVALID_ARGUMENT", "Invalid database key")
@@ -71,7 +78,10 @@ func (s *Store) Get(ctx context.Context, key string) (pluginproto.StateValue, er
 
 // CompareAndSet 在多个连接间保持原子性。null 作为值保存而不删除键，
 // 防止通过删除并重新创建键来重置版本。
-func (s *Store) CompareAndSet(ctx context.Context, r pluginproto.StateRequest) (pluginproto.StateValue, error) {
+func (s *Store) CompareAndSet(ctx context.Context, r pluginproto.StateRequest) (value pluginproto.StateValue, saveErr error) {
+	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", "")
+	finish := pluginlog.Operation(ctx, "database.state.compareAndSet")
+	defer func() { finish(saveErr) }()
 	if !keyPattern.MatchString(r.Key) || r.Revision < 0 || len(r.Value) > 512<<10 || !json.Valid(r.Value) {
 		return pluginproto.StateValue{}, domain.Fail("INVALID_ARGUMENT", "Invalid database value")
 	}

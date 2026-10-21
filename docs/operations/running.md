@@ -37,6 +37,8 @@ export MUSICFS_ADMIN_TOKEN="$(./build/linux/musicfs token)"
 
 将生成的管理员凭据用于 Web 登录，保存在自己的凭据管理中，不写入配置、URL 或 Git。服务保持前台运行，Ctrl+C 正常退出；默认独立启动，客户端托管模式见[生命周期](lifecycle.md)。
 
+默认 `info` 日志同时写控制台与 `dataRoot/logs/server.log`，插件各自写入 `dataRoot/logs/plugins/<pluginId>.log`。旧日志自动压缩并保留30天；临时排错可通过管理员接口开启 `debug/trace`，目录、等级配置与接口说明见[日志](logging.md)。
+
 ## 选择音乐目录与扫描
 
 登录 http://127.0.0.1:8080，在“设置 → 音乐源”的“本地音乐”中添加授权根或其子目录。逐目录保存名称、递归深度、隐藏内容及 .nomedia 设置；默认递归、不限深度，跳过隐藏内容并遵循 .nomedia。Web 在添加或编辑配置应用成功后自动提交扫描。删除目录只移除配置，保留授权范围、磁盘文件和曲库记录，不触发扫描。

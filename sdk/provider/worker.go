@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
@@ -55,6 +56,7 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 	if client == nil {
 		return nil, pluginproto.Failure("PROTOCOL_MISMATCH", "Online handshake is required")
 	}
+	ctx = pluginlog.Context(ctx, w.plugin.Descriptor.Plugin.ID, hello.InstanceID)
 	priority := false
 	required := methodCapability(method)
 	var scope pluginproto.Context

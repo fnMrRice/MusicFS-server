@@ -7,10 +7,12 @@ import (
 	"os/signal"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/source/online/applemusic"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/sdk/provider"
 )
 
 func main() {
+	pluginlog.External()
 	if len(os.Args) != 1 {
 		fmt.Fprintln(os.Stderr, "This plugin does not accept command-line arguments")
 		os.Exit(2)

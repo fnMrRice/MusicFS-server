@@ -14,6 +14,10 @@ import (
 )
 
 func (c Config) Validate() error {
+	c.Logging = c.Logging.normalized(c.DataRoot)
+	if err := c.Logging.Validate(); err != nil {
+		return err
+	}
 	if err := c.Storage.Validate(); err != nil {
 		return err
 	}
@@ -90,7 +94,7 @@ func (c Config) Validate() error {
 			}
 		}
 	}
-	if err := c.validatePlugins(writable); err != nil {
+	if err := c.validatePlugins(append(writable, c.Logging.Directory)); err != nil {
 		return err
 	}
 	if err := c.validateFingerprinting(); err != nil {

@@ -19,6 +19,7 @@ Server 维护 HTTP、事件和插件协议。精确路由及字段以本目录�
 | 分类 | 语义与操作说明 |
 | --- | --- |
 | 插件管理 | [开关、修订与重启](../plugins/plugin-management.md)、[身份与显示名称](../plugins/plugin-identity.md)、[目录与实例配置](../plugins/plugin-configuration.md) |
+| 日志管理 | [服务端及插件日志、临时等级与重启恢复](../operations/logging.md) |
 | 音乐库 | [查询](../library/catalog-query.md)、[扫描范围](../library/scanning.md)、[个人资料、收藏与历史](../library/personal-library.md) |
 | 资产与匹配 | [原始资产和 SHA-512](../metadata/identification.md)、[片段指纹](../metadata/identification.md#本地音频指纹)、[候选与人工关联](../metadata/matching.md) |
 | 内容与写回 | [媒体对象](../metadata/media.md)、[补全任务](../metadata/metadata.md)、[专辑](../library/albums.md)、[派生文件](../metadata/media.md#派生内容)、[原件写回](../metadata/writeback.md) |

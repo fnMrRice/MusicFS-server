@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 )
@@ -37,6 +38,7 @@ func (m *Manager) reconcile() {
 			continue
 		}
 		if r.running && r.hooks.Ready != nil && !r.hooks.Ready() {
+			pluginlog.Logger(pluginlog.Context(m.ctx, r.plugin.PluginID, id)).Warn("Plugin worker exited unexpectedly", "errorCode", "WORKER_EXITED")
 			r.gate.SetUnavailable("SOURCE_OFFLINE", true)
 			r.state = "failed"
 			code := "WORKER_EXITED"
@@ -68,7 +70,7 @@ func (m *Manager) reconcile() {
 				}
 				continue
 			}
-			actions = append(actions, action{id: id, generation: r.generation, hooks: r.hooks})
+			actions = append(actions, action{id: id, generation: r.generation, hooks: r.hooks, plugin: r.plugin, instance: r.instance})
 			continue
 		}
 		if want && !r.attempted {
@@ -94,6 +96,12 @@ func (m *Manager) reconcile() {
 			continue
 		}
 		ctx, cancel := context.WithTimeout(m.ctx, 15*time.Second)
+		ctx = pluginlog.Context(ctx, a.plugin.PluginID, a.id)
+		operation := "worker.stop"
+		if a.start {
+			operation = "worker.start"
+		}
+		finish := pluginlog.Operation(ctx, operation)
 		var err error
 		if a.start {
 			if a.hooks.Start != nil {
@@ -102,6 +110,7 @@ func (m *Manager) reconcile() {
 		} else if a.hooks.Stop != nil {
 			err = a.hooks.Stop(ctx)
 		}
+		finish(err)
 		cancel()
 		m.mu.Lock()
 		r := m.runtimes[a.id]
@@ -145,6 +154,7 @@ func (m *Manager) reconcile() {
 			}
 		}
 		m.publishLocked()
+		pluginlog.Logger(ctx).Info("Plugin runtime state changed", "state", r.state, "generation", r.generation)
 		m.mu.Unlock()
 	}
 	m.finishOperations()

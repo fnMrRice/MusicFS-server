@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net"
 	"net/http"
 	"net/netip"
@@ -16,6 +17,8 @@ import (
 // ServeOptions is trusted process setup. CLI exposes only StartupMode; timing
 // overrides and hooks are available to embedding hosts and integration tests.
 type ServeOptions struct {
+	// LogOutput 非空时安装文件日志，并把相同记录复制到此控制台输出。
+	LogOutput                                 io.Writer
 	StartupMode                               string
 	LeaseTTL, StartupTimeout, ShutdownTimeout time.Duration
 	Now                                       func() time.Time
@@ -65,7 +68,7 @@ func saveStartupRecord(lock *os.File, manager *lifecycle.Manager) error {
 
 // finishServer transfers the data lock to the cleanup goroutine. A timed-out
 // embedding call cannot allow another instance to overlap unfinished writes.
-func finishServer(server *http.Server, cleanup func(), lock *os.File, manager *lifecycle.Manager, timeout time.Duration, before func()) error {
+func finishServer(server *http.Server, cleanup func(), lock *os.File, manager *lifecycle.Manager, timeout time.Duration, before, after func()) error {
 	if timeout == 0 {
 		timeout = 10 * time.Second
 	}
@@ -82,6 +85,9 @@ func finishServer(server *http.Server, cleanup func(), lock *os.File, manager *l
 		}
 		cleanup()
 		manager.Stopped()
+		if after != nil {
+			after()
+		}
 		closeErr := lock.Close()
 		if err == nil {
 			err = closeErr

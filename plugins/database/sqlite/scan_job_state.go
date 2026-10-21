@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
+
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 )
@@ -69,7 +71,10 @@ func activeScan(ctx context.Context, tx *sql.Tx, given jobs.Job) (jobs.Job, erro
 	return j, nil
 }
 
-func (s *Store) Finish(ctx context.Context, given jobs.Job, n int, failure error) error {
+func (s *Store) Finish(ctx context.Context, given jobs.Job, n int, failure error) (finishErr error) {
+	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", "")
+	finish := pluginlog.Operation(ctx, "scan.result.persist")
+	defer func() { finish(finishErr) }()
 	if n < 0 {
 		return domain.Fail("INVALID_ARGUMENT", "Invalid observed count")
 	}
@@ -86,6 +91,7 @@ func (s *Store) Finish(ctx context.Context, given jobs.Job, n int, failure error
 	complete := failure == nil
 	now := time.Now().UTC()
 	decision := jobs.DecideRetry(failure, j.AttemptCount, now)
+	pluginlog.Logger(ctx).Log(ctx, pluginlog.LevelTrace, "Scan result persistence prepared", "observedCount", n, "attemptCount", j.AttemptCount, "state", decision.Status, "retryScheduled", decision.NextAttemptAt != nil)
 	if decision.Error != nil {
 		encoded, err := json.Marshal(decision.Error)
 		if err != nil {

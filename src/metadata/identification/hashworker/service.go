@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -41,7 +42,11 @@ func (s *Service) Submit(ctx context.Context, owner, track, key string) (identif
 	if err != nil {
 		return identification.HashJob{}, false, err
 	}
-	return s.repo.QueueHash(ctx, owner, target, key, false)
+	j, merged, err := s.repo.QueueHash(ctx, owner, target, key, false)
+	if err == nil {
+		slog.InfoContext(ctx, "Hash task queued", "jobId", j.ID, "merged", merged)
+	}
+	return j, merged, err
 }
 
 func (s *Service) Get(ctx context.Context, owner, id string) (identification.HashJob, error) {
@@ -51,6 +56,7 @@ func (s *Service) Get(ctx context.Context, owner, id string) (identification.Has
 func (s *Service) Cancel(ctx context.Context, owner, id string) (identification.HashJob, error) {
 	j, err := s.repo.CancelHash(ctx, owner, id)
 	if err == nil {
+		slog.InfoContext(ctx, "Hash task cancellation recorded", "jobId", id, "state", j.Status)
 		s.mu.Lock()
 		cancel := s.running[id]
 		s.mu.Unlock()
@@ -73,6 +79,7 @@ func (s *Service) Start(ctx context.Context) error {
 	run, cancel := context.WithCancel(ctx)
 	s.cancel = cancel
 	s.started = true
+	slog.DebugContext(ctx, "Hash workers started", "concurrency", s.config.MaxConcurrent, "automatic", s.config.Auto)
 	for i := 0; i < s.config.MaxConcurrent; i++ {
 		s.wg.Add(1)
 		go s.worker(run)
@@ -112,6 +119,7 @@ func (s *Service) worker(ctx context.Context) {
 		if err != nil {
 			wait := 100 * time.Millisecond
 			if !errors.Is(err, sql.ErrNoRows) {
+				slog.DebugContext(ctx, "Hash claim deferred", "errorCode", "TEMPORARY_FAILURE")
 				wait = time.Second
 			}
 			if !pause(ctx, wait) {
@@ -136,14 +144,21 @@ func (s *Service) auto(ctx context.Context) {
 				cursors[scope] = ""
 				continue
 			}
+			if slog.Default().Enabled(ctx, slog.Level(-8)) {
+				slog.Log(ctx, slog.Level(-8), "Automatic hash candidates received", "items", len(items))
+			}
 			for _, target := range items {
 				cursors[scope] = target.SourceTrackID
 				current, err := s.source.ResolveHashTarget(ctx, scope.Owner, target.SourceTrackID)
 				if err != nil || current != target {
 					continue
 				}
-				if _, _, err = s.repo.QueueHash(ctx, scope.Owner, target, "auto-"+target.AssetID, true); err != nil {
+				j, merged, err := s.repo.QueueHash(ctx, scope.Owner, target, "auto-"+target.AssetID, true)
+				if err != nil {
 					break
+				}
+				if !merged {
+					slog.InfoContext(ctx, "Automatic hash task queued", "jobId", j.ID)
 				}
 			}
 		}

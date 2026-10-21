@@ -3,6 +3,7 @@ package playback
 import (
 	"context"
 	"io"
+	"log/slog"
 	"strings"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
@@ -34,6 +35,7 @@ func (s *Service) processCached(stream *Stream, scope cacheScope, output io.Writ
 		return stream.processDirect(output)
 	}
 	if lease := s.cache.Acquire(scope.identity); lease != nil {
+		slog.DebugContext(stream.Context, "Playback processed cache hit", "sessionId", stream.Description.SessionID)
 		defer lease.Close()
 		if err := s.checkCacheSource(stream.Context, scope); err != nil {
 			return err
@@ -52,8 +54,10 @@ func (s *Service) processCached(stream *Stream, scope cacheScope, output io.Writ
 	}
 	writer := s.cache.Begin(scope.identity)
 	if writer == nil {
+		slog.DebugContext(stream.Context, "Playback processed cache unavailable", "sessionId", stream.Description.SessionID)
 		return stream.processDirect(output)
 	}
+	slog.DebugContext(stream.Context, "Playback processed cache fill started", "sessionId", stream.Description.SessionID)
 	defer writer.Abort()
 	// Deliver first. Cache exhaustion or failure never adds a failure to a
 	// deliverable stream, and a blocked consumer still provides backpressure.
@@ -72,6 +76,9 @@ func (s *Service) processCached(stream *Stream, scope cacheScope, output io.Writ
 		s.mu.Lock()
 		s.attachCachePinLocked(scope, pin)
 		s.mu.Unlock()
+		slog.DebugContext(stream.Context, "Playback processed cache published", "sessionId", stream.Description.SessionID)
+	} else {
+		logPlaybackFailure(stream.Context, "Playback processed cache publication failed", err, "sessionId", stream.Description.SessionID)
 	}
 	return nil
 }

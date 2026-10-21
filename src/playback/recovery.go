@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
@@ -164,6 +165,7 @@ func (s *Service) RecoverSource(ctx context.Context, who auth.Session, id string
 		s.installRecovery(a, prepared, *result.Playback)
 		prepared = nil
 	}
+	slog.InfoContext(ctx, "Playback source recovery decided", "sessionId", id, "decision", result.Decision, "reason", result.Reason)
 	return result, nil
 }
 

@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 )
@@ -177,13 +178,16 @@ func (e *Endpoint) call(ctx context.Context, method, name string, args []reflect
 
 // Invoke is used by generated typed proxies, preserving internal exported fields
 // independently of public API JSON tags. Calls are never automatically retried.
-func (e *Endpoint) Invoke(ctx context.Context, name string, args, results []any) error {
+func (e *Endpoint) Invoke(ctx context.Context, name string, args, results []any) (invokeErr error) {
 	e.mu.Lock()
 	contract, exists := e.contracts[name]
 	e.mu.Unlock()
 	if !exists || contract.NumIn() == 0 || contract.In(0) != contextType || len(args) != contract.NumIn()-1 {
 		return fmt.Errorf("invalid persistence invocation")
 	}
+	// 仅记录已经绑定的契约方法名，参数与返回值不进入日志。
+	finish := pluginlog.Operation(pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", ""), name)
+	defer func() { finish(invokeErr) }()
 	input := make([]reflect.Value, len(args))
 	for i, arg := range args {
 		expected := contract.In(i + 1)

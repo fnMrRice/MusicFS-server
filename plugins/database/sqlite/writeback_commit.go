@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
+
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
@@ -26,7 +28,10 @@ func validateWritebackResult(w writebackhost.Work, size int64, r writeback.Resul
 	return nil
 }
 
-func (s *Store) CommitWriteback(ctx context.Context, owner, id string, result writeback.Result, o library.Observation) (writebackhost.Outcome, error) {
+func (s *Store) CommitWriteback(ctx context.Context, owner, id string, result writeback.Result, o library.Observation) (outcome writebackhost.Outcome, commitErr error) {
+	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", "")
+	finish := pluginlog.Operation(ctx, "writeback.commit")
+	defer func() { finish(commitErr) }()
 	var empty writebackhost.Outcome
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {

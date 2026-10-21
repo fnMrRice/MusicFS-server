@@ -49,7 +49,7 @@ func InitializeLocalDirectories(ctx context.Context, c Config, discover func() [
 				}
 				paths := []string{}
 				for _, path := range discovered {
-					if !overlaps(path, c.DataRoot) && !overlaps(path, c.MediaRoot) && !overlaps(path, c.CacheRoot) {
+					if !overlaps(path, c.DataRoot) && !overlaps(path, c.MediaRoot) && !overlaps(path, c.CacheRoot) && !overlaps(path, c.Logging.Directory) {
 						paths = append(paths, path)
 					}
 				}

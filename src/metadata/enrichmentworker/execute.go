@@ -28,7 +28,9 @@ func failureCode(err error) string {
 }
 
 func (s *Service) execute(parent context.Context, w enrichment.Work) {
+	started := time.Now()
 	ctx, cancel := context.WithTimeout(parent, 30*time.Second)
+	slog.InfoContext(ctx, "Metadata target started", "jobId", w.JobID, "instances", len(w.Request.InstanceIDs))
 	key := w.JobID + "/" + w.Target.SourceTrackID
 	s.mu.Lock()
 	s.running[key] = runningTask{jobID: w.JobID, cancel: cancel}
@@ -38,6 +40,7 @@ func (s *Service) execute(parent context.Context, w enrichment.Work) {
 	trace := newTrace(w)
 	err := s.collect(ctx, w, &out, trace)
 	if parent.Err() != nil {
+		slog.DebugContext(parent, "Metadata target interrupted for shutdown", "jobId", w.JobID)
 		return
 	}
 	if err != nil {
@@ -56,7 +59,18 @@ func (s *Service) execute(parent context.Context, w enrichment.Work) {
 		if getErr != nil || latest.State != "cancelled" {
 			slog.Error("Metadata task requires recovery", "jobId", w.JobID, "errorCode", failureCode(err))
 		}
+		return
 	}
+	level, message := slog.LevelInfo, "Metadata target completed"
+	attrs := []any{"jobId", w.JobID, "candidates", len(out.Candidates), "issues", len(out.Issues), "durationMs", time.Since(started).Milliseconds()}
+	if out.FailureCode != nil {
+		level, message = slog.LevelWarn, "Metadata target failed"
+		if *out.FailureCode == "CANCELED" {
+			level, message = slog.LevelInfo, "Metadata target cancelled"
+		}
+		attrs = append(attrs, "errorCode", *out.FailureCode)
+	}
+	slog.Log(finish, level, message, attrs...)
 }
 
 func (s *Service) collect(ctx context.Context, w enrichment.Work, out *enrichment.Outcome, trace *documentTrace) error {
@@ -77,6 +91,7 @@ func (s *Service) collect(ctx context.Context, w enrichment.Work, out *enrichmen
 		return err
 	}
 	trace.source(input)
+	slog.DebugContext(ctx, "Metadata input prepared", "jobId", w.JobID, "inputs", len(input.Inputs), "issues", len(input.Issues))
 	for _, issue := range input.Issues {
 		addIssue(out, "", issue.Code)
 	}
@@ -129,6 +144,8 @@ func addIssue(out *enrichment.Outcome, instance, code string) {
 }
 
 func (s *Service) scrape(ctx context.Context, w enrichment.Work, task string, r Runtime, input *library.ScrapeInput, out *enrichment.Outcome, trace *documentTrace, attempt *enrichment.ScraperAttempt) error {
+	started := time.Now()
+	slog.DebugContext(ctx, "Metadata scraper started", "jobId", w.JobID, "instanceId", r.ID)
 	lease, err := r.Gate.AcquireEpoch(ctx, r.Epoch)
 	if err != nil {
 		return err
@@ -140,6 +157,9 @@ func (s *Service) scrape(ctx context.Context, w enrichment.Work, task string, r 
 	scope := pluginproto.Context{UserID: w.Owner, InstanceID: r.ID, TaskID: task, TimeoutMs: 30000}
 	session, err := r.Host.Open(ctx, scope, w.Target, input.Inputs)
 	for err != nil && failureCode(err) == "RATE_LIMITED" {
+		if slog.Default().Enabled(ctx, slog.Level(-8)) {
+			slog.Log(ctx, slog.Level(-8), "Metadata scraper waiting for capacity", "jobId", w.JobID, "instanceId", r.ID)
+		}
 		timer := time.NewTimer(50 * time.Millisecond)
 		select {
 		case <-ctx.Done():
@@ -158,6 +178,7 @@ func (s *Service) scrape(ctx context.Context, w enrichment.Work, task string, r 
 	if err != nil {
 		return err
 	}
+	slog.DebugContext(ctx, "Metadata search completed", "jobId", w.JobID, "instanceId", r.ID, "candidates", len(result.Candidates), "issues", len(result.Issues), "durationMs", time.Since(started).Milliseconds())
 	attempt.Search = trace.search(result)
 	for _, issue := range result.Issues {
 		addIssue(out, r.ID, issue.Code)
@@ -184,6 +205,9 @@ func (s *Service) scrape(ctx context.Context, w enrichment.Work, task string, r 
 			fetch.Code = preview.FailureCode
 		}
 		attempt.Fetches = append(attempt.Fetches, fetch)
+		if slog.Default().Enabled(ctx, slog.Level(-8)) {
+			slog.Log(ctx, slog.Level(-8), "Metadata candidate fetch finished", "jobId", w.JobID, "instanceId", r.ID, "state", fetch.State, "candidateIndex", len(attempt.Fetches))
+		}
 		if err != nil {
 			code := failureCode(err)
 			addIssue(out, r.ID, code)

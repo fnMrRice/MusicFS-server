@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -190,6 +191,7 @@ func (s *Service) Apply(ctx context.Context, owner string, request Request) (res
 	if err = s.journal.Create(ctx, record); err != nil {
 		return result, err
 	}
+	slog.DebugContext(ctx, "Writeback journal prepared", "jobId", request.ID, "instanceId", request.Target.InstanceID, "fields", len(fields), "sizeBytes", old.Size)
 	temp, err := fs.Create(stageName(record.ID), source)
 	if err != nil {
 		return result, err
@@ -269,7 +271,11 @@ func (s *Service) describe(ctx context.Context, fs disk, file *os.File) (FileSta
 func (s *Service) save(ctx context.Context, record *Record, stage string) error {
 	previous := record.Stage
 	record.Stage, record.UpdatedAt = stage, time.Now().UTC()
-	return s.journal.Save(ctx, previous, *record)
+	err := s.journal.Save(ctx, previous, *record)
+	if err == nil && slog.Default().Enabled(ctx, slog.Level(-8)) {
+		slog.Log(ctx, slog.Level(-8), "Writeback journal advanced", "jobId", record.ID, "previousStage", previous, "stage", stage)
+	}
+	return err
 }
 
 func (s *Service) install(ctx context.Context, fs disk, lease Lease, temp *os.File, record *Record) (Result, error) {

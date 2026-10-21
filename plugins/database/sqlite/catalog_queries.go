@@ -8,11 +8,15 @@ import (
 	"errors"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library/catalog"
 )
 
-func (s *Store) CreateCatalogQuery(ctx context.Context, owner string, input catalog.Query, limit int, key string) (catalog.Page, error) {
+func (s *Store) CreateCatalogQuery(ctx context.Context, owner string, input catalog.Query, limit int, key string) (queryResult catalog.Page, queryErr error) {
+	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", "")
+	finish := pluginlog.Operation(ctx, "catalog.query.create")
+	defer func() { finish(queryErr) }()
 	q, err := input.Normalize()
 	if err != nil {
 		return catalog.Page{}, err
@@ -94,7 +98,10 @@ func (s *Store) CreateCatalogQuery(ctx context.Context, owner string, input cata
 	return page, tx.Commit()
 }
 
-func (s *Store) CatalogQueryPage(ctx context.Context, owner, id, cursor string, limit int, expected *catalog.Query) (catalog.Page, error) {
+func (s *Store) CatalogQueryPage(ctx context.Context, owner, id, cursor string, limit int, expected *catalog.Query) (queryResult catalog.Page, queryErr error) {
+	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", "")
+	finish := pluginlog.Operation(ctx, "catalog.query.page")
+	defer func() { finish(queryErr) }()
 	limit, err := catalog.PageLimit(limit)
 	if err != nil {
 		return catalog.Page{}, err

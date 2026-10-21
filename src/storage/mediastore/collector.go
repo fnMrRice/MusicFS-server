@@ -42,6 +42,8 @@ func (c *Collector) Collect(ctx context.Context, now time.Time) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	started := time.Now()
+	slog.DebugContext(ctx, "Media garbage collection batch claimed", "items", len(items))
 	completed := 0
 	var firstError error
 	for _, item := range items {
@@ -61,6 +63,12 @@ func (c *Collector) Collect(ctx context.Context, now time.Time) (int, error) {
 			continue
 		}
 		completed++
+		if slog.Default().Enabled(ctx, slog.Level(-8)) {
+			slog.Log(ctx, slog.Level(-8), "Abandoned media object removed", "completed", completed)
+		}
+	}
+	if len(items) > 0 {
+		slog.InfoContext(ctx, "Media garbage collection batch finished", "claimed", len(items), "completed", completed, "failed", len(items)-completed, "durationMs", time.Since(started).Milliseconds())
 	}
 	return completed, firstError
 }

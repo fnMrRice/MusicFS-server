@@ -102,6 +102,7 @@ func RequestID(r *http.Request) string {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	started := time.Now()
 	id := r.Header.Get("X-Request-ID")
 	if !safeRequestID.MatchString(id) {
 		id = domain.NewID()
@@ -112,6 +113,16 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Referrer-Policy", "no-referrer")
 	response := &responseWriter{ResponseWriter: w}
+	_, pattern := s.mux.Handler(r)
+	s.options.Logger.Log(r.Context(), slog.Level(-8), "HTTP request dispatched", "requestId", id, "route", pattern, "method", r.Method)
+	defer func() {
+		status := response.status
+		if status == 0 {
+			status = http.StatusOK
+		}
+		s.options.Logger.DebugContext(r.Context(), "HTTP request completed", "requestId", id, "route", pattern,
+			"method", r.Method, "status", status, "bytes", response.bytes, "durationMs", time.Since(started).Milliseconds())
+	}()
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			if recovered == http.ErrAbortHandler {
@@ -124,7 +135,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			WriteError(response, r, domain.Fail("TEMPORARY_FAILURE", "Request could not be completed"))
 		}
 	}()
-	_, pattern := s.mux.Handler(r)
 	if pattern == "" {
 		WriteError(response, r, domain.Fail("NOT_FOUND", "Endpoint was not found"))
 		return
@@ -133,8 +143,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) fail(w http.ResponseWriter, r *http.Request, err error) {
-	code, _ := classifyError(err)
-	s.options.Logger.WarnContext(r.Context(), "HTTP request failed", "requestId", RequestID(r), "code", code)
+	code, status := classifyError(err)
+	level := slog.LevelWarn
+	if status >= 500 {
+		level = slog.LevelError
+	}
+	s.options.Logger.Log(r.Context(), level, "HTTP request failed", "requestId", RequestID(r), "code", code)
 	if response, ok := w.(*responseWriter); ok && response.wroteHeader {
 		panic(http.ErrAbortHandler)
 	}
@@ -144,11 +158,14 @@ func (s *Server) fail(w http.ResponseWriter, r *http.Request, err error) {
 type responseWriter struct {
 	http.ResponseWriter
 	wroteHeader bool
+	status      int
+	bytes       int64
 }
 
 func (w *responseWriter) WriteHeader(status int) {
 	if !w.wroteHeader {
 		w.wroteHeader = true
+		w.status = status
 		w.ResponseWriter.WriteHeader(status)
 	}
 }
@@ -157,7 +174,9 @@ func (w *responseWriter) Write(b []byte) (int, error) {
 	if !w.wroteHeader {
 		w.WriteHeader(http.StatusOK)
 	}
-	return w.ResponseWriter.Write(b)
+	n, err := w.ResponseWriter.Write(b)
+	w.bytes += int64(n)
+	return n, err
 }
 
 func (w *responseWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }

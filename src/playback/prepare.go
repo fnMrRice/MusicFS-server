@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -95,6 +96,7 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 		return nil, err
 	}
 	defer closeInput()
+	slog.DebugContext(ctx, "Playback input prepared", "sessionId", task, "instanceId", t.ProviderID, "sizeBytes", size, "decoded", decrypted)
 	if s.cache != nil {
 		s.cache.MakeRoom(ctx, size)
 	}
@@ -154,6 +156,9 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 	}
 	p.track, p.size, p.etag, p.processed, p.decrypted = t, n, fmt.Sprintf("\"%x\"", hash.Sum(nil)), processed, decrypted
 	ok = true
+	if slog.Default().Enabled(ctx, slog.Level(-8)) {
+		slog.Log(ctx, slog.Level(-8), "Playback representation prepared", "sessionId", task, "sizeBytes", n, "processed", processed)
+	}
 	return p, nil
 }
 

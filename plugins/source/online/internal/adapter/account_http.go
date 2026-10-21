@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	domain "github.com/fnMrRice/MusicFS-server/sdk/fault"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
 func accountHost(host string) bool {
@@ -19,7 +21,10 @@ func accountHost(host string) bool {
 	return false
 }
 
-func (c *Client) accountHTTP(ctx context.Context, method, address, body string, headers map[string]string, cookies map[string]string) ([]byte, *http.Response, error) {
+func (c *Client) accountHTTP(ctx context.Context, method, address, body string, headers map[string]string, cookies map[string]string) (data []byte, response *http.Response, requestErr error) {
+	ctx = pluginlog.Context(ctx, pluginproto.OnlinePluginID(c.platform), c.scope.InstanceID)
+	finish := pluginlog.Operation(ctx, "online.upstream.request")
+	defer func() { finish(requestErr) }()
 	u, err := url.Parse(address)
 	if err != nil || u.Scheme != "https" || !accountHost(u.Host) || u.User != nil {
 		return nil, nil, domain.Fail("ACCESS_DENIED", "Platform login destination is not allowed")
@@ -40,6 +45,7 @@ func (c *Client) accountHTTP(ctx context.Context, method, address, body string, 
 		return nil, nil, domain.Fail("TEMPORARY_FAILURE", "Platform login request failed")
 	}
 	defer res.Body.Close()
+	pluginlog.Logger(ctx).Log(ctx, pluginlog.LevelTrace, "Online upstream response received", "statusCode", res.StatusCode)
 	if res.StatusCode != 200 && res.StatusCode != 302 {
 		return nil, nil, c.statusError(res)
 	}

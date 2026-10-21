@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
@@ -50,6 +51,8 @@ func (w *worker) scan(ctx context.Context, r pluginproto.ScanRequest) (pluginpro
 			return pluginproto.ScanPage{}, err
 		}
 		page.Items = append(page.Items, observation)
+		pluginlog.Logger(ctx).Log(ctx, pluginlog.LevelTrace, "Scan observation recorded", "page", page.Page, "itemIndex", len(page.Items), "sizeBytes", observation.SizeBytes)
 	}
+	pluginlog.Logger(ctx).DebugContext(ctx, "Scan page produced", "page", page.Page, "itemCount", len(page.Items), "issueCount", len(page.Issues), "complete", page.Complete)
 	return page, nil
 }

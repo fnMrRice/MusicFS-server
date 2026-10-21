@@ -9,6 +9,8 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
+
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore/content"
 )
@@ -43,13 +45,17 @@ func NewEngine(request enrichment.SearchRequest, open OpenResource) (*Engine, er
 	return &Engine{request: request, open: open, items: map[string]storedCandidate{}, result: enrichment.SearchResult{Candidates: []enrichment.Candidate{}, Issues: []enrichment.Issue{}}}, nil
 }
 
-func (e *Engine) Search(ctx context.Context) (enrichment.SearchResult, error) {
+func (e *Engine) Search(ctx context.Context) (found enrichment.SearchResult, searchErr error) {
+	ctx = pluginlog.Context(ctx, PluginID, e.request.Context.InstanceID)
+	finish := pluginlog.Operation(ctx, "scraper.search")
+	defer func() { finish(searchErr) }()
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if err := ctx.Err(); err != nil {
 		return enrichment.SearchResult{}, err
 	}
 	if e.searched {
+		pluginlog.Logger(ctx).Log(ctx, pluginlog.LevelTrace, "Scraper cached result reused", "candidateCount", len(e.result.Candidates))
 		return cloneResult(e.result), nil
 	}
 	completed := false
@@ -92,6 +98,7 @@ func (e *Engine) Search(ctx context.Context) (enrichment.SearchResult, error) {
 		return enrichment.SearchResult{}, err
 	}
 	e.searched, completed = true, true
+	pluginlog.Logger(ctx).DebugContext(ctx, "Scraper search completed", "resourceCount", len(e.request.Resources), "candidateCount", len(e.result.Candidates), "issueCount", len(e.result.Issues))
 	return cloneResult(e.result), nil
 }
 

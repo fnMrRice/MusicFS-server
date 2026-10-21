@@ -7,6 +7,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
@@ -65,7 +66,10 @@ func readJob(row rowScanner) (jobs.Job, error) {
 	return j, nil
 }
 
-func (s *Store) Enqueue(ctx context.Context, owner, target string, plan pluginproto.ScanPlan, key string) (jobs.Job, bool, error) {
+func (s *Store) Enqueue(ctx context.Context, owner, target string, plan pluginproto.ScanPlan, key string) (queued jobs.Job, duplicate bool, enqueueErr error) {
+	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", "")
+	finish := pluginlog.Operation(ctx, "scan.queue.persist")
+	defer func() { finish(enqueueErr) }()
 	var j jobs.Job
 	if owner == "" || target == "" || len(key) < 8 || len(key) > 128 {
 		return j, false, domain.Fail("INVALID_ARGUMENT", "Invalid scan task or idempotency key")

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"math"
 	"mime"
 	"time"
@@ -41,7 +42,15 @@ func checkKey(key string) error {
 	return nil
 }
 
-func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest, key string) (Description, error) {
+func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest, key string) (result Description, resultErr error) {
+	var created bool
+	var instance string
+	var started time.Time
+	defer func() {
+		if created {
+			slog.InfoContext(ctx, "Playback session created", "sessionId", result.SessionID, "instanceId", instance, "deliveryMode", result.DeliveryMode, "durationMs", time.Since(started).Milliseconds())
+		}
+	}()
 	if err := checkKey(key); err != nil {
 		return Description{}, err
 	}
@@ -106,8 +115,11 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 		s.mu.Unlock()
 	}()
 	id := domain.NewID()
+	started = time.Now()
+	slog.DebugContext(ctx, "Playback preparation started", "sessionId", id)
 	prepared, err := s.prepare(ctx, who.User.ID, id, r)
 	if err != nil {
+		logPlaybackFailure(ctx, "Playback preparation failed", err, "sessionId", id, "durationMs", time.Since(started).Milliseconds())
 		return Description{}, err
 	}
 	transferred := false
@@ -150,6 +162,7 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 	}
 	s.sessions[id] = a
 	transferred = true
+	created, instance = true, a.track.ProviderID
 	return a.description, nil
 }
 func (s *Service) nextAttempt(a *session, position int64) {

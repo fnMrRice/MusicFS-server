@@ -44,9 +44,10 @@ func discoverBuiltin(list, node *yaml.Node, id, legacy string, used map[string]b
 	return nil
 }
 
-// NormalizeRuntime 将旧随包 SQLite/DSP 配置迁移为主进程内执行。
+// NormalizeRuntime 补齐日志默认值，并将旧随包 SQLite/DSP 配置迁移为主进程内执行。
 // 不改写磁盘配置，也不影响显式选择的外部存储后端。
 func (c *Config) NormalizeRuntime() {
+	c.Logging = c.Logging.normalized(c.DataRoot)
 	if c.Storage.Backend == "plugin" && c.Storage.Execution != "process" {
 		name := strings.TrimSuffix(strings.ToLower(filepath.Base(c.Storage.Executable)), ".exe")
 		if name == "musicfs-plugin-storage-sqlite" || name == "musicfs-plugin-sqlite" || name == "musicfs-plugins" && onlineSelectorArgs(c.Storage.Args, "storage-sqlite") {

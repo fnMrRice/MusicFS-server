@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 )
@@ -53,6 +54,7 @@ func (w *audioWorker) handle(ctx context.Context, method string, raw json.RawMes
 	ready := w.ready
 	capabilities := w.capabilities
 	taskID := w.taskID
+	ctx = pluginlog.Context(ctx, "musicfs.plugin.decoder.ffmpeg", w.instanceID)
 	w.mu.Unlock()
 	if !ready {
 		return nil, fmt.Errorf("PROTOCOL_MISMATCH: handshake required")

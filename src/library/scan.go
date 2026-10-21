@@ -3,6 +3,7 @@ package library
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"slices"
 	"time"
 
@@ -34,6 +35,7 @@ func (s *Service) scan(ctx context.Context, j jobs.Job) (int, error) {
 	}
 	defer closeProbe()
 	defer s.Revoke(j.ProviderInstanceID, j.ID)
+	slog.DebugContext(ctx, "Scan source prepared", "jobId", j.ID, "instanceId", r.ID, "roots", len(j.Plan.Roots), "probeEnabled", probe != nil)
 	all := []Observation{}
 	roots := j.Plan.Roots
 	seenTracks := map[string]bool{}
@@ -45,6 +47,7 @@ func (s *Service) scan(ctx context.Context, j jobs.Job) (int, error) {
 			return len(all), err
 		}
 	}
+	slog.DebugContext(ctx, "Scan publication started", "jobId", j.ID, "observed", len(all))
 	return len(all), s.repo.Publish(ctx, j, ScanPublication{PlanDigest: j.PlanDigest, CompletedRoots: roots, Observations: all, ExcludedPaths: excluded})
 }
 
@@ -58,12 +61,16 @@ func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID st
 	var coverage pluginproto.ScanCoverage
 	seenCursors := map[string]bool{}
 	for {
+		started := time.Now()
 		page, err := r.Worker.Scan(ctx, pluginproto.ScanRequest{RootID: rootID, ScanID: j.ID, Generation: j.Generation, Cursor: cursor, Limit: 200, Scope: scope, PlanDigest: j.PlanDigest})
 		if err != nil {
 			if ctx.Err() != nil {
 				return all, ctx.Err()
 			}
 			return all, scanFailure(err)
+		}
+		if slog.Default().Enabled(ctx, slog.Level(-8)) {
+			slog.Log(ctx, slog.Level(-8), "Scan page received", "jobId", j.ID, "instanceId", r.ID, "page", expectedPage, "items", len(page.Items), "issues", len(page.Issues), "complete", page.Complete, "durationMs", time.Since(started).Milliseconds())
 		}
 		if page.ScanID != j.ID || page.Generation != j.Generation || page.PlanDigest != j.PlanDigest || page.Page != expectedPage || len(page.Items) > pluginproto.MaxPageItems || len(page.Issues) > 0 || page.RootIdentity == "" {
 			return all, domain.Fail("TEMPORARY_FAILURE", "Scan is incomplete")
@@ -123,6 +130,9 @@ func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID st
 					item.Year, item.SampleRateHz = meta.Year, meta.SampleRateHz
 					item.MIME = meta.MIME
 					item.Evidence = meta.Evidence
+				}
+				if slog.Default().Enabled(ctx, slog.Level(-8)) {
+					slog.Log(ctx, slog.Level(-8), "Scan source probe finished", "jobId", j.ID, "instanceId", r.ID, "status", item.ProbeStatus, "observed", len(all)+1)
 				}
 			}
 			all = append(all, item)

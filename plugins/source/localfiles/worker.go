@@ -10,6 +10,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 )
@@ -44,6 +45,7 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 	}
 	w.mu.Lock()
 	ready := w.ready
+	ctx = pluginlog.Context(ctx, "musicfs.plugin.source.localfiles", w.instance)
 	w.mu.Unlock()
 	if !ready {
 		return nil, fmt.Errorf("PROTOCOL_MISMATCH: handshake required")

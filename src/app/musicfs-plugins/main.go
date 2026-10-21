@@ -10,9 +10,11 @@ import (
 	"os/signal"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/unified"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 )
 
 func main() {
+	pluginlog.External()
 	os.Exit(run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }
 

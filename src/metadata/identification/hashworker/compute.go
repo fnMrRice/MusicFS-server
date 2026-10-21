@@ -99,6 +99,7 @@ func failure(err error) identification.Result {
 }
 
 func (s *Service) execute(parent context.Context, j identification.HashJob) {
+	started := time.Now()
 	ctx, cancel := context.WithCancel(parent)
 	s.mu.Lock()
 	s.running[j.ID] = cancel
@@ -108,6 +109,7 @@ func (s *Service) execute(parent context.Context, j identification.HashJob) {
 	if err != nil || current.Status != "running" || current.Generation != j.Generation {
 		return
 	}
+	slog.InfoContext(ctx, "Hash task started", "jobId", j.ID, "sizeBytes", j.FileSizeBytes)
 	in, err := s.source.OpenStableHash(ctx, j.Owner, j.ID, j.HashTarget)
 	var completed int64
 	var result identification.Result
@@ -121,6 +123,9 @@ func (s *Service) execute(parent context.Context, j identification.HashJob) {
 				return nil
 			}
 			last = time.Now()
+			if slog.Default().Enabled(ctx, slog.Level(-8)) {
+				slog.Log(ctx, slog.Level(-8), "Hash progress", "jobId", j.ID, "completedBytes", n, "sizeBytes", j.FileSizeBytes)
+			}
 			return s.repo.HashProgress(ctx, j, n)
 		})
 		if err == nil {
@@ -131,17 +136,35 @@ func (s *Service) execute(parent context.Context, j identification.HashJob) {
 	// Shutdown leaves a running task durable for recovery. User cancellation
 	// has already changed its state atomically and cannot be overwritten here.
 	if parent.Err() != nil {
+		slog.DebugContext(parent, "Hash task interrupted for shutdown", "jobId", j.ID)
 		return
 	}
 	if err != nil {
 		result = failure(err)
 	}
-	if err := s.finish(j, result, completed, in); err != nil {
+	result, err = s.finish(j, result, completed, in)
+	if err != nil {
 		slog.Error("Hash task publication failed; durable task requires recovery", "jobId", j.ID, "errorCode", pluginproto.ErrorCode(err))
+		return
 	}
+	level, message := slog.LevelInfo, "Hash task state recorded"
+	if result.Status == "verified" || result.Status == "succeeded" {
+		message = "Hash task completed"
+	} else if result.Status == "cancelled" {
+		message = "Hash task cancelled"
+	}
+	attrs := []any{"jobId", j.ID, "state", result.Status, "completedBytes", completed, "durationMs", time.Since(started).Milliseconds()}
+	if result.FailureCode != nil {
+		level, message = slog.LevelWarn, "Hash task failed"
+		if *result.FailureCode == "CANCELED" {
+			level, message = slog.LevelInfo, "Hash task cancelled"
+		}
+		attrs = append(attrs, "errorCode", *result.FailureCode)
+	}
+	slog.Log(context.Background(), level, message, attrs...)
 }
 
-func (s *Service) finish(j identification.HashJob, result identification.Result, completed int64, in identification.StableInput) error {
+func (s *Service) finish(j identification.HashJob, result identification.Result, completed int64, in identification.StableInput) (identification.Result, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	var err error
@@ -152,11 +175,16 @@ func (s *Service) finish(j identification.HashJob, result identification.Result,
 			err = s.repo.FinishHash(ctx, j, result, completed)
 		}
 		if err == nil {
-			return nil
+			return result, nil
 		}
+		slog.DebugContext(ctx, "Hash task publication retry", "jobId", j.ID, "attempt", attempt+1, "errorCode", pluginproto.ErrorCode(err))
 		current, getErr := s.repo.GetHashJob(ctx, j.Owner, j.ID)
 		if getErr == nil && (current.Status != "running" || current.Generation != j.Generation) {
-			return nil
+			result = identification.Result{Status: current.Status}
+			if current.Error != nil {
+				result.FailureCode = &current.Error.Code
+			}
+			return result, nil
 		}
 		// A rejected protected publish can only become a failure, never a
 		// verified retry after the read protection has been broken.
@@ -165,5 +193,5 @@ func (s *Service) finish(j identification.HashJob, result identification.Result,
 			break
 		}
 	}
-	return err
+	return result, err
 }

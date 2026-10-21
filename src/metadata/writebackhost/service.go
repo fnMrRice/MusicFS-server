@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"sort"
 	"strings"
 	"sync"
@@ -148,7 +149,11 @@ func (s *Service) Submit(ctx context.Context, owner string, request Request, key
 		return Job{}, false, domain.Fail("UNSUPPORTED", "Source does not support safe FLAC writeback")
 	}
 	target := writeback.Target{SourceTrackID: t.ID, AssetID: t.AssetID, AssetVersion: t.Version, InstanceID: t.ProviderID, RootID: t.RootID, RelativePath: t.Path, FileIdentity: entry.FileIdentity}
-	return s.repo.QueueWriteback(ctx, owner, r, target, key)
+	j, merged, err := s.repo.QueueWriteback(ctx, owner, r, target, key)
+	if err == nil {
+		slog.InfoContext(ctx, "Writeback task queued", "jobId", j.ID, "instanceId", t.ProviderID, "fields", len(r.Fields), "merged", merged)
+	}
+	return j, merged, err
 }
 
 func (s *Service) grant(owner, instance, rootID string, fields []Field) (writeback.Root, error) {
@@ -194,7 +199,11 @@ func (s *Service) Get(ctx context.Context, owner, id string) (Job, error) {
 	return j, nil
 }
 func (s *Service) Cancel(ctx context.Context, owner, id string) (Job, error) {
-	return s.repo.CancelWriteback(ctx, owner, id)
+	j, err := s.repo.CancelWriteback(ctx, owner, id)
+	if err == nil {
+		slog.InfoContext(ctx, "Writeback task cancellation recorded", "jobId", id, "state", j.Status)
+	}
+	return j, err
 }
 
 func (s *Service) patch(ctx context.Context, w Work) (writeback.Patch, error) {
@@ -236,6 +245,7 @@ func (s *Service) Start(ctx context.Context) error {
 		return err
 	}
 	s.ctx, s.cancel = context.WithCancel(ctx)
+	slog.DebugContext(ctx, "Writeback worker started")
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
@@ -273,13 +283,18 @@ func (s *Service) runNext() {
 	defer s.active.Store(nil)
 	ctx, cancel := context.WithTimeout(s.ctx, 30*time.Minute)
 	defer cancel()
+	started := time.Now()
+	slog.InfoContext(ctx, "Writeback task started", "jobId", w.Job.ID, "instanceId", w.Target.InstanceID)
 	p, err := s.patch(ctx, w)
 	if err == nil {
+		slog.DebugContext(ctx, "Writeback patch prepared", "jobId", w.Job.ID, "objects", len(w.Objects))
 		_, err = s.editor.Apply(ctx, w.Job.Owner, writeback.Request{ID: w.Job.ID, Target: w.Target, SelectionRevision: w.Job.Request.ExpectedRevision, Patch: p})
 	}
 	if errors.Is(err, errBusy) {
+		slog.DebugContext(ctx, "Writeback task deferred", "jobId", w.Job.ID, "errorCode", "CONFLICT")
 		_ = s.repo.DeferWriteback(ctx, w.Job.Owner, w.Job.ID)
 		return
 	}
 	s.settle(w.Job.Owner, w.Job.ID, w.Target, err)
+	slog.DebugContext(ctx, "Writeback execution finished", "jobId", w.Job.ID, "durationMs", time.Since(started).Milliseconds())
 }

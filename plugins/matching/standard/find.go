@@ -5,11 +5,17 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
+
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/candidates"
 )
 
 // Find 对宿主提供的有限候选集计算分数并按固定顺序排序。
-func (Plugin) Find(ctx context.Context, anchor Input, others []Input) ([]Candidate, error) {
+func (Plugin) Find(ctx context.Context, anchor Input, others []Input) (found []Candidate, findErr error) {
+	ctx = pluginlog.Context(ctx, "musicfs.plugin.matching.standard", "")
+	finish := pluginlog.Operation(ctx, "matching.find")
+	defer func() { finish(findErr) }()
+	pluginlog.Logger(ctx).Log(ctx, pluginlog.LevelTrace, "Candidate comparison started", "candidateCount", len(others))
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -53,5 +59,6 @@ func (Plugin) Find(ctx context.Context, anchor Input, others []Input) ([]Candida
 	if len(results) > MaxResults {
 		results = results[:MaxResults]
 	}
+	pluginlog.Logger(ctx).DebugContext(ctx, "Candidate comparison completed", "candidateCount", len(others), "resultCount", len(results), "comparisons", operations)
 	return results, nil
 }

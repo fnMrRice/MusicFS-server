@@ -26,6 +26,9 @@
 | `listen` | `127.0.0.1:8080`；合法监听地址和1—65535端口 |
 | `dataRoot`、`mediaRoot`、`cacheRoot` | `data`、`media`、`cache`，以配置目录解析，须非空且分离 |
 | `webRoot` | 可选构建制品目录；也可通过CLI `--web-root`指定 |
+| `logging.directory` | 省略时为生效 `dataRoot` 下的 `logs`；显式相对路径以 YAML 目录解析，不接受空路径 |
+| `logging.level` | 默认 `info`；支持小写 `trace/debug/info/warn/error` |
+| `logging.plugins` | 默认 `{}`；按插件 ID 覆盖等级，最多128项；未列出的插件继承全局等级 |
 | `allowedOrigins` | 必须显式列出页面完整Origin，无路径、查询、片段或用户信息 |
 | `allowLoopbackHttp` | 默认false；只有IP字面量loopback可显式使用HTTP，远程监听须TLS |
 | `tlsCert`、`tlsKey` | 同时配置；HTTPS部署还须匹配允许的Origin |
@@ -48,7 +51,9 @@
 | `writeBack.maxFileBytes` | 默认8589934592（8 GiB），范围46—1099511627776（1 TiB） |
 | `writeBack.roots` | 默认空；最多256个不重复的`{instanceId,rootId,fields}`授权，字段限lyrics/artwork |
 
-优先级为内置默认值 → YAML → 支持的环境变量 → 显式CLI参数。支持 `MUSICFS_LISTEN`、`MUSICFS_DATA_ROOT`、`MUSICFS_MEDIA_ROOT`、`MUSICFS_CACHE_ROOT`、`MUSICFS_WEB_ROOT` 和 `MUSICFS_ADMIN_TOKEN`；当前CLI仅为普通配置提供 `--web-root` 覆盖，`--config`选择文件。插件及实例开关不接受环境或CLI覆盖。
+优先级为内置默认值 → YAML → 支持的环境变量 → 显式CLI参数。支持 `MUSICFS_LISTEN`、`MUSICFS_DATA_ROOT`、`MUSICFS_MEDIA_ROOT`、`MUSICFS_CACHE_ROOT`、`MUSICFS_WEB_ROOT`、`MUSICFS_LOG_LEVEL` 和 `MUSICFS_ADMIN_TOKEN`；当前CLI仅为普通配置提供 `--web-root` 覆盖，`--config`选择文件。插件及实例开关不接受环境或CLI覆盖。
+
+`logging` 可省略或逐项覆盖。日志同时写控制台及文件：服务端 `server.log`，每个插件独立写入 `plugins/<pluginId>.log`；同插件多个实例通过日志字段区分。每天或单文件达到100 MiB轮转，旧日志自动 gzip 压缩，保留30天，运行中每小时清理。日志目录不得与音乐根重叠。配置文件变更在重启后生效；管理员可通过 `GET/PUT /api/v1/admin/logging` 读取或临时调整等级，PUT 须提供完整 `level` 与 `plugins`，并通过登录、Origin 与 CSRF 校验。运行时修改不写回 YAML，重启恢复启动值，具体等级用途及调用示例见[日志](logging.md)。
 
 管理员令牌至少24字符，只通过 `MUSICFS_ADMIN_TOKEN` 注入，不是YAML字段。读写服务的 `Snapshot` 清空该值；凭据、环境变量和CLI生效值不写回文件。不要把凭据放入URL、长期测试材料或Git。
 

@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 )
 
 type Handler func(context.Context, string, json.RawMessage) (any, error)
@@ -75,7 +77,10 @@ func (p *Peer) fail(err error) {
 	})
 }
 
-func (p *Peer) Call(ctx context.Context, method string, params, result any) error {
+func (p *Peer) Call(ctx context.Context, method string, params, result any) (callErr error) {
+	// 使用会话身份归档，调用方的上下文仍独立控制取消和截止时间。
+	finish := pluginlog.Operation(p.ctx, method)
+	defer func() { finish(callErr) }()
 	if err := ctx.Err(); err != nil {
 		return err
 	}

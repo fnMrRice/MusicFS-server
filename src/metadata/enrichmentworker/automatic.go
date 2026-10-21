@@ -65,6 +65,7 @@ func (s *Service) resolvedPolicy(w enrichment.AutomationWork) (enrichment.Automa
 func (s *Service) automate(ctx context.Context, repo enrichment.AutomationRepository, w enrichment.AutomationWork) (bool, error) {
 	fail := func(err error) (bool, error) {
 		code := failureCode(err)
+		slog.WarnContext(ctx, "Automatic metadata failed", "errorCode", code)
 		return false, repo.FinishAutomation(ctx, w.TriggerID, "failed", &code)
 	}
 	if w.Policy == nil {
@@ -108,6 +109,7 @@ func (s *Service) automate(ctx context.Context, repo enrichment.AutomationReposi
 			}
 			return false, err
 		}
+		slog.DebugContext(ctx, "Automatic metadata task attached", "jobId", j.JobID)
 		return true, nil
 	}
 	j, err := s.Get(ctx, w.Owner, *w.JobID)
@@ -127,5 +129,9 @@ func (s *Service) automate(ctx context.Context, repo enrichment.AutomationReposi
 	if err = s.applyAutomaticTarget(ctx, repo, w, j.Targets[0]); err != nil {
 		return false, err
 	}
-	return false, repo.FinishAutomation(ctx, w.TriggerID, "completed", nil)
+	err = repo.FinishAutomation(ctx, w.TriggerID, "completed", nil)
+	if err == nil {
+		slog.DebugContext(ctx, "Automatic metadata completed", "jobId", *w.JobID)
+	}
+	return false, err
 }

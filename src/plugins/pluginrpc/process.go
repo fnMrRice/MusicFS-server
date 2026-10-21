@@ -13,8 +13,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/logging"
 )
 
 const Protocol = "musicfs-persistence/1"
@@ -44,7 +46,10 @@ type Process struct {
 	version     string
 }
 
-func Start(ctx context.Context, cfg ProcessConfig, contract reflect.Type, mode string, options any) (*Process, error) {
+func Start(ctx context.Context, cfg ProcessConfig, contract reflect.Type, mode string, options any) (process *Process, startErr error) {
+	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.plugin", "")
+	finish := pluginlog.Operation(ctx, "persistence.start")
+	defer func() { finish(startErr) }()
 	if contract == nil || contract.Kind() != reflect.Interface {
 		return nil, domain.Fail("INVALID_ARGUMENT", "Invalid persistence contract")
 	}
@@ -68,9 +73,15 @@ func Start(ctx context.Context, cfg ProcessConfig, contract reflect.Type, mode s
 	// The backend must remain available while server shutdown drains workers and
 	// persists their final state. Only Close owns the process lifetime; the
 	// caller's context still bounds initialization and every individual operation.
-	runCtx, cancel := context.WithCancel(context.Background())
+	runCtx, cancel := context.WithCancel(pluginlog.Context(context.Background(), "musicfs.plugin.storage.plugin", ""))
 	cmd := exec.CommandContext(runCtx, cfg.Executable, cfg.Args...)
-	cmd.Dir, cmd.Stderr, cmd.WaitDelay = cfg.WorkDir, io.Discard, 2*time.Second
+	stderr := logging.PluginStderr("musicfs.plugin.storage.plugin", "")
+	cmd.Dir, cmd.Stderr, cmd.WaitDelay = cfg.WorkDir, stderr, 2*time.Second
+	defer func() {
+		if cmd.Process == nil {
+			_ = stderr.Close()
+		}
+	}()
 	configureProcess(cmd)
 	cmd.Env = []string{}
 	for _, key := range []string{"SystemRoot", "WINDIR", "TEMP", "TMP"} {
@@ -100,6 +111,7 @@ func Start(ctx context.Context, cfg ProcessConfig, contract reflect.Type, mode s
 		cancel()
 		cmd.Process.Kill()
 		cmd.Wait()
+		stderr.Close()
 		return nil, domain.Fail("UNSUPPORTED", "Persistence process containment is unavailable")
 	}
 	p := &Process{Endpoint: NewEndpoint(), cancel: cancel, done: make(chan struct{})}
@@ -107,6 +119,7 @@ func Start(ctx context.Context, cfg ProcessConfig, contract reflect.Type, mode s
 	p.Peer = pluginproto.NewPeerWithLimit(runCtx, stdout, stdin, "h-", p.Handle, MaxMessageBytes)
 	go func() {
 		cmd.Wait()
+		stderr.Close()
 		p.Peer.Close()
 		cleanup()
 		close(p.done)
@@ -125,6 +138,7 @@ func Start(ctx context.Context, cfg ProcessConfig, contract reflect.Type, mode s
 	}
 	p.initialized = true
 	p.version = r.PluginVersion
+	pluginlog.Logger(ctx).InfoContext(ctx, "Persistence worker ready", "event", "plugin.lifecycle.started")
 	return p, nil
 }
 

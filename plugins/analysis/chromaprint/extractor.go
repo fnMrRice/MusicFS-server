@@ -8,6 +8,8 @@ import (
 	"io"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
+
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/fingerprint"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 )
@@ -68,7 +70,11 @@ func (w *countedPCM) Write(p []byte) (int, error) {
 	return n, err
 }
 
-func (e *Extractor) Extract(parent context.Context, r Request, input io.ReaderAt, size int64) (Detail, error) {
+func (e *Extractor) Extract(parent context.Context, r Request, input io.ReaderAt, size int64) (result Detail, extractErr error) {
+	parent = pluginlog.Context(parent, "musicfs.plugin.analysis.chromaprint", "")
+	finish := pluginlog.Operation(parent, "fingerprint.extract")
+	defer func() { finish(extractErr) }()
+	pluginlog.Logger(parent).Log(parent, pluginlog.LevelTrace, "Fingerprint extraction admitted", "inputBytes", size, "startMs", r.StartMs, "durationMs", r.DurationMs)
 	var detail Detail
 	if err := parent.Err(); err != nil {
 		return detail, err
@@ -146,6 +152,7 @@ func (e *Extractor) Extract(parent context.Context, r Request, input io.ReaderAt
 		return detail, fmt.Errorf("TEMPORARY_FAILURE: fingerprint extraction failed")
 	}
 	detail = Detail{SchemaVersion: 1, Identity: e.identity, RequestedStartMs: r.StartMs, RequestedDurationMs: r.DurationMs, PCM: info, Quality: fingerprint.Assess(values, info.SampleCount), Values: values}
+	pluginlog.Logger(parent).DebugContext(parent, "Fingerprint samples extracted", "sampleCount", info.SampleCount, "fingerprintValues", len(values))
 	if _, err = detail.Encode(); err != nil {
 		return Detail{}, err
 	}

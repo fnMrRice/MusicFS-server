@@ -20,6 +20,7 @@ func (s *Service) worker(ctx context.Context) {
 		}
 		delay := 100 * time.Millisecond
 		if !errors.Is(err, sql.ErrNoRows) {
+			slog.DebugContext(ctx, "Remote playlist claim deferred", "errorCode", FailureCode(err))
 			delay = time.Second
 		}
 		timer := time.NewTimer(delay)
@@ -34,6 +35,7 @@ func (s *Service) worker(ctx context.Context) {
 	}
 }
 func (s *Service) execute(parent context.Context, job SyncJob) {
+	started := time.Now()
 	ctx, cancel := context.WithTimeout(parent, 30*time.Second)
 	s.mu.Lock()
 	s.running[job.ID] = cancel
@@ -43,6 +45,7 @@ func (s *Service) execute(parent context.Context, job SyncJob) {
 	if err == nil && (current.State != "running" || current.Generation != job.Generation) {
 		return
 	}
+	slog.InfoContext(ctx, "Remote playlist task started", "jobId", job.ID)
 	if err == nil {
 		if remote, ok := s.remote.(interface {
 			Acquire(context.Context, string, Binding) (context.Context, func(), error)
@@ -63,6 +66,7 @@ func (s *Service) execute(parent context.Context, job SyncJob) {
 	}
 	var observation Observation
 	if err == nil {
+		slog.DebugContext(ctx, "Remote playlist observation started", "jobId", job.ID)
 		observation, err = s.remote.ObservePlaylist(ctx, job.Owner, binding)
 	}
 	if err == nil {
@@ -72,6 +76,7 @@ func (s *Service) execute(parent context.Context, job SyncJob) {
 		_, err = s.repo.FinishRemoteSync(ctx, job, observation)
 	}
 	if parent.Err() != nil {
+		slog.DebugContext(parent, "Remote playlist task interrupted for shutdown", "jobId", job.ID)
 		return
 	}
 	if err != nil {
@@ -83,6 +88,14 @@ func (s *Service) execute(parent context.Context, job SyncJob) {
 			if readErr != nil || current.State == "running" {
 				slog.Error("Remote playlist task requires recovery", "jobId", job.ID, "errorCode", FailureCode(finishErr))
 			}
+			return
 		}
+		level, message := slog.LevelWarn, "Remote playlist task failed"
+		if failure.Code == "CANCELED" {
+			level, message = slog.LevelInfo, "Remote playlist task cancelled"
+		}
+		slog.Log(finish, level, message, "jobId", job.ID, "errorCode", failure.Code, "durationMs", time.Since(started).Milliseconds())
+		return
 	}
+	slog.InfoContext(ctx, "Remote playlist task completed", "jobId", job.ID, "durationMs", time.Since(started).Milliseconds())
 }

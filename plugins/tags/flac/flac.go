@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/sdk/tagformat"
 )
 
@@ -79,7 +80,10 @@ func readFLAC(r io.ReaderAt, size int64) (flacFile, error) {
 }
 
 // Rewrite 原样复制音频字节，不解码、重新编码或重算原始 MD5。目标必须由宿主持有且尚未发布。
-func (*Plugin) Rewrite(ctx context.Context, src io.ReaderAt, size int64, dst io.Writer, patch tagformat.Patch) (tagformat.EditResult, error) {
+func (*Plugin) Rewrite(ctx context.Context, src io.ReaderAt, size int64, dst io.Writer, patch tagformat.Patch) (edited tagformat.EditResult, rewriteErr error) {
+	ctx = pluginlog.Context(ctx, "musicfs.plugin.tags.flac", "")
+	finish := pluginlog.Operation(ctx, "tags.rewrite")
+	defer func() { finish(rewriteErr) }()
 	var result tagformat.EditResult
 	if err := validatePatch(patch); err != nil {
 		return result, err
@@ -120,6 +124,7 @@ func (*Plugin) Rewrite(ctx context.Context, src io.ReaderAt, size int64, dst io.
 	if n != size-file.audioOffset {
 		return result, io.ErrUnexpectedEOF
 	}
+	pluginlog.Logger(ctx).DebugContext(ctx, "FLAC tags rewritten", "inputBytes", size, "audioBytes", n, "metadataBlocks", len(blocks), "changed", changed)
 	return tagformat.EditResult{AudioSHA512: fmt.Sprintf("%x", h.Sum(nil)), Changed: changed}, nil
 }
 

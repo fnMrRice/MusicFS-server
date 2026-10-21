@@ -22,6 +22,11 @@ func resolvePaths(c *Config, base string) {
 	for _, field := range []*string{&c.DataRoot, &c.MediaRoot, &c.CacheRoot, &c.WebRoot, &c.TLSCert, &c.TLSKey, &c.Fingerprinting.FpcalcPath} {
 		resolve(field)
 	}
+	if c.Logging.Directory == "" {
+		c.Logging.Directory = filepath.Join(c.DataRoot, "logs")
+	} else {
+		resolve(&c.Logging.Directory)
+	}
 	c.Fingerprinting.FpcalcSHA256 = strings.ToLower(c.Fingerprinting.FpcalcSHA256)
 	for i := range c.Plugins {
 		plugin := &c.Plugins[i]

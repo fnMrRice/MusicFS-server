@@ -18,7 +18,9 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/sdk/inprocess"
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/src/core/logging"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 )
 
@@ -71,7 +73,10 @@ func NewProcessor(cfg Config) (*Processor, error) {
 	return &Processor{config: cfg, slots: make(chan struct{}, cfg.MaxConcurrent)}, nil
 }
 
-func (p *Processor) Open(ctx context.Context, taskID, assetID string, input io.ReaderAt, size int64) (*Decoded, error) {
+func (p *Processor) Open(ctx context.Context, taskID, assetID string, input io.ReaderAt, size int64) (decoded *Decoded, openErr error) {
+	ctx = pluginlog.Context(ctx, "musicfs.plugin.decoder.ncm", p.config.InstanceID)
+	finish := pluginlog.Operation(ctx, "ncm.open")
+	defer func() { finish(openErr) }()
 	lease, err := p.AcquireLease(ctx)
 	if err != nil {
 		return nil, err
@@ -128,7 +133,13 @@ func (p *Processor) Open(ctx context.Context, taskID, assetID string, input io.R
 		go func() { <-local.Done; cancel(); _ = peer.Close(); close(processDone) }()
 	} else {
 		cmd := exec.CommandContext(ctx, p.config.WorkerPath, p.config.WorkerArgs...)
-		cmd.Dir, cmd.Stderr, cmd.WaitDelay = p.config.WorkDir, io.Discard, time.Second
+		stderr := logging.PluginStderr("musicfs.plugin.decoder.ncm", p.config.InstanceID)
+		cmd.Dir, cmd.Stderr, cmd.WaitDelay = p.config.WorkDir, stderr, time.Second
+		defer func() {
+			if cmd.Process == nil {
+				_ = stderr.Close()
+			}
+		}()
 		cmd.Env = []string{}
 		for _, key := range []string{"SystemRoot", "WINDIR", "TEMP", "TMP"} {
 			if value := os.Getenv(key); value != "" {
@@ -153,7 +164,7 @@ func (p *Processor) Open(ctx context.Context, taskID, assetID string, input io.R
 			return nil, fmt.Errorf("UNSUPPORTED: NCM worker failed to start")
 		}
 		peer = pluginproto.NewPeer(ctx, stdout, stdin, "h-", nil)
-		go func() { _ = cmd.Wait(); cancel(); _ = peer.Close(); close(processDone) }()
+		go func() { _ = cmd.Wait(); _ = stderr.Close(); cancel(); _ = peer.Close(); close(processDone) }()
 	}
 	cleaned := make(chan struct{})
 	var remote *channelReader
@@ -210,6 +221,7 @@ func (p *Processor) Open(ctx context.Context, taskID, assetID string, input io.R
 		return nil, err
 	}
 	success = true
+	pluginlog.Logger(ctx).DebugContext(ctx, "NCM stream opened", "inputBytes", size, "outputBytes", result.Size, "format", result.Metadata.Format)
 	return &Decoded{reader: remote, size: result.Size, metadata: cloneMetadata(result.Metadata), cancel: cancel, closed: cleaned}, nil
 }
 

@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"io"
+	"log/slog"
 	"mime"
 	"regexp"
 	"strings"
@@ -126,6 +127,7 @@ func (s *ContentService) upload(ctx context.Context, owner string, metadata Cont
 		}
 		return ContentObject{}, domain.Fail("CONFLICT", "Media upload is unfinished or unavailable; use a new operation")
 	}
+	slog.DebugContext(ctx, "Media content upload prepared", "publicationId", p.ID, "field", metadata.Field, "sizeBytes", request.Size)
 	verify := func(file io.ReadSeeker) error {
 		hash := sha256.New()
 		n, err := io.Copy(hash, io.LimitReader(contextReader{ctx: ctx, r: file}, request.Size+1))
@@ -165,6 +167,7 @@ func (s *ContentService) upload(ctx context.Context, owner string, metadata Cont
 	if err = s.journal.SetPublicationStage(ctx, owner, p.ID, "referenced", "finished"); err != nil {
 		return ContentObject{}, err
 	}
+	slog.DebugContext(ctx, "Media content upload completed", "publicationId", p.ID, "field", metadata.Field, "sizeBytes", request.Size)
 	return s.ContentRepository.ContentObject(ctx, owner, object.ID)
 }
 

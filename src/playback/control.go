@@ -3,6 +3,7 @@ package playback
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
@@ -11,6 +12,12 @@ import (
 )
 
 func (s *Service) Control(ctx context.Context, who auth.Session, id, operation string, r ControlRequest, key string) (Description, error) {
+	applied := false
+	defer func() {
+		if applied {
+			slog.InfoContext(ctx, "Playback control applied", "sessionId", id, "operation", operation, "positionMs", r.PositionMs)
+		}
+	}()
 	if err := checkKey(key); err != nil {
 		return Description{}, err
 	}
@@ -100,5 +107,6 @@ func (s *Service) Control(ctx context.Context, who auth.Session, id, operation s
 	a.attemptCtx, a.cancelAttempt = context.WithCancel(a.ctx)
 	a.description = d
 	a.lastAccess = time.Now()
+	applied = true
 	return d, nil
 }

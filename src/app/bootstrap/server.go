@@ -15,6 +15,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/core/lifecycle"
+	"github.com/fnMrRice/MusicFS-server/src/core/logging"
 )
 
 func Serve(ctx context.Context, c config.Config, log *slog.Logger) error {
@@ -58,6 +59,30 @@ func ServeWithOptions(ctx context.Context, c config.Config, log *slog.Logger, op
 	if err = lockFile(lock); err != nil {
 		return errors.New("data directory is already in use")
 	}
+	var logs *logging.Manager
+	closeLogs := func() {}
+	logsOwned := true
+	if options.LogOutput != nil {
+		logs, closeLogs, err = startLogging(c, options.LogOutput)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if logsOwned {
+				closeLogs()
+			}
+		}()
+		log = logs.Logger()
+	}
+	if log == nil {
+		log = slog.Default()
+	}
+	log.Info("server starting", "startupMode", options.StartupMode)
+	defer func() {
+		if result != nil && logsOwned {
+			log.Error("server stopped with an error", "errorCode", "SERVER_FAILURE")
+		}
+	}()
 	listener, err := net.Listen("tcp", c.Listen)
 	if err != nil {
 		return errors.New("cannot listen on configured address")
@@ -79,17 +104,22 @@ func ServeWithOptions(ctx context.Context, c config.Config, log *slog.Logger, op
 	if err != nil {
 		return err
 	}
+	if logs != nil {
+		handler.RegisterLogging(logs)
+	}
 	server := &http.Server{ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 32 << 10, BaseContext: func(net.Listener) context.Context { return runCtx }}
 	closeAll := cleanup
 	defer func() {
 		ready.Store(false)
 		manager.BeginDrain("shutdown")
+		log.Info("server draining", "instanceId", instance)
 		cancelRun()
 		lockOwned = false
-		if err := finishServer(server, closeAll, lock, manager, options.ShutdownTimeout, options.BeforeCleanup); err != nil {
+		logsOwned = false
+		afterCleanup := func() { log.Info("server stopped", "instanceId", instance); closeLogs() }
+		if err := finishServer(server, closeAll, lock, manager, options.ShutdownTimeout, options.BeforeCleanup, afterCleanup); err != nil {
+			log.Error("server shutdown incomplete", "errorCode", "SHUTDOWN_INCOMPLETE")
 			result = errors.Join(result, err)
-		} else {
-			log.Info("server stopped", "instanceId", instance)
 		}
 	}()
 	var web http.Handler

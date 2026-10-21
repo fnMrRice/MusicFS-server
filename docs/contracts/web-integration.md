@@ -11,6 +11,7 @@
 | 批量展示来源引用 | `/source-refs/lookup`、`/online-instances/{id}/tracks/lookup`；保留顺序、重复项和单项错误 |
 | 个人资料、收藏、最近播放 | `/me/profile`、`/me/favorites`、`/me/recently-played`；见[个人数据](../library/personal-library.md) |
 | 插件管理和配置 | `/admin/plugins` 及操作查询；见[插件管理](../plugins/plugin-management.md) |
+| 管理员日志等级 | `GET/PUT /admin/logging`；全局与插件覆盖整组替换，当前进程生效，重启恢复配置文件；见[日志](../operations/logging.md) |
 | 能力变更通知 | `/events` 的 `capabilities.changed` SSE；重新读取本人可见来源与能力 |
 
 ## 接入约束

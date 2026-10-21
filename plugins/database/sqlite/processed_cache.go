@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
+
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
@@ -72,7 +74,10 @@ func authorizeProcessedCache(ctx context.Context, tx *sql.Tx, r processedcache.R
 	return nil
 }
 
-func (s *Store) PublishProcessedCache(ctx context.Context, r processedcache.Record, a processedcache.Authorization) error {
+func (s *Store) PublishProcessedCache(ctx context.Context, r processedcache.Record, a processedcache.Authorization) (publishErr error) {
+	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", "")
+	finish := pluginlog.Operation(ctx, "processedCache.publish")
+	defer func() { finish(publishErr) }()
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -99,7 +104,10 @@ func (s *Store) PublishProcessedCache(ctx context.Context, r processedcache.Reco
 	return tx.Commit()
 }
 
-func (s *Store) CheckProcessedCache(ctx context.Context, r processedcache.Record, a processedcache.Authorization) error {
+func (s *Store) CheckProcessedCache(ctx context.Context, r processedcache.Record, a processedcache.Authorization) (checkErr error) {
+	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", "")
+	finish := pluginlog.Operation(ctx, "processedCache.check")
+	defer func() { finish(checkErr) }()
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err

@@ -6,6 +6,8 @@ import (
 	"errors"
 	"reflect"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
+
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 )
@@ -38,7 +40,10 @@ func settleHash(ctx context.Context, tx *sql.Tx, j *identification.HashJob, resu
 	return nil
 }
 
-func (s *Store) FinishHash(ctx context.Context, j identification.HashJob, result identification.Result, completed int64) error {
+func (s *Store) FinishHash(ctx context.Context, j identification.HashJob, result identification.Result, completed int64) (finishErr error) {
+	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", "")
+	finish := pluginlog.Operation(ctx, "hash.result.persist")
+	defer func() { finish(finishErr) }()
 	if completed < 0 || completed > j.FileSizeBytes || result.Status == "verified" && completed != j.FileSizeBytes {
 		return identification.Invalid()
 	}

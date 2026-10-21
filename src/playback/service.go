@@ -3,6 +3,7 @@ package playback
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -112,6 +113,7 @@ func New(ctx context.Context, repo Repository, lib *library.Service, processor *
 		}
 	}
 	go s.reap()
+	slog.DebugContext(ctx, "Playback service started", "maxSessions", c.MaxSessions, "maxCacheBytes", c.MaxCacheBytes)
 	return s, nil
 }
 func (s *Service) reap() {
@@ -200,7 +202,10 @@ func (s *Service) stopLocked(ctx context.Context, id string, a *session) {
 	s.garbage[a.path] = a.size
 	s.collect()
 	raw, _ := json.Marshal(a.description)
-	s.repo.PlaybackSave(ctx, id, a.owner, a.user, raw, "stopped", a.description.ExpiresAt)
+	if err := s.repo.PlaybackSave(ctx, id, a.owner, a.user, raw, "stopped", a.description.ExpiresAt); err != nil {
+		logPlaybackFailure(ctx, "Playback stopped state persistence failed", err, "sessionId", id)
+	}
+	slog.InfoContext(ctx, "Playback session stopped", "sessionId", id, "instanceId", a.track.ProviderID)
 }
 func (s *Service) find(who auth.Session, id string) (*session, error) {
 	a := s.sessions[id]

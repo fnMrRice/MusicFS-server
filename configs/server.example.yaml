@@ -8,6 +8,10 @@ allowedOrigins:
 dataRoot: '../data'
 mediaRoot: '../media'
 cacheRoot: '../cache'
+logging:
+  # 省略 directory 时使用 dataRoot 下的 logs；显式相对路径以本文件目录为基准。
+  level: info
+  plugins: {}
 storage:
   backend: 'sqlite'
 audioDSP:

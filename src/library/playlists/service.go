@@ -3,6 +3,7 @@ package playlists
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"sync"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
@@ -62,6 +63,7 @@ func (s *Service) Sync(ctx context.Context, owner, id string, expected int64, ke
 	}
 	j, merged, err := s.repo.QueueRemoteSync(ctx, owner, id, expected, b, key)
 	if err == nil {
+		slog.InfoContext(ctx, "Remote playlist task queued", "jobId", j.ID, "merged", merged)
 		s.notify()
 	}
 	return j, merged, err
@@ -85,6 +87,7 @@ func (s *Service) Snapshot(ctx context.Context, owner, id string, revision int64
 func (s *Service) Cancel(ctx context.Context, owner, id string) (SyncJob, error) {
 	j, err := s.repo.CancelRemoteSync(ctx, owner, id)
 	if err == nil {
+		slog.InfoContext(ctx, "Remote playlist task cancellation recorded", "jobId", id, "state", j.State)
 		s.mu.Lock()
 		if cancel := s.running[id]; cancel != nil {
 			cancel()
@@ -104,6 +107,7 @@ func (s *Service) Start(ctx context.Context) error {
 	}
 	run, cancel := context.WithCancel(ctx)
 	s.cancel = cancel
+	slog.DebugContext(ctx, "Remote playlist workers started", "concurrency", s.concurrent)
 	for range s.concurrent {
 		s.wg.Add(1)
 		go s.worker(run)

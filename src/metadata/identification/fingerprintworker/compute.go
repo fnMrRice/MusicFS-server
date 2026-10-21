@@ -31,6 +31,7 @@ func failureCode(err error) string {
 }
 
 func (s *Service) execute(parent context.Context, j identification.FingerprintJob) {
+	started := time.Now()
 	ctx, cancel := context.WithTimeout(parent, s.config.Timeout)
 	s.mu.Lock()
 	s.running[j.ID] = cancel
@@ -40,8 +41,14 @@ func (s *Service) execute(parent context.Context, j identification.FingerprintJo
 	if err != nil || current.Status != "running" || current.Generation != j.Generation {
 		return
 	}
+	slog.InfoContext(ctx, "Fingerprint task started", "jobId", j.ID)
 	err = s.extractAndPublish(ctx, j)
-	if err == nil || parent.Err() != nil {
+	if err == nil {
+		slog.InfoContext(ctx, "Fingerprint task completed", "jobId", j.ID, "durationMs", time.Since(started).Milliseconds())
+		return
+	}
+	if parent.Err() != nil {
+		slog.DebugContext(parent, "Fingerprint task interrupted for shutdown", "jobId", j.ID)
 		return
 	}
 	finish, stop := context.WithTimeout(context.Background(), 5*time.Second)
@@ -51,7 +58,13 @@ func (s *Service) execute(parent context.Context, j identification.FingerprintJo
 		if getErr != nil || latest.Status == "running" && latest.Generation == j.Generation {
 			slog.Error("Fingerprint task requires recovery", "jobId", j.ID, "errorCode", failureCode(failed))
 		}
+		return
 	}
+	level, message := slog.LevelWarn, "Fingerprint task failed"
+	if failureCode(err) == "CANCELED" {
+		level, message = slog.LevelInfo, "Fingerprint task cancelled"
+	}
+	slog.Log(finish, level, message, "jobId", j.ID, "errorCode", failureCode(err), "durationMs", time.Since(started).Milliseconds())
 }
 
 func (s *Service) extractAndPublish(ctx context.Context, j identification.FingerprintJob) error {
@@ -86,6 +99,7 @@ func (s *Service) extractAndPublish(ctx context.Context, j identification.Finger
 		return readErr
 	}
 	if n == len(header) && string(header[:]) == "CTENFDAM" {
+		slog.DebugContext(ctx, "Fingerprint input decoding started", "jobId", j.ID)
 		if decoder == nil {
 			return domain.Fail("UNSUPPORTED", "NCM decryption plugin is unavailable")
 		}
@@ -96,9 +110,13 @@ func (s *Service) extractAndPublish(ctx context.Context, j identification.Finger
 		defer decoded.Close()
 		input, size = decoded, decoded.Size()
 	}
+	slog.DebugContext(ctx, "Fingerprint extraction started", "jobId", j.ID, "inputBytes", size)
 	detail, err := extractor.Extract(ctx, fingerprint.Request{TaskID: j.ID, AssetID: j.AssetID, StartMs: j.StartMs, DurationMs: j.DurationMs}, input, size)
 	if err != nil {
 		return err
+	}
+	if slog.Default().Enabled(ctx, slog.Level(-8)) {
+		slog.Log(ctx, slog.Level(-8), "Fingerprint extraction completed", "jobId", j.ID, "samples", detail.PCM.SampleCount, "values", len(detail.Values))
 	}
 	if err = in.Validate(); err != nil {
 		return err
@@ -116,6 +134,7 @@ func (s *Service) extractAndPublish(ctx context.Context, j identification.Finger
 		return err
 	}
 	target := mediastore.Target{Purpose: "fingerprint", ID: j.ID, Generation: j.Generation, Metadata: metadata}
+	slog.DebugContext(ctx, "Fingerprint publication started", "jobId", j.ID, "detailBytes", len(raw))
 	_, err = s.media.Publish(ctx, j.Owner, "fingerprint", "application/json", target, bytes.NewReader(raw), fingerprint.MaxDetailBytes, func(input io.ReadSeeker) error {
 		copy, err := io.ReadAll(io.LimitReader(input, fingerprint.MaxDetailBytes+1))
 		if err != nil {

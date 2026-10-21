@@ -15,8 +15,10 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/plugins/source/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/inprocess"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/logging"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/accountstore"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 )
@@ -42,7 +44,10 @@ type OnlineWorker struct {
 	version        string
 }
 
-func StartOnline(parent context.Context, config OnlineConfig) (*OnlineWorker, error) {
+func StartOnline(parent context.Context, config OnlineConfig) (worker *OnlineWorker, startErr error) {
+	parent = pluginlog.Context(parent, pluginproto.OnlinePluginID(config.Platform), config.InstanceID)
+	finish := pluginlog.Operation(parent, "worker.start")
+	defer func() { finish(startErr) }()
 	config.Args = slices.Clone(config.Args)
 	if err := parent.Err(); err != nil {
 		return nil, err
@@ -88,7 +93,13 @@ func StartOnline(parent context.Context, config OnlineConfig) (*OnlineWorker, er
 	} else {
 		cmd := exec.CommandContext(ctx, config.Executable, config.Args...)
 		onlineConfigureProcess(cmd)
-		cmd.Dir, cmd.Stderr, cmd.WaitDelay = privateDir, io.Discard, time.Second
+		stderr := logging.PluginStderr(pluginproto.OnlinePluginID(config.Platform), config.InstanceID)
+		cmd.Dir, cmd.Stderr, cmd.WaitDelay = privateDir, stderr, time.Second
+		defer func() {
+			if cmd.Process == nil {
+				_ = stderr.Close()
+			}
+		}()
 		cmd.Env = []string{}
 		for _, key := range []string{"SystemRoot", "WINDIR", "TEMP", "TMP"} {
 			if v := os.Getenv(key); v != "" {
@@ -119,12 +130,14 @@ func StartOnline(parent context.Context, config OnlineConfig) (*OnlineWorker, er
 			stdout.Close()
 			cmd.Process.Kill()
 			cmd.Wait()
+			stderr.Close()
 			return nil, domain.Fail("UNSUPPORTED", "Online process containment is unavailable")
 		}
 		w.peer = pluginproto.NewPeer(ctx, stdout, stdin, "h-", nil)
 		go func() { <-w.peer.Done(); cancel() }()
 		go func() {
 			_ = cmd.Wait()
+			_ = stderr.Close()
 			cancel()
 			_ = w.peer.Close()
 			contain()
@@ -170,6 +183,7 @@ func StartOnline(parent context.Context, config OnlineConfig) (*OnlineWorker, er
 		return nil, err
 	}
 	failed = false
+	pluginlog.Logger(parent).InfoContext(parent, "Plugin worker ready", "builtin", config.Builtin, "event", "plugin.lifecycle.started")
 	return w, nil
 }
 
@@ -182,6 +196,7 @@ func onlineRandom() (string, error) {
 }
 
 func (w *OnlineWorker) Close() error {
+	pluginlog.Logger(pluginlog.Context(context.Background(), pluginproto.OnlinePluginID(w.config.Platform), w.config.InstanceID)).Debug("Plugin worker stopping", "event", "plugin.lifecycle.stopping")
 	w.cancel()
 	_ = w.peer.Close()
 	select {

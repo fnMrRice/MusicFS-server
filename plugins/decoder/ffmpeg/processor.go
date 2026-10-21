@@ -19,7 +19,9 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/sdk/inprocess"
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/src/core/logging"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio/dspworker"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
@@ -129,7 +131,11 @@ func (p *Processor) Process(ctx context.Context, plan Plan, input io.ReadSeeker,
 	})
 }
 
-func (p *Processor) run(ctx context.Context, taskID string, readerAt io.ReaderAt, size int64, output io.Writer, operation func(*pluginproto.Peer, string, string) error) error {
+func (p *Processor) run(ctx context.Context, taskID string, readerAt io.ReaderAt, size int64, output io.Writer, operation func(*pluginproto.Peer, string, string) error) (runErr error) {
+	ctx = pluginlog.Context(ctx, "musicfs.plugin.decoder.ffmpeg", p.config.InstanceID)
+	finish := pluginlog.Operation(ctx, "audio.process")
+	defer func() { finish(runErr) }()
+	pluginlog.Logger(ctx).Log(ctx, pluginlog.LevelTrace, "Audio task admitted", "inputBytes", size, "builtin", p.config.Builtin, "dspNodes", len(p.config.DSPChain))
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -195,7 +201,13 @@ func (p *Processor) run(ctx context.Context, taskID string, readerAt io.ReaderAt
 		cmd := exec.CommandContext(ctx, p.config.WorkerPath, p.config.WorkerArgs...)
 		configureProcess(cmd)
 		cmd.Dir = p.config.WorkDir
-		cmd.Stderr = io.Discard
+		stderr := logging.PluginStderr("musicfs.plugin.decoder.ffmpeg", p.config.InstanceID)
+		cmd.Stderr = stderr
+		defer func() {
+			if cmd.Process == nil {
+				_ = stderr.Close()
+			}
+		}()
 		cmd.WaitDelay = 2 * time.Second
 		cmd.Env = []string{}
 		for _, key := range []string{"SystemRoot", "WINDIR", "TEMP", "TMP"} {
@@ -218,12 +230,13 @@ func (p *Processor) run(ctx context.Context, taskID string, readerAt io.ReaderAt
 		if err != nil {
 			cmd.Process.Kill()
 			cmd.Wait()
+			stderr.Close()
 			return fmt.Errorf("UNSUPPORTED: process cleanup containment unavailable")
 		}
 		defer cleanupTree()
 		peer = pluginproto.NewPeer(ctx, stdout, stdin, "h-", nil)
 		done := make(chan struct{})
-		go func() { cmd.Wait(); peer.Close(); close(done) }()
+		go func() { cmd.Wait(); stderr.Close(); peer.Close(); close(done) }()
 		defer func() {
 			peer.Close()
 			select {

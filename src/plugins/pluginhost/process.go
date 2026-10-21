@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,7 +16,9 @@ import (
 	"github.com/fnMrRice/MusicFS-server/plugins/source/localfiles"
 	"github.com/fnMrRice/MusicFS-server/sdk/inprocess"
 	"github.com/fnMrRice/MusicFS-server/sdk/plugindisplay"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/src/core/logging"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 )
@@ -39,7 +40,10 @@ type Worker struct {
 	scanGrants   map[string]scanGrant
 }
 
-func Start(ctx context.Context, cfg Config) (*Worker, error) {
+func Start(ctx context.Context, cfg Config) (worker *Worker, startErr error) {
+	ctx = pluginlog.Context(ctx, "musicfs.plugin.source.localfiles", cfg.InstanceID)
+	finish := pluginlog.Operation(ctx, "worker.start")
+	defer func() { finish(startErr) }()
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -112,7 +116,13 @@ func Start(ctx context.Context, cfg Config) (*Worker, error) {
 			os.Remove(privateDir)
 			return nil, err
 		}
-		cmd.Stderr = io.Discard
+		stderr := logging.PluginStderr("musicfs.plugin.source.localfiles", cfg.InstanceID)
+		cmd.Stderr = stderr
+		defer func() {
+			if cmd.Process == nil {
+				_ = stderr.Close()
+			}
+		}()
 		cmd.WaitDelay = 2 * time.Second
 		if err = cmd.Start(); err != nil {
 			cancel()
@@ -121,7 +131,14 @@ func Start(ctx context.Context, cfg Config) (*Worker, error) {
 		}
 		w.cmd = cmd
 		w.peer = pluginproto.NewPeer(workerCtx, stdout, stdin, "h-", w.handle)
-		go func() { cmd.Wait(); w.peer.Close(); w.peer.Wait(); close(w.done); os.Remove(privateDir) }()
+		go func() {
+			cmd.Wait()
+			stderr.Close()
+			w.peer.Close()
+			w.peer.Wait()
+			close(w.done)
+			os.Remove(privateDir)
+		}()
 	}
 	var random [24]byte
 	rand.Read(random[:])
@@ -144,6 +161,7 @@ func Start(ctx context.Context, cfg Config) (*Worker, error) {
 		return nil, err
 	}
 	w.Manifest = ready.Manifest
+	pluginlog.Logger(ctx).InfoContext(ctx, "Plugin worker ready", "builtin", cfg.Builtin, "event", "plugin.lifecycle.started")
 	w.identity = ready.Manifest.Plugin.Clone()
 	displayContext, cancelDisplay := context.WithTimeout(ctx, time.Second)
 	_ = w.loadDisplayCount(displayContext)
@@ -182,6 +200,7 @@ func (w *Worker) Resolve(ctx context.Context, r pluginproto.ResolveRequest) (plu
 	return result, err
 }
 func (w *Worker) Close() error {
+	pluginlog.Logger(w.peerContext()).Debug("Plugin worker stopping", "event", "plugin.lifecycle.stopping")
 	w.cancel()
 	w.peer.Close()
 	select {
@@ -190,5 +209,9 @@ func (w *Worker) Close() error {
 	case <-time.After(3 * time.Second):
 		return fmt.Errorf("worker did not stop within deadline")
 	}
+}
+
+func (w *Worker) peerContext() context.Context {
+	return pluginlog.Context(context.Background(), "musicfs.plugin.source.localfiles", w.config.InstanceID)
 }
 func (w *Worker) Done() <-chan struct{} { return w.done }

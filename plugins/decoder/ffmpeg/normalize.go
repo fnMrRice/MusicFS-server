@@ -8,7 +8,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/src/core/logging"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 )
 
@@ -88,7 +90,9 @@ func (w *pcmWriter) Write(p []byte) (int, error) {
 }
 
 // NormalizePipeline deliberately has no DSP nodes or user preferences.
-func NormalizePipeline(ctx context.Context, r NormalizeRequest, output io.Writer) (audio.PCMInfo, error) {
+func NormalizePipeline(ctx context.Context, r NormalizeRequest, output io.Writer) (normalized audio.PCMInfo, normalizeErr error) {
+	finish := pluginlog.Operation(ctx, "audio.normalize.pipeline")
+	defer func() { finish(normalizeErr) }()
 	var info audio.PCMInfo
 	start, count, err := r.Plan.Samples()
 	if err != nil {
@@ -105,7 +109,9 @@ func NormalizePipeline(ctx context.Context, r NormalizeRequest, output io.Writer
 	defer cancel()
 	args := []string{"-hide_banner", "-nostdin", "-v", "error", "-protocol_whitelist", "http,tcp", "-format_whitelist", inputFormats, "-i", r.InputURL, "-ss", strconv.FormatFloat(float64(start)/11025, 'f', 9, 64), "-t", strconv.FormatFloat(float64(count)/11025, 'f', 9, 64), "-map", "0:a:0", "-vn", "-sn", "-dn", "-ac", "1", "-ar", "11025", "-sample_fmt", "s16", "-c:a", "pcm_s16le", "-f", "s16le", "pipe:1"}
 	cmd := exec.CommandContext(ctx, r.FFmpegPath, args...)
-	cmd.Stderr = io.Discard
+	stderr := logging.PluginStderr("musicfs.plugin.decoder.ffmpeg", "")
+	defer stderr.Close()
+	cmd.Stderr = stderr
 	cmd.WaitDelay = time.Second
 	w := &pcmWriter{output: output, limit: count * 2}
 	cmd.Stdout = w

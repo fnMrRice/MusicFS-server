@@ -57,5 +57,5 @@ func Run(args []string, output io.Writer) error {
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-	return ServeWithOptions(ctx, c, slog.New(slog.NewJSONHandler(output, nil)), ServeOptions{StartupMode: *startupMode})
+	return ServeWithOptions(ctx, c, slog.New(slog.NewJSONHandler(output, nil)), ServeOptions{StartupMode: *startupMode, LogOutput: output})
 }

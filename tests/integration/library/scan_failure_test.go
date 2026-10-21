@@ -1,15 +1,18 @@
 package library_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -27,6 +30,23 @@ type scanFailureCase struct {
 	retry              bool
 	ms                 int64
 	seconds            *int
+}
+
+type scanLogCapture struct {
+	mu sync.Mutex
+	bytes.Buffer
+}
+
+func (c *scanLogCapture) Write(p []byte) (int, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.Buffer.Write(p)
+}
+
+func (c *scanLogCapture) snapshot() []byte {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]byte(nil), c.Bytes()...)
 }
 
 func retrySeconds(value int) *int { return &value }
@@ -149,6 +169,10 @@ func TestLibraryScanFailurePreservesOnlyExplicitSafeRetryMetadata(t *testing.T) 
 	digest := hex.EncodeToString(hash.Sum(nil))
 	for index, test := range scanFailureCases() {
 		t.Run(test.name, func(t *testing.T) {
+			var logs scanLogCapture
+			previous := slog.Default()
+			slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, &slog.HandlerOptions{Level: slog.Level(-8)})))
+			defer slog.SetDefault(previous)
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 			store, err := sqlite.Open(ctx, filepath.Join(t.TempDir(), "scan.db"))
@@ -210,6 +234,27 @@ func TestLibraryScanFailurePreservesOnlyExplicitSafeRetryMetadata(t *testing.T) 
 			after, err := lib.List(ctx, "admin", instanceID, "", 20)
 			if err != nil || len(after.Items) != 1 || after.Items[0].ID != before.Items[0].ID || after.LibraryRevision != before.LibraryRevision || result.LastSuccessAt == nil {
 				t.Fatal("failed scan discarded previous library", err)
+			}
+			queue.Close()
+			output := logs.snapshot()
+			for _, private := range []string{"private", "credential", "existing.wav", "Existing track", root} {
+				if bytes.Contains(output, []byte(private)) {
+					t.Fatalf("Scan logs exposed private data: %q", private)
+				}
+			}
+			debug, trace := false, false
+			for _, line := range bytes.Split(bytes.TrimSpace(output), []byte("\n")) {
+				var record map[string]any
+				if err := json.Unmarshal(line, &record); err != nil {
+					t.Fatal(err)
+				}
+				if record["jobId"] == first.ID {
+					debug = debug || record["level"] == "DEBUG"
+					trace = trace || record["level"] == "DEBUG-4" && record["page"] == float64(0) && record["items"] == float64(1)
+				}
+			}
+			if !debug || !trace {
+				t.Fatal("Scan diagnostics omitted debug stages or trace pagination")
 			}
 		})
 	}

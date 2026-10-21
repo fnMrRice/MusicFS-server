@@ -13,7 +13,9 @@ import (
 	"github.com/fnMrRice/MusicFS-server/plugins/dsp/gain"
 	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/sdk/inprocess"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/src/core/logging"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 )
 
@@ -32,7 +34,10 @@ type Process struct {
 	version string
 }
 
-func New(ctx context.Context, cfg Config, params map[string]float64) (*Process, error) {
+func New(ctx context.Context, cfg Config, params map[string]float64) (process *Process, startErr error) {
+	ctx = pluginlog.Context(ctx, cfg.Name, "")
+	finish := pluginlog.Operation(ctx, "dsp.start")
+	defer func() { finish(startErr) }()
 	if err := cfg.VerifyExecutable(); err != nil {
 		return nil, err
 	}
@@ -59,7 +64,13 @@ func New(ctx context.Context, cfg Config, params map[string]float64) (*Process, 
 		cmd := exec.CommandContext(ctx, cfg.Executable, cfg.Args...)
 		p.cmd = cmd
 		configureProcess(cmd)
-		cmd.Stderr = io.Discard
+		stderr := logging.PluginStderr(cfg.Name, "")
+		cmd.Stderr = stderr
+		defer func() {
+			if cmd.Process == nil {
+				_ = stderr.Close()
+			}
+		}()
 		cmd.WaitDelay = time.Second
 		cmd.Env = []string{}
 		for _, key := range []string{"SystemRoot", "WINDIR", "TEMP", "TMP"} {
@@ -90,9 +101,10 @@ func New(ctx context.Context, cfg Config, params map[string]float64) (*Process, 
 			cancel()
 			cmd.Process.Kill()
 			cmd.Wait()
+			stderr.Close()
 			return nil, fmt.Errorf("UNSUPPORTED: DSP worker containment unavailable")
 		}
-		go func() { cmd.Wait(); close(p.done) }()
+		go func() { cmd.Wait(); stderr.Close(); close(p.done) }()
 	}
 	go func() {
 		select {
@@ -169,7 +181,16 @@ func (p *Process) shutdown() {
 	})
 }
 
-func (p *Process) exchange(kind uint32, payload []byte) ([]byte, error) {
+func (p *Process) exchange(kind uint32, payload []byte) (response []byte, exchangeErr error) {
+	started := time.Now()
+	pluginlog.Logger(p.ctx).Log(p.ctx, pluginlog.LevelTrace, "DSP frame started", "frameKind", kind, "payloadBytes", len(payload))
+	defer func() {
+		if exchangeErr != nil {
+			pluginlog.Logger(p.ctx).WarnContext(p.ctx, "DSP frame failed", "frameKind", kind, "errorCode", pluginlog.ErrorCode(exchangeErr), "durationMs", time.Since(started).Milliseconds())
+		} else {
+			pluginlog.Logger(p.ctx).Log(p.ctx, pluginlog.LevelTrace, "DSP frame completed", "frameKind", kind, "durationMs", time.Since(started).Milliseconds())
+		}
+	}()
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if err := p.ctx.Err(); err != nil {

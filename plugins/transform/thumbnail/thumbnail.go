@@ -11,6 +11,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/sdk/contenttransform"
 	"github.com/fnMrRice/MusicFS-server/sdk/fault"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 )
 
 type Plugin struct{}
@@ -20,7 +21,10 @@ var _ contenttransform.Thumbnailer = (*Plugin)(nil)
 func New() *Plugin                { return &Plugin{} }
 func (*Plugin) Transform() string { return contenttransform.Thumbnail256V1 }
 
-func (*Plugin) Thumbnail(ctx context.Context, body []byte) ([]byte, error) {
+func (*Plugin) Thumbnail(ctx context.Context, body []byte) (data []byte, transformErr error) {
+	ctx = pluginlog.Context(ctx, "musicfs.plugin.transform.thumbnail", "")
+	finish := pluginlog.Operation(ctx, "thumbnail.transform")
+	defer func() { finish(transformErr) }()
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -36,6 +40,7 @@ func (*Plugin) Thumbnail(ctx context.Context, body []byte) ([]byte, error) {
 		return nil, fault.Fail("RESOURCE_CHANGED", "Artwork decode failed")
 	}
 	width, height := cfg.Width, cfg.Height
+	pluginlog.Logger(ctx).Log(ctx, pluginlog.LevelTrace, "Artwork dimensions validated", "width", width, "height", height, "format", format)
 	if width > 256 || height > 256 {
 		if width >= height {
 			height = max(1, height*256/width)

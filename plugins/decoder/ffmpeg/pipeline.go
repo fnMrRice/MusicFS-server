@@ -12,6 +12,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
+	"github.com/fnMrRice/MusicFS-server/src/core/logging"
+
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio/dspworker"
 )
@@ -43,7 +46,9 @@ func validateLoopback(raw string) error {
 	return nil
 }
 
-func Pipeline(ctx context.Context, r StartRequest, output io.Writer) error {
+func Pipeline(ctx context.Context, r StartRequest, output io.Writer) (pipelineErr error) {
+	finish := pluginlog.Operation(ctx, "audio.pipeline")
+	defer func() { finish(pipelineErr) }()
 	if r.Plan.Profile != "mp3-128" || r.Plan.PositionMs < 0 || r.Plan.PositionMs > 24*60*60*1000 {
 		return fmt.Errorf("UNSUPPORTED: invalid audio plan")
 	}
@@ -64,8 +69,11 @@ func Pipeline(ctx context.Context, r StartRequest, output io.Writer) error {
 	decodeArgs := []string{"-hide_banner", "-nostdin", "-v", "error", "-protocol_whitelist", "http,tcp", "-format_whitelist", inputFormats, "-i", r.InputURL, "-ss", strconv.FormatFloat(float64(r.Plan.PositionMs)/1000, 'f', 3, 64), "-map", "0:a:0", "-vn", "-ac", "2", "-ar", "48000", "-f", "f32le", "-acodec", "pcm_f32le", "pipe:1"}
 	decoder := exec.CommandContext(ctx, r.FFmpegPath, decodeArgs...)
 	encoder := exec.CommandContext(ctx, r.FFmpegPath, "-hide_banner", "-nostdin", "-v", "error", "-f", "f32le", "-ar", "48000", "-ac", "2", "-i", "pipe:0", "-vn", "-codec:a", "libmp3lame", "-b:a", "128k", "-f", "mp3", "-write_xing", "0", "-id3v2_version", "0", "pipe:1")
-	decoder.Stderr = io.Discard
-	encoder.Stderr = io.Discard
+	decodeLog := logging.PluginStderr("musicfs.plugin.decoder.ffmpeg", "")
+	encodeLog := logging.PluginStderr("musicfs.plugin.decoder.ffmpeg", "")
+	defer decodeLog.Close()
+	defer encodeLog.Close()
+	decoder.Stderr, encoder.Stderr = decodeLog, encodeLog
 	decoder.WaitDelay = time.Second
 	encoder.WaitDelay = time.Second
 	decoded, err := decoder.StdoutPipe()

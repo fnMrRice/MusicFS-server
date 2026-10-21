@@ -8,11 +8,13 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/plugins/dsp/gain"
 	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio/dspworker"
 )
 
 func main() {
+	pluginlog.External()
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 	factory := func(params map[string]float64) (audio.Node, error) {

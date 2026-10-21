@@ -42,6 +42,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request, _ auth.Session) e
 		return err
 	}
 	http.SetCookie(w, s.cookie(cookieValue, session.ExpiresAt, int(time.Until(session.ExpiresAt).Seconds())))
+	s.options.Logger.InfoContext(r.Context(), "User signed in", "requestId", RequestID(r), "userId", session.User.ID)
 	return WriteJSON(w, http.StatusOK, session)
 }
 
@@ -54,6 +55,7 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request, session auth.Ses
 		return err
 	}
 	http.SetCookie(w, s.cookie("", time.Unix(1, 0).UTC(), -1))
+	s.options.Logger.InfoContext(r.Context(), "User signed out", "requestId", RequestID(r), "userId", session.User.ID)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
