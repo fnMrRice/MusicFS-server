@@ -20,6 +20,7 @@ const pluginYAML = `plugins:
   - pluginId: musicfs.plugin.source.localfiles
     executable: '../workers/local files'
     enabled: true
+    execution: process
     instances:
       - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51
         enabled: true
@@ -31,6 +32,7 @@ const pluginYAML = `plugins:
   - pluginId: musicfs.plugin.decoder.ffmpeg
     executable: '../workers/audio'
     enabled: true
+    execution: process
     instances:
       - instanceId: 7edbaa88-7094-5657-ac43-37c118ef4f77
         enabled: true
@@ -40,6 +42,7 @@ const pluginYAML = `plugins:
   - pluginId: musicfs.plugin.decoder.ncm
     executable: '../workers/ncm'
     enabled: true
+    execution: process
     instances:
       - instanceId: d1971de9-e153-57c6-ac53-82dfb631da0b
         enabled: true

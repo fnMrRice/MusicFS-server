@@ -29,7 +29,7 @@ func Run(ctx context.Context, plugin Plugin, input io.ReadCloser, output io.Writ
 	}
 	w := &worker{plugin: plugin, slots: make(chan struct{}, 2)}
 	peer := pluginproto.NewPeer(ctx, input, output, "w-", w.handle)
-	<-peer.Done()
+	peer.Wait()
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.client != nil {

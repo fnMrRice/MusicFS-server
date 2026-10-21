@@ -16,7 +16,7 @@ func TestPluginModulesHaveNoHostImplementationDependencies(t *testing.T) {
 		packages        []string
 		forbidden       []string
 	}{
-		{"host", root, []string{"./src/app/musicfs"}, []string{prefix + "plugins/source/online", prefix + "plugins/unified", prefix + "src/online/"}},
+		{"host", root, []string{"./src/app/musicfs"}, []string{prefix + "plugins/unified", prefix + "src/online/"}},
 		{"sdk", filepath.Join(root, "sdk"), []string{"./..."}, []string{prefix + "src/", prefix + "plugins/"}},
 		{"online", filepath.Join(root, "plugins", "source", "online"), []string{"./..."}, []string{prefix + "src/"}},
 	} {

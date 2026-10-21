@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/matching/standard"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
@@ -53,7 +54,7 @@ func TestMatchingHTTPManualDecisionsCandidatesPrivacyAndAudit(t *testing.T) {
 			tracks[track.DisplayName] = track
 		}
 	}
-	service := matching.New(store, nil)
+	service := matching.New(store, nil, standard.Plugin{})
 	server.RegisterMatching(service)
 	private, err := service.ManualLink(ctx, "other", matching.LinkRequest{SourceTrackIDs: []string{tracks["private"].ID}}, "private-matching-key")
 	if err != nil || private.RecordingID == nil {

@@ -1,4 +1,4 @@
-package candidates
+package standard
 
 import (
 	"context"
@@ -30,7 +30,7 @@ func compareFingerprint(ctx context.Context, a, b []uint32, operations *int) (*F
 			distance += bits.OnesCount32(a[i] ^ b[i+offset])
 		}
 		item := FingerprintComparison{BitErrors: distance, ComparedBits: count * 32, ComparedItems: count, OffsetItems: offset, BER: float64(distance) / float64(count*32)}
-		// Compare ratios exactly and break ties by coverage, then smaller offset.
+		// 精确比较比率；相同时先比较覆盖范围，再选择较小偏移。
 		if best == nil || item.BitErrors*best.ComparedBits < best.BitErrors*item.ComparedBits ||
 			(item.BitErrors*best.ComparedBits == best.BitErrors*item.ComparedBits && (item.ComparedItems > best.ComparedItems ||
 				(item.ComparedItems == best.ComparedItems && absolute(item.OffsetItems) < absolute(best.OffsetItems)))) {

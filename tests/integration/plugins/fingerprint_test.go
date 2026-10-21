@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/analysis/chromaprint"
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/fingerprint"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
@@ -37,7 +38,7 @@ func melodyWave(seconds int) []byte {
 	return b
 }
 
-func fingerprintExtractor(t *testing.T, p *audioffmpeg.Processor, n fingerprint.Normalizer) *fingerprint.Extractor {
+func fingerprintExtractor(t *testing.T, p *audioffmpeg.Processor, n fingerprint.Normalizer) *chromaprint.Extractor {
 	t.Helper()
 	path := os.Getenv("MUSICFS_FPCALC")
 	if path == "" {
@@ -51,7 +52,7 @@ func fingerprintExtractor(t *testing.T, p *audioffmpeg.Processor, n fingerprint.
 		t.Fatal(err)
 	}
 	sum := sha256.Sum256(b)
-	e, err := fingerprint.New(context.Background(), fingerprint.Config{FpcalcPath: path, FpcalcSHA256: fmt.Sprintf("%x", sum), FFmpegSHA256: p.Capabilities.FFmpegSHA256, FFmpegVersion: p.Capabilities.Version}, n)
+	e, err := chromaprint.New(context.Background(), chromaprint.Config{FpcalcPath: path, FpcalcSHA256: fmt.Sprintf("%x", sum), FFmpegSHA256: p.Capabilities.FFmpegSHA256, FFmpegVersion: p.Capabilities.Version}, n)
 	if err != nil {
 		t.Fatal(err)
 	}

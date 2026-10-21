@@ -46,10 +46,8 @@ func bundlePath(root *yaml.Node, base string) string {
 // a later explicit settings change persists the expanded tree with its flags.
 func discoverBundle(root *yaml.Node, base string) error {
 	bundle := bundlePath(root, base)
-	if bundle == "" {
-		return nil
-	}
 	list := mappingValue(root, "plugins")
+	discoverAll := list == nil || mappingValue(root, "pluginBundle") != nil
 	if list == nil {
 		if err := setNode(root, "plugins", []Plugin{}); err != nil {
 			return err
@@ -70,6 +68,23 @@ func discoverBundle(root *yaml.Node, base string) error {
 		}
 	}
 	for _, entry := range bundledPlugins {
+		var builtinNode *yaml.Node
+		for _, p := range list.Content {
+			if id := mappingValue(p, "pluginId"); id != nil && id.Value == entry.id {
+				builtinNode = p
+				break
+			}
+		}
+		// 显式列表限定启用范围，不能靠发现隐式补齐账号或功能依赖。
+		if builtinNode == nil && !discoverAll {
+			continue
+		}
+		if builtinNode == nil || mappingValue(builtinNode, "execution") == nil || mappingValue(builtinNode, "execution").Value != "process" {
+			if err := discoverBuiltin(list, builtinNode, entry.id, entry.instance, used); err != nil {
+				return err
+			}
+			continue
+		}
 		path := bundle
 		args := []string{"--plugin", entry.selector}
 		if entry.program != "" && !regularExecutable(path) {
@@ -143,7 +158,7 @@ func discoverBundle(root *yaml.Node, base string) error {
 			key   string
 			value any
 		}{
-			{"executable", configuredPath}, {"args", args}, {"enabled", true},
+			{"executable", configuredPath}, {"args", args},
 		}
 		for _, field := range defaults {
 			if mappingValue(node, field.key) == nil {
@@ -165,34 +180,24 @@ func discoverBundle(root *yaml.Node, base string) error {
 				return err
 			}
 		}
-		for _, i := range mappingValue(node, "instances").Content {
-			if i.Kind == yaml.MappingNode && mappingValue(i, "enabled") == nil {
-				if err := setNode(i, "enabled", true); err != nil {
-					return err
-				}
-			}
-		}
 	}
 	return nil
 }
 
 func markPendingConfiguration(c *Config, bundle string) {
-	if bundle == "" {
-		return
-	}
 	for pi := range c.Plugins {
 		p := &c.Plugins[pi]
 		isBundle := canonicalPath(p.Executable) == canonicalPath(bundle)
 		platform := OnlinePlatform(p.PluginID)
 		isStandalone := platform != "" && canonicalPath(p.Executable) == canonicalPath(standalonePath(bundle, "musicfs-plugin-"+platform))
 		isOnlineBundle := platform != "" && canonicalPath(p.Executable) == canonicalPath(standalonePath(bundle, "musicfs-plugin-online"))
-		if !isBundle && !isStandalone && !isOnlineBundle {
+		if !p.InProcess() && !isBundle && !isStandalone && !isOnlineBundle {
 			continue
 		}
 		for ii := range p.Instances {
 			i := &p.Instances[ii]
-			i.PendingConfiguration = !regularExecutable(p.Executable)
-			if platform != "" && (isBundle || isOnlineBundle) && !onlineSelectorArgs(p.Args, platform) {
+			i.PendingConfiguration = !p.InProcess() && !regularExecutable(p.Executable)
+			if !p.InProcess() && platform != "" && (isBundle || isOnlineBundle) && !onlineSelectorArgs(p.Args, platform) {
 				i.PendingConfiguration = true
 			}
 			switch p.PluginID {

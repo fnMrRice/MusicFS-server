@@ -11,6 +11,9 @@ import (
 	"time"
 
 	_ "github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
+	"github.com/fnMrRice/MusicFS-server/plugins/matching/standard"
+	"github.com/fnMrRice/MusicFS-server/plugins/transform/thumbnail"
+	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/src/app/api"
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
@@ -52,8 +55,17 @@ func expectedChecksum(configured, path string) string {
 	return checksum(path)
 }
 
+// pluginChecksum 将内置实现版本纳入实例修订，避免依赖已经不执行的旧程序文件。
+func pluginChecksum(p config.Plugin) string {
+	if p.InProcess() {
+		return fmt.Sprintf("%x", sha256.Sum256([]byte(p.PluginID+"@"+bundledplugin.Version(p.PluginID)+"/builtin")))
+	}
+	return expectedChecksum(p.SHA256, p.Executable)
+}
+
 func compose(ctx context.Context, c config.Config, log *slog.Logger, instance string, ready func() bool, lifecycleManagers ...*lifecycle.Manager) (*api.Server, func(), error) {
 	c.NormalizeIdentities()
+	c.NormalizeRuntime()
 	if err := checkLegacyWritebackJournals(ctx, c.DataRoot); err != nil {
 		return nil, nil, err
 	}
@@ -129,7 +141,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	lib := library.New(store, queue, runtimes, probe)
 	lib.SetProbeSession(probeState.session)
 	lib.SetWriteBackProbeReady(probeState.ready)
-	content := mediastore.NewContent(store, store, mediaFiles)
+	content := mediastore.NewContent(store, store, mediaFiles, thumbnail.New())
 	writeProbe := library.Probe(probeState.writeProbe)
 	writebacks, closeWritebacks, err := configureWriteBack(ctx, c, store, lib, content, runtimes, policy, writeProbe, probeState.writeSession)
 	if err != nil {
@@ -202,7 +214,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	if fingerprints != nil {
 		fingerprintDetails = fingerprints
 	}
-	handler.RegisterMatching(matching.New(store, fingerprintDetails))
+	handler.RegisterMatching(matching.New(store, fingerprintDetails, standard.Plugin{}))
 	player, err := playback.New(ctx, store, lib, processor, playback.Config{CacheRoot: c.CacheRoot, MaxSessions: c.MaxSessions, MaxCacheBytes: c.MaxCacheBytes, NCMDecoder: decoder, RequireDSP: len(c.AudioDSP.Chain) > 0})
 	if err != nil {
 		cleanup()

@@ -1,4 +1,4 @@
-package fingerprint
+package chromaprint
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/fingerprint"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 )
 
@@ -39,7 +40,7 @@ func New(ctx context.Context, c Config, normalizer Normalizer) (*Extractor, erro
 		return nil, err
 	}
 	identity := Identity{Algorithm: "chromaprint", AlgorithmVersion: AlgorithmVersion, AlgorithmConfig: "cli-2-raw-v1", NormalizationRevision: audio.NormalizationRevision, QualityRevision: QualityRevision, Fpcalc: ToolIdentity{Version: version, SHA256: c.FpcalcSHA256}, Decoder: ToolIdentity{Version: c.FFmpegVersion, SHA256: c.FFmpegSHA256}}
-	identity.ConfigRevision = identityRevision(identity)
+	identity.ConfigRevision = identity.Revision()
 	return &Extractor{config: c, normalizer: normalizer, identity: identity, slots: make(chan struct{}, c.MaxConcurrent)}, nil
 }
 
@@ -144,7 +145,7 @@ func (e *Extractor) Extract(parent context.Context, r Request, input io.ReaderAt
 	} else if info.SampleCount >= 110250 {
 		return detail, fmt.Errorf("TEMPORARY_FAILURE: fingerprint extraction failed")
 	}
-	detail = Detail{SchemaVersion: 1, Identity: e.identity, RequestedStartMs: r.StartMs, RequestedDurationMs: r.DurationMs, PCM: info, Quality: Assess(values, info.SampleCount), Values: values}
+	detail = Detail{SchemaVersion: 1, Identity: e.identity, RequestedStartMs: r.StartMs, RequestedDurationMs: r.DurationMs, PCM: info, Quality: fingerprint.Assess(values, info.SampleCount), Values: values}
 	if _, err = detail.Encode(); err != nil {
 		return Detail{}, err
 	}

@@ -14,6 +14,7 @@ import (
 )
 
 type Config struct {
+	Builtin             bool
 	Executable          string
 	Args                []string
 	SHA256              string
@@ -47,8 +48,14 @@ func (c Config) Validate() error {
 	if c.Disabled {
 		return fmt.Errorf("UNSUPPORTED: instance disabled")
 	}
-	if c.InstanceID == "" || c.UserID == "" || !filepath.IsAbs(c.Executable) || !filepath.IsAbs(c.StateDir) {
+	if c.InstanceID == "" || c.UserID == "" || !filepath.IsAbs(c.StateDir) {
 		return fmt.Errorf("ACCESS_DENIED: invalid worker configuration")
+	}
+	if c.Builtin {
+		return nil
+	}
+	if !filepath.IsAbs(c.Executable) {
+		return fmt.Errorf("ACCESS_DENIED: invalid worker executable")
 	}
 	f, err := os.Open(c.Executable)
 	if err != nil {

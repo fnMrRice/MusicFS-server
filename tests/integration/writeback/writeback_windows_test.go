@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/tags/flac"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 )
@@ -31,7 +32,7 @@ func setup(t *testing.T) (string, []byte, writeback.Policy, writeback.Request, *
 }
 func service(t *testing.T, p writeback.Policy, j writeback.Journal, h *host) *writeback.Service {
 	t.Helper()
-	s, e := writeback.New(p, j, h)
+	s, e := writeback.New(p, j, h, flac.New())
 	if e != nil {
 		t.Fatal(e)
 	}

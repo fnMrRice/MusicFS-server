@@ -1,6 +1,6 @@
 //go:build windows
 
-package fingerprint
+package chromaprint
 
 import (
 	"fmt"

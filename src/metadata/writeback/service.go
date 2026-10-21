@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/tagformat"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 )
 
@@ -24,6 +25,7 @@ type Service struct {
 	policy      Policy
 	journal     Journal
 	coordinator Coordinator
+	format      tagformat.Format
 	mu          sync.Mutex
 }
 
@@ -44,9 +46,9 @@ func changed() error {
 	return domain.Fail("RESOURCE_CHANGED", "Writeback source or recovery files changed")
 }
 
-func New(policy Policy, journal Journal, coordinator Coordinator) (*Service, error) {
-	if journal == nil || coordinator == nil {
-		return nil, invalid("Writeback requires durable journaling and host coordination")
+func New(policy Policy, journal Journal, coordinator Coordinator, format tagformat.Format) (*Service, error) {
+	if journal == nil || coordinator == nil || format == nil {
+		return nil, invalid("Writeback requires durable journaling, host coordination and a tag format plugin")
 	}
 	if policy.MaxFileBytes == 0 {
 		policy.MaxFileBytes = 8 << 30
@@ -64,13 +66,21 @@ func New(policy Policy, journal Journal, coordinator Coordinator) (*Service, err
 		seen[key] = true
 		root.Fields = append([]string(nil), root.Fields...)
 		for _, field := range root.Fields {
-			if commentNames[field] == "" && field != "artwork" {
+			if !supportedField(field) {
 				return nil, invalid("Unsupported writeback field grant")
 			}
 		}
 		policy.Roots[i] = root
 	}
-	return &Service{policy: policy, journal: journal, coordinator: coordinator}, nil
+	return &Service{policy: policy, journal: journal, coordinator: coordinator, format: format}, nil
+}
+
+func supportedField(field string) bool {
+	switch field {
+	case "title", "artists", "album", "lyrics", "artwork":
+		return true
+	}
+	return false
 }
 
 func (s *Service) authorize(owner string, target Target, fields []string) (Root, error) {
@@ -116,7 +126,7 @@ func (s *Service) Apply(ctx context.Context, owner string, request Request) (res
 	if !jobID.MatchString(request.ID) || request.SelectionRevision < 0 {
 		return result, invalid("Invalid writeback job or revision")
 	}
-	if err = validatePatch(request.Patch); err != nil {
+	if err = s.format.ValidatePatch(request.Patch); err != nil {
 		return result, err
 	}
 	fields := []string{}
@@ -185,9 +195,16 @@ func (s *Service) Apply(ctx context.Context, owner string, request Request) (res
 		return result, err
 	}
 	defer func() { err = errors.Join(err, temp.Close()) }()
-	edit, err := RewriteFLAC(ctx, source, old.Size, temp, request.Patch)
+	originalAudio, err := s.audioDigest(ctx, source, old.Size)
 	if err != nil {
 		return result, err
+	}
+	edit, err := s.format.Rewrite(ctx, source, old.Size, temp, request.Patch)
+	if err != nil {
+		return result, err
+	}
+	if edit.AudioSHA512 != originalAudio {
+		return result, changed()
 	}
 	if err = temp.Sync(); err != nil {
 		return result, err
@@ -196,7 +213,7 @@ func (s *Service) Apply(ctx context.Context, owner string, request Request) (res
 	if err != nil {
 		return result, err
 	}
-	if err = verifyAudio(ctx, temp, record.New.Size, edit.AudioSHA512); err != nil {
+	if err = s.verifyAudio(ctx, temp, record.New.Size, originalAudio); err != nil {
 		return result, err
 	}
 	record.AudioSHA512, record.Changed = edit.AudioSHA512, record.New.SHA512 != record.Old.SHA512
@@ -247,22 +264,6 @@ func (s *Service) describe(ctx context.Context, fs disk, file *os.File) (FileSta
 	}
 	state.SHA512 = fmt.Sprintf("%x", h.Sum(nil))
 	return state, nil
-}
-
-func verifyAudio(ctx context.Context, file *os.File, size int64, expected string) error {
-	parsed, err := readFLAC(file, size)
-	if err != nil {
-		return err
-	}
-	h := sha512.New()
-	_, err = copyContext(ctx, h, io.NewSectionReader(file, parsed.audioOffset, size-parsed.audioOffset))
-	if err != nil {
-		return err
-	}
-	if fmt.Sprintf("%x", h.Sum(nil)) != expected {
-		return changed()
-	}
-	return nil
 }
 
 func (s *Service) save(ctx context.Context, record *Record, stage string) error {

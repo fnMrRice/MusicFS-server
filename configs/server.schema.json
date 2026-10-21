@@ -7,20 +7,7 @@
   "additionalProperties": false,
   "required": ["configVersion", "allowedOrigins"],
   "properties": {
-    "storage": {
-      "type": "object", "additionalProperties": false,
-      "description": "必需且不可禁用的存储后端；默认 sqlite，plugin 使用独立持久化进程。没有 enabled 开关。变更需重启，未知后端拒绝启动。",
-      "properties": {
-        "backend": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$", "default": "sqlite"},
-        "options": {"type": "object", "maxProperties": 32, "additionalProperties": {"type": "string", "maxLength": 4096}},
-        "executable": {"$ref": "#/$defs/NonemptyPath"},
-        "sha256": {"type": "string", "pattern": "^[a-fA-F0-9]{64}$"},
-        "args": {"type": "array", "maxItems": 64, "items": {"type": "string", "maxLength": 4096}}
-      },
-      "if": {"required": ["backend"], "properties": {"backend": {"const": "plugin"}}},
-      "then": {"required": ["executable", "sha256"]},
-      "else": {"not": {"anyOf": [{"required": ["executable"]}, {"required": ["sha256"]}, {"required": ["args"]}]}}
-    },
+    "storage": {"type":"object","additionalProperties":false,"description":"默认内置 SQLite 在 Server 主进程运行；旧官方 SQLite Worker 配置自动迁移。显式外部后端使用进程模式，数据库不能禁用。","properties":{"backend":{"type":"string","pattern":"^[a-z][a-z0-9-]{0,63}$","default":"sqlite"},"options":{"type":"object","maxProperties":32,"additionalProperties":{"type":"string","maxLength":4096}},"executable":{"$ref":"#/$defs/NonemptyPath"},"sha256":{"type":"string","pattern":"^[a-fA-F0-9]{64}$"},"args":{"type":"array","maxItems":64,"items":{"type":"string","maxLength":4096}},"execution":{"enum":["builtin","process"],"default":"builtin"}},"if":{"required":["backend"],"properties":{"backend":{"const":"plugin"}}},"then":{"required":["executable","sha256"]},"else":{"not":{"anyOf":[{"required":["executable"]},{"required":["sha256"]},{"required":["args"]}]}},"allOf":[{"if":{"required":["execution"],"properties":{"execution":{"const":"process"}}},"then":{"required":["backend"],"properties":{"backend":{"const":"plugin"}}}},{"if":{"required":["execution","backend"],"properties":{"execution":{"const":"builtin"},"backend":{"const":"plugin"}}},"then":{"anyOf":[{"properties":{"executable":{"pattern":"(^|[/\\\\])[mM][uU][sS][iI][cC][fF][sS]\\-[pP][lL][uU][gG][iI][nN]\\-[sS][tT][oO][rR][aA][gG][eE]\\-[sS][qQ][lL][iI][tT][eE](\\.[eE][xX][eE])?$"}}},{"properties":{"executable":{"pattern":"(^|[/\\\\])[mM][uU][sS][iI][cC][fF][sS]\\-[pP][lL][uU][gG][iI][nN]\\-[sS][qQ][lL][iI][tT][eE](\\.[eE][xX][eE])?$"}}},{"required":["args"],"properties":{"executable":{"pattern":"(^|[/\\\\])[mM][uU][sS][iI][cC][fF][sS]\\-[pP][lL][uU][gG][iI][nN][sS](\\.[eE][xX][eE])?$"},"args":{"enum":[["--plugin","storage-sqlite"],["--plugin=storage-sqlite"]]}}}]}}]},
     "audioDSP": {
       "type": "object", "additionalProperties": false,
       "description": "用户增益之后按顺序执行的必需 DSP；非空链要求已启用的 FFmpeg 实例。配置重启生效。",
@@ -205,16 +192,7 @@
         "params": {"type": "object", "maxProperties": 64, "propertyNames": {"minLength": 1, "maxLength": 64}, "additionalProperties": {"type": "number"}}
       }
     },
-    "DSPPlugin": {
-      "type": "object", "additionalProperties": false, "required": ["name", "executable", "sha256"],
-      "properties": {
-        "name": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,63}$", "not": {"enum": ["gain", "bypass"]}},
-        "executable": {"$ref": "#/$defs/NonemptyPath"},
-        "sha256": {"type": "string", "pattern": "^[a-fA-F0-9]{64}$"},
-        "args": {"type": "array", "maxItems": 32, "items": {"type": "string", "maxLength": 4096}},
-        "timeoutMs": {"type": "integer", "anyOf": [{"const": 0}, {"minimum": 10, "maximum": 30000}], "default": 5000}
-      }
-    },
+    "DSPPlugin": {"type":"object","additionalProperties":false,"required":["name"],"properties":{"name":{"type":"string","pattern":"^[a-z][a-z0-9_.-]{0,63}$","not":{"enum":["gain","bypass"]}},"executable":{"$ref":"#/$defs/NonemptyPath"},"sha256":{"type":"string","pattern":"^[a-fA-F0-9]{64}$"},"args":{"type":"array","maxItems":32,"items":{"type":"string","maxLength":4096}},"timeoutMs":{"type":"integer","anyOf":[{"const":0},{"minimum":10,"maximum":30000}],"default":5000},"builtin":{"type":"boolean","description":"官方 musicfs.dsp.gain 在主进程内执行；其他插件不可声明内置。"}},"if":{"properties":{"name":{"const":"musicfs.dsp.gain"}}},"else":{"required":["executable","sha256"]},"allOf":[{"if":{"required":["builtin"],"properties":{"builtin":{"const":true}}},"then":{"properties":{"name":{"const":"musicfs.dsp.gain"}}}}]},
     "OnlinePlugin": {"allOf": [{"$ref": "#/$defs/Plugin"}], "description": "按 MusicFS 用户及音乐平台账号隔离的在线实例；ownerUserId 省略时为 admin。每个实例只绑定一个平台账号，多个账号配置不同 instanceId。加载器额外限制三平台总共最多16实例。禁止配置URL、Cookie、token或导入选项。", "properties": {"pluginId": {"enum": ["musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic"]}, "instances": {"type": "array", "maxItems": 16, "items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"config": {"type": "object", "additionalProperties": false}, "importDefaults": false}}}}},
     "ImportOverrides": {
       "type": "object",
@@ -285,19 +263,7 @@
     "NonemptyPath": {"$ref": "#/$defs/Path", "minLength": 1},
     "Enabled": {"type": "object", "required": ["enabled"], "properties": {"enabled": {"const": true}}},
     "BundledPlugin": {"required": ["args"], "properties": {"args": {"type": "array", "prefixItems": [{"const": "--plugin"}], "minItems": 2}}},
-    "Plugin": {
-      "type": "object", "additionalProperties": false, "required": ["pluginId"],
-      "properties": {
-        "pluginId": {"enum": ["musicfs.plugin.source.localfiles", "musicfs.plugin.decoder.ffmpeg", "musicfs.plugin.decoder.ncm", "musicfs.scraper.local", "musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic"]},
-        "executable": {"$ref": "#/$defs/Path"},
-        "args": {"type": "array", "maxItems": 64, "items": {"type": "string", "maxLength": 4096, "pattern": "^[^\u0000]*$"}},
-        "sha256": {"type": "string", "pattern": "^(?:[a-fA-F0-9]{64})?$"},
-        "enabled": {"type": "boolean", "default": false},
-        "instances": {"type": "array"}
-      },
-      "if": {"allOf": [{"$ref": "#/$defs/Enabled"}, {"properties": {"instances": {"contains": {"$ref": "#/$defs/Enabled"}}}}]},
-      "then": {"required": ["executable"], "properties": {"executable": {"$ref": "#/$defs/NonemptyPath"}}}
-    },
+    "Plugin": {"type":"object","additionalProperties":false,"required":["pluginId"],"properties":{"pluginId":{"enum":["musicfs.plugin.source.localfiles","musicfs.plugin.decoder.ffmpeg","musicfs.plugin.decoder.ncm","musicfs.scraper.local","musicfs.plugin.source.netease","musicfs.plugin.source.qqmusic","musicfs.plugin.source.applemusic"]},"executable":{"$ref":"#/$defs/Path"},"args":{"type":"array","maxItems":64,"items":{"type":"string","maxLength":4096,"pattern":"^[^\u0000]*$"}},"sha256":{"type":"string","pattern":"^(?:[a-fA-F0-9]{64})?$"},"enabled":{"type":"boolean","default":false},"instances":{"type":"array"},"execution":{"enum":["builtin","process"],"default":"builtin"}},"if":{"allOf":[{"$ref":"#/$defs/Enabled"},{"required":["execution"],"properties":{"execution":{"const":"process"}}}]},"then":{"required":["executable"],"properties":{"executable":{"$ref":"#/$defs/NonemptyPath"}}}},
     "Instance": {
       "type": "object",
       "additionalProperties": false,
@@ -356,68 +322,7 @@
       },
       "description": "permissions 限定可浏览和选择的目录范围；未选择 musicRoots 时处于待配置状态，可通过管理员目录接口选择授权根或子目录。"
     },
-    "FFmpegPlugin": {
-      "allOf": [
-        {
-          "$ref": "#/$defs/Plugin"
-        }
-      ],
-      "properties": {
-        "pluginId": {
-          "const": "musicfs.plugin.decoder.ffmpeg"
-        },
-        "instances": {"maxItems": 1,
-          "items": {
-            "allOf": [
-              {
-                "$ref": "#/$defs/Instance"
-              }
-            ],
-            "properties": {
-              "config": {
-                "$ref": "#/$defs/FFmpegSettings"
-              },
-              "importDefaults": false
-            }
-          }
-        }
-      },
-      "if": {"allOf": [{"$ref": "#/$defs/Enabled"}, {"not": {"$ref": "#/$defs/BundledPlugin"}}]},
-      "then": {
-        "properties": {
-          "instances": {
-            "contains": {
-              "$ref": "#/$defs/Enabled"
-            },
-            "minContains": 0,
-            "maxContains": 1,
-            "items": {
-              "if": {
-                "$ref": "#/$defs/Enabled"
-              },
-              "then": {
-                "properties": {
-                  "config": {
-                    "required": [
-                      "ffmpegPath",
-                      "ffprobePath"
-                    ],
-                    "properties": {
-                      "ffmpegPath": {
-                        "$ref": "#/$defs/NonemptyPath"
-                      },
-                      "ffprobePath": {
-                        "$ref": "#/$defs/NonemptyPath"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
+    "FFmpegPlugin": {"allOf":[{"$ref":"#/$defs/Plugin"}],"properties":{"pluginId":{"const":"musicfs.plugin.decoder.ffmpeg"},"instances":{"maxItems":1,"items":{"allOf":[{"$ref":"#/$defs/Instance"}],"properties":{"config":{"$ref":"#/$defs/FFmpegSettings"},"importDefaults":false}}}},"if":{"allOf":[{"$ref":"#/$defs/Enabled"},{"not":{"$ref":"#/$defs/BundledPlugin"}},{"required":["execution"],"properties":{"execution":{"const":"process"}}}]},"then":{"properties":{"instances":{"contains":{"$ref":"#/$defs/Enabled"},"minContains":0,"maxContains":1,"items":{"if":{"$ref":"#/$defs/Enabled"},"then":{"properties":{"config":{"required":["ffmpegPath","ffprobePath"],"properties":{"ffmpegPath":{"$ref":"#/$defs/NonemptyPath"},"ffprobePath":{"$ref":"#/$defs/NonemptyPath"}}}}}}}}}},
     "LocalScraperPlugin": {"allOf": [{"$ref": "#/$defs/Plugin"}], "properties": {"pluginId": {"const": "musicfs.scraper.local"}, "instances": {"items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"config": {"type": "object", "additionalProperties": false}, "importDefaults": false}}, "maxItems": 16}}},
     "NCMPlugin": {
       "allOf": [

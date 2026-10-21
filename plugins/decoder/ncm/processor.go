@@ -16,12 +16,14 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/inprocess"
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 )
 
 type Config struct {
+	Builtin                           bool
 	InstanceID                        string
 	WorkerArgs                        []string
 	WorkerPath, WorkerSHA256, WorkDir string
@@ -118,34 +120,41 @@ func (p *Processor) Open(ctx context.Context, taskID, assetID string, input io.R
 	if err != nil {
 		return nil, err
 	}
-	cmd := exec.CommandContext(ctx, p.config.WorkerPath, p.config.WorkerArgs...)
-	cmd.Dir, cmd.Stderr, cmd.WaitDelay = p.config.WorkDir, io.Discard, time.Second
-	cmd.Env = []string{}
-	for _, key := range []string{"SystemRoot", "WINDIR", "TEMP", "TMP"} {
-		if value := os.Getenv(key); value != "" {
-			cmd.Env = append(cmd.Env, key+"="+value)
-		}
-	}
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		channel.Close()
-		return nil, fmt.Errorf("TEMPORARY_FAILURE: NCM control channel unavailable")
-	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		_ = stdin.Close()
-		channel.Close()
-		return nil, fmt.Errorf("TEMPORARY_FAILURE: NCM control channel unavailable")
-	}
-	if err = cmd.Start(); err != nil {
-		_ = stdin.Close()
-		_ = stdout.Close()
-		channel.Close()
-		return nil, fmt.Errorf("UNSUPPORTED: NCM worker failed to start")
-	}
-	peer := pluginproto.NewPeer(ctx, stdout, stdin, "h-", nil)
+	var peer *pluginproto.Peer
 	processDone := make(chan struct{})
-	go func() { _ = cmd.Wait(); cancel(); _ = peer.Close(); close(processDone) }()
+	if p.config.Builtin {
+		local := inprocess.Start(ctx, RunWorker)
+		peer = pluginproto.NewPeer(ctx, local.Output, local.Input, "h-", nil)
+		go func() { <-local.Done; cancel(); _ = peer.Close(); close(processDone) }()
+	} else {
+		cmd := exec.CommandContext(ctx, p.config.WorkerPath, p.config.WorkerArgs...)
+		cmd.Dir, cmd.Stderr, cmd.WaitDelay = p.config.WorkDir, io.Discard, time.Second
+		cmd.Env = []string{}
+		for _, key := range []string{"SystemRoot", "WINDIR", "TEMP", "TMP"} {
+			if value := os.Getenv(key); value != "" {
+				cmd.Env = append(cmd.Env, key+"="+value)
+			}
+		}
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			channel.Close()
+			return nil, fmt.Errorf("TEMPORARY_FAILURE: NCM control channel unavailable")
+		}
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			_ = stdin.Close()
+			channel.Close()
+			return nil, fmt.Errorf("TEMPORARY_FAILURE: NCM control channel unavailable")
+		}
+		if err = cmd.Start(); err != nil {
+			_ = stdin.Close()
+			_ = stdout.Close()
+			channel.Close()
+			return nil, fmt.Errorf("UNSUPPORTED: NCM worker failed to start")
+		}
+		peer = pluginproto.NewPeer(ctx, stdout, stdin, "h-", nil)
+		go func() { _ = cmd.Wait(); cancel(); _ = peer.Close(); close(processDone) }()
+	}
 	cleaned := make(chan struct{})
 	var remote *channelReader
 	// Cleanup ownership moves to this goroutine before any fallible RPC calls.
@@ -222,6 +231,9 @@ func (d *Decoded) Close() error {
 }
 
 func verifyWorker(cfg Config) error {
+	if cfg.Builtin {
+		return nil
+	}
 	if !filepath.IsAbs(cfg.WorkerPath) || len(cfg.WorkerSHA256) != 64 {
 		return fmt.Errorf("ACCESS_DENIED: invalid NCM worker configuration")
 	}

@@ -7,14 +7,16 @@ import (
 	"errors"
 	"io"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/contenttransform"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 )
 
 type DerivedService struct {
 	DerivedRepository
-	media   *Service
-	content *ContentService
-	gate    chan struct{}
+	media     *Service
+	content   *ContentService
+	gate      chan struct{}
+	thumbnail contenttransform.Thumbnailer
 }
 
 func (s *ContentService) Derived() *DerivedService { return s.derived }

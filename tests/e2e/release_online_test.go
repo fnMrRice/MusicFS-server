@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"slices"
 	"testing"
 	"time"
 
@@ -16,7 +15,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginhost"
 )
 
-// Exercise shipped executables without rebuilding them or contacting a platform.
+// 验证发行配置及显式外部兼容入口，不重新构建程序，也不访问真实平台。
 func TestActualInstallationOnlineProgramsAndModules(t *testing.T) {
 	bundle := os.Getenv("MUSICFS_RELEASE_ROOT")
 	if bundle == "" {
@@ -31,23 +30,28 @@ func TestActualInstallationOnlineProgramsAndModules(t *testing.T) {
 	}
 	assertInstallationPersistence(t, installed, cfg)
 	count := 0
+	suffix := ""
+	if runtime.GOOS == "windows" {
+		suffix = ".exe"
+	}
+	compatibility := filepath.Join(installed, "bin", "musicfs-plugins"+suffix)
 	for _, plugin := range cfg.Plugins {
 		platform := config.OnlinePlatform(plugin.PluginID)
 		if platform == "" {
 			continue
 		}
 		count++
-		if !slices.Equal(plugin.Args, []string{"--plugin", platform}) || len(plugin.Instances) != 1 || !plugin.CanStart(plugin.Instances[0]) {
-			t.Fatalf("packaged online provider is not configured for the shared executable: %+v", plugin)
+		if !plugin.InProcess() || len(plugin.Instances) != 1 || !plugin.CanStart(plugin.Instances[0]) {
+			t.Fatalf("packaged online provider is not configured as builtin: %+v", plugin)
 		}
-		t.Run(platform+"/bundle", func(t *testing.T) {
-			assertPackagedOnlineWorker(t, plugin, plugin.Executable, plugin.Args)
+		t.Run(platform+"/external-compatibility", func(t *testing.T) {
+			assertPackagedOnlineWorker(t, plugin, compatibility, []string{"--plugin", platform})
 		})
 		for _, alternative := range []struct {
 			name string
 			args []string
 		}{{"musicfs-plugin-" + platform, nil}, {"musicfs-plugin-online", []string{"--plugin", platform}}} {
-			path := filepath.Join(filepath.Dir(plugin.Executable), alternative.name+filepath.Ext(plugin.Executable))
+			path := filepath.Join(installed, "bin", alternative.name+suffix)
 			if _, err := os.Stat(path); os.IsNotExist(err) {
 				continue
 			} else if err != nil {
@@ -69,8 +73,8 @@ func TestActualInstallationOnlineProgramsAndModules(t *testing.T) {
 		Programs   []string
 		Modules    []struct{ Path, Directory string }
 		Components []struct {
-			Program string
-			Args    []string
+			Program, Execution string
+			Args               []string
 		}
 	}
 	if err := json.Unmarshal(raw, &manifest); err != nil {
@@ -97,7 +101,14 @@ func TestActualInstallationOnlineProgramsAndModules(t *testing.T) {
 		}
 	}
 	roles := map[string]bool{}
+	builtinCount := 0
 	for _, component := range manifest.Components {
+		if component.Execution == "builtin" {
+			if component.Program != "musicfs" || len(component.Args) != 0 {
+				t.Fatal("builtin release component depends on a separate program")
+			}
+			builtinCount++
+		}
 		if component.Program != "musicfs-plugins" {
 			continue
 		}
@@ -108,6 +119,9 @@ func TestActualInstallationOnlineProgramsAndModules(t *testing.T) {
 	}
 	if len(roles) != 9 {
 		t.Fatalf("shared role count = %d, want 9", len(roles))
+	}
+	if builtinCount != 13 {
+		t.Fatalf("builtin plugin count = %d, want 13", builtinCount)
 	}
 	for _, module := range manifest.Modules {
 		if _, err := os.Stat(filepath.Join(installed, module.Directory, "go.mod")); err != nil {

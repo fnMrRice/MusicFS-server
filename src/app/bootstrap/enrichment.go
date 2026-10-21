@@ -25,7 +25,7 @@ func configureEnrichment(ctx context.Context, c config.Config, log *slog.Logger,
 			runtime := enrichmentworker.Runtime{ID: instance.InstanceID, Name: instance.Name, Owner: "admin", Enabled: plugin.CanStart(instance)}
 			if plugin.CanStart(instance) {
 				var err error
-				runtime.Host, err = scraperlocal.NewHost(scraperlocal.Config{WorkerPath: plugin.Executable, WorkerArgs: plugin.Args, WorkerSHA256: expectedChecksum(plugin.SHA256, plugin.Executable), WorkDir: c.DataRoot, InstanceID: instance.InstanceID, MaxConcurrent: 1})
+				runtime.Host, err = scraperlocal.NewHost(scraperlocal.Config{Builtin: plugin.InProcess(), WorkerPath: plugin.Executable, WorkerArgs: plugin.Args, WorkerSHA256: pluginChecksum(plugin), WorkDir: c.DataRoot, InstanceID: instance.InstanceID, MaxConcurrent: 1})
 				if err != nil {
 					log.Warn("scraper instance unavailable", "pluginId", plugin.PluginID, "instanceId", instance.InstanceID, "errorCode", pluginproto.ErrorCode(err))
 				}

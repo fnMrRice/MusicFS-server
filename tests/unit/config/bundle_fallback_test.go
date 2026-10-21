@@ -14,12 +14,19 @@ func TestUnifiedOnlineDiscoveryAndStandalonePriority(t *testing.T) {
 		if independentQQ {
 			files = append(files, "musicfs-plugin-qqmusic")
 		}
-		doc := discoveredDocument(t, "", files)
-		if len(doc.Config.Plugins) != 3 {
+		raw := "plugins:\n"
+		for _, platform := range []string{"netease", "qqmusic", "applemusic"} {
+			raw += "  - pluginId: musicfs.plugin.source." + platform + "\n    execution: process\n    enabled: true\n"
+		}
+		doc := discoveredDocument(t, raw, files)
+		if len(doc.Config.Plugins) != 7 {
 			t.Fatal("alternative entry points created duplicate or missing providers")
 		}
 		for _, plugin := range doc.Config.Plugins {
 			platform := config.OnlinePlatform(plugin.PluginID)
+			if platform == "" {
+				continue
+			}
 			if !plugin.CanStart(plugin.Instances[0]) {
 				t.Fatalf("available provider was not ready: %+v", plugin)
 			}
@@ -39,6 +46,7 @@ func TestOnlineFallbackMigratesKnownUnpinnedStandalone(t *testing.T) {
 	for _, target := range []string{"musicfs-plugins", "musicfs-plugin-online"} {
 		doc := discoveredDocument(t, `plugins:
   - pluginId: musicfs.plugin.source.netease
+    execution: process
     executable: './musicfs-plugin-netease'
     enabled: false
     instances:
@@ -61,7 +69,7 @@ func TestUnifiedOnlineFallbackPreservesPinsAndCustomArguments(t *testing.T) {
 			"    sha256: '" + strings.Repeat("b", 64) + "'\n",
 			"    args: ['--custom']\n",
 		} {
-			doc := discoveredDocument(t, "plugins:\n  - pluginId: musicfs.plugin.source.netease\n    executable: './musicfs-plugin-netease'\n"+extra+`    enabled: true
+			doc := discoveredDocument(t, "plugins:\n  - pluginId: musicfs.plugin.source.netease\n    execution: process\n    executable: './musicfs-plugin-netease'\n"+extra+`    enabled: true
     instances:
       - instanceId: a5e47aac-f949-5e45-9709-f28a0d8443df
         enabled: true
@@ -84,10 +92,13 @@ func TestExplicitUnifiedOnlineChoiceAndSelectorValidation(t *testing.T) {
 			for _, args := range []string{"'--plugin', '" + selector + "'", "'--plugin=" + selector + "'"} {
 				doc := discoveredDocument(t, `plugins:
   - pluginId: musicfs.plugin.source.netease
+    execution: process
+    enabled: true
     executable: './`+executable+`'
     args: [`+args+`]
     instances:
       - instanceId: a5e47aac-f949-5e45-9709-f28a0d8443df
+        enabled: true
         config: {}
 `, []string{"musicfs-plugins", "musicfs-plugin-netease", "musicfs-plugin-online"})
 				plugin := discoveredPlugin(t, doc, "musicfs.plugin.source.netease")

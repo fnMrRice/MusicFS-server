@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/transform/thumbnail"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
@@ -61,7 +62,7 @@ func TestAlbumsHTTPIdentityCoverRevisionPrivacyAndPagination(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { files.Close() })
-	content := mediastore.NewContent(store, store, files)
+	content := mediastore.NewContent(store, store, files, thumbnail.New())
 	server.RegisterMedia(content)
 	providers := library.New(store, jobs.New(store), []library.Runtime{{ID: "316664dc-7106-5acd-8df7-88c9d0d9baef", Owner: "admin"}, {ID: "843558e1-a158-56ac-834a-baffd12bb5c5", Owner: "other"}}, nil)
 	server.RegisterAlbums(albums.New(store, content, providers))

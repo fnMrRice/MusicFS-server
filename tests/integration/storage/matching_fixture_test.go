@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
+	"github.com/fnMrRice/MusicFS-server/plugins/matching/standard"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
@@ -42,7 +43,7 @@ func matchingResults(t *testing.T, snapshot matching.Snapshot) []candidates.Cand
 	for i, s := range snapshot.Sources {
 		inputs[i] = s.Input
 	}
-	result, err := candidates.Find(context.Background(), snapshot.Anchor.Input, inputs, snapshot.Blocked)
+	result, err := candidates.Find(context.Background(), standard.Plugin{}, snapshot.Anchor.Input, inputs, snapshot.Blocked)
 	if err != nil {
 		t.Fatal(err)
 	}

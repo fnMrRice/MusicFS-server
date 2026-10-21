@@ -54,4 +54,16 @@ func TestAudioDSPWireContract(t *testing.T) {
 	}
 	request.DSPChain, request.DSPPlugins = nil, nil
 	testkit.ValidatePlugin(t, "AudioStart", request)
+	request.DSPPlugins = []dspworker.Config{{Builtin: true, Name: "musicfs.dsp.gain"}}
+	testkit.ValidatePlugin(t, "AudioStart", request)
+	for _, invalid := range []map[string]any{
+		{"name": "unknown.plugin", "builtin": true},
+		{"name": "musicfs.dsp.gain", "builtin": "true"},
+		{"name": "musicfs.dsp.gain", "builtin": false},
+		{"name": "musicfs.dsp.gain", "builtin": true, "factory": "unknown"},
+	} {
+		if err := testkit.ContractSchema(t, "plugin", "DSPPlugin").Validate(invalid); err == nil {
+			t.Fatal("invalid builtin DSP contract accepted", invalid)
+		}
+	}
 }

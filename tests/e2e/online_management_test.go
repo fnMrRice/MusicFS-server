@@ -109,7 +109,7 @@ func managedOnlineInstance(t *testing.T, c *client, id string) plugincontrol.Ins
 func TestManagedOnlineWorkerConfigurationAndRestartRequiredDisable(t *testing.T) {
 	provider := managedOnlineFixture(t)
 	cfg, base := yamlServiceConfig(t)
-	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.netease", Executable: provider, Enabled: true, Instances: []config.Instance{
+	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.netease", Execution: "process", Executable: provider, Enabled: true, Instances: []config.Instance{
 		{InstanceID: "a0462a4b-8754-5747-a8cf-29cf4d0a874f", Name: "First", Enabled: true},
 		{InstanceID: "18caca33-4b0c-57b7-8248-2cf8781c2448", Name: "Second", Enabled: true},
 	}}}

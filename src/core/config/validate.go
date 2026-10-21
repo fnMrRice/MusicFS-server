@@ -127,6 +127,9 @@ func (c Config) validatePlugins(writable []string) error {
 				return errors.New("at most 16 online instances are supported")
 			}
 		}
+		if plugin.Execution != "" && plugin.Execution != "builtin" && plugin.Execution != "process" {
+			return errors.New("plugin execution must be builtin or process")
+		}
 		if plugin.SHA256 != "" {
 			hash, err := hex.DecodeString(plugin.SHA256)
 			if err != nil || len(hash) != 32 {
@@ -178,10 +181,8 @@ func (c Config) validatePlugins(writable []string) error {
 					return errors.New("at most 8 enabled watch instances are supported")
 				}
 			}
-			if enabled {
-				if plugin.Executable == "" {
-					return errors.New("enabled plugin instance requires an executable path")
-				}
+			if plugin.Enabled && instance.Enabled && !plugin.InProcess() && plugin.Executable == "" {
+				return errors.New("enabled plugin instance requires an executable path")
 			}
 			if err := validateSettings(plugin.PluginID, instance.Config, enabled, writable); err != nil {
 				return err

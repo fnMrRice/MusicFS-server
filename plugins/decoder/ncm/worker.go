@@ -28,7 +28,7 @@ func RunWorker(ctx context.Context, input io.ReadCloser, output io.WriteCloser) 
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	w := &ncmWorker{ctx: ctx}
 	peer := pluginproto.NewPeer(ctx, input, output, "w-", w.handle)
-	<-peer.Done()
+	peer.Wait()
 	cancel()
 	w.mu.Lock()
 	defer w.mu.Unlock()

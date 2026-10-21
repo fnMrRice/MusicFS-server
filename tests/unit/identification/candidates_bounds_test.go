@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/matching/standard"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/candidates"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/fingerprint"
 )
@@ -54,7 +55,7 @@ func TestCandidatesFingerprintBindingAndCompatibility(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			b := candidateInput("b", vector)
 			tc.mutate(&b)
-			got, err := candidates.Compare(context.Background(), a, b)
+			got, err := standard.Compare(context.Background(), a, b)
 			if got != nil || (err != nil) != tc.invalid {
 				t.Fatalf("unexpected evidence acceptance: %+v %v", got, err)
 			}
@@ -74,7 +75,7 @@ func TestCandidatesFindExclusionsRankingAndLimits(t *testing.T) {
 	blocked := []candidates.Pair{{LeftSourceTrackID: "source-000", RightSourceTrackID: "anchor"}, {LeftSourceTrackID: "anchor", RightSourceTrackID: "source-001"}}
 	// A blocked source is discarded before malformed data can affect the result.
 	others[31].Title = strings.Repeat("x", 4097)
-	got, err := candidates.Find(context.Background(), anchor, others, blocked)
+	got, err := candidates.Find(context.Background(), standard.Plugin{}, anchor, others, blocked)
 	if err != nil || len(got) != 20 {
 		t.Fatalf("bounded candidate set: %d %v", len(got), err)
 	}
@@ -83,21 +84,21 @@ func TestCandidatesFindExclusionsRankingAndLimits(t *testing.T) {
 			t.Fatal("exclusion priority or deterministic ranking changed")
 		}
 	}
-	if _, err = candidates.Find(context.Background(), anchor, []candidates.Input{others[0], others[0]}, nil); err == nil {
+	if _, err = candidates.Find(context.Background(), standard.Plugin{}, anchor, []candidates.Input{others[0], others[0]}, nil); err == nil {
 		t.Fatal("duplicate sources accepted")
 	}
-	if _, err = candidates.Find(context.Background(), anchor, make([]candidates.Input, 257), nil); err == nil {
+	if _, err = candidates.Find(context.Background(), standard.Plugin{}, anchor, make([]candidates.Input, 257), nil); err == nil {
 		t.Fatal("input budget ignored")
 	}
-	if _, err = candidates.Find(context.Background(), anchor, nil, make([]candidates.Pair, 4097)); err == nil {
+	if _, err = candidates.Find(context.Background(), standard.Plugin{}, anchor, nil, make([]candidates.Pair, 4097)); err == nil {
 		t.Fatal("exclusion budget ignored")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err = candidates.Find(ctx, anchor, others, blocked); !errors.Is(err, context.Canceled) {
+	if _, err = candidates.Find(ctx, standard.Plugin{}, anchor, others, blocked); !errors.Is(err, context.Canceled) {
 		t.Fatal("canceled search continued")
 	}
-	if _, err = candidates.Compare(ctx, anchor, others[0]); !errors.Is(err, context.Canceled) {
+	if _, err = standard.Compare(ctx, anchor, others[0]); !errors.Is(err, context.Canceled) {
 		t.Fatal("canceled comparison continued")
 	}
 }
@@ -117,7 +118,7 @@ func TestCandidatesMaximumBoundedFingerprintBatch(t *testing.T) {
 	for i := range others {
 		others[i] = candidateInput(fmt.Sprintf("source-%03d", i), vector)
 	}
-	got, err := candidates.Find(context.Background(), anchor, others, nil)
+	got, err := candidates.Find(context.Background(), standard.Plugin{}, anchor, others, nil)
 	if err != nil || len(got) != candidates.MaxResults {
 		t.Fatalf("maximum bounded input failed: %d %v", len(got), err)
 	}

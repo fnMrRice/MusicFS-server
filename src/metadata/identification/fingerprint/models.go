@@ -3,7 +3,6 @@ package fingerprint
 import (
 	"context"
 	"io"
-	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 )
@@ -17,12 +16,6 @@ type PCMInfo = audio.PCMInfo
 
 type Normalizer interface {
 	Normalize(context.Context, Request, io.ReaderAt, int64, io.Writer) (PCMInfo, error)
-}
-
-type Config struct {
-	FpcalcPath, FpcalcSHA256, FFmpegSHA256, FFmpegVersion string
-	MaxConcurrent                                         int
-	Timeout                                               time.Duration
 }
 
 type ToolIdentity struct {

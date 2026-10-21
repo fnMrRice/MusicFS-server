@@ -101,6 +101,7 @@ func parseDocument(raw []byte, path string, overrides map[string]string, expecte
 		return nil, err
 	}
 	resolvePaths(&c, filepath.Dir(abs))
+	c.NormalizeRuntime()
 	if err := c.Storage.Validate(); err != nil {
 		return nil, err
 	}

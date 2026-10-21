@@ -1,4 +1,4 @@
-package writeback
+package flac
 
 import (
 	"bytes"
@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/fnMrRice/MusicFS-server/sdk/tagformat"
 )
 
 var commentNames = map[string]string{"title": "TITLE", "artists": "ARTIST", "album": "ALBUM", "lyrics": "LYRICS"}
@@ -14,7 +16,7 @@ func matchesComment(field, key string) bool {
 	return strings.EqualFold(key, commentNames[field]) || (field == "lyrics" && strings.EqualFold(key, "UNSYNCEDLYRICS"))
 }
 
-func validatePatch(p Patch) error {
+func validatePatch(p tagformat.Patch) error {
 	if len(p.Comments) == 0 && p.Artwork == nil {
 		return invalid("No fields were selected")
 	}
@@ -97,7 +99,7 @@ func encodeComments(vendor []byte, comments [][]byte) []byte {
 	return out.Bytes()
 }
 
-func editBlocks(blocks []flacBlock, p Patch) ([]flacBlock, bool, error) {
+func editBlocks(blocks []flacBlock, p tagformat.Patch) ([]flacBlock, bool, error) {
 	out := make([]flacBlock, 0, len(blocks)+2)
 	var comments [][]byte
 	vendor := []byte("MusicFS")

@@ -101,6 +101,11 @@ func (m *Manager) gainPluginLocked() Plugin {
 		mode := "builtin"
 		if node.Name == "musicfs.dsp.gain" {
 			mode = "process"
+			for _, registered := range m.desired.AudioDSP.Plugins {
+				if registered.Name == node.Name && registered.Builtin {
+					mode = "builtin"
+				}
+			}
 		} else if node.Name != "gain" {
 			continue
 		}

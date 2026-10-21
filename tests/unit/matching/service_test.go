@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/matching/standard"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/candidates"
@@ -98,11 +99,11 @@ func fixture(t *testing.T) (*repository, *details) {
 
 func TestRefreshLoadsCompatibleAuthorizedEvidence(t *testing.T) {
 	r, d := fixture(t)
-	page, err := matching.New(r, d).Refresh(context.Background(), "owner", "a", nil)
+	page, err := matching.New(r, d, standard.Plugin{}).Refresh(context.Background(), "owner", "a", nil)
 	if err != nil || page.Revision != 3 || len(r.saved) != 1 || d.calls != 2 || !r.saved[0].RequiresConfirmation {
 		t.Fatalf("refresh: %+v %v saved=%+v calls=%d", page, err, r.saved, d.calls)
 	}
-	if _, err = matching.New(r, d).Refresh(context.Background(), "other", "a", nil); err == nil {
+	if _, err = matching.New(r, d, standard.Plugin{}).Refresh(context.Background(), "other", "a", nil); err == nil {
 		t.Fatal("foreign source exposed")
 	}
 }
@@ -111,7 +112,7 @@ func TestRefreshRejectsChangedDetailAndStalePublication(t *testing.T) {
 	t.Run("changed detail", func(t *testing.T) {
 		r, d := fixture(t)
 		d.value.RequestedStartMs = 1
-		_, err := matching.New(r, d).Refresh(context.Background(), "owner", "a", nil)
+		_, err := matching.New(r, d, standard.Plugin{}).Refresh(context.Background(), "owner", "a", nil)
 		if err == nil || r.saved != nil {
 			t.Fatal("changed detail published")
 		}
@@ -119,7 +120,7 @@ func TestRefreshRejectsChangedDetailAndStalePublication(t *testing.T) {
 	t.Run("decision raced", func(t *testing.T) {
 		r, d := fixture(t)
 		r.publishErr = domain.Fail("CONFLICT", "Decision changed")
-		_, err := matching.New(r, d).Refresh(context.Background(), "owner", "a", nil)
+		_, err := matching.New(r, d, standard.Plugin{}).Refresh(context.Background(), "owner", "a", nil)
 		if !errors.Is(err, r.publishErr) || r.saved != nil {
 			t.Fatal("stale publication accepted")
 		}
@@ -127,7 +128,7 @@ func TestRefreshRejectsChangedDetailAndStalePublication(t *testing.T) {
 	t.Run("missing detail", func(t *testing.T) {
 		r, d := fixture(t)
 		d.err = domain.Fail("RESOURCE_CHANGED", "Missing file")
-		_, err := matching.New(r, d).Refresh(context.Background(), "owner", "a", nil)
+		_, err := matching.New(r, d, standard.Plugin{}).Refresh(context.Background(), "owner", "a", nil)
 		if err != nil || len(r.saved) != 0 {
 			t.Fatal("missing detail matched")
 		}
@@ -135,7 +136,7 @@ func TestRefreshRejectsChangedDetailAndStalePublication(t *testing.T) {
 	t.Run("mismatched index", func(t *testing.T) {
 		r, d := fixture(t)
 		r.snapshot.Sources[0].Fingerprints[0].AssetVersion = "old"
-		_, err := matching.New(r, d).Refresh(context.Background(), "owner", "a", nil)
+		_, err := matching.New(r, d, standard.Plugin{}).Refresh(context.Background(), "owner", "a", nil)
 		if err != nil || len(r.saved) != 0 || d.calls != 0 {
 			t.Fatal("stale index loaded")
 		}
@@ -147,7 +148,7 @@ func TestRefreshAdmissionAndCancellation(t *testing.T) {
 	d.start = make(chan struct{})
 	d.release = make(chan struct{})
 	started := d.start
-	s := matching.New(r, d)
+	s := matching.New(r, d, standard.Plugin{})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	done := make(chan error, 1)

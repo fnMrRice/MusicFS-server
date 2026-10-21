@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/tagformat"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
@@ -22,6 +23,7 @@ type Config struct {
 	AllowOverwrite bool
 	Probe          library.Probe
 	ProbeSession   library.ProbeSession
+	TagFormat      tagformat.Format
 }
 
 type Service struct {
@@ -45,7 +47,7 @@ var errBusy = errors.New("writeback source is in use")
 func New(repo Repository, lib *library.Service, media *mediastore.ContentService, journal writeback.Journal, _ []library.Runtime, cfg Config) (*Service, error) {
 	s := &Service{repo: repo, lib: lib, content: media, journal: journal, cfg: cfg, retries: map[string]string{}}
 	var err error
-	s.editor, err = writeback.New(cfg.Policy, journal, coordinator{s})
+	s.editor, err = writeback.New(cfg.Policy, journal, coordinator{s}, cfg.TagFormat)
 	return s, err
 }
 

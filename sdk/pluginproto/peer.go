@@ -23,6 +23,8 @@ type Peer struct {
 	terminal map[string]bool
 	count    atomic.Uint64
 	done     chan struct{}
+	readDone chan struct{}
+	requests sync.WaitGroup
 	once     sync.Once
 	err      error
 	ctx      context.Context
@@ -35,7 +37,7 @@ func NewPeer(ctx context.Context, r io.ReadCloser, w io.WriteCloser, prefix stri
 
 func NewPeerWithLimit(ctx context.Context, r io.ReadCloser, w io.WriteCloser, prefix string, handler Handler, limit int) *Peer {
 	ctx, cancel := context.WithCancel(ctx)
-	p := &Peer{framer: NewFramerWithLimit(r, w, limit), reader: r, writer: w, prefix: prefix, handler: handler, pending: map[string]chan Envelope{}, active: map[string]context.CancelFunc{}, terminal: map[string]bool{}, done: make(chan struct{}), ctx: ctx, cancel: cancel}
+	p := &Peer{framer: NewFramerWithLimit(r, w, limit), reader: r, writer: w, prefix: prefix, handler: handler, pending: map[string]chan Envelope{}, active: map[string]context.CancelFunc{}, terminal: map[string]bool{}, done: make(chan struct{}), readDone: make(chan struct{}), ctx: ctx, cancel: cancel}
 	go p.readLoop()
 	go func() {
 		select {
@@ -50,6 +52,13 @@ func NewPeerWithLimit(ctx context.Context, r io.ReadCloser, w io.WriteCloser, pr
 func (p *Peer) Done() <-chan struct{} { return p.done }
 func (p *Peer) Err() error            { p.mu.Lock(); defer p.mu.Unlock(); return p.err }
 func (p *Peer) Close() error          { p.fail(io.EOF); return nil }
+
+// Wait 等待协议关闭和已取消的请求退出，确保进程内实例不遗留任务。
+func (p *Peer) Wait() {
+	<-p.done
+	<-p.readDone
+	p.requests.Wait()
+}
 
 func (p *Peer) fail(err error) {
 	p.once.Do(func() {
@@ -111,6 +120,7 @@ func (p *Peer) Call(ctx context.Context, method string, params, result any) erro
 }
 
 func (p *Peer) readLoop() {
+	defer close(p.readDone)
 	for {
 		e, err := p.framer.Read()
 		if err != nil {
@@ -177,11 +187,13 @@ func (p *Peer) readLoop() {
 		ctx, cancel := context.WithCancel(p.ctx)
 		p.active[e.ID] = cancel
 		p.mu.Unlock()
+		p.requests.Add(1)
 		go p.respond(ctx, cancel, e)
 	}
 }
 
 func (p *Peer) respond(ctx context.Context, cancel context.CancelFunc, e Envelope) {
+	defer p.requests.Done()
 	defer cancel()
 	var result any
 	var err error

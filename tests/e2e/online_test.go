@@ -20,7 +20,7 @@ func onlinePlugin(platform, program string, ids ...string) config.Plugin {
 	for _, id := range ids {
 		instances = append(instances, config.Instance{InstanceID: id, Enabled: true})
 	}
-	return config.Plugin{PluginID: "musicfs.plugin.source." + platform, Executable: program, Enabled: true, Instances: instances}
+	return config.Plugin{PluginID: "musicfs.plugin.source." + platform, Execution: "process", Executable: program, Enabled: true, Instances: instances}
 }
 
 func TestOnlineActualServerRequiresPlatformLoginAndDisabledRestart(t *testing.T) {

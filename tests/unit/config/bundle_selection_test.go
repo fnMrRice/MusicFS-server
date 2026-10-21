@@ -12,6 +12,7 @@ func TestExplicitStandaloneOnlineSelectionSurvivesFullBundleDiscovery(t *testing
 			digest := strings.Repeat("c", 64)
 			doc := bundledDocument(t, `plugins:
   - pluginId: musicfs.plugin.source.`+platform+`
+    execution: process
     executable: './musicfs-plugin-`+platform+`'
     sha256: '`+digest+`'
     args: []
@@ -34,6 +35,8 @@ func TestPinnedFullBundleRetainsIdentityAndCanStartOnline(t *testing.T) {
 	digest := strings.Repeat("d", 64)
 	doc := bundledDocument(t, `plugins:
   - pluginId: musicfs.plugin.source.netease
+    execution: process
+    enabled: true
     executable: './musicfs-plugins'
     sha256: '`+digest+`'
     args: ['--plugin=netease']

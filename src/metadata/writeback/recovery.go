@@ -122,7 +122,7 @@ func (s *Service) recover(ctx context.Context, record Record) (result Result, er
 		if record.Stage == "installed" && current.Version != record.New.Version {
 			return result, s.block(ctx, &record)
 		}
-		if err = verifyAudio(ctx, original, current.Size, record.AudioSHA512); err != nil {
+		if err = s.verifyAudio(ctx, original, current.Size, record.AudioSHA512); err != nil {
 			return result, s.block(ctx, &record)
 		}
 		record.New = current
@@ -143,7 +143,7 @@ func (s *Service) recover(ctx context.Context, record Record) (result Result, er
 	if temp == nil || pending != record.New {
 		return result, s.block(ctx, &record)
 	}
-	if err = verifyAudio(ctx, temp, pending.Size, record.AudioSHA512); err != nil {
+	if err = s.verifyAudio(ctx, temp, pending.Size, record.AudioSHA512); err != nil {
 		return result, s.block(ctx, &record)
 	}
 	if original != nil {

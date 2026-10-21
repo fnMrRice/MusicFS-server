@@ -13,13 +13,13 @@ Provider 提供授权来源，Resolver 选择来源和输出，Audio Worker 处�
 
 ## 插件与控制边界
 
-音频控制面采用版本化 JSON-RPC/stdio，正文走任务限定的二进制通道，不在 JSON 中传 PCM。Host 管理授权、超时、取消、背压和资源回收。实际字段见 [v1 Schema](../contracts/plugins/v1/protocol.schema.json)。
+内置音频控制面在主进程独立内存流上运行版本化 JSON-RPC，只有显式外部模式使用 stdio。正文仍走任务限定的二进制通道，不在 JSON 中传 PCM。Host 管理授权、超时、取消、背压和资源回收。实际字段见 [v1 Schema](../contracts/plugins/v1/protocol.schema.json)。
 
 官方音频 Worker 版本为 `0.2.0`，Host 精确校验后发送请求；旧 `0.1.0` 不能视为已执行 DSP，空链部署也须配套升级。`audio.prepare/start` 的可选 `dspChain/dspPlugins` 固定为版本 1。配置链按顺序使用内建节点或外部 Worker，详见 [DSP 插件](../plugins/dsp-plugins.md)。
 
 外部 DSP v1 仅允许无状态、固定格式和帧数、保持时标、零延迟、无尾音节点，启动前验证程序摘要。当前节点均为必需节点，失败明确报错，不自动旁路。DSP 配置重启生效；普通音频插件停用也在重启后生效，保存停用不会中断当前管线或拒绝新工作。实例配置重建按工作租约收尾。
 
-Server 使用独立进程插件。未来 C++ Worker 遵循 [CMake / C++23](../../../docs/native-plugins.md)与版本化 IPC；当前没有已验证的 C++ DSP 实现，也不直接加载 Client DLL。进程隔离和清单声明不是完整操作系统沙箱。
+Server 官方内置插件全部运行于主进程，FFmpeg/ffprobe 工具仍可按受控任务外部执行。内置代码共享地址空间，取消依靠协作，不具备插件崩溃或卡死隔离；显式外部插件使用原协议与进程回收机制。未来 C++ 内置桥接或外部入口须分别遵循 [CMake / C++23](../../../docs/native-plugins.md)并验证，当前没有已验证的 C++ DSP 实现，也不直接加载 Client DLL。
 
 ## 播放表示与处理身份
 

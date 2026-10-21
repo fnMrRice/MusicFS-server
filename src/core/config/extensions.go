@@ -15,6 +15,7 @@ import (
 
 // StorageConfig is deployment authority, available before any database is opened.
 type StorageConfig struct {
+	Execution  string            `yaml:"execution,omitempty" json:"-"`
 	Backend    string            `yaml:"backend,omitempty" json:"backend,omitempty"`
 	Options    map[string]string `yaml:"options,omitempty" json:"-"`
 	Executable string            `yaml:"executable,omitempty" json:"-"`
@@ -51,6 +52,12 @@ func SameStartupSettings(a, b Config) bool {
 }
 
 func (s StorageConfig) Validate() error {
+	if s.Execution != "" && s.Execution != "builtin" && s.Execution != "process" {
+		return fmt.Errorf("storage execution must be builtin or process")
+	}
+	if s.Execution == "process" && s.Backend != "plugin" || s.Execution == "builtin" && s.Backend == "plugin" {
+		return fmt.Errorf("storage execution does not match the selected backend")
+	}
 	if s.Backend != "" && !regexp.MustCompile(`^[a-z][a-z0-9-]{0,63}$`).MatchString(s.Backend) {
 		return fmt.Errorf("invalid storage backend identifier")
 	}
@@ -87,7 +94,7 @@ func (c AudioDSPConfig) Validate() error {
 
 func storageShape() fieldShape {
 	return mappingShape(map[string]fieldShape{
-		"backend": stringShape, "executable": stringShape, "sha256": stringShape,
+		"backend": stringShape, "executable": stringShape, "sha256": stringShape, "execution": stringShape,
 		"args": sequenceShape(stringShape), "options": {tag: "!!map", values: &stringShape},
 	})
 }
@@ -100,7 +107,7 @@ func audioDSPShape() fieldShape {
 		}, "name", "version")),
 		"plugins": sequenceShape(mappingShape(map[string]fieldShape{
 			"name": stringShape, "executable": stringShape, "sha256": stringShape,
-			"args": sequenceShape(stringShape), "timeoutMs": intShape,
-		}, "name", "executable", "sha256")),
+			"args": sequenceShape(stringShape), "timeoutMs": intShape, "builtin": boolShape,
+		}, "name")),
 	})
 }

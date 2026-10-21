@@ -8,14 +8,14 @@
 
 ## 1. 配置与启动
 
-新发布包的生成配置默认使用 `musicfs-plugins --plugin storage-sqlite` 启动独立 SQLite Worker，并写入统一程序的实际 SHA-256；SQLite 是必需角色，不能通过普通插件管理停用。统一文件不合并数据库与其他插件的进程。也可显式选择内置 SQLite：
+发布配置默认在 Server 主进程直接使用 SQLite 插件，主库与实例状态库均不启动插件进程。SQLite 是必需角色，不能通过普通插件管理停用：
 
 ```yaml
 storage:
   backend: sqlite
 ```
 
-在 Server 仓库构建默认统一程序，并计算实际程序摘要：
+需要显式外部存储模式时，再构建兼容入口并计算实际程序摘要：
 
 ```powershell
 go build -o build/musicfs-plugins.exe ./src/app/musicfs-plugins
@@ -27,12 +27,13 @@ go build -o build/musicfs-plugins.exe ./src/app/musicfs-plugins
 ```yaml
 storage:
   backend: plugin
+  execution: process
   executable: '../build/musicfs-plugins.exe'
   sha256: '<实际的64位SHA-256>'
   args: ['--plugin', 'storage-sqlite']
 ```
 
-路径相对于配置文件解析。选择、程序、摘要和参数来自启动配置，不从尚未启动的数据库读取。启用外部后端时，主库和 `host.database.*` 的实例私有状态读写均进入持久化 Worker；主库保持一个受管进程，私有状态按作用域连接创建短期进程。配置加载阶段的私有状态仅允许只读，不创建或迁移数据库；写入初始化仍在取得 Server 数据锁之后进行。
+旧官方 SQLite Worker 配置未显式选择 `execution: process` 时在内存中映射到内置后端，不改写磁盘配置或数据库布局。路径相对于配置文件解析。选择、程序、摘要和参数来自启动配置，不从尚未启动的数据库读取。显式外部模式下，主库和 `host.database.*` 的实例私有状态读写进入持久化 Worker；主库保持一个受管进程，私有状态按作用域连接创建短期进程。两种模式的配置预加载都只读，不创建或迁移数据库；写入初始化仍在取得 Server 数据锁之后进行。
 
 主库建库 SQL、内嵌资源和迁移加载器由 [`plugins/database/sqlite/migrations`](../../plugins/database/sqlite/migrations/README.md) 维护；实例配置及私有状态库的建表、迁移与只读读取由 `plugins/database/sqlite/state` 维护。插件在打开可写后端时自动完成初始化，成功后才返回 Backend 或发送 ready，部署时无需另行执行建库脚本。初始化失败拒绝该连接，不将部分就绪的数据库交给宿主。只读工厂不创建目录、数据库或表，也不执行迁移。
 
@@ -65,6 +66,8 @@ Driver 同时提供主库、维护、实例状态初始化 `OpenPluginState` 及
 
 ## 3. 通信与故障
 
+内置 SQLite 通过直接 Go 后端接口调用，和 Server 共享地址空间；取消依赖上下文与实现协作，不能安全强杀数据库线程。崩溃或内存破坏可能影响整个 Server。下面的 stdio、进程摘要和进程回收规则只适用于显式外部模式。
+
 持久化协议标识为 `musicfs-persistence/1`，使用独立 stdio 连接、随机握手 nonce 和完整 Go 接口/导出字段形状摘要。`persistence.hello` 的 ready 响应必填 `pluginVersion`，宿主在接纳连接前校验其有效 SemVer；缺失或无效时拒绝握手并回收进程。该字段独立于协议标识和接口形状摘要，适用于 Backend、Maintenance 及实例状态模式。Server、统一插件程序及独立 SQLite 入口须配套升级并更新固定摘要；旧 Worker 即使协议和合同仍匹配，也会因未提供发行版本被拒绝。底层入口签名为 `pluginrpc.Serve(ctx, input, output, version, contracts, factory)`。
 
 只有显式 Backend、Maintenance 或实例状态接口的方法可调用。修改接口后运行：
@@ -83,7 +86,7 @@ GC 删除回调与 `Guard(func() error)` 使用不可猜测、只在原调用期
 
 领域错误码、取消、截止时间和记录不存在保留；底层驱动异常不回显 SQL、路径或连接凭据。后端故障可能使整个服务不可用，不能按普通可选媒体效果旁路。
 
-必需存储进程退出或连接断开后，`/api/v1/health/ready` 返回 503；检查仅观察现有连接状态，不发送数据库请求、不自动重启或重试写入，也不覆盖原有启动和排空状态。
+显式外部模式的必需存储进程退出或连接断开后，`/api/v1/health/ready` 返回 503；检查仅观察现有连接状态，不发送数据库请求、不自动重启或重试写入，也不覆盖原有启动和排空状态。
 
 ## 4. 备份和恢复
 

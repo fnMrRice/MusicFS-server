@@ -26,8 +26,7 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
-// This optional check executes the supplied installation artifact, never a
-// replacement binary built by the test. Default regression reports it skipped.
+// 可选验收直接执行提供的安装制品，不在测试中重新构建替代；默认回归明确跳过。
 func TestActualInstallationBundleScanAudioWebAndExit(t *testing.T) {
 	bundle := os.Getenv("MUSICFS_RELEASE_ROOT")
 	if bundle == "" {
@@ -53,8 +52,8 @@ func TestActualInstallationBundleScanAudioWebAndExit(t *testing.T) {
 	}
 	assertInstallationPersistence(t, installed, cfg)
 	for _, p := range cfg.Plugins {
-		if filepath.Base(p.Executable) != "musicfs-plugins"+suffix || len(p.Args) != 2 || p.Args[0] != "--plugin" {
-			t.Fatal("packaged role does not use the shared plugin executable")
+		if !p.InProcess() {
+			t.Fatal("packaged plugin does not default to the server process")
 		}
 		if p.PluginID == "musicfs.plugin.source.localfiles" {
 			for _, instance := range p.Instances {
@@ -63,6 +62,11 @@ func TestActualInstallationBundleScanAudioWebAndExit(t *testing.T) {
 				}
 			}
 		}
+	}
+	// 移开测试副本中的兼容程序，验证默认运行不依赖外部插件可执行文件。
+	compatibility := filepath.Join(installed, "bin", "musicfs-plugins"+suffix)
+	if err = os.Rename(compatibility, compatibility+".disabled"); err != nil {
+		t.Fatal(err)
 	}
 	music := filepath.Join(installed, "music")
 	if err = os.Mkdir(music, 0700); err != nil {
@@ -241,7 +245,7 @@ func TestActualInstallationBundleScanAudioWebAndExit(t *testing.T) {
 	case <-time.After(15 * time.Second):
 		t.Fatal("installed server did not stop after its last lease")
 	}
-	t.Log("Installed Server and official workers: WAV/NCM Range, decoded FLAC PCM/seek, Web and clean process exit passed")
+	t.Log("Installed Server with builtin plugins: WAV/NCM Range, decoded FLAC PCM/seek, Web and clean process exit passed without the compatibility executable")
 }
 
 func copyInstallation(t *testing.T, bundle string) string {

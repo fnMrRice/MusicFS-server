@@ -1,4 +1,4 @@
-package writeback
+package flac
 
 import (
 	"context"
@@ -6,6 +6,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+
+	"github.com/fnMrRice/MusicFS-server/sdk/tagformat"
 )
 
 const maxMetadata = 32 << 20
@@ -17,10 +19,6 @@ type flacBlock struct {
 type flacFile struct {
 	blocks      []flacBlock
 	audioOffset int64
-}
-type EditResult struct {
-	AudioSHA512 string
-	Changed     bool
 }
 
 func readFLAC(r io.ReaderAt, size int64) (flacFile, error) {
@@ -80,11 +78,9 @@ func readFLAC(r io.ReaderAt, size int64) (flacFile, error) {
 	return result, unsupported("Too many FLAC metadata blocks")
 }
 
-// RewriteFLAC copies every audio byte unchanged. It does not decode, re-encode,
-// claim to repair invalid audio, or recalculate the stream's existing MD5.
-// The destination must be a separate, unpublished file owned by the caller.
-func RewriteFLAC(ctx context.Context, src io.ReaderAt, size int64, dst io.Writer, patch Patch) (EditResult, error) {
-	var result EditResult
+// Rewrite 原样复制音频字节，不解码、重新编码或重算原始 MD5。目标必须由宿主持有且尚未发布。
+func (*Plugin) Rewrite(ctx context.Context, src io.ReaderAt, size int64, dst io.Writer, patch tagformat.Patch) (tagformat.EditResult, error) {
+	var result tagformat.EditResult
 	if err := validatePatch(patch); err != nil {
 		return result, err
 	}
@@ -124,7 +120,7 @@ func RewriteFLAC(ctx context.Context, src io.ReaderAt, size int64, dst io.Writer
 	if n != size-file.audioOffset {
 		return result, io.ErrUnexpectedEOF
 	}
-	return EditResult{AudioSHA512: fmt.Sprintf("%x", h.Sum(nil)), Changed: changed}, nil
+	return tagformat.EditResult{AudioSHA512: fmt.Sprintf("%x", h.Sum(nil)), Changed: changed}, nil
 }
 
 func copyContext(ctx context.Context, dst io.Writer, src io.Reader) (int64, error) {

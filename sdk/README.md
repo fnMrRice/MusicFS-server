@@ -1,16 +1,23 @@
 # MusicFS 插件 SDK
 
 独立 Go 模块：`github.com/fnMrRice/MusicFS-server/sdk`。协议和 SDK 由
-Server 仓库维护；插件只依赖此模块，不需要导入 Server 的 `src` 包。
+Server 仓库维护。独立在线插件及通用 SDK 消费者只依赖此模块；部分编译内算法和 SQLite 后端仍使用宿主拥有的业务契约，不承诺所有插件都已成为独立 SDK 模块。
 
 ## 模块边界
 
 - `pluginproto`：JSON-RPC 消息帧、双向请求、握手、插件清单、导入配置与扫描协议。
 - `provider`：在线 Provider 接口和 Worker 运行入口；由插件注入客户端工厂与展示信息。
+- `inprocess`：为受信任编译内实现建立独立上下文及双向内存流，取消时关闭阻塞读写并等待处理退出。
+- `tagformat`：标签补丁、音频字节范围及重写接口；宿主负责授权、校验、原件替换与恢复。
+- `contenttransform`：有界缩略图接口；宿主负责对象权限、缓存、父对象版本与发布。
 - `online`：公共 DTO、平台标识、能力策略、元数据摘要与宿主结果校验。
 - `fault`：公共错误类型与请求 ID；宿主 `domain.Error` 是其类型别名。
 - `instanceid`：实例 UUID 与兼容旧实例目录的身份规则。
 - `bundledplugin`：随包插件共用的发行版本声明。
+
+所有官方内置插件在 Server 主进程运行，现有 Provider/Scraper/音频/DSP 协议可使用内存流，SQLite 直接调用后端接口。显式外部进程模式才使用独立程序和 stdio；外部工具 FFmpeg、ffprobe、fpcalc 仍按任务执行。账号、用户及 UUID 实例状态继续隔离；共享进程不提供崩溃隔离或安全强停，取消必须协作。
+
+新增插件当前仅实现 `plugins/analysis/chromaprint` 的指纹、`plugins/tags/flac` 的 FLAC 标签、`plugins/matching/standard` 的标准评分及 `plugins/transform/thumbnail` 的 PNG/JPEG 缩略图。指纹与评分契约仍分别由宿主 `fingerprintworker.Extractor`、`candidates.Scorer` 拥有。接口存在不表示已支持 BPM/调性、更多标签格式、歌词对齐或任意第三方安装。
 
 SDK 不包含 QQ 音乐、网易云音乐的请求、登录、凭据或 HTTP 客户端实现。
 `online` 中保留官方平台已验证的能力上限、来源链接和图片引用校验规则，
@@ -21,7 +28,7 @@ SDK 不包含 QQ 音乐、网易云音乐的请求、登录、凭据或 HTTP 客
 插件发布版本使用语义版本，例如 `1.2.3`、`2.0.0-rc.1+build.5`，
 不要求等于 `0.1.0`。插件版本、协议版本、配置版本分别校验：
 只有匹配 `ProtocolVersion`、`OnlineRevision`、身份、权限和资源限制的插件才能接入。
-发布新插件版本不要求 Server 同步改版本常量。
+插件发行号不要求和 Server 版本号一致。内置版本由 `bundledplugin` 独立声明，升级实现需要重新构建和交付 Server；外部插件在已支持协议内升级，不依赖修改宿主的固定发行号，也不能借版本号绕过身份与能力校验。
 
 插件可以声明宿主已验证能力的子集，不能启用未验证能力。宿主必须在握手后调用
 `pluginproto.ValidateOnlineDescriptor(manifest, descriptor, platform)`，

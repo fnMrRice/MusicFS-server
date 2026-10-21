@@ -903,19 +903,23 @@
       "description": "有序、无状态的 DSP v1 节点。宿主继续检查名称已注册、参数含义及外部进程的格式/时标声明；内建 gain 使用 gainDB，范围 -96 到 12。"
     },
     "DSPPlugin": {
-      "type": "object", "additionalProperties": false, "required": ["name", "executable", "sha256"],
+      "type": "object", "additionalProperties": false, "required": ["name"],
       "properties": {
         "name": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,63}$", "not": {"enum": ["gain", "bypass"]}},
-        "executable": {"type": "string", "minLength": 1, "description": "仅部署配置可指定；发送给音频 Worker 前已解析为绝对路径。"},
-        "sha256": {"$ref": "#/$defs/SHA256"},
+        "builtin": {"type": "boolean", "description": "仅允许已编译的 musicfs.dsp.gain；主进程内执行不要求外部程序。"},
+        "executable": {"type": "string", "description": "仅部署配置可指定；外部模式发送给音频 Worker 前已解析为绝对路径，内置模式不执行该文件。"},
+        "sha256": {"type": "string"},
         "args": {"type": "array", "maxItems": 32, "items": {"type": "string", "maxLength": 4096}},
         "timeoutMs": {"type": "integer", "anyOf": [{"const": 0}, {"minimum": 10, "maximum": 30000}], "description": "每次 DSP 请求的超时，省略或 0 使用 5000 毫秒。"}
-      }
+      },
+      "if": {"properties": {"builtin": {"const": true}}, "required": ["builtin"]},
+      "then": {"properties": {"name": {"const": "musicfs.dsp.gain"}}},
+      "else": {"required": ["executable", "sha256"], "properties": {"executable": {"minLength": 1}, "sha256": {"$ref": "#/$defs/SHA256"}}}
     },
     "AudioStart": {
       "type": "object", "additionalProperties": false, "required": ["plan", "ffmpegPath", "ffmpegSHA256", "inputUrl", "outputUrl"],
       "properties": {"plan": {"$ref": "#/$defs/AudioPlan"}, "ffmpegPath": {"type": "string", "minLength": 1}, "ffmpegSHA256": {"$ref": "#/$defs/SHA256"}, "inputUrl": {"$ref": "#/$defs/TaskChannel"}, "outputUrl": {"$ref": "#/$defs/TaskChannel"}, "dspChain": {"type": "array", "maxItems": 15, "items": {"$ref": "#/$defs/DSPNodeSpec"}}, "dspPlugins": {"type": "array", "maxItems": 16, "items": {"$ref": "#/$defs/DSPPlugin"}}},
-      "description": "按用户 gain 再接 dspChain 顺序执行；dspPlugins 仅注册可执行节点。PCM 走有界二进制 DSP v1 管道，不进入 JSON-RPC；详见 docs/dsp-plugins.md。"
+      "description": "按用户 gain 再接 dspChain 顺序执行；dspPlugins 注册受信任内置或显式外部节点。builtin=true 仅用于 Server 内置音频会话，宿主拒绝外部 FFmpeg 与内置 DSP 的组合，并核验内置音频 Manifest 的 audio.dsp.builtin 声明。PCM 走有界二进制 DSP v1 管道，不进入 JSON-RPC。"
     },
     "AudioPrepared": {"type": "object", "required": ["profile", "positionOriginMs", "seekMode"], "properties": {"profile": {"const": "mp3-128"}, "positionOriginMs": {"type": "integer", "minimum": 0}, "seekMode": {"const": "timeRestart"}}},
     "AudioComplete": {"type": "object", "required": ["state"], "properties": {"state": {"const": "complete"}}},

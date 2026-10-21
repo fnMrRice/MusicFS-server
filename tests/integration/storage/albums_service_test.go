@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
+	"github.com/fnMrRice/MusicFS-server/plugins/transform/thumbnail"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
@@ -24,7 +25,7 @@ func TestAlbumServiceProtectsActualFilesAndRetainsChoiceAfterRestart(t *testing.
 		t.Fatal(err)
 	}
 	defer files.Close()
-	media := mediastore.NewContent(s, s, files)
+	media := mediastore.NewContent(s, s, files, thumbnail.New())
 	service := albums.New(s, media, nil)
 	a := albumCreate(t, s, "admin", "local", "中文发行", tracks[0].ID)
 	metadata := mediastore.ContentMetadata{Target: mediastore.ContentTarget{SourceTrackID: tracks[0].ID, AssetID: tracks[0].AssetID, AssetVersion: tracks[0].Asset.Version}, Field: "artwork", Origin: mediastore.Origin{Kind: "upload"}}

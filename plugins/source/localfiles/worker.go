@@ -25,7 +25,7 @@ type worker struct {
 func Run(ctx context.Context, input io.ReadCloser, output io.WriteCloser) error {
 	w := &worker{}
 	w.peer = pluginproto.NewPeer(ctx, input, output, "w-", w.handle)
-	<-w.peer.Done()
+	w.peer.Wait()
 	return w.peer.Err()
 }
 

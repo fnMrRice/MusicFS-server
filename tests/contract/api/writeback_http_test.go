@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/tags/flac"
+	"github.com/fnMrRice/MusicFS-server/plugins/transform/thumbnail"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
@@ -27,13 +29,13 @@ func TestWriteBackHTTPExplicitInputOwnerAndNaturalCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { files.Close() })
-	content := mediastore.NewContent(store, store, files)
+	content := mediastore.NewContent(store, store, files, thumbnail.New())
 	journal, err := writeback.OpenJournal(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { journal.Close() })
-	service, err := writebackhost.New(store, library.New(store, jobs.New(store), nil, nil), content, journal, nil, writebackhost.Config{})
+	service, err := writebackhost.New(store, library.New(store, jobs.New(store), nil, nil), content, journal, nil, writebackhost.Config{TagFormat: flac.New()})
 	if err != nil {
 		t.Fatal(err)
 	}

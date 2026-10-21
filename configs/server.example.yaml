@@ -14,51 +14,43 @@ audioDSP:
   chain: []
   plugins: []
 webRoot: ''
-pluginBundle: '../build/windows/musicfs-plugins.exe'
 plugins:
   - pluginId: 'musicfs.plugin.source.localfiles'
-    executable: '../build/windows/musicfs-plugins.exe'
-    args: ['--plugin', 'local']
+    execution: builtin
     instances:
       - instanceId: 'b1548e96-3081-5c9c-8376-bf290e369d51'
         config: {}
   - pluginId: 'musicfs.plugin.decoder.ffmpeg'
-    executable: '../build/windows/musicfs-plugins.exe'
-    args: ['--plugin', 'audio-ffmpeg']
+    execution: builtin
     instances:
       - instanceId: '16b003e5-1bab-52bb-be10-0e83ec1c40ea'
         config:
           ffmpegPath: ''
           ffprobePath: ''
   - pluginId: 'musicfs.plugin.decoder.ncm'
-    executable: '../build/windows/musicfs-plugins.exe'
-    args: ['--plugin', 'ncm']
+    execution: builtin
     instances:
       - instanceId: '96412f52-9ff4-5a82-9eaa-7644a5837cda'
         config: {}
   - pluginId: 'musicfs.scraper.local'
-    executable: '../build/windows/musicfs-plugins.exe'
-    args: ['--plugin', 'scraper-local']
+    execution: builtin
     instances:
       - instanceId: 'd248bf34-1780-59d3-a557-9cf5d889e977'
         config: {}
   - pluginId: 'musicfs.plugin.source.netease'
-    executable: '../build/windows/musicfs-plugins.exe'
-    args: ['--plugin', 'netease']
+    execution: builtin
     instances:
       - instanceId: 'a5e47aac-f949-5e45-9709-f28a0d8443df'
         ownerUserId: 'admin'
         config: {}
   - pluginId: 'musicfs.plugin.source.qqmusic'
-    executable: '../build/windows/musicfs-plugins.exe'
-    args: ['--plugin', 'qqmusic']
+    execution: builtin
     instances:
       - instanceId: 'fc2264bd-13bc-5dc6-be83-6c4428cf4d40'
         ownerUserId: 'admin'
         config: {}
   - pluginId: 'musicfs.plugin.source.applemusic'
-    executable: '../build/windows/musicfs-plugins.exe'
-    args: ['--plugin', 'applemusic']
+    execution: builtin
     instances:
       - instanceId: '701b805f-494f-5509-897f-17c934b1a8ed'
         ownerUserId: 'admin'

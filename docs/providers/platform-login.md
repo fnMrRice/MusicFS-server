@@ -34,7 +34,7 @@ Apple 由部署者将**自己的、适用于该网页来源的开发者 JWT**通
 
 - 登录状态独立于 MusicFS 会话，平台授权失败不会退出 MusicFS。API 见 [OpenAPI](../contracts/openapi.yaml)，账号 DTO 见 [Schema](../contracts/platform-account.schema.json)，Worker 扩展见[账号控制面](../contracts/plugins/v1/account.md)。目前按查询更新，没有账号事件推送。
 - Host 在该实例状态目录的 `credentials/` 下保存 AES-GCM 密文和独立随机密钥；附加认证数据绑定平台、MusicFS 用户与实例。Windows 使用仅运行用户可访问的受保护 ACL；其他系统目录 0700、文件 0600。保护依赖运行账号和数据目录访问权限，不宣称是硬件密钥库。
-- Worker 只经受控 stdio 接收/返回内部凭据；HTTP DTO 去除 secret。普通配置导出、诊断输出和 Git 不保存账号凭据。Web 不手工保存 Music User Token；官方 SDK 自身的令牌管理仍按其行为执行。
+- Worker 只经实例隔离的受控通道接收/返回内部凭据（内置为内存流，显式外部模式为 stdio）；HTTP DTO 去除 secret。普通配置导出、诊断输出和 Git 不保存账号凭据。Web 不手工保存 Music User Token；官方 SDK 自身的令牌管理仍按其行为执行。
 - 重启恢复只标记 unverified，用户点击“校验登录状态”后查询平台；业务请求检测到认证失效立即清除 Worker 中的可用会话，拒绝后续请求；账号控制面更新时同步清理持久化，旧磁盘快照即使重启恢复仍为 unverified，不能绕过校验。暂时网络失败保留当前绑定。当前不提供自动续期，过期后重新授权。
 - 退出是解除本实例在 MusicFS 中的账号授权，不承诺平台所有设备退出或上游令牌撤销；Apple 页面同时调用 MusicKit unauthorize。退出先取消在途业务请求，丢弃迟到结果，后续业务访问和推荐缓存读取均拒绝；保留已导入的歌单记录。缓存按账号及随机登录代次隔离，同一账号重新登录也不复用旧缓存或游标。远程歌单导入必须显式携带当前账号 ID；旧匿名绑定须重新导入，不自动转给新账号。实例停用/离线时账号操作不可用，需恢复插件后退出。
 - 离线备份包含 `dataRoot/online` 下的凭据密文及同目录保护密钥，整个备份须按账号凭据级别保护，不放入普通制品或日志归档。恢复后账号仍须重新校验，授权失效时重新登录。

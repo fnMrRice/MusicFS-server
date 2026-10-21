@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/source/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/inprocess"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/accountstore"
@@ -20,6 +22,7 @@ import (
 )
 
 type OnlineConfig struct {
+	Builtin                                                    bool
 	Args                                                       []string
 	Executable, SHA256, StateDir, Platform, UserID, InstanceID string
 	Disabled                                                   bool
@@ -50,7 +53,7 @@ func StartOnline(parent context.Context, config OnlineConfig) (*OnlineWorker, er
 	if pluginproto.OnlinePluginID(config.Platform) == "" || !pluginproto.OnlineIdentity(config.UserID) || !pluginproto.OnlineIdentity(config.InstanceID) || config.Timeout < time.Second || config.Timeout > 30*time.Second {
 		return nil, domain.Fail("INVALID_ARGUMENT", "Invalid online worker configuration")
 	}
-	base := Config{Executable: config.Executable, SHA256: config.SHA256, StateDir: config.StateDir, UserID: config.UserID, InstanceID: config.InstanceID, Disabled: config.Disabled}
+	base := Config{Builtin: config.Builtin, Executable: config.Executable, SHA256: config.SHA256, StateDir: config.StateDir, UserID: config.UserID, InstanceID: config.InstanceID, Disabled: config.Disabled}
 	if err := base.Validate(); err != nil {
 		return nil, err
 	}
@@ -68,52 +71,67 @@ func StartOnline(parent context.Context, config OnlineConfig) (*OnlineWorker, er
 		}
 	}()
 	ctx, cancel := context.WithCancel(parent)
-	cmd := exec.CommandContext(ctx, config.Executable, config.Args...)
-	onlineConfigureProcess(cmd)
-	cmd.Dir, cmd.Stderr, cmd.WaitDelay = privateDir, io.Discard, time.Second
-	cmd.Env = []string{}
-	for _, key := range []string{"SystemRoot", "WINDIR", "TEMP", "TMP"} {
-		if v := os.Getenv(key); v != "" {
-			cmd.Env = append(cmd.Env, key+"="+v)
-		}
-	}
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		cancel()
-		return nil, domain.Fail("TEMPORARY_FAILURE", "Online control channel is unavailable")
-	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		cancel()
-		stdin.Close()
-		return nil, domain.Fail("TEMPORARY_FAILURE", "Online control channel is unavailable")
-	}
-	if err = cmd.Start(); err != nil {
-		cancel()
-		stdin.Close()
-		stdout.Close()
-		return nil, domain.Fail("SOURCE_OFFLINE", "Online worker failed to start")
-	}
-	contain, err := onlineContainProcess(cmd.Process.Pid)
-	if err != nil {
-		cancel()
-		stdin.Close()
-		stdout.Close()
-		cmd.Process.Kill()
-		cmd.Wait()
-		return nil, domain.Fail("UNSUPPORTED", "Online process containment is unavailable")
-	}
 	w := &OnlineWorker{config: config, cancel: cancel, done: make(chan struct{})}
-	w.peer = pluginproto.NewPeer(ctx, stdout, stdin, "h-", nil)
-	go func() { <-w.peer.Done(); cancel() }()
-	go func() {
-		_ = cmd.Wait()
-		cancel()
-		_ = w.peer.Close()
-		contain()
-		_ = os.Remove(privateDir)
-		close(w.done)
-	}()
+	if config.Builtin {
+		local := inprocess.Start(ctx, func(ctx context.Context, input io.ReadCloser, output io.WriteCloser) error {
+			return onlineplugins.Run(ctx, config.Platform, input, output)
+		})
+		w.peer = pluginproto.NewPeer(ctx, local.Output, local.Input, "h-", nil)
+		go func() { <-w.peer.Done(); cancel() }()
+		go func() {
+			<-local.Done
+			cancel()
+			_ = w.peer.Close()
+			_ = os.Remove(privateDir)
+			close(w.done)
+		}()
+	} else {
+		cmd := exec.CommandContext(ctx, config.Executable, config.Args...)
+		onlineConfigureProcess(cmd)
+		cmd.Dir, cmd.Stderr, cmd.WaitDelay = privateDir, io.Discard, time.Second
+		cmd.Env = []string{}
+		for _, key := range []string{"SystemRoot", "WINDIR", "TEMP", "TMP"} {
+			if v := os.Getenv(key); v != "" {
+				cmd.Env = append(cmd.Env, key+"="+v)
+			}
+		}
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			cancel()
+			return nil, domain.Fail("TEMPORARY_FAILURE", "Online control channel is unavailable")
+		}
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			cancel()
+			stdin.Close()
+			return nil, domain.Fail("TEMPORARY_FAILURE", "Online control channel is unavailable")
+		}
+		if err = cmd.Start(); err != nil {
+			cancel()
+			stdin.Close()
+			stdout.Close()
+			return nil, domain.Fail("SOURCE_OFFLINE", "Online worker failed to start")
+		}
+		contain, err := onlineContainProcess(cmd.Process.Pid)
+		if err != nil {
+			cancel()
+			stdin.Close()
+			stdout.Close()
+			cmd.Process.Kill()
+			cmd.Wait()
+			return nil, domain.Fail("UNSUPPORTED", "Online process containment is unavailable")
+		}
+		w.peer = pluginproto.NewPeer(ctx, stdout, stdin, "h-", nil)
+		go func() { <-w.peer.Done(); cancel() }()
+		go func() {
+			_ = cmd.Wait()
+			cancel()
+			_ = w.peer.Close()
+			contain()
+			_ = os.Remove(privateDir)
+			close(w.done)
+		}()
+	}
 	cleanup = false
 	failed := true
 	defer func() {

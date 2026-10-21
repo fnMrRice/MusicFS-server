@@ -143,7 +143,7 @@ func (s *managedOnline) start(ctx context.Context, p config.Plugin, i config.Ins
 	if name == "" {
 		name = pluginconfig.Identity(p.PluginID).Name
 	}
-	hash := expectedChecksum(p.SHA256, p.Executable)
+	hash := pluginChecksum(p)
 	owner := i.OnlineOwnerUserID()
 	binding, _ := json.Marshal(struct{ Plugin, Instance, Owner, Binary, Schema string }{p.PluginID, i.InstanceID, owner, hash, pluginproto.OnlineRevision})
 	r := onlinehost.Runtime{Owner: owner, InstanceID: i.InstanceID, Name: name, Platform: config.OnlinePlatform(p.PluginID), ConfigRevision: fmt.Sprintf("%x", sha256.Sum256(binding)), Enabled: true, Gate: s.runtime.Gate}
@@ -151,7 +151,7 @@ func (s *managedOnline) start(ctx context.Context, p config.Plugin, i config.Ins
 	if err != nil {
 		return err
 	}
-	w, err := pluginhost.StartOnline(s.run, pluginhost.OnlineConfig{Executable: p.Executable, Args: p.Args, SHA256: hash, StateDir: stateDir, Platform: r.Platform, UserID: r.Owner, InstanceID: r.InstanceID})
+	w, err := pluginhost.StartOnline(s.run, pluginhost.OnlineConfig{Builtin: p.InProcess(), Executable: p.Executable, Args: p.Args, SHA256: hash, StateDir: stateDir, Platform: r.Platform, UserID: r.Owner, InstanceID: r.InstanceID})
 	if err != nil {
 		return err
 	}

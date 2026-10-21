@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/source/localfiles"
+	"github.com/fnMrRice/MusicFS-server/sdk/inprocess"
 	"github.com/fnMrRice/MusicFS-server/sdk/plugindisplay"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
@@ -77,36 +79,50 @@ func Start(ctx context.Context, cfg Config) (*Worker, error) {
 		return nil, err
 	}
 	workerCtx, cancel := context.WithCancel(ctx)
-	cmd := exec.CommandContext(workerCtx, cfg.Executable, cfg.Args...)
-	cmd.Dir = privateDir
-	cmd.Env = []string{}
-	for _, key := range []string{"SystemRoot", "WINDIR", "TEMP", "TMP"} {
-		if v := os.Getenv(key); v != "" {
-			cmd.Env = append(cmd.Env, key+"="+v)
+	w := &Worker{config: cfg, Access: access, cancel: cancel, done: make(chan struct{}), privateDir: privateDir, state: state, snapshots: map[string]entrySnapshot{}, scanGrants: map[string]scanGrant{}}
+	if cfg.Builtin {
+		local := inprocess.Start(workerCtx, localfiles.Run)
+		w.peer = pluginproto.NewPeer(workerCtx, local.Output, local.Input, "h-", w.handle)
+		go func() {
+			<-local.Done
+			cancel()
+			w.peer.Close()
+			w.peer.Wait()
+			close(w.done)
+			os.Remove(privateDir)
+		}()
+	} else {
+		cmd := exec.CommandContext(workerCtx, cfg.Executable, cfg.Args...)
+		cmd.Dir = privateDir
+		cmd.Env = []string{}
+		for _, key := range []string{"SystemRoot", "WINDIR", "TEMP", "TMP"} {
+			if v := os.Getenv(key); v != "" {
+				cmd.Env = append(cmd.Env, key+"="+v)
+			}
 		}
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			cancel()
+			os.Remove(privateDir)
+			return nil, err
+		}
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			cancel()
+			os.Remove(privateDir)
+			return nil, err
+		}
+		cmd.Stderr = io.Discard
+		cmd.WaitDelay = 2 * time.Second
+		if err = cmd.Start(); err != nil {
+			cancel()
+			os.Remove(privateDir)
+			return nil, fmt.Errorf("UNSUPPORTED: worker failed to start")
+		}
+		w.cmd = cmd
+		w.peer = pluginproto.NewPeer(workerCtx, stdout, stdin, "h-", w.handle)
+		go func() { cmd.Wait(); w.peer.Close(); w.peer.Wait(); close(w.done); os.Remove(privateDir) }()
 	}
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		cancel()
-		os.Remove(privateDir)
-		return nil, err
-	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		cancel()
-		os.Remove(privateDir)
-		return nil, err
-	}
-	cmd.Stderr = io.Discard
-	cmd.WaitDelay = 2 * time.Second
-	if err = cmd.Start(); err != nil {
-		cancel()
-		os.Remove(privateDir)
-		return nil, fmt.Errorf("UNSUPPORTED: worker failed to start")
-	}
-	w := &Worker{config: cfg, Access: access, cmd: cmd, cancel: cancel, done: make(chan struct{}), privateDir: privateDir, state: state, snapshots: map[string]entrySnapshot{}, scanGrants: map[string]scanGrant{}}
-	w.peer = pluginproto.NewPeer(workerCtx, stdout, stdin, "h-", w.handle)
-	go func() { cmd.Wait(); w.peer.Close(); close(w.done); os.Remove(privateDir) }()
 	var random [24]byte
 	rand.Read(random[:])
 	nonce := hex.EncodeToString(random[:])

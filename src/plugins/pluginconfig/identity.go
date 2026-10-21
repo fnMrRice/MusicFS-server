@@ -7,6 +7,22 @@ import "github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 func Identity(pluginID string) *pluginproto.PluginIdentity {
 	identity := &pluginproto.PluginIdentity{ID: pluginID, LocalizedNames: map[string]string{}, Features: []string{}}
 	switch pluginID {
+	case "musicfs.plugin.analysis.chromaprint":
+		identity.Name = "Chromaprint Audio Analysis"
+		identity.LocalizedNames = map[string]string{"zh": "Chromaprint 音频分析", "zh-Hans": "Chromaprint 音频分析", "zh-Hant": "Chromaprint 音訊分析"}
+		identity.Features = []string{"audio-analysis"}
+	case "musicfs.plugin.tags.flac":
+		identity.Name = "FLAC Tag Format"
+		identity.LocalizedNames = map[string]string{"zh": "FLAC 标签格式", "zh-Hans": "FLAC 标签格式", "zh-Hant": "FLAC 標籤格式"}
+		identity.Features = []string{"tag-format"}
+	case "musicfs.plugin.matching.standard":
+		identity.Name = "Standard Recording Matching"
+		identity.LocalizedNames = map[string]string{"zh": "标准录音匹配", "zh-Hans": "标准录音匹配", "zh-Hant": "標準錄音匹配"}
+		identity.Features = []string{"matching"}
+	case "musicfs.plugin.transform.thumbnail":
+		identity.Name = "Artwork Thumbnail"
+		identity.LocalizedNames = map[string]string{"zh": "封面缩略图", "zh-Hans": "封面缩略图", "zh-Hant": "封面縮圖"}
+		identity.Features = []string{"content-transform"}
 	case "musicfs.plugin.source.localfiles":
 		identity.Name = "Local Music"
 		identity.LocalizedNames = map[string]string{"zh": "本地音乐", "zh-Hans": "本地音乐", "zh-Hant": "本機音樂", "ja": "ローカル音楽"}

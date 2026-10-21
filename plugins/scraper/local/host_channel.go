@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/fnMrRice/MusicFS-server/sdk/inprocess"
 )
 
 type outputGrant struct {
@@ -19,12 +21,13 @@ type outputGrant struct {
 	started bool
 }
 type hostChannel struct {
-	base    string
-	ctx     context.Context
-	server  *http.Server
-	inputs  map[string]Input
-	mu      sync.Mutex
-	outputs map[string]*outputGrant
+	base     string
+	ctx      context.Context
+	server   *http.Server
+	inputs   map[string]Input
+	mu       sync.Mutex
+	outputs  map[string]*outputGrant
+	handlers inprocess.Handlers
 }
 
 func newHostChannel(ctx context.Context, nonce string, inputs []Input) (*hostChannel, error) {
@@ -69,12 +72,13 @@ func newHostChannel(ctx context.Context, nonce string, inputs []Input) (*hostCha
 		w.WriteHeader(http.StatusForbidden)
 	})
 	channel.server = server
+	server.Handler = channel.handlers.Wrap(server.Handler)
 	limited := &channelListener{Listener: listener, slots: make(chan struct{}, 8), done: make(chan struct{})}
 	go func() { _ = server.Serve(limited) }()
 	return channel, nil
 }
 
-func (c *hostChannel) Close() { _ = c.server.Close() }
+func (c *hostChannel) Close() { _ = c.server.Close(); c.handlers.Wait() }
 func (c *hostChannel) Validate() error {
 	if err := c.ctx.Err(); err != nil {
 		return err

@@ -42,6 +42,8 @@ type Plugin struct {
 	PluginID                  string                      `json:"pluginId"`
 	Plugin                    *pluginproto.PluginIdentity `json:"plugin"`
 	Version                   string                      `json:"version"`
+	Execution                 string                      `json:"execution,omitempty"`
+	Builtin                   *BuiltinStatus              `json:"builtin,omitempty"`
 	DisplayCount              *plugindisplay.Count        `json:"displayCount,omitempty"`
 	SupportsMultipleInstances bool                        `json:"supportsMultipleInstances"`
 	ConfiguredEnabled         bool                        `json:"configuredEnabled"`

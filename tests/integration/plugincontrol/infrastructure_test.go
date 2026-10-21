@@ -21,7 +21,7 @@ func TestInfrastructureHTTPInventoryAndStateProtection(t *testing.T) {
 	}
 	seen := map[string]bool{}
 	for _, item := range snapshot.Items {
-		if item.Storage == nil && item.DSP == nil {
+		if item.Storage == nil && item.DSP == nil && item.Builtin == nil {
 			if !item.StateMutable {
 				t.Fatal("ordinary plugin lost state control", item.PluginID)
 			}
@@ -44,6 +44,11 @@ func TestInfrastructureHTTPInventoryAndStateProtection(t *testing.T) {
 	}
 	if !seen["musicfs.plugin.storage.sqlite"] || !seen["musicfs.dsp.gain"] {
 		t.Fatal("missing infrastructure inventory", seen)
+	}
+	for _, id := range []string{"musicfs.plugin.analysis.chromaprint", "musicfs.plugin.tags.flac", "musicfs.plugin.matching.standard", "musicfs.plugin.transform.thumbnail"} {
+		if !seen[id] {
+			t.Fatal("missing builtin algorithm inventory", id)
+		}
 	}
 	if h.manager.Snapshot().Revision != snapshot.Revision || h.manager.Snapshot().RestartRequired {
 		t.Fatal("rejected infrastructure changes modified persisted state")

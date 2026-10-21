@@ -11,13 +11,13 @@
 Copy-Item configs/server.example.yaml configs/server.local.yaml
 ```
 
-Linux 使用 `sh scripts/build.sh`，将示例中的 ../build/windows/ 改为 ../build/linux/ 并去掉 .exe。默认只生成 musicfs、musicfs-plugins 两个程序；九种插件角色分别启动进程。分拆构建用 `-SplitPlugins` / `--split-plugins`。
+Linux 使用 `sh scripts/build.sh`，将示例中的 ../build/windows/ 改为 ../build/linux/ 并去掉 .exe。默认生成 musicfs、musicfs-plugins 两个文件，但只启动 musicfs：全部官方内置插件在 Server 主进程运行。后者保留显式外部模式的九种兼容入口；分拆构建用 `-SplitPlugins` / `--split-plugins`。
 
 编辑配置：
 
 - Local Files 默认没有选定的音乐目录。允许访问的范围由默认授权或 permissions.readDirectories 决定，实际目录在启动后通过管理接口添加，见[目录授权](../plugins/plugin-configuration.md#部署授权)。
 - FFmpeg 实例配置 ffmpegPath、ffprobePath；缺少工具时保持待配置。仅播放兼容原流无需启用处理插件；AIFF 与当前 NCM FLAC 处理路径需要两种工具。
-- 普通插件 executable 指向统一程序，args 选择角色。缺配置保持待配置，显式禁用优先，见[自动发现](configuration.md#内置插件程序与自动发现)。
+- 普通插件默认 `execution: builtin`，无需程序路径。只有显式 `execution: process` 才使用 executable、args 和程序摘要。缺配置保持待配置，显式列表及禁用优先，见[自动发现](configuration.md#内置插件程序与自动发现)。
 - 数据、媒体、缓存与音乐目录分离。相对路径以 YAML 所在目录为基准；修改部署权限后重启。
 - allowedOrigins 与页面实际 URL 完全一致。远程监听必须配置 TLS；静态页面与 API 保持同源。
 

@@ -3,6 +3,7 @@ package audioffmpeg
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/inprocess"
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
@@ -24,6 +26,7 @@ import (
 )
 
 type Config struct {
+	Builtin                                                    bool
 	InstanceID                                                 string
 	WorkerArgs                                                 []string
 	FFmpegPath, FFprobePath, WorkerPath, WorkerSHA256, WorkDir string
@@ -49,6 +52,9 @@ func NewProcessor(ctx context.Context, cfg Config) (*Processor, error) {
 	for i := range cfg.DSPPlugins {
 		cfg.DSPPlugins[i] = cfg.DSPPlugins[i].Clone()
 	}
+	if err := validateExecution(cfg); err != nil {
+		return nil, err
+	}
 	if err := ValidateDSP(cfg.DSPChain, cfg.DSPPlugins); err != nil {
 		return nil, err
 	}
@@ -64,11 +70,11 @@ func NewProcessor(ctx context.Context, cfg Config) (*Processor, error) {
 	if cfg.MaxConcurrent < 1 || cfg.MaxConcurrent > 8 {
 		return nil, fmt.Errorf("invalid audio concurrency limit")
 	}
-	hash, err := executableHash(cfg.WorkerPath)
+	hash, err := workerHash(cfg)
 	if err != nil {
 		return nil, err
 	}
-	if cfg.WorkerSHA256 == "" || hash != cfg.WorkerSHA256 {
+	if !cfg.Builtin && (cfg.WorkerSHA256 == "" || hash != cfg.WorkerSHA256) {
 		return nil, fmt.Errorf("ACCESS_DENIED: audio worker checksum mismatch")
 	}
 	dspVersions := map[string]string{}
@@ -127,11 +133,14 @@ func (p *Processor) run(ctx context.Context, taskID string, readerAt io.ReaderAt
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	if err := validateExecution(p.config); err != nil {
+		return err
+	}
 	if readerAt == nil || output == nil || size <= 0 {
 		return fmt.Errorf("ACCESS_DENIED: invalid audio task input")
 	}
-	hash, err := executableHash(p.config.WorkerPath)
-	if err != nil || hash != p.config.WorkerSHA256 {
+	hash, err := workerHash(p.config)
+	if err != nil || !p.config.Builtin && hash != p.config.WorkerSHA256 {
 		return fmt.Errorf("ACCESS_DENIED: audio worker changed")
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute)
@@ -173,50 +182,58 @@ func (p *Processor) run(ctx context.Context, taskID string, readerAt io.ReaderAt
 			w.WriteHeader(http.StatusNoContent)
 		}
 	})
-	server := &http.Server{Handler: mux, ReadHeaderTimeout: 3 * time.Second, IdleTimeout: 5 * time.Second, MaxHeaderBytes: 8192, BaseContext: func(net.Listener) context.Context { return ctx }}
+	var handlers inprocess.Handlers
+	server := &http.Server{Handler: handlers.Wrap(mux), ReadHeaderTimeout: 3 * time.Second, IdleTimeout: 5 * time.Second, MaxHeaderBytes: 8192, BaseContext: func(net.Listener) context.Context { return ctx }}
 	go server.Serve(listener)
-	defer server.Close()
-	cmd := exec.CommandContext(ctx, p.config.WorkerPath, p.config.WorkerArgs...)
-	configureProcess(cmd)
-	cmd.Dir = p.config.WorkDir
-	cmd.Stderr = io.Discard
-	cmd.WaitDelay = 2 * time.Second
-	cmd.Env = []string{}
-	for _, key := range []string{"SystemRoot", "WINDIR", "TEMP", "TMP"} {
-		if value := os.Getenv(key); value != "" {
-			cmd.Env = append(cmd.Env, key+"="+value)
+	defer func() { server.Close(); handlers.Wait() }()
+	var peer *pluginproto.Peer
+	if p.config.Builtin {
+		local := inprocess.Start(ctx, RunWorker)
+		peer = pluginproto.NewPeer(ctx, local.Output, local.Input, "h-", nil)
+		defer func() { peer.Close(); local.Close(); <-local.Done }()
+	} else {
+		cmd := exec.CommandContext(ctx, p.config.WorkerPath, p.config.WorkerArgs...)
+		configureProcess(cmd)
+		cmd.Dir = p.config.WorkDir
+		cmd.Stderr = io.Discard
+		cmd.WaitDelay = 2 * time.Second
+		cmd.Env = []string{}
+		for _, key := range []string{"SystemRoot", "WINDIR", "TEMP", "TMP"} {
+			if value := os.Getenv(key); value != "" {
+				cmd.Env = append(cmd.Env, key+"="+value)
+			}
 		}
-	}
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return err
-	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-	if err = cmd.Start(); err != nil {
-		return fmt.Errorf("UNSUPPORTED: audio worker failed to start")
-	}
-	cleanupTree, err := containProcess(cmd.Process.Pid)
-	if err != nil {
-		cmd.Process.Kill()
-		cmd.Wait()
-		return fmt.Errorf("UNSUPPORTED: process cleanup containment unavailable")
-	}
-	defer cleanupTree()
-	peer := pluginproto.NewPeer(ctx, stdout, stdin, "h-", nil)
-	done := make(chan struct{})
-	go func() { cmd.Wait(); peer.Close(); close(done) }()
-	defer func() {
-		peer.Close()
-		select {
-		case <-done:
-		case <-time.After(time.Second):
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			return err
+		}
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			return err
+		}
+		if err = cmd.Start(); err != nil {
+			return fmt.Errorf("UNSUPPORTED: audio worker failed to start")
+		}
+		cleanupTree, err := containProcess(cmd.Process.Pid)
+		if err != nil {
 			cmd.Process.Kill()
-			<-done
+			cmd.Wait()
+			return fmt.Errorf("UNSUPPORTED: process cleanup containment unavailable")
 		}
-	}()
+		defer cleanupTree()
+		peer = pluginproto.NewPeer(ctx, stdout, stdin, "h-", nil)
+		done := make(chan struct{})
+		go func() { cmd.Wait(); peer.Close(); close(done) }()
+		defer func() {
+			peer.Close()
+			select {
+			case <-done:
+			case <-time.After(time.Second):
+				cmd.Process.Kill()
+				<-done
+			}
+		}()
+	}
 	startup, startupCancel := context.WithTimeout(ctx, 5*time.Second)
 	defer startupCancel()
 	var ready pluginproto.Ready
@@ -233,6 +250,11 @@ func (p *Processor) run(ctx context.Context, taskID string, readerAt io.ReaderAt
 	if ready.Manifest.PluginID != "musicfs.plugin.decoder.ffmpeg" || ready.Manifest.PluginVersion != audioPluginVersion {
 		return fmt.Errorf("PROTOCOL_MISMATCH: audio worker implementation differs")
 	}
+	for _, dsp := range p.config.DSPPlugins {
+		if dsp.Builtin && !slices.Contains(ready.Manifest.Capabilities, "audio.dsp.builtin") {
+			return fmt.Errorf("PROTOCOL_MISMATCH: audio worker does not support builtin DSP")
+		}
+	}
 	version := ready.Manifest.PluginVersion
 	p.version.Store(&version)
 	if err = operation(peer, base+"/input", base+"/output"); err != nil {
@@ -244,6 +266,26 @@ func (p *Processor) run(ctx context.Context, taskID string, readerAt io.ReaderAt
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+func workerHash(cfg Config) (string, error) {
+	if cfg.Builtin {
+		hash := sha256.Sum256([]byte("musicfs.plugin.decoder.ffmpeg:builtin:" + audioPluginVersion))
+		return hex.EncodeToString(hash[:]), nil
+	}
+	return executableHash(cfg.WorkerPath)
+}
+
+// 内置 DSP 必须在 Server 主进程执行，不能随外部音频 Worker 转移到子进程。
+func validateExecution(cfg Config) error {
+	if !cfg.Builtin {
+		for _, plugin := range cfg.DSPPlugins {
+			if plugin.Builtin {
+				return fmt.Errorf("UNSUPPORTED: builtin DSP requires builtin audio execution")
+			}
+		}
+	}
+	return nil
 }
 
 // PluginVersion returns only a release verified by a completed worker handshake.

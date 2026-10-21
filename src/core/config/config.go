@@ -13,6 +13,7 @@ type MusicRoot struct {
 }
 
 type Plugin struct {
+	Execution  string     `yaml:"execution,omitempty" json:"execution,omitempty"`
 	PluginID   string     `yaml:"pluginId" json:"pluginId"`
 	Executable string     `yaml:"executable,omitempty" json:"executable,omitempty"`
 	Args       []string   `yaml:"args,omitempty" json:"args,omitempty"`
@@ -20,6 +21,9 @@ type Plugin struct {
 	Enabled    bool       `yaml:"enabled" json:"enabled"`
 	Instances  []Instance `yaml:"instances" json:"instances"`
 }
+
+// InProcess 默认使用编译进 Server 的实现；外部插件必须显式选择进程模式。
+func (p Plugin) InProcess() bool { return p.Execution != "process" }
 
 type Instance struct {
 	Permissions          *Permissions                 `yaml:"permissions,omitempty" json:"permissions,omitempty"`

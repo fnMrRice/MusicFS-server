@@ -26,8 +26,10 @@ func TestDiscoveredPluginPendingConfigureAndDisableSurviveReload(t *testing.T) {
 	raw := "configVersion: 1\nallowLoopbackHttp: true\nallowedOrigins: ['http://127.0.0.1:8080']\npluginBundle: './plugins'\n"
 	raw += `plugins:
   - pluginId: musicfs.plugin.source.localfiles
+    enabled: true
     instances:
       - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51
+        enabled: true
         name: Plugin instance
         permissions:
           readDirectories: ['./music']

@@ -64,6 +64,10 @@ Content-Type: application/json
 
 同一所有者、原图片编号/摘要和转换版本复用同一有效对象，不要求幂等键。损坏对象先标不可用，再次生成可以建立新的对象；历史对象仍保留备份引用。原封面损坏时拒绝生成，不使用未经校验的字节。当前格式固定，不接受客户端提供路径、任意转换程序或尺寸。
 
+缩略图算法位于内置插件 `plugins/transform/thumbnail`，以 `sdk/contenttransform.Thumbnailer` 注入 `mediastore.NewContent`，直接运行在 Server 主进程。插件只接收有界 PNG/JPEG 字节并返回 PNG，不持有用户、对象索引、路径或发布接口。宿主继续检查所有者、原对象有效性和缓存关系，验证输出大小、PNG 完整性及 256 像素边界，再按原有流程发布派生对象。未注入插件时生成返回 `UNSUPPORTED`；原内容上传、选用和派生文件读取不依赖变换算法。
+
+当前只把已有缩略图能力插件化，没有新增歌词转换、歌词对齐或任意图像变换。2026-10-21 的 `tests/unit/contenttransform`、`tests/integration/storage` 中 `TestThumbnail*` / `TestDerived*` 及 `tests/integration/mediastore` 已通过，覆盖 JPEG 输入、透明度、比例、不放大小图、取消、权限、缓存与发布恢复；新增边界用例确认越权请求不调用插件，非法或超尺寸输出不能发布。
+
 ### 完整刮削记录
 
 每个持久刮削任务的每个目标执行代次保存一份 `scrape-document/v1` 文件，包括：

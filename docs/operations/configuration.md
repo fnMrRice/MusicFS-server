@@ -4,7 +4,7 @@
 
 启动见[运行说明](running.md)；正式[示例配置](../../configs/server.example.yaml)和[编辑器 Schema](../../configs/server.schema.json)随代码维护。HTTP JSON、JSON-RPC、JSON Schema 和媒体清单继续使用各自格式。
 
-顶层 `storage` 选择内置 SQLite 或受信任的独立持久化插件，顶层 `audioDSP` 配置有序 DSP 链及外部节点；两者为启动配置，修改后重启生效。配置、构建和兼容边界见[存储插件](../plugins/storage-plugins.md)与[DSP 插件](../plugins/dsp-plugins.md)。非空 DSP 链要求启用且成功初始化音频处理器，不可因插件缺失静默直放。
+顶层 `storage` 选择内置 SQLite 或受信任的独立持久化插件，顶层 `audioDSP` 配置有序 DSP 链及外部节点；两者为启动配置，修改后重启生效。配置、构建和兼容边界见[存储插件](../plugins/storage-plugins.md)与[DSP 插件](../plugins/dsp-plugins.md)。非空 DSP 链要求启用且成功初始化音频处理器，不可因插件缺失静默直放。内置 DSP 要求音频插件也使用内置执行；外部 FFmpeg 插件与内置 DSP 的组合会被拒绝，避免将内置 gain 放入插件子进程。
 
 网易云、QQ 音乐及 Apple Music 的每个实例可在 `instanceId` 同级配置 `ownerUserId`，省略时兼容为 `admin`。每个 MusicFS 用户使用自己的实例，同一用户的不同平台账号也应配置不同 UUID `instanceId` 并分别登录；单实例只保留一个当前平台账号。非账号插件不接受 `ownerUserId`。实例归属是部署配置，变更需重启；不要通过修改既有实例的归属转移凭据，分配新 UUID 后重新登录。凭据加密范围包含平台、用户及实例，跨用户不可恢复旧凭据。
 
@@ -157,11 +157,11 @@ Linux保留文件所有者/组与权限，同步文件及目录后rename；Windo
 
 ## 内置插件程序与自动发现
 
-默认构建和发布生成两个程序：Server `musicfs` 和全量插件程序 `musicfs-plugins`。统一程序由 `plugins/unified` 组装，包含 `local`、`audio-ffmpeg`、`ncm`、`scraper-local`、`netease`、`qqmusic`、`applemusic`、`storage-sqlite`、`dsp-gain` 九种角色，以 `args: ['--plugin', '角色']` 或 `args: ['--plugin=角色']` 选择。源码仍保留各插件的独立入口，以及只含在线平台的 `musicfs-plugin-online` 入口，可按部署需要单独构建。参数不通过 shell 解释；`args` 最多 64 项，每项最多 4096 UTF-8 字节，不得包含 NUL，不应保存凭据。SQLite 仍由顶层 `storage` 配置选定，使用专用数据库协议，是必需组件，不属于可禁用的普通插件；DSP 使用专用协议，只有加入 `audioDSP` 处理链才会启用。
+默认运行只启动 Server `musicfs`，全部官方内置插件都在主进程。普通插件省略 `execution` 时采用 `builtin`；旧路径、参数、摘要可保留，但内置模式不会执行这些文件。安装包继续提供 `musicfs-plugins` 的九种兼容入口，只有显式 `execution: process` 才启动所选程序。SQLite 默认由主进程直接打开，仍是不可禁用的必需组件；官方 DSP gain 同进程运行，只有加入 `audioDSP` 链才参与处理。FFmpeg、ffprobe、fpcalc 工具可按任务外部执行。
 
-启动读取配置时检查 `pluginBundle` 指定的文件；省略该字段则检查 Server 程序同目录的 `musicfs-plugins[.exe]`。全量统一程序存在时补齐四种本地角色和三个在线平台，各角色通过对应参数启动。若不存在全量统一程序，在线平台依次检查同目录固定名称的 `musicfs-plugin-netease[.exe]`、`musicfs-plugin-qqmusic[.exe]`、`musicfs-plugin-applemusic[.exe]`，再以 `musicfs-plugin-online[.exe] --plugin <平台>` 补足缺少的独立程序。不同入口对应同一插件 ID，默认发现不重复创建实例；显式配置的可用独立或在线统一入口保持原选择。SQLite 和 DSP 不参加普通插件发现。不扫描 PATH，也不执行目录中的任意文件；显式指定的其他可执行文件及其参数保持原义。
+内置发现从编译内的固定目录补齐普通插件，不依赖插件文件。省略 `plugins` 时补齐默认目录；显式 `plugins` 列表且未设置 `pluginBundle` 时，只保留列出的范围，`plugins: []` 不隐式开启来源。`pluginBundle` 继续承载兼容的全目录发现/外部入口选择语义，空字符串不再是关闭内置发现的方式。SQLite、DSP 及四类固定算法按各自组装路径管理，不参加普通账号实例发现；不扫描 PATH 或执行任意目录项。
 
-发现后补齐缺省的插件和默认实例。内置插件及实例省略 `enabled` 时默认 true；任意一层明确 false 都阻止启动。无需为了禁用自动发现项复制整份配置，例如：
+发现范围内自动生成的插件和默认实例使用 `enabled: true`；显式已有项省略 `enabled` 仍保持 false，不借迁移自动启用。任意一层 false 都阻止启动。无需为了禁用自动发现项复制整份配置，例如：
 
 ```yaml
 plugins:
@@ -169,12 +169,12 @@ plugins:
     enabled: false
 ```
 
-缺少已选择且可访问的音乐目录、FFmpeg/ffprobe 文件或已配置的随包程序时，实例保持启用意图，但 `effectiveEnabled=false`、`runtimeState=pending_configuration`、`reason=CONFIGURATION_REQUIRED`；不创建工作进程，也不阻止服务启动。设置页显示待配置原因。通过已有实例设置接口，在默认或显式授权范围内选择实际音乐目录后自动进入启动流程；默认授权和目录探测本身不会使实例就绪。所需目录不在授权范围内时，在服务端 YAML 设置完整的 `permissions.readDirectories` 列表并重启。运行中安装新的程序需重启发现，当前不是目录热监控。
+缺少已选择且可访问的音乐目录或 FFmpeg/ffprobe 工具时，实例保持启用意图，但 `effectiveEnabled=false`、`runtimeState=pending_configuration`、`reason=CONFIGURATION_REQUIRED`，不启动对应执行上下文。外部模式缺失程序也保持待配置；内置模式不因旧插件路径缺失而不可用。设置页显示原因，通过已有实例设置接口选择授权范围内的音乐目录后进入启动流程；默认授权和探测本身不会使实例就绪。权限变化仍需修改 YAML 并重启，当前没有外部程序目录热监控。
 
-随包程序发现及迁移只展开内存配置，不因读取而修改 YAML；首次默认音乐目录探测则将结果保存在插件数据库。通过管理接口保存启停开关时，将展开后的角色及开关一同持久化，重启仍保留显式禁用。业务设置使用各插件的配置存储机制；本地目录设置存于插件数据库，不能扩大生效的目录授权。没有找到对应程序时不凭空注册插件。设置 `pluginBundle: ''` 可关闭自动发现，显式配置仍有效。
+内置发现及旧配置迁移只展开内存配置，不因读取而修改 YAML；首次默认音乐目录探测仍将结果保存在插件数据库。管理接口保存开关时保留展开后的身份、执行方式和开关，重启后仍尊重显式禁用。实例 UUID、用户归属、账号状态及目录授权不因执行方式变化而重建或合并。未知插件 ID 仍不允许注册，接口与版本声明不构成第三方自动加载能力。
 
-已配置的已知在线独立程序若文件缺失、未固定非空 `sha256` 且参数为空，优先回退到全量统一程序；全量程序缺失时可回退到在线统一程序。回退保留插件与实例禁用状态、实例 UUID、名称及其他配置，不更改本地目录权限。已固定摘要的配置不会静默更换可信文件：管理员须审核新程序，显式更新路径、参数和摘要。配置为统一程序时不会再自动改成独立入口；其在线选择参数必须匹配插件平台，支持 `--plugin <平台>` 和 `--plugin=<平台>` 两种形式。缺少程序、待更新摘要的缺失独立程序或选择参数不匹配时，实例保持待配置。自定义可执行路径及参数保持不变。发现只检查文件和配置，不尝试识别二进制支持的角色；旧版仅含四种本地角色的统一程序若被用于在线平台，会在实际启动或握手时明确失败，在线实例保持不可用，需升级程序。
+显式 `execution: process` 保留原文件选择、摘要核验与握手机制：`pluginBundle` 指向全量统一程序；在线独立入口缺失且未固定摘要时可按既有规则选择平台或在线统一入口。固定摘要不自动清除，更新文件须同步审核摘要。统一入口的 `--plugin <用途>` / `--plugin=<用途>` 必须和平台或角色匹配；参数不经 shell，最多 64 项、每项最多 4096 UTF-8 字节，不得含 NUL 或凭据。外部兼容入口仍只有已支持的九种选择值，四类新增算法没有独立进程入口。
 
-统一程序按实例或任务启动独立进程，每个进程只选择一个角色，保留各角色协议、工作目录、用户绑定和取消回收；不同在线账号实例不会被合并。共用文件升级需先停机。程序组装不改变模块边界：公共 SDK 位于独立 `sdk` 模块，三个在线平台实现仍位于独立 `plugins/source/online` 模块，统一程序在 `plugins/unified` 显式组合插件，Server 宿主不导入平台实现。支持的身份、协议与能力仍须通过宿主校验，不表示任意第三方插件 ID 已开放。
+内置来源、解码、Scraper 和 DSP 为实例或任务建立独立内存流并保留原协议，在线驱动由受信任装配层编入主进程；SDK 和在线实现仍是独立 Go 模块。内置代码共享地址空间，取消和退出是协作，不提供崩溃隔离或安全强停。只有外部模式回收插件进程。两种模式都继续检查用户、实例、账号和资源授权；升级内置代码需要升级并重启 Server。
 
-发布打包启用 `-ldflags="-s -w"`，去掉调试符号；开发构建保留调试信息。`release.json` 列出两个程序及统一程序承载的各插件角色，SQLite 标为必需组件。发布配置默认通过统一程序的 `storage-sqlite` 角色运行 SQLite Worker，并写入包内程序的实际 SHA256；依赖与许可证按 Server、SDK、在线插件模块共同收集。
+发布打包启用 `-ldflags="-s -w"`，开发构建保留调试信息。`release.json` 记录内置实现及兼容外部入口，SQLite 标为必需组件；生成配置默认 `storage.backend: sqlite`。旧官方 SQLite Worker 配置未显式选择 `storage.execution: process` 时映射为内置后端。各插件发行版本独立，依赖与许可证仍按 Server、SDK、在线插件模块共同收集。

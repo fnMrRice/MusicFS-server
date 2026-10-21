@@ -5,6 +5,8 @@ package writeback
 import (
 	"context"
 	"time"
+
+	"github.com/fnMrRice/MusicFS-server/sdk/tagformat"
 )
 
 type Root struct {
@@ -29,11 +31,7 @@ type Target struct {
 // Patch only sets supplied nonempty values. Existing values are retained unless
 // Overwrite is explicit. Comments supports title, artists, album, and lyrics.
 // Artwork is a bounded, decoded PNG/JPEG front cover; nil leaves all art intact.
-type Patch struct {
-	Comments  map[string][]string `json:"comments"`
-	Artwork   []byte              `json:"artwork,omitempty"`
-	Overwrite bool                `json:"overwrite"`
-}
+type Patch = tagformat.Patch
 type Request struct {
 	ID                string `json:"id"`
 	Target            Target `json:"target"`

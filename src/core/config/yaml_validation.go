@@ -137,7 +137,7 @@ func validateDocumentShape(root *yaml.Node) error {
 		"permissions": mappingShape(map[string]fieldShape{"readDirectories": sequenceShape(stringShape)}, "readDirectories"),
 	}, "instanceId", "config")
 	plugin := mappingShape(map[string]fieldShape{
-		"pluginId": stringShape, "executable": stringShape, "sha256": stringShape,
+		"pluginId": stringShape, "executable": stringShape, "sha256": stringShape, "execution": stringShape,
 		"args":    sequenceShape(stringShape),
 		"enabled": boolShape, "instances": sequenceShape(instance),
 	}, "pluginId", "instances")

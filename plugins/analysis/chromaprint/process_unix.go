@@ -1,6 +1,6 @@
 //go:build linux || darwin
 
-package fingerprint
+package chromaprint
 
 import (
 	"os/exec"

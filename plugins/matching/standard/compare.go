@@ -1,9 +1,11 @@
-package candidates
+package standard
 
-import "context"
+import (
+	"context"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/candidates"
+)
 
-// Compare evaluates one already authorized pair. It does not consult exclusions
-// or manual decisions; Find and the service owner apply those before comparison.
+// Compare 评分一对已授权资产；排除项和人工决定由宿主在调用前处理。
 func Compare(ctx context.Context, left, right Input) (*Candidate, error) {
 	operations := 0
 	return compare(ctx, left, right, &operations)
@@ -13,24 +15,24 @@ func compare(ctx context.Context, left, right Input, operations *int) (*Candidat
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if err := validateInput(left); err != nil {
+	if err := candidates.ValidateInput(left); err != nil {
 		return nil, err
 	}
-	if err := validateInput(right); err != nil {
+	if err := candidates.ValidateInput(right); err != nil {
 		return nil, err
 	}
 	if left.Asset.SourceTrackID == right.Asset.SourceTrackID {
 		return nil, nil
 	}
-	// Canonical ordering makes scores, reasons, and offset signs deterministic.
+	// 固定资产顺序，保证分数、原因和偏移符号一致。
 	if left.Asset.SourceTrackID > right.Asset.SourceTrackID {
 		left, right = right, left
 	}
-	lh, err := currentHash(left)
+	lh, err := candidates.CurrentHash(left)
 	if err != nil {
 		return nil, err
 	}
-	rh, err := currentHash(right)
+	rh, err := candidates.CurrentHash(right)
 	if err != nil {
 		return nil, err
 	}
@@ -40,15 +42,15 @@ func compare(ctx context.Context, left, right Input, operations *int) (*Candidat
 		result.Reasons = append(result.Reasons, Reason{Kind: "verifiedFileSHA512Equal", LeftEvidenceID: lh.EvidenceID, RightEvidenceID: rh.EvidenceID})
 		return result, nil
 	}
-	lf, err := currentFingerprint(left)
+	lf, err := candidates.CurrentFingerprint(left)
 	if err != nil {
 		return nil, err
 	}
-	rf, err := currentFingerprint(right)
+	rf, err := candidates.CurrentFingerprint(right)
 	if err != nil {
 		return nil, err
 	}
-	if lf != nil && rf != nil && compatible(lf.Detail, rf.Detail) {
+	if lf != nil && rf != nil && candidates.Compatible(lf.Detail, rf.Detail) {
 		metric, err := compareFingerprint(ctx, lf.Detail.Values, rf.Detail.Values, operations)
 		if err != nil {
 			return nil, err
@@ -62,7 +64,7 @@ func compare(ctx context.Context, left, right Input, operations *int) (*Candidat
 			result.Reasons = append(result.Reasons, Reason{Kind: "fingerprintSimilar", LeftEvidenceID: lf.EvidenceID, RightEvidenceID: rf.EvidenceID, Fingerprint: metric})
 		}
 	}
-	title, artist, delta := metadata(left, right)
+	title, artist, delta := candidates.Metadata(left, right)
 	if result.Score == 0 {
 		if !title || !artist || delta == nil || *delta > 2000 {
 			return nil, nil

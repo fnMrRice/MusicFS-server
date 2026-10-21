@@ -9,14 +9,14 @@
 | [`library/`](library/) | 音乐入库、扫描、查询、专辑、歌单及个人音乐数据 |
 | [`metadata/`](metadata/) | 音频识别、录音关联、歌词/封面补全及原文件写回 |
 | [`playback/`](playback/) | 播放会话、音频处理、流交付、时间对齐与处理缓存 |
-| [`plugins/`](plugins/) | 宿主侧的插件管理、进程通信、在线来源接入与授权读取 |
+| [`plugins/`](plugins/) | 宿主侧的内置插件管理、可选进程通信、在线来源接入与授权读取 |
 | [`storage/`](storage/) | 持久化接口、后端选择与通信、媒体文件存储与备份恢复 |
 
 ## 各模块内部
 
 ### app：服务入口
 
-- `musicfs`、`musicfs-plugins`：Server 和统一插件程序的薄入口，构建路径保持不变。
+- `musicfs`、`musicfs-plugins`：Server 和可选外部插件程序入口；默认只启动 Server，全部官方内置插件在主进程运行。
 - `bootstrap`：加载配置、打开存储、组装业务服务和插件、启动 HTTP 服务及处理退出。
 - `api`：路由、请求校验、鉴权中间件、调用业务服务和响应转换。
 
@@ -41,17 +41,17 @@
 
 ### metadata：识别与资料整理
 
-- `identification`：摘要、指纹及匹配候选；子目录 `hashworker`、`fingerprint`、`fingerprintworker`、`candidates` 分别负责对应计算和调度。
+- `identification`：摘要、指纹及匹配候选；宿主保留证据、预算和调度，通过 `fingerprintworker.Extractor` 与 `candidates.Scorer` 注入指纹和评分实现。
 - `matching`：同录音关联、排除、解除、拆分和人工确认。
 - `enrichment`：歌词/封面补全的模型、候选、策略和校验。
 - `enrichmentworker`：调用刮削插件、生成预览、保存选用结果和执行自动补缺。
-- `writeback`：受限条件下对原音频文件执行安全写回。
+- `writeback`：写回授权、原件保护、输出摘要校验、替换与恢复；通过 `sdk/tagformat.Format` 注入 FLAC 标签实现。
 - `writebackhost`：写回任务排队、资料准备、读写协调与恢复。
 
 ### playback：播放与音频交付
 
 - 根包 `playback`：播放会话、来源/输出选择、输入准备、定位、停止和恢复。
-- `audio`：PCM 格式与处理组件；`dspchain` 管链配置，`dspworker` 管独立 DSP 进程及通信。
+- `audio`：PCM 格式与处理组件；`dspchain` 管链配置，`dspworker` 管 DSP 内置内存流和显式外部进程的通信。
 - `stream`：HTTP 音频交付、Range 请求、超时和连接中断。
 - `timeline`：跨来源时间对齐证据和有效区间。
 - `processedcache`：完整处理输出的发布、容量、引用、淘汰和恢复。
@@ -60,7 +60,7 @@
 
 - `pluginconfig`、`pluginid`：官方插件声明、配置表单和标识规范化。
 - `plugincontrol`：启用状态、实例设置、管理操作和新工作准入。
-- `pluginhost`：插件进程、握手、调用、资源授权和运行状态。
+- `pluginhost`：内置运行或显式插件进程、握手、调用、资源授权和运行状态；内置实现通过独立内存流保留原协议。
 - `plugindb`：按插件实例隔离的状态接口、后端选择与远程调用；具体建表与存储实现归数据库插件。
 - `pluginrpc`：持久化插件的接口校验、编码、远程调用和回调。
 - `onlinehost`：在线搜索、资料、歌单及账号状态的宿主业务接入。
@@ -71,7 +71,7 @@
 
 - 根包 `storage`：数据库持久化接口与后端入口。
 - `rpcbackend`：独立持久化插件的宿主适配。
-- `mediastore`：歌词、封面、缩略图和指纹明细等文件的发布、引用和清理；`content` 校验歌词与图片内容。
+- `mediastore`：歌词、封面、缩略图和指纹明细等文件的授权、发布、引用和清理；`content` 校验内容，通过 `sdk/contenttransform.Thumbnailer` 注入缩略图算法。
 - `backup`：数据库、配置和媒体内容的备份校验与恢复。
 
 SQLite 主库的内嵌 SQL 与版本化迁移位于 [`plugins/database/sqlite/migrations`](../plugins/database/sqlite/migrations/)，实例状态库的建表、迁移和只读读取位于 [`plugins/database/sqlite/state`](../plugins/database/sqlite/state/)。宿主通过数据库驱动调用初始化，取得数据锁后才允许写入；配置预加载保持只读。
@@ -81,5 +81,7 @@ SQLite 主库的内嵌 SQL 与版本化迁移位于 [`plugins/database/sqlite/mi
 这些目录按职责聚合现有包，不表示严格的上下分层；Go 包名和既有调用关系保持，`core/config` 仍引用业务配置模型。`library`、`playback`、`storage` 的根包继续保留，各子包通过明确导入协作，不因目录嵌套自动共享实现。
 
 [`src/plugins`](plugins/) 是宿主代码；仓库根 [`plugins/`](../plugins/) 是具体插件实现和独立入口；公共协议与可复用插件能力在独立的 [`sdk/`](../sdk/) 模块。不要把三者混放。对外 HTTP、插件协议和数据库格式的兼容性仍按对应契约维护，目录整理本身不增加功能。
+
+官方内置实现都编入主进程，包括在线平台、SQLite、DSP 及新增的 `analysis/chromaprint`、`tags/flac`、`matching/standard`、`transform/thumbnail`。各插件独立发行版本，升级内置实现仍需升级 Server；不支持任意第三方代码加载。用户、账号、实例及任务边界保留，同进程不提供崩溃隔离，取消依赖协作。FFmpeg、ffprobe、fpcalc 等工具仍可按任务外部执行。
 
 宿主测试继续放在根 [`tests/`](../tests/)，按 `unit`、`integration`、`contract`、`e2e` 分类，辅助代码、夹具和测试入口也留在该目录。SDK 与插件独立模块保留各自的测试边界。完整工程约定见 [开发与检查](../docs/development/README.md)，业务设计见 [Server 内部架构](../docs/architecture.md)。

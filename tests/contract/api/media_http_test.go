@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/transform/thumbnail"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
@@ -57,7 +58,7 @@ func TestMediaHTTPPreviewSelectionPrivacyAndMissingFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { files.Close() })
-	service := mediastore.NewContent(store, store, files)
+	service := mediastore.NewContent(store, store, files, thumbnail.New())
 	server.RegisterMedia(service)
 	private, err := service.Upload(ctx, "other", mediastore.ContentMetadata{Target: targets["other"], Field: "lyrics", Origin: mediastore.Origin{Kind: "upload"}}, "text/plain", "private-media-key", strings.NewReader("Private media text"))
 	if err != nil {

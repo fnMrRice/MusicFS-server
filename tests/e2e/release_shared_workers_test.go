@@ -2,9 +2,12 @@ package e2e_test
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -29,11 +32,23 @@ func TestActualInstallationSharedStorageAndDSP(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertInstallationPersistence(t, installed, cfg)
+	// 默认配置使用内置后端；这里显式选择包内兼容程序，单独验收外部协议。
+	program := "musicfs-plugins"
+	if runtime.GOOS == "windows" {
+		program += ".exe"
+	}
+	executable := filepath.Join(installed, "bin", program)
+	raw, err := os.ReadFile(executable)
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := sha256.Sum256(raw)
+	checksum := hex.EncodeToString(digest[:])
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	t.Run("storage-sqlite", func(t *testing.T) {
 		store, err := storage.Open(ctx, "plugin", storage.Options{
-			DataRoot: t.TempDir(), Executable: cfg.Storage.Executable, Args: cfg.Storage.Args, SHA256: cfg.Storage.SHA256,
+			DataRoot: t.TempDir(), Executable: executable, Args: []string{"--plugin", "storage-sqlite"}, SHA256: checksum,
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -50,7 +65,7 @@ func TestActualInstallationSharedStorageAndDSP(t *testing.T) {
 	})
 	t.Run("dsp-gain", func(t *testing.T) {
 		process, err := dspworker.New(ctx, dspworker.Config{
-			Name: "musicfs.dsp.gain", Executable: cfg.Storage.Executable, SHA256: cfg.Storage.SHA256,
+			Name: "musicfs.dsp.gain", Executable: executable, SHA256: checksum,
 			Args: []string{"--plugin", "dsp-gain"},
 		}, map[string]float64{"gainDB": -6})
 		if err != nil {

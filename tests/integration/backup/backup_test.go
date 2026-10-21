@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
+	"github.com/fnMrRice/MusicFS-server/plugins/transform/thumbnail"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
@@ -65,7 +66,7 @@ func installation(t *testing.T) (*config.Document, string, string) {
 		t.Fatal(err)
 	}
 	defer files.Close()
-	content := mediastore.NewContent(store, store, files)
+	content := mediastore.NewContent(store, store, files, thumbnail.New())
 	target := mediastore.ContentTarget{SourceTrackID: track.ID, AssetID: track.AssetID, AssetVersion: track.Asset.Version}
 	object, err := content.Upload(ctx, "admin", mediastore.ContentMetadata{Target: target, Field: "lyrics", Language: "en", Format: "text", Origin: mediastore.Origin{Kind: "edit"}}, "text/plain", domain.NewID(), strings.NewReader("Keep my manually edited lyrics\n"))
 	if err != nil {
@@ -137,7 +138,7 @@ func TestOfflineBackupRestorePreservesManualFilesAndRevokesCookies(t *testing.T)
 		t.Fatal(err)
 	}
 	defer files.Close()
-	content := mediastore.NewContent(store, store, files)
+	content := mediastore.NewContent(store, store, files, thumbnail.New())
 	selection, err := content.ContentSelection(ctx, "admin", trackID)
 	if err != nil || len(selection.Bindings) != 1 || !selection.Bindings[0].ManualLocked {
 		t.Fatalf("selection lost: %+v %v", selection, err)

@@ -3,8 +3,12 @@ package candidates
 import (
 	"context"
 	"fmt"
-	"sort"
 )
+
+// Scorer 只接收宿主已授权且去除人工排除项的证据，返回待确认候选。
+type Scorer interface {
+	Find(context.Context, Input, []Input) ([]Candidate, error)
+}
 
 func pairKey(left, right string) [2]string {
 	if left > right {
@@ -13,14 +17,12 @@ func pairKey(left, right string) [2]string {
 	return [2]string{left, right}
 }
 
-// Find compares one anchor with a bounded, already authorized set. Excluded or
-// manually conflicting pairs are removed before evidence is examined. It does
-// not scan a library or compute all pairs, and never leaks skipped source IDs.
-func Find(ctx context.Context, anchor Input, others []Input, blocked []Pair) ([]Candidate, error) {
+// Find 保留输入限额、人工排除和结果绑定校验，将排序评分交给注入的插件。
+func Find(ctx context.Context, scorer Scorer, anchor Input, others []Input, blocked []Pair) ([]Candidate, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if err := validateInput(anchor); err != nil {
+	if err := ValidateInput(anchor); err != nil {
 		return nil, err
 	}
 	if len(others) > MaxInputs || len(blocked) > 4096 {
@@ -33,9 +35,8 @@ func Find(ctx context.Context, anchor Input, others []Input, blocked []Pair) ([]
 		}
 		exclusions[pairKey(pair.LeftSourceTrackID, pair.RightSourceTrackID)] = true
 	}
-	results := []Candidate{}
-	seen := map[string]bool{}
-	operations := 0
+	filtered := make([]Input, 0, len(others))
+	allowed := map[string]AssetRef{anchor.Asset.SourceTrackID: anchor.Asset}
 	for _, other := range others {
 		if err := ctx.Err(); err != nil {
 			return nil, err
@@ -43,29 +44,39 @@ func Find(ctx context.Context, anchor Input, others []Input, blocked []Pair) ([]
 		if exclusions[pairKey(anchor.Asset.SourceTrackID, other.Asset.SourceTrackID)] || anchor.Asset.SourceTrackID == other.Asset.SourceTrackID {
 			continue
 		}
-		if seen[other.Asset.SourceTrackID] {
+		if _, exists := allowed[other.Asset.SourceTrackID]; exists {
 			return nil, fmt.Errorf("INVALID_ARGUMENT: duplicate candidate source")
 		}
-		seen[other.Asset.SourceTrackID] = true
-		item, err := compare(ctx, anchor, other, &operations)
-		if err != nil {
+		if err := ValidateInput(other); err != nil {
 			return nil, err
 		}
-		if item != nil {
-			results = append(results, *item)
-		}
+		allowed[other.Asset.SourceTrackID] = other.Asset
+		filtered = append(filtered, other)
 	}
-	sort.Slice(results, func(i, j int) bool {
-		if results[i].Score != results[j].Score {
-			return results[i].Score > results[j].Score
-		}
-		if results[i].Left.SourceTrackID != results[j].Left.SourceTrackID {
-			return results[i].Left.SourceTrackID < results[j].Left.SourceTrackID
-		}
-		return results[i].Right.SourceTrackID < results[j].Right.SourceTrackID
-	})
+	if scorer == nil {
+		return nil, fmt.Errorf("UNSUPPORTED: candidate scoring plugin is unavailable")
+	}
+	results, err := scorer.Find(ctx, anchor, filtered)
+	if err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if len(results) > MaxResults {
-		results = results[:MaxResults]
+		return nil, fmt.Errorf("PROTOCOL_MISMATCH: candidate scoring result limit exceeded")
+	}
+	seen := map[[2]string]bool{}
+	for _, result := range results {
+		left, leftOK := allowed[result.Left.SourceTrackID]
+		right, rightOK := allowed[result.Right.SourceTrackID]
+		key := pairKey(result.Left.SourceTrackID, result.Right.SourceTrackID)
+		if !leftOK || !rightOK || result.Left != left || result.Right != right || result.Left.SourceTrackID >= result.Right.SourceTrackID ||
+			(result.Left != anchor.Asset && result.Right != anchor.Asset) || seen[key] || !result.RequiresConfirmation ||
+			result.AlgorithmVersion != AlgorithmVersion || result.Score < 1 || result.Score > 100 || len(result.Reasons) < 1 || len(result.Reasons) > 5 {
+			return nil, fmt.Errorf("PROTOCOL_MISMATCH: invalid candidate scoring result")
+		}
+		seen[key] = true
 	}
 	return results, nil
 }

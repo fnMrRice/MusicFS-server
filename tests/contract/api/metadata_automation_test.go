@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/transform/thumbnail"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
@@ -50,7 +51,7 @@ func TestMetadataAutomationHTTPBoundedPagesAndOwnerIsolation(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { files.Close() })
-	service, err := enrichmentworker.New(store, library.New(store, jobs.New(store), nil, nil), mediastore.NewContent(store, store, files), nil, enrichmentworker.Config{})
+	service, err := enrichmentworker.New(store, library.New(store, jobs.New(store), nil, nil), mediastore.NewContent(store, store, files, thumbnail.New()), nil, enrichmentworker.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

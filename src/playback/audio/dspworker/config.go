@@ -12,6 +12,7 @@ import (
 )
 
 type Config struct {
+	Builtin    bool     `json:"builtin,omitempty" yaml:"builtin,omitempty"`
 	Name       string   `json:"name" yaml:"name"`
 	Executable string   `json:"executable" yaml:"executable"`
 	SHA256     string   `json:"sha256" yaml:"sha256"`
@@ -23,8 +24,15 @@ var validName = regexp.MustCompile(`^[a-z][a-z0-9_.-]{0,63}$`)
 var validSHA = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 func (c Config) Validate() error {
-	if !validName.MatchString(c.Name) || c.Name == "gain" || c.Name == "bypass" || !filepath.IsAbs(c.Executable) || !validSHA.MatchString(c.SHA256) || len(c.Args) > 32 || c.TimeoutMs != 0 && (c.TimeoutMs < 10 || c.TimeoutMs > 30000) {
+	if !validName.MatchString(c.Name) || c.Name == "gain" || c.Name == "bypass" || len(c.Args) > 32 || c.TimeoutMs != 0 && (c.TimeoutMs < 10 || c.TimeoutMs > 30000) {
 		return fmt.Errorf("invalid external DSP configuration")
+	}
+	if c.Builtin {
+		if c.Name != "musicfs.dsp.gain" {
+			return fmt.Errorf("unsupported builtin DSP plugin")
+		}
+	} else if !filepath.IsAbs(c.Executable) || !validSHA.MatchString(c.SHA256) {
+		return fmt.Errorf("invalid external DSP executable identity")
 	}
 	for _, arg := range c.Args {
 		if len(arg) > 4096 {
@@ -42,6 +50,9 @@ func (c Config) Clone() Config {
 func (c Config) VerifyExecutable() error {
 	if err := c.Validate(); err != nil {
 		return err
+	}
+	if c.Builtin {
+		return nil
 	}
 	file, err := os.Open(c.Executable)
 	if err != nil {

@@ -10,11 +10,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/dsp/gain"
+	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
+	"github.com/fnMrRice/MusicFS-server/sdk/inprocess"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 )
 
-// Process is one isolated worker for one node in one playback attempt.
+// Process 为一次播放中的一个节点维护独立的协议会话。
 type Process struct {
 	mu      sync.Mutex
 	ctx     context.Context
@@ -34,47 +37,63 @@ func New(ctx context.Context, cfg Config, params map[string]float64) (*Process, 
 		return nil, err
 	}
 	ctx, cancel := context.WithCancel(ctx)
-	p := &Process{ctx: ctx, cancel: cancel, done: make(chan struct{}), timeout: time.Duration(cfg.TimeoutMs) * time.Millisecond}
+	p := &Process{ctx: ctx, cancel: cancel, done: make(chan struct{}), cleanup: func() {}, timeout: time.Duration(cfg.TimeoutMs) * time.Millisecond}
 	if p.timeout == 0 {
 		p.timeout = 5 * time.Second
 	}
-	cmd := exec.CommandContext(ctx, cfg.Executable, cfg.Args...)
-	p.cmd = cmd
-	configureProcess(cmd)
-	cmd.Stderr = io.Discard
-	cmd.WaitDelay = time.Second
-	cmd.Env = []string{}
-	for _, key := range []string{"SystemRoot", "WINDIR", "TEMP", "TMP"} {
-		if value := os.Getenv(key); value != "" {
-			cmd.Env = append(cmd.Env, key+"="+value)
+	if cfg.Builtin {
+		local := inprocess.Start(ctx, func(ctx context.Context, input io.ReadCloser, output io.WriteCloser) error {
+			factory := func(params map[string]float64) (audio.Node, error) {
+				registry := audio.NewRegistry()
+				if err := dsp.Register(registry); err != nil {
+					return nil, err
+				}
+				return registry.Create("gain", params)
+			}
+			return Serve(ctx, input, output, cfg.Name, bundledplugin.GainVersion, factory)
+		})
+		p.input, p.output = local.Input, local.Output
+		p.cleanup = func() { _ = local.Close() }
+		go func() { <-local.Done; close(p.done) }()
+	} else {
+		cmd := exec.CommandContext(ctx, cfg.Executable, cfg.Args...)
+		p.cmd = cmd
+		configureProcess(cmd)
+		cmd.Stderr = io.Discard
+		cmd.WaitDelay = time.Second
+		cmd.Env = []string{}
+		for _, key := range []string{"SystemRoot", "WINDIR", "TEMP", "TMP"} {
+			if value := os.Getenv(key); value != "" {
+				cmd.Env = append(cmd.Env, key+"="+value)
+			}
 		}
-	}
-	var err error
-	p.input, err = cmd.StdinPipe()
-	if err == nil {
-		p.output, err = cmd.StdoutPipe()
-	}
-	if err == nil {
-		err = cmd.Start()
-	}
-	if err != nil {
-		cancel()
-		if p.input != nil {
-			p.input.Close()
+		var err error
+		p.input, err = cmd.StdinPipe()
+		if err == nil {
+			p.output, err = cmd.StdoutPipe()
 		}
-		if p.output != nil {
-			p.output.Close()
+		if err == nil {
+			err = cmd.Start()
 		}
-		return nil, fmt.Errorf("UNSUPPORTED: DSP worker failed to start")
+		if err != nil {
+			cancel()
+			if p.input != nil {
+				p.input.Close()
+			}
+			if p.output != nil {
+				p.output.Close()
+			}
+			return nil, fmt.Errorf("UNSUPPORTED: DSP worker failed to start")
+		}
+		p.cleanup, err = containProcess(cmd.Process.Pid)
+		if err != nil {
+			cancel()
+			cmd.Process.Kill()
+			cmd.Wait()
+			return nil, fmt.Errorf("UNSUPPORTED: DSP worker containment unavailable")
+		}
+		go func() { cmd.Wait(); close(p.done) }()
 	}
-	p.cleanup, err = containProcess(cmd.Process.Pid)
-	if err != nil {
-		cancel()
-		cmd.Process.Kill()
-		cmd.Wait()
-		return nil, fmt.Errorf("UNSUPPORTED: DSP worker containment unavailable")
-	}
-	go func() { cmd.Wait(); close(p.done) }()
 	go func() {
 		select {
 		case <-ctx.Done():
@@ -142,7 +161,9 @@ func (p *Process) shutdown() {
 	p.stop.Do(func() {
 		p.cancel()
 		p.cleanup()
-		p.cmd.Process.Kill()
+		if p.cmd != nil {
+			p.cmd.Process.Kill()
+		}
 		p.input.Close()
 		p.output.Close()
 	})

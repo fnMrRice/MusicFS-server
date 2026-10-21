@@ -5,12 +5,12 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/analysis/chromaprint"
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/fingerprint"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/fingerprintworker"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
@@ -45,7 +45,7 @@ func createFingerprintExtractor(ctx context.Context, c config.Config, audio *aud
 		return nil, nil
 	}
 	f := c.Fingerprinting
-	extractor, err := fingerprint.New(ctx, fingerprint.Config{FpcalcPath: f.FpcalcPath, FpcalcSHA256: f.FpcalcSHA256, FFmpegSHA256: audio.Capabilities.FFmpegSHA256, FFmpegVersion: audio.Capabilities.Version, MaxConcurrent: f.MaxConcurrent, Timeout: time.Duration(f.TimeoutSeconds) * time.Second}, audio)
+	extractor, err := chromaprint.New(ctx, chromaprint.Config{FpcalcPath: f.FpcalcPath, FpcalcSHA256: f.FpcalcSHA256, FFmpegSHA256: audio.Capabilities.FFmpegSHA256, FFmpegVersion: audio.Capabilities.Version, MaxConcurrent: f.MaxConcurrent, Timeout: time.Duration(f.TimeoutSeconds) * time.Second}, audio)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func fingerprintNCMDecoder(c config.Config, log *slog.Logger) *ncmdecoder.Proces
 			if !instance.Enabled {
 				continue
 			}
-			decoder, err := ncmdecoder.NewProcessor(ncmdecoder.Config{InstanceID: instance.InstanceID, WorkerPath: plugin.Executable, WorkerArgs: plugin.Args, WorkerSHA256: expectedChecksum(plugin.SHA256, plugin.Executable), WorkDir: c.DataRoot, MaxConcurrent: 1})
+			decoder, err := ncmdecoder.NewProcessor(ncmdecoder.Config{Builtin: plugin.InProcess(), InstanceID: instance.InstanceID, WorkerPath: plugin.Executable, WorkerArgs: plugin.Args, WorkerSHA256: pluginChecksum(plugin), WorkDir: c.DataRoot, MaxConcurrent: 1})
 			if err != nil {
 				log.Warn("fingerprint NCM decoding unavailable", "errorCode", pluginproto.ErrorCode(err))
 				return nil

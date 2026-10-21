@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/tags/flac"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
@@ -77,7 +78,7 @@ func configureWriteBack(ctx context.Context, c config.Config, store storage.Back
 	if err != nil {
 		return nil, nil, err
 	}
-	settings := writebackhost.Config{Policy: policy, AllowOverwrite: c.WriteBack.AllowOverwrite, Probe: probe}
+	settings := writebackhost.Config{Policy: policy, AllowOverwrite: c.WriteBack.AllowOverwrite, Probe: probe, TagFormat: flac.New()}
 	if len(probeSessions) > 0 {
 		settings.ProbeSession = probeSessions[0]
 	}

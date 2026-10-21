@@ -44,12 +44,8 @@ func TestBundledDiscoveryDefaultsAndPendingConfiguration(t *testing.T) {
 		if !p.Enabled || len(p.Instances) != 1 || !p.Instances[0].Enabled {
 			t.Fatalf("invalid discovery: %+v", p)
 		}
-		if platform := config.OnlinePlatform(p.PluginID); platform != "" {
-			if filepath.Base(p.Executable) != "musicfs-plugins" || len(p.Args) != 2 || p.Args[1] != platform {
-				t.Fatalf("online provider does not use the full bundle: %+v", p)
-			}
-		} else if len(p.Args) != 2 || p.Args[0] != "--plugin" {
-			t.Fatalf("local role has no bundled dispatch: %+v", p)
+		if !p.InProcess() || p.Executable != "" || len(p.Args) != 0 {
+			t.Fatalf("builtin discovery requires an external program: %+v", p)
 		}
 		wantPending := p.PluginID == "musicfs.plugin.source.localfiles" || p.PluginID == "musicfs.plugin.decoder.ffmpeg"
 		if p.Pending(p.Instances[0]) != wantPending || p.CanStart(p.Instances[0]) == wantPending {
@@ -86,6 +82,7 @@ func TestBundledDiscoveryPreservesDisableAndExternalExecutable(t *testing.T) {
         enabled: false
         config: {}
   - pluginId: musicfs.plugin.source.qqmusic
+    execution: process
     executable: './external-worker'
     args: ['literal argument with spaces', '$(not-a-shell)']
     instances: []
@@ -97,7 +94,7 @@ func TestBundledDiscoveryPreservesDisableAndExternalExecutable(t *testing.T) {
 				t.Fatal("explicit disable ignored")
 			}
 		case "musicfs.plugin.source.netease":
-			if !p.Enabled || p.Instances[0].Enabled || p.Instances[0].Name != "Upstairs collection" {
+			if p.Enabled || p.Instances[0].Enabled || p.Instances[0].Name != "Upstairs collection" {
 				t.Fatal("explicit instance settings were changed")
 			}
 		case "musicfs.plugin.source.qqmusic":

@@ -1,4 +1,4 @@
-package writeback
+package flac
 
 import (
 	"bytes"
@@ -28,7 +28,7 @@ func encodePicture(data []byte) ([]byte, error) {
 	put(3)
 	put(uint32(len(mime)))
 	out.Write(mime)
-	put(0) // Empty description; no external image URL is accepted.
+	put(0) // 描述留空，不接受外部图片 URL。
 	put(uint32(cfg.Width))
 	put(uint32(cfg.Height))
 	depth := uint32(24)

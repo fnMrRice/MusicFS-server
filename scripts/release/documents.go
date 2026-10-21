@@ -52,11 +52,11 @@ func (b builder) documents() error {
 	if b.splitPlugins {
 		programNote = "本包显式启用分拆构建，除 musicfs 和 musicfs-plugins 外，附带 SQLite、DSP gain、三个在线平台和在线统一入口，共八个程序。"
 	}
-	readme := "# MusicFS 私有安装包\n\n" + programNote + "musicfs-plugins 集成 local、audio-ffmpeg、ncm、scraper-local、netease、qqmusic、applemusic、storage-sqlite、dsp-gain 九种角色；每个角色仍独立启动进程。不包含音乐、账号凭据或开发数据库。\n\n" +
+	readme := "# MusicFS 私有安装包\n\n" + programNote + "官方插件默认编译进 musicfs，在 Server 主进程内运行。musicfs-plugins 保留九种角色的可选外部进程入口，默认配置不会启动它。不包含音乐、账号凭据或开发数据库。\n\n" +
 		"配置示例为 configs/server.example.yaml，内置插件自动发现，配置齐全且未显式禁用时自动启动。手动扫描使用 [PowerShell 扫描脚本](scripts/scan.ps1)。\n\n" +
-		"在线平台默认使用 musicfs-plugins --plugin <平台>。显式分拆包中的其他入口可自行配置，对应同一插件身份，不重复创建实例。\n\n" +
-		"SQLite 通过 musicfs-plugins --plugin storage-sqlite 启动，是必需基础设施，不进入普通插件启停列表，不提供禁用开关；缺失或加载失败时拒绝启动。DSP 示例默认不启用，只有明确配置 audioDSP 并指定 musicfs-plugins --plugin dsp-gain 及程序 SHA-256 后参与处理。两者均不参与普通角色自动发现。\n\n" +
-		"容器只能使用 Linux 安装包；其中的容器配置已固定 Linux SQLite Worker 路径和本次摘要。Windows 包保留源码中的兼容容器示例，不能直接用作 Linux 容器安装。\n\n" +
+		"在线平台在主进程中按用户和实例分别维护账号状态。普通插件只有显式配置 execution: process 才启动经过摘要校验的外部程序。\n\n" +
+		"SQLite 是主进程内必需基础设施，不进入普通插件启停列表，不提供禁用开关；后端加载失败时拒绝启动。DSP gain 默认不启用，配置 audioDSP 链后在主进程执行。指纹分析、FLAC 标签处理、匹配评分和缩略图变换也通过内置插件接口调用；FFmpeg、ffprobe、fpcalc 外部工具仍需相应安装和验证。\n\n" +
+		"容器只能使用 Linux 安装包；容器配置同样默认使用内置 SQLite 与插件。Windows 制品不能直接用作 Linux 容器安装。\n\n" +
 		"安装包不包含 docs 目录；安装部署、配置、运行扫描及备份恢复说明请在对应 revision 的 Server 私有源仓库 docs 目录查阅。\n\n" +
 		"release.json 记录版本、构建平台、Server/SDK/在线插件各模块及依赖许可证；各模块的 go.mod/go.sum 随包保留。SHA256SUMS 校验文件一致性。Go 工具链许可证位于 licenses/go。\n\n" +
 		"该制品仅供私有安装验证，不自动上传或公开分发。\n"

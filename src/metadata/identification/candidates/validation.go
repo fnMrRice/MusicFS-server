@@ -17,7 +17,8 @@ func validateAsset(a AssetRef) bool {
 	return textValid(a.SourceTrackID, 128, true) && textValid(a.AssetID, 128, true) && textValid(a.AssetVersion, 1024, true)
 }
 
-func validateInput(in Input) error {
+// ValidateInput 检查已授权输入的大小与基本结构。
+func ValidateInput(in Input) error {
 	if !validateAsset(in.Asset) || !textValid(in.Title, 4096, false) || len(in.Artists) > 32 || (in.DurationMs != nil && *in.DurationMs < 0) {
 		return fmt.Errorf("INVALID_ARGUMENT: invalid candidate input")
 	}
@@ -29,7 +30,8 @@ func validateInput(in Input) error {
 	return nil
 }
 
-func currentHash(in Input) (*VerifiedHash, error) {
+// CurrentHash 仅返回与当前资产版本一致的完整文件证据。
+func CurrentHash(in Input) (*VerifiedHash, error) {
 	h := in.FileHash
 	if h == nil || h.Asset != in.Asset {
 		return nil, nil
@@ -43,7 +45,8 @@ func currentHash(in Input) (*VerifiedHash, error) {
 	return h, nil
 }
 
-func currentFingerprint(in Input) (*FingerprintEvidence, error) {
+// CurrentFingerprint 仅返回当前资产有效且信息量足够的指纹证据。
+func CurrentFingerprint(in Input) (*FingerprintEvidence, error) {
 	f := in.Fingerprint
 	if f == nil || f.Asset != in.Asset {
 		return nil, nil
@@ -60,7 +63,8 @@ func currentFingerprint(in Input) (*FingerprintEvidence, error) {
 	return f, nil
 }
 
-func compatible(a, b fingerprint.Detail) bool {
+// Compatible 验证两份指纹是否采用同一配置和可比较的采样窗口。
+func Compatible(a, b fingerprint.Detail) bool {
 	if a.Identity != b.Identity || a.RequestedStartMs != b.RequestedStartMs || a.RequestedDurationMs != b.RequestedDurationMs {
 		return false
 	}
@@ -73,7 +77,8 @@ func normalizeLabel(value string) string {
 	return strings.ToLower(strings.Join(strings.Fields(value), " "))
 }
 
-func metadata(a, b Input) (title, artist bool, delta *int64) {
+// Metadata 比较原始标签；保留版本词、标点和括号限定信息。
+func Metadata(a, b Input) (title, artist bool, delta *int64) {
 	label := normalizeLabel(a.Title)
 	title = label != "" && label == normalizeLabel(b.Title)
 	artists := make(map[string]bool, len(a.Artists))

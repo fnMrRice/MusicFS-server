@@ -1,9 +1,7 @@
 package sqlite
 
 import (
-	"context"
 	"math"
-	"reflect"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
@@ -67,8 +65,7 @@ func validateCandidate(c candidates.Candidate, left, right matching.CandidateSou
 		return invalid()
 	}
 	if !fingerprint {
-		expected, err := candidates.Compare(context.Background(), left.Input, right.Input)
-		if err != nil || expected == nil || !reflect.DeepEqual(*expected, c) {
+		if err := candidates.ValidateNonFingerprintResult(c, left.Input, right.Input); err != nil {
 			return invalid()
 		}
 	}

@@ -16,6 +16,8 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
+	"github.com/fnMrRice/MusicFS-server/plugins/tags/flac"
+	"github.com/fnMrRice/MusicFS-server/plugins/transform/thumbnail"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
@@ -126,7 +128,7 @@ func TestWritebackHostRecoversFileAndDatabaseBoundary(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer files.Close()
-			media := mediastore.NewContent(store, store, files)
+			media := mediastore.NewContent(store, store, files, thumbnail.New())
 			target := mediastore.ContentTarget{SourceTrackID: track.ID, AssetID: track.AssetID, AssetVersion: track.Version}
 			object, err := media.Upload(ctx, "admin", mediastore.ContentMetadata{Target: target, Field: "lyrics", Language: "en", Format: "text", Origin: mediastore.Origin{Kind: "edit"}}, "text/plain", domain.NewID(), strings.NewReader("Synthetic writeback fixture lyrics\n"))
 			if err != nil {
@@ -146,7 +148,7 @@ func TestWritebackHostRecoversFileAndDatabaseBoundary(t *testing.T) {
 				fault.entered = make(chan struct{})
 				fault.release = make(chan struct{})
 			}
-			cfg := writebackhost.Config{Policy: writeback.Policy{Enabled: true, Roots: []writeback.Root{{Owner: "admin", InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", RootID: "music", Path: music, Identity: worker.Access.Roots()[0].ExpectedIdentity, Fields: []string{"lyrics"}}}}, Probe: probe}
+			cfg := writebackhost.Config{TagFormat: flac.New(), Policy: writeback.Policy{Enabled: true, Roots: []writeback.Root{{Owner: "admin", InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", RootID: "music", Path: music, Identity: worker.Access.Roots()[0].ExpectedIdentity, Fields: []string{"lyrics"}}}}, Probe: probe}
 			service, err := writebackhost.New(store, lib, media, fault, runtimes, cfg)
 			if err != nil {
 				t.Fatal(err)

@@ -34,7 +34,7 @@ func registerScraperManagement(manager *plugincontrol.Manager, c config.Config, 
 						if err := ctx.Err(); err != nil {
 							return err
 						}
-						host, err := scraperlocal.NewHost(scraperlocal.Config{WorkerPath: p.Executable, WorkerArgs: p.Args, WorkerSHA256: expectedChecksum(p.SHA256, p.Executable), WorkDir: c.DataRoot, InstanceID: id, MaxConcurrent: 1})
+						host, err := scraperlocal.NewHost(scraperlocal.Config{Builtin: p.InProcess(), WorkerPath: p.Executable, WorkerArgs: p.Args, WorkerSHA256: pluginChecksum(p), WorkDir: c.DataRoot, InstanceID: id, MaxConcurrent: 1})
 						if err != nil {
 							return err
 						}

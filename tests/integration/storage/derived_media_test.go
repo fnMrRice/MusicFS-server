@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/transform/thumbnail"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
@@ -41,7 +42,7 @@ func TestDerivedThumbnailOwnershipPixelsBackupAndDamage(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer files.Close()
-	content := mediastore.NewContent(store, store, files)
+	content := mediastore.NewContent(store, store, files, thumbnail.New())
 	metadata := mediastore.ContentMetadata{Target: mediastore.ContentTarget{SourceTrackID: tracks[0].ID, AssetID: tracks[0].AssetID, AssetVersion: tracks[0].Asset.Version}, Field: "artwork", Origin: mediastore.Origin{Kind: "upload"}}
 	original, err := content.Upload(ctx, "admin", metadata, "image/png", domain.NewID(), bytes.NewReader(derivedArtwork(t, 600, 300)))
 	if err != nil {
@@ -143,14 +144,14 @@ func TestDerivedPublicationRecoveryAndNoUpscale(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer files.Close()
-			plain := mediastore.NewContent(store, store, files)
+			plain := mediastore.NewContent(store, store, files, thumbnail.New())
 			m := mediastore.ContentMetadata{Target: mediastore.ContentTarget{SourceTrackID: tracks[0].ID, AssetID: tracks[0].AssetID, AssetVersion: tracks[0].Asset.Version}, Field: "artwork", Origin: mediastore.Origin{Kind: "upload"}}
 			original, err := plain.Upload(ctx, "admin", m, "image/png", domain.NewID(), bytes.NewReader(derivedArtwork(t, 13, 9)))
 			if err != nil {
 				t.Fatal(err)
 			}
 			fault := &derivedJournalFault{Repository: store, beforeReference: !referenced, finish: referenced}
-			service := mediastore.NewContent(store, fault, files).Derived()
+			service := mediastore.NewContent(store, fault, files, thumbnail.New()).Derived()
 			if _, err = service.Thumbnail(ctx, "admin", original.ID); err == nil {
 				t.Fatal("failure not injected")
 			}

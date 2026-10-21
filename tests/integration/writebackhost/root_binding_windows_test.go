@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/tags/flac"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
@@ -82,7 +83,7 @@ func TestWritebackSubmitRejectsChangedDirectoryBinding(t *testing.T) {
 	createService := func(root writeback.Root) (*writebackhost.Service, *bindingWrites) {
 		t.Helper()
 		repo := &bindingWrites{}
-		service, err := writebackhost.New(repo, lib, nil, journal, []library.Runtime{runtime}, writebackhost.Config{Policy: writeback.Policy{Enabled: true, Roots: []writeback.Root{root}}, Probe: probe})
+		service, err := writebackhost.New(repo, lib, nil, journal, []library.Runtime{runtime}, writebackhost.Config{TagFormat: flac.New(), Policy: writeback.Policy{Enabled: true, Roots: []writeback.Root{root}}, Probe: probe})
 		if err != nil {
 			t.Fatal(err)
 		}

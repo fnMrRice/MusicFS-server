@@ -52,11 +52,21 @@ func TestDefaultAndSplitReleasePrograms(t *testing.T) {
 	}
 }
 
-func TestUnifiedCatalogHasNineRolesAndRequiredStorage(t *testing.T) {
+func TestReleaseCatalogSeparatesBuiltinsAndOptionalProcessRoles(t *testing.T) {
 	expected := []string{"local", "audio-ffmpeg", "ncm", "scraper-local", "netease", "qqmusic", "applemusic", "storage-sqlite", "dsp-gain"}
 	for _, split := range []bool{false, true} {
 		roles := map[string]bool{}
+		builtinCount := 0
 		for _, item := range components(split) {
+			if item.Execution == "builtin" {
+				builtinCount++
+				if item.Program != "musicfs" || len(item.Args) != 0 {
+					t.Fatalf("builtin plugin depends on a worker executable: %+v", item)
+				}
+				if item.PluginID == "musicfs.plugin.storage.sqlite" && !item.Required {
+					t.Fatal("builtin SQLite must remain mandatory")
+				}
+			}
 			if item.Program != "musicfs-plugins" {
 				continue
 			}
@@ -66,8 +76,8 @@ func TestUnifiedCatalogHasNineRolesAndRequiredStorage(t *testing.T) {
 			roles[item.Args[1]] = true
 			switch item.Args[1] {
 			case "storage-sqlite":
-				if !item.Required || item.PluginID != "" {
-					t.Fatalf("SQLite must be mandatory and outside the toggleable plugin registry: %+v", item)
+				if item.Required || item.PluginID != "" {
+					t.Fatalf("standalone SQLite must remain an optional alternative: %+v", item)
 				}
 			case "dsp-gain":
 				if item.Required || !slices.Contains(item.Requirements, "disabled by default") {
@@ -77,6 +87,9 @@ func TestUnifiedCatalogHasNineRolesAndRequiredStorage(t *testing.T) {
 		}
 		if len(roles) != 9 {
 			t.Fatalf("split=%v bundled roles = %d, want 9", split, len(roles))
+		}
+		if builtinCount != 13 {
+			t.Fatalf("release omits builtin capabilities: count=%d", builtinCount)
 		}
 	}
 	t.Setenv("GOWORK", "/untrusted/go.work")

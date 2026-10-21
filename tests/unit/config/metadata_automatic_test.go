@@ -69,7 +69,7 @@ func TestAutomaticMetadataDependenciesAndSnapshotIsolation(t *testing.T) {
 	combined := minimalYAML + pluginYAML + strings.TrimPrefix(scraperYAML, "plugins:\n")
 	policy := "metadata:\n  automatic: {enabled: true, instancePriority: [d248bf34-1780-59d3-a557-9cf5d889e977], fields: [lyrics, artwork], languages: [ZH, und]}\n"
 	for name, raw := range map[string]string{
-		"no-scraper":              minimalYAML + policy,
+		"no-scraper":              minimalYAML + "plugins: []\n" + policy,
 		"wrong-priority":          combined + strings.Replace(policy, "[d248bf34-1780-59d3-a557-9cf5d889e977]", "[local]", 1),
 		"unknown-priority":        combined + strings.Replace(policy, "[d248bf34-1780-59d3-a557-9cf5d889e977]", "[missing]", 1),
 		"case-duplicate-language": combined + strings.Replace(policy, "[ZH, und]", "[ZH, zh]", 1),

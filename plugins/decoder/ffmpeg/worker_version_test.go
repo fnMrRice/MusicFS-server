@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio/dspworker"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 )
 
@@ -43,6 +44,25 @@ func TestOldAudioWorkerHelper(t *testing.T) {
 	})
 	<-peer.Done()
 	os.Exit(0)
+}
+
+func TestExternalAudioRejectsBuiltinDSPBeforeStartingWorker(t *testing.T) {
+	cfg := Config{
+		InstanceID: "16b003e5-1bab-52bb-be10-0e83ec1c40ea",
+		DSPPlugins: []dspworker.Config{{Builtin: true, Name: "musicfs.dsp.gain"}},
+	}
+	if _, err := NewProcessor(t.Context(), cfg); err == nil || !strings.Contains(err.Error(), "builtin DSP requires builtin audio execution") {
+		t.Fatalf("external audio configuration accepted builtin DSP: %v", err)
+	}
+	p := &Processor{config: cfg}
+	called := false
+	err := p.run(t.Context(), "reject-external-builtin", bytes.NewReader([]byte{1}), 1, io.Discard, func(*pluginproto.Peer, string, string) error {
+		called = true
+		return nil
+	})
+	if err == nil || !strings.Contains(err.Error(), "builtin DSP requires builtin audio execution") || called || p.PluginVersion() != "" {
+		t.Fatalf("external audio execution received a builtin DSP request: called=%v error=%v", called, err)
+	}
 }
 
 func TestAudioVersionAvailableOnlyAfterVerifiedHandshake(t *testing.T) {

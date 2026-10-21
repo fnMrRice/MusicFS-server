@@ -13,6 +13,7 @@ const scraperYAML = `plugins:
   - pluginId: musicfs.scraper.local
     executable: '../workers/local-scraper'
     enabled: true
+    execution: process
     instances:
       - instanceId: d248bf34-1780-59d3-a557-9cf5d889e977
         name: 本地内容

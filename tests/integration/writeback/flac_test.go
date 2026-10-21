@@ -11,6 +11,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/tags/flac"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
 )
 
@@ -86,7 +87,7 @@ func picture(t *testing.T) []byte {
 func rewrite(t *testing.T, input []byte, p writeback.Patch) []byte {
 	t.Helper()
 	var out bytes.Buffer
-	_, err := writeback.RewriteFLAC(context.Background(), bytes.NewReader(input), int64(len(input)), &out, p)
+	_, err := flac.New().Rewrite(context.Background(), bytes.NewReader(input), int64(len(input)), &out, p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,22 +147,22 @@ func TestFLACRefusesMalformedAndClearOperations(t *testing.T) {
 	cases := [][]byte{nil, []byte("fLaC"), input[:42], append([]byte("OggS"), input[4:]...)}
 	for _, b := range cases {
 		var out bytes.Buffer
-		if _, err := writeback.RewriteFLAC(context.Background(), bytes.NewReader(b), int64(len(b)), &out, valid); err == nil {
+		if _, err := flac.New().Rewrite(context.Background(), bytes.NewReader(b), int64(len(b)), &out, valid); err == nil {
 			t.Fatal("accepted malformed input")
 		}
 	}
 	for _, p := range []writeback.Patch{{}, {Comments: map[string][]string{"title": {""}}}, {Comments: map[string][]string{"arbitrary": {"x"}}}, {Artwork: []byte("https://image.invalid")}} {
 		var out bytes.Buffer
-		if _, err := writeback.RewriteFLAC(context.Background(), bytes.NewReader(input), int64(len(input)), &out, p); err == nil {
+		if _, err := flac.New().Rewrite(context.Background(), bytes.NewReader(input), int64(len(input)), &out, p); err == nil {
 			t.Fatal("accepted invalid patch")
 		}
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := writeback.RewriteFLAC(ctx, bytes.NewReader(input), int64(len(input)), io.Discard, valid); err != context.Canceled {
+	if _, err := flac.New().Rewrite(ctx, bytes.NewReader(input), int64(len(input)), io.Discard, valid); err != context.Canceled {
 		t.Fatalf("cancel: %v", err)
 	}
-	if _, err := writeback.RewriteFLAC(context.Background(), bytes.NewReader(input), int64(len(input)), shortWriter{}, valid); err != io.ErrShortWrite {
+	if _, err := flac.New().Rewrite(context.Background(), bytes.NewReader(input), int64(len(input)), shortWriter{}, valid); err != io.ErrShortWrite {
 		t.Fatalf("short write: %v", err)
 	}
 }

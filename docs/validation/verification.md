@@ -68,7 +68,7 @@ go test -mod=readonly -count=1 -v ./tests/integration/resources -run '^TestResou
 
 ## 安装、代理与升级
 
-安装验收指定 `MUSICFS_RELEASE_ROOT`，执行 `tests/e2e/release*_test.go` 中的真实制品用例；测试必须运行包内二进制，不能重编替代。默认交付为 `musicfs` 与 `musicfs-plugins`，统一程序按角色启动独立进程。
+安装验收指定 `MUSICFS_RELEASE_ROOT`，执行 `tests/e2e/release*_test.go` 中的真实制品用例；测试必须运行包内二进制，不能重编替代。默认交付保留 `musicfs` 与 `musicfs-plugins` 两个文件，但官方内置插件全部在 Server 主进程运行；兼容程序仅在显式外部模式启动。真实工具、平台账号及制品验收与替身或源码测试分别记录，不能互相替代。
 
 1. 核对完整清单、校验和、许可证、外部工具依赖和默认配置，再复制到干净机器的新目录运行。
 2. 验证静态 Web、鉴权、扫描、原流/NCM/处理流、定位、SQLite/DSP、备份恢复和最后租约释放后的退出；按当前配置确认待配置、启用、保存停用与重启后状态。

@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/contenttransform"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore/content"
 )
@@ -22,12 +23,12 @@ type ContentService struct {
 	derived *DerivedService
 }
 
-func NewContent(repo ContentRepository, journal Repository, files *Files) *ContentService {
+func NewContent(repo ContentRepository, journal Repository, files *Files, thumbnail contenttransform.Thumbnailer) *ContentService {
 	s := &ContentService{ContentRepository: repo, journal: journal, files: files, gate: make(chan struct{}, 2)}
 	if derived, ok := repo.(DerivedRepository); ok {
 		media, err := New(journal, files)
 		if err == nil {
-			s.derived = &DerivedService{DerivedRepository: derived, media: media, content: s, gate: make(chan struct{}, 2)}
+			s.derived = &DerivedService{DerivedRepository: derived, media: media, content: s, gate: make(chan struct{}, 2), thumbnail: thumbnail}
 		}
 	}
 	return s

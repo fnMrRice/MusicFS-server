@@ -173,6 +173,10 @@ func (m *Manager) Snapshot() Snapshot {
 	}
 	for _, p := range m.desired.Plugins {
 		v := Plugin{PluginID: p.PluginID, Plugin: pluginconfig.Identity(p.PluginID), Version: bundledplugin.Version(p.PluginID), SupportsMultipleInstances: pluginconfig.SupportsMultipleInstances(p.PluginID), ConfiguredEnabled: p.Enabled, StateMutable: true, Instances: []Instance{}}
+		v.Execution = "process"
+		if p.InProcess() {
+			v.Execution = "builtin"
+		}
 		for _, i := range p.Instances {
 			if r := m.runtimes[i.InstanceID]; r != nil && r.hooks.PluginIdentity != nil {
 				if identity := r.hooks.PluginIdentity(); identity != nil && identity.Validate(p.PluginID) == nil {
@@ -219,6 +223,7 @@ func (m *Manager) Snapshot() Snapshot {
 		s.Items = append(s.Items, v)
 	}
 	s.Items = append(s.Items, m.storagePluginLocked(), m.gainPluginLocked())
+	s.Items = append(s.Items, m.builtinPluginsLocked()...)
 	return s
 }
 

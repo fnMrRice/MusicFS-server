@@ -99,7 +99,7 @@ func configureAudioManagement(c config.Config, manager *plugincontrol.Manager, p
 					activeAudio, activeDecoder, activeProbe := currentAudio, currentDecoder, probePath
 					mu.Unlock()
 					if isAudio {
-						audio, err := audioffmpeg.NewProcessor(ctx, audioffmpeg.Config{InstanceID: i.InstanceID, FFmpegPath: i.Config.FFmpegPath, FFprobePath: i.Config.FFprobePath, WorkerPath: p.Executable, WorkerArgs: p.Args, WorkerSHA256: expectedChecksum(p.SHA256, p.Executable), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing, DSPChain: c.AudioDSP.Chain, DSPPlugins: c.AudioDSP.Plugins})
+						audio, err := audioffmpeg.NewProcessor(ctx, audioffmpeg.Config{Builtin: p.InProcess(), InstanceID: i.InstanceID, FFmpegPath: i.Config.FFmpegPath, FFprobePath: i.Config.FFprobePath, WorkerPath: p.Executable, WorkerArgs: p.Args, WorkerSHA256: pluginChecksum(p), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing, DSPChain: c.AudioDSP.Chain, DSPPlugins: c.AudioDSP.Plugins})
 						if err != nil {
 							return err
 						}
@@ -108,7 +108,7 @@ func configureAudioManagement(c config.Config, manager *plugincontrol.Manager, p
 							return err
 						}
 					} else {
-						ncm, err := ncmdecoder.NewProcessor(ncmdecoder.Config{InstanceID: i.InstanceID, WorkerPath: p.Executable, WorkerArgs: p.Args, WorkerSHA256: expectedChecksum(p.SHA256, p.Executable), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing})
+						ncm, err := ncmdecoder.NewProcessor(ncmdecoder.Config{Builtin: p.InProcess(), InstanceID: i.InstanceID, WorkerPath: p.Executable, WorkerArgs: p.Args, WorkerSHA256: pluginChecksum(p), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing})
 						if err != nil {
 							return err
 						}

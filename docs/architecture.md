@@ -13,12 +13,12 @@ Server 是 Go 模块化单体，统一管理来源、曲库、歌单、资料补
 | src/library | 来源与资产、扫描、查询、专辑、歌单、推荐与个人数据 |
 | src/metadata | 摘要/指纹、人工关联、独立 Scraper 调度与受限写回 |
 | src/playback | 来源/输出选择、会话、音频处理、流、定位恢复与缓存 |
-| src/plugins | 插件进程、协议、实例配置、凭据和受控资源 |
+| src/plugins | 内置插件宿主、可选进程通信、协议、实例配置、凭据和受控资源 |
 | src/storage | Backend 契约、后端选择与通信、媒体文件及备份恢复 |
 
 目录按功能聚合，不构成严格分层；扫描、识别、补全和写回仍由各业务调度。具体插件在根 plugins/，公共 SDK 和在线平台实现分别是独立 Go 模块，见[开发说明](development/README.md)。
 
-默认交付 musicfs 与 musicfs-plugins 两个程序。统一入口装配 Local Files、FFmpeg、NCM、本地 Scraper、网易云、QQ 音乐、Apple Music、SQLite 和 DSP gain 九种角色，各实例独立启动进程。SQLite 与 DSP 使用专用协议和部署配置，不参加普通插件自动发现。分拆构建与安装配置见[部署](operations/deployment.md)。
+默认运行只启动 `musicfs`，所有官方内置插件编译到 Server 主进程：Local Files、FFmpeg、NCM、本地 Scraper、网易云、QQ 音乐、Apple Music、SQLite、DSP gain，以及指纹、标签、评分和缩略图实现。安装包中的 `musicfs-plugins` 保留九种兼容命令入口，只有显式外部进程配置才执行；它不再是默认运行前提。SQLite 与 DSP 使用专用接口和部署配置，不参加普通插件自动发现。FFmpeg、ffprobe、fpcalc 仍可作为受控外部工具运行。分拆构建与安装配置见[部署](operations/deployment.md)。
 
 当前具备本地/已挂载来源扫描、原流/处理/NCM 播放、识别与人工关联、内容补全与受限写回、在线资料与歌单接口、缓存、备份和生命周期协议。三平台账号接口已接入，真实账号完整登录尚待验收；在线整曲交付尚未实现。原生 NFS/SMB、Bilibili 和通用第三方插件接入仍为设计。
 
@@ -45,13 +45,22 @@ Server 是 Go 模块化单体，统一管理来源、曲库、歌单、资料补
 
 宿主保留身份、权限、状态所有权、调度与事务发布；Provider 负责来源发现、基础元数据和资源解析，Scraper 独立提供歌词/封面候选，音频插件处理任务授权的输入。它们不能隐式共用凭据，不能直接改宿主核心表。
 
-控制面使用版本化 JSON-RPC/stdio；音频、NCM 和 Scraper 正文走任务限定的私有二进制通道。Worker 是受信任程序，进程隔离不等于操作系统沙箱。当前按已支持身份与角色接入，任意 manifest 不能自动安装为新插件，见[插件架构](plugins/plugin-architecture.md)。
+既有来源、解码和 Scraper 内置适配在每实例或任务独立的内存流上运行版本化 JSON-RPC，DSP gain 保留内存流上的 PCM 帧协议，SQLite 直接使用后端接口。音频、NCM 和 Scraper 正文仍走任务限定的私有二进制通道。普通插件只有显式 `execution: process` 才通过 stdio 启动外部程序；内置代码与 Server 共享地址空间，取消和退出依靠协作，不提供崩溃、内存破坏或卡死隔离。外部进程也不等于操作系统沙箱。当前按已支持身份与角色接入，任意 manifest 不能自动安装为新插件，见[插件架构](plugins/plugin-architecture.md)。
+
+| 新增内置插件 | 接口 | 当前实现与宿主边界 |
+| --- | --- | --- |
+| `plugins/analysis/chromaprint` | `fingerprintworker.Extractor` | 现有 Chromaprint 指纹；授权读取、调度、资产绑定与结果保存由宿主执行 |
+| `plugins/tags/flac` | `sdk/tagformat.Format` | FLAC 标签重写；字段授权、原件保护、摘要校验、替换与恢复由宿主执行 |
+| `plugins/matching/standard` | `candidates.Scorer` | 标签、时长、摘要及指纹的标准候选评分；人工排除、确认与录音关联由宿主执行 |
+| `plugins/transform/thumbnail` | `sdk/contenttransform.Thumbnailer` | PNG/JPEG 缩略图；对象权限、缓存、父对象版本与发布由宿主执行 |
+
+四个插件各自声明发行版本，直接通过 Go 接口注入，不增加插件进程或外部安装入口。BPM、调性、ID3/MP4、歌词对齐及任意第三方评分加载仍未实现。内置实现版本随 Server 重新构建和交付，插件发行版本与协议、算法、配置版本分别管理。多用户、账号和 UUID 实例边界不因共用进程而合并。
 
 普通插件停用只保存期望配置，当前 Worker、任务、播放及新工作准入保持，重启 Server 后生效。启用和实例设置可动态应用；restartRequired、effectiveEnabled、appliedRevision 区分保存意图与实际运行。旧 drain/force 不再触发热停用，见[插件管理](plugins/plugin-management.md)。
 
 YAML 保存部署、权限和普通插件开关；Local Files 的实际目录及扫描/监听设置由管理 API 保存到宿主管理的插件配置数据库。permissions.readDirectories 是授权范围，添加目录不扩大权限，保存不自动扫描；默认授权及迁移见[实例配置](plugins/plugin-configuration.md)。插件声明角色、名称、版本和多实例能力，实例 UUID、插件 ID 和管理员别名彼此分离。
 
-SQLite 是必需后端，提供内置与独立 Worker 模式。主库的 Schema、内嵌 SQL 和迁移加载器位于 `plugins/database/sqlite/migrations`，实例状态库的建表、迁移及只读读取位于 `plugins/database/sqlite/state`；插件完成初始化后才返回可用后端。宿主保留业务数据与事务契约、后端选择、数据锁和生命周期协调，配置预加载只读且不建库；Server 仓库继续维护契约及插件实现。DSP 支持有序无状态节点，首版要求固定格式/帧数、零延迟和无尾音。数据库与 DSP 在管理列表只读展示，变更部署配置后重启，见[存储插件](plugins/storage-plugins.md)与[DSP 插件](plugins/dsp-plugins.md)。
+SQLite 是必需后端，默认在主进程通过直接后端接口运行，显式进程配置才使用独立 Worker。主库的 Schema、内嵌 SQL 和迁移加载器位于 `plugins/database/sqlite/migrations`，实例状态库的建表、迁移及只读读取位于 `plugins/database/sqlite/state`；插件完成初始化后才返回可用后端。宿主保留业务数据与事务契约、后端选择、数据锁和生命周期协调，配置预加载只读且不建库；Server 仓库继续维护契约及插件实现。DSP 支持有序无状态节点，首版要求固定格式/帧数、零延迟和无尾音。数据库与 DSP 在管理列表只读展示，变更部署配置后重启，见[存储插件](plugins/storage-plugins.md)与[DSP 插件](plugins/dsp-plugins.md)。
 
 ## 来源与歌单
 

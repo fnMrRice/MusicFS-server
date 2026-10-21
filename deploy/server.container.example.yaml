@@ -7,16 +7,14 @@ tlsKey: '/etc/musicfs/tls/server.key'
 dataRoot: '/var/lib/musicfs/data'
 mediaRoot: '/var/lib/musicfs/media'
 cacheRoot: '/var/cache/musicfs'
-# 源码示例保留内置 SQLite 兼容；Linux 发布包会写入必需 Worker 路径与实际摘要。
+# SQLite 内置插件运行于 Server 主进程。
 storage:
   backend: sqlite
 webRoot: ''
-pluginBundle: '/opt/musicfs/bin/musicfs-plugins'
-# 统一程序同时发现三个在线平台，以 --plugin 选择角色；显式独立入口保持原选择。
+# 官方插件从编译内目录发现，实例与账号状态保持隔离。
 plugins:
   - pluginId: 'musicfs.plugin.source.localfiles'
-    executable: '/opt/musicfs/bin/musicfs-plugins'
-    args: ['--plugin', 'local']
+    execution: builtin
     enabled: true
     instances:
       - instanceId: 'b1548e96-3081-5c9c-8376-bf290e369d51'
@@ -24,24 +22,21 @@ plugins:
         permissions: {readDirectories: ['/music']}
         config: {}
   - pluginId: 'musicfs.plugin.decoder.ffmpeg'
-    executable: '/opt/musicfs/bin/musicfs-plugins'
-    args: ['--plugin', 'audio-ffmpeg']
+    execution: builtin
     enabled: false
     instances:
       - instanceId: '16b003e5-1bab-52bb-be10-0e83ec1c40ea'
         enabled: false
         config: {ffmpegPath: '/usr/bin/ffmpeg', ffprobePath: '/usr/bin/ffprobe'}
   - pluginId: 'musicfs.plugin.decoder.ncm'
-    executable: '/opt/musicfs/bin/musicfs-plugins'
-    args: ['--plugin', 'ncm']
+    execution: builtin
     enabled: true
     instances:
       - instanceId: '96412f52-9ff4-5a82-9eaa-7644a5837cda'
         enabled: true
         config: {}
   - pluginId: 'musicfs.scraper.local'
-    executable: '/opt/musicfs/bin/musicfs-plugins'
-    args: ['--plugin', 'scraper-local']
+    execution: builtin
     enabled: true
     instances:
       - instanceId: 'd248bf34-1780-59d3-a557-9cf5d889e977'

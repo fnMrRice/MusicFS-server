@@ -13,12 +13,24 @@ const (
 	AppleMusicVersion   = "0.1.0"
 	GainVersion         = "0.1.0"
 	SQLiteVersion       = "0.1.0"
+	ChromaprintVersion  = "0.1.0"
+	FLACVersion         = "0.1.0"
+	MatchingVersion     = "0.1.0"
+	ThumbnailVersion    = "0.1.0"
 )
 
 // Version returns the package's declared release, including before a worker
 // starts. Unknown plugins have no declaration and must supply their own version.
 func Version(pluginID string) string {
 	switch pluginID {
+	case "musicfs.plugin.analysis.chromaprint":
+		return ChromaprintVersion
+	case "musicfs.plugin.tags.flac":
+		return FLACVersion
+	case "musicfs.plugin.matching.standard":
+		return MatchingVersion
+	case "musicfs.plugin.transform.thumbnail":
+		return ThumbnailVersion
 	case "musicfs.plugin.source.localfiles":
 		return LocalFilesVersion
 	case "musicfs.plugin.decoder.ffmpeg":

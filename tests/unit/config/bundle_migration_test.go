@@ -23,6 +23,7 @@ func discoveredPlugin(t *testing.T, doc *config.Document, id string) config.Plug
 func TestBundledOnlineSelectionPreservesUserSettings(t *testing.T) {
 	doc := bundledDocument(t, `plugins:
   - pluginId: musicfs.plugin.source.netease
+    execution: process
     executable: './musicfs-plugins'
     args: ['--plugin', 'netease']
     enabled: false
@@ -56,14 +57,15 @@ func TestBundledOnlineSelectionPreservesUserSettings(t *testing.T) {
 	}
 }
 
-func TestOnlineDiscoveryIsIndependentAndUsesFixedNames(t *testing.T) {
+func TestBuiltinDiscoveryUsesFixedCatalogWithoutPrograms(t *testing.T) {
 	doc := discoveredDocument(t, "", []string{"musicfs-plugin-qqmusic", "musicfs-plugin-unknown"})
-	if len(doc.Config.Plugins) != 1 || doc.Config.Plugins[0].PluginID != "musicfs.plugin.source.qqmusic" {
-		t.Fatalf("discovery requires a bundle or accepted an arbitrary program: %+v", doc.Config.Plugins)
+	if len(doc.Config.Plugins) != 7 {
+		t.Fatalf("builtin catalog changed with available programs: %+v", doc.Config.Plugins)
 	}
-	plugin := doc.Config.Plugins[0]
-	if !plugin.CanStart(plugin.Instances[0]) {
-		t.Fatal("present standalone executable should be ready")
+	for _, plugin := range doc.Config.Plugins {
+		if !plugin.InProcess() || plugin.Executable != "" || strings.Contains(plugin.PluginID, "unknown") {
+			t.Fatal("filesystem programs affected builtin discovery")
+		}
 	}
 	doc = discoveredDocument(t, "", []string{"musicfs-plugins"})
 	if len(doc.Config.Plugins) != 7 {
@@ -82,7 +84,7 @@ func TestMissingOrPinnedOnlineSelectionRemainsPending(t *testing.T) {
 		{"custom-bundle-arguments", "musicfs-plugins", "    args: ['--plugin', 'netease', '--custom']\n", []string{"musicfs-plugins", "musicfs-plugin-netease"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			doc := discoveredDocument(t, "plugins:\n  - pluginId: musicfs.plugin.source.netease\n    executable: './"+test.executable+"'\n"+test.extra+`    enabled: true
+			doc := discoveredDocument(t, "plugins:\n  - pluginId: musicfs.plugin.source.netease\n    execution: process\n    executable: './"+test.executable+"'\n"+test.extra+`    enabled: true
     instances:
       - instanceId: a5e47aac-f949-5e45-9709-f28a0d8443df
         enabled: true
@@ -102,6 +104,7 @@ func TestMissingOrPinnedOnlineSelectionRemainsPending(t *testing.T) {
 func TestOnlineDiscoveryPreservesExplicitExternalConfiguration(t *testing.T) {
 	doc := bundledDocument(t, `plugins:
   - pluginId: musicfs.plugin.source.qqmusic
+    execution: process
     executable: './custom/qq-worker'
     args: ['--custom', 'literal argument']
     enabled: true

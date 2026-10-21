@@ -5,23 +5,26 @@ skinparam componentStyle rectangle
 skinparam shadowing false
 
 actor "Web / Client" as UI
-package "Server 宿主" {
+package "Server 主进程" {
   component "app\n程序入口 / 组装 / HTTP API" as App
   component "core\n鉴权 / 配置 / 生命周期" as Core
   component "library\n来源 / 扫描 / 查询 / 歌单" as Library
   component "metadata\n识别 / 关联 / 补全 / 写回" as Metadata
   component "playback\n会话 / 流 / 定位 / 缓存" as Playback
-  component "plugins\n进程 / 协议 / 账号 / 受控资源" as Host
+  component "plugins\n内置运行 / 可选进程 / 协议 / 账号" as Host
   component "storage\nBackend 契约 / 媒体 / 备份" as Storage
-}
-package "独立插件进程" {
+package "官方内置插件" {
   component "Local Files\n本机 / 已挂载目录" as Local
   component "在线 Provider\n网易云 / QQ / Apple Music" as Online
   component "本地 Scraper\n歌词 / 封面候选" as Scraper
   component "FFmpeg / NCM\n处理 / 解密" as Audio
-  component "DSP Worker\n有序无状态节点" as DSP
-  component "SQLite Worker\n主库 / 实例状态库\n建库 / Schema / 迁移" as SQLite
+  component "DSP gain\n有序无状态节点" as DSP
+  component "SQLite\n主库 / 实例状态库\n建库 / Schema / 迁移" as SQLite
+  component "Chromaprint / FLAC\n标准评分 / 缩略图" as Algorithms
 }
+}
+component "显式外部插件进程\n兼容入口 / 固定摘要" as External
+component "受控外部工具\nFFmpeg / ffprobe / fpcalc" as Tools
 folder "授权音乐目录" as Files
 folder "Media Store\n歌词 / 封面 / 指纹等正文" as Media
 folder "可重建音频缓存" as Cache
@@ -39,6 +42,7 @@ Metadata --> Host : 任务与授权
 Playback --> Host : 输入与音频插件
 Library --> Storage
 Metadata --> Storage
+Metadata --> Algorithms : 显式 Go 接口
 Playback --> Storage
 Host --> Local
 Host --> Online
@@ -48,18 +52,22 @@ Host --> Credentials
 Host --> Files : 授权根 / 任务读取
 Local --> Files : 受限读取
 Audio --> DSP : 受控 PCM 通道
+Audio --> Tools
+Algorithms --> Tools : 指纹工具
+Host --> External : 仅显式外部模式
 Playback --> Cache
-Storage --> SQLite : 专用 Backend 协议
+Storage --> SQLite : 直接 Backend 接口
 Storage --> Media : 不可变文件与发布协调
 
 note bottom of Host
-  默认由 musicfs-plugins 的九种角色分别启动进程。
+  所有官方内置插件均在 Server 主进程运行。
+  内存流保留原协议；只有显式外部模式使用插件进程。
   普通插件停用保存后重启生效。
   SQLite / DSP 只读管理，配置变更后重启。
-  进程隔离不是操作系统沙箱。
+  内置代码共享地址空间，取消是协作，不提供崩溃隔离。
 end note
 note bottom of Storage
-  SQLite 提供内置与独立 Worker 模式，属于必需后端。
+  SQLite 默认内置，属于必需后端；外部 Worker 需显式选择。
   宿主保留业务契约、数据锁、生命周期与文件发布协调。
   数据库插件完成初始化后才返回可用后端。
   配置预加载只读，不创建或迁移数据库。

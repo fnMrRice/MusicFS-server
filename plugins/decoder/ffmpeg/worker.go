@@ -27,7 +27,7 @@ type audioWorker struct {
 func RunWorker(ctx context.Context, input io.ReadCloser, output io.WriteCloser) error {
 	w := &audioWorker{}
 	peer := pluginproto.NewPeer(ctx, input, output, "w-", w.handle)
-	<-peer.Done()
+	peer.Wait()
 	return peer.Err()
 }
 
@@ -43,7 +43,7 @@ func (w *audioWorker) handle(ctx context.Context, method string, raw json.RawMes
 		w.capabilities = b.Capabilities
 		w.instanceID, w.nonce = b.InstanceID, b.Nonce
 		w.taskID = b.TaskID
-		capabilities := []string{"audio.decode", "audio.dsp", "audio.encode", "audio.mux"}
+		capabilities := []string{"audio.decode", "audio.dsp", "audio.dsp.builtin", "audio.encode", "audio.mux"}
 		if b.Capabilities.Normalization {
 			capabilities = append(capabilities, "audio.normalize")
 		}

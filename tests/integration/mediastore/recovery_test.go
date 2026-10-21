@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
+	"github.com/fnMrRice/MusicFS-server/plugins/transform/thumbnail"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
@@ -111,7 +112,7 @@ func TestContentRecoveryAcrossEveryPublicationBoundary(t *testing.T) {
 			if err = service.Recover(ctx); err != nil {
 				t.Fatal("recovery not idempotent", err)
 			}
-			content := mediastore.NewContent(store, store, files)
+			content := mediastore.NewContent(store, store, files, thumbnail.New())
 			selection, err := store.ContentSelection(ctx, "admin", meta.Target.SourceTrackID)
 			if err != nil || len(selection.Bindings) != 1 || selection.Bindings[0].ObjectID != old.ID || !selection.Bindings[0].ManualLocked {
 				t.Fatal("prior manual selection lost", err)

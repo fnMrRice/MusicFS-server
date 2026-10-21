@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
+	"github.com/fnMrRice/MusicFS-server/plugins/transform/thumbnail"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
@@ -73,7 +74,7 @@ func TestBackupCopiesSnapshotReferencesAndRestoresMissingState(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer files.Close()
-	service := mediastore.NewContent(s, s, files)
+	service := mediastore.NewContent(s, s, files, thumbnail.New())
 	for _, obj := range []mediastore.ContentObject{old, preview} {
 		_, in, err := service.Open(ctx, "admin", obj.ID)
 		if err != nil {

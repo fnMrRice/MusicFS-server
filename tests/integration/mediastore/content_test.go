@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
+	"github.com/fnMrRice/MusicFS-server/plugins/transform/thumbnail"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
@@ -60,7 +61,7 @@ func setup(t *testing.T) fixture {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { files.Close() })
-	return fixture{store: s, files: files, service: mediastore.NewContent(s, s, files), root: root, metadata: mediastore.ContentMetadata{Target: mediastore.ContentTarget{SourceTrackID: track.ID, AssetID: track.AssetID, AssetVersion: track.Asset.Version}, Field: "lyrics", Language: "zh-Hans", Origin: mediastore.Origin{Kind: "upload"}}}
+	return fixture{store: s, files: files, service: mediastore.NewContent(s, s, files, thumbnail.New()), root: root, metadata: mediastore.ContentMetadata{Target: mediastore.ContentTarget{SourceTrackID: track.ID, AssetID: track.AssetID, AssetVersion: track.Asset.Version}, Field: "lyrics", Language: "zh-Hans", Origin: mediastore.Origin{Kind: "upload"}}}
 }
 
 func upload(t *testing.T, f fixture, text string) mediastore.ContentObject {

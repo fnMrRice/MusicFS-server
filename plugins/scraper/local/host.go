@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/inprocess"
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
@@ -21,6 +22,7 @@ import (
 )
 
 type Config struct {
+	Builtin                                       bool
 	WorkerArgs                                    []string
 	WorkerPath, WorkerSHA256, WorkDir, InstanceID string
 	MaxConcurrent                                 int
@@ -124,39 +126,47 @@ func (h *Host) Open(parent context.Context, scope pluginproto.Context, target en
 	if err = channel.Validate(); err != nil {
 		return nil, err
 	}
-	cmd := exec.CommandContext(ctx, h.config.WorkerPath, h.config.WorkerArgs...)
-	configureProcess(cmd)
-	cmd.Dir, cmd.Stderr, cmd.WaitDelay = h.config.WorkDir, io.Discard, time.Second
-	cmd.Env = []string{}
-	for _, key := range []string{"SystemRoot", "WINDIR", "TEMP", "TMP"} {
-		if value := os.Getenv(key); value != "" {
-			cmd.Env = append(cmd.Env, key+"="+value)
-		}
-	}
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return nil, fmt.Errorf("TEMPORARY_FAILURE: scraper control channel unavailable")
-	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		stdin.Close()
-		return nil, fmt.Errorf("TEMPORARY_FAILURE: scraper control channel unavailable")
-	}
-	if err = cmd.Start(); err != nil {
-		stdin.Close()
-		stdout.Close()
-		return nil, fmt.Errorf("UNSUPPORTED: scraper worker failed to start")
-	}
-	contain, err := containProcess(cmd.Process.Pid)
-	if err != nil {
-		cmd.Process.Kill()
-		cmd.Wait()
-		return nil, fmt.Errorf("UNSUPPORTED: scraper process containment unavailable")
-	}
-	peer := pluginproto.NewPeer(ctx, stdout, stdin, "h-", nil)
+	var peer *pluginproto.Peer
 	processDone := make(chan struct{})
+	contain := func() {}
+	if h.config.Builtin {
+		local := inprocess.Start(ctx, RunWorker)
+		peer = pluginproto.NewPeer(ctx, local.Output, local.Input, "h-", nil)
+		go func() { <-local.Done; cancel(); _ = peer.Close(); close(processDone) }()
+	} else {
+		cmd := exec.CommandContext(ctx, h.config.WorkerPath, h.config.WorkerArgs...)
+		configureProcess(cmd)
+		cmd.Dir, cmd.Stderr, cmd.WaitDelay = h.config.WorkDir, io.Discard, time.Second
+		cmd.Env = []string{}
+		for _, key := range []string{"SystemRoot", "WINDIR", "TEMP", "TMP"} {
+			if value := os.Getenv(key); value != "" {
+				cmd.Env = append(cmd.Env, key+"="+value)
+			}
+		}
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			return nil, fmt.Errorf("TEMPORARY_FAILURE: scraper control channel unavailable")
+		}
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			stdin.Close()
+			return nil, fmt.Errorf("TEMPORARY_FAILURE: scraper control channel unavailable")
+		}
+		if err = cmd.Start(); err != nil {
+			stdin.Close()
+			stdout.Close()
+			return nil, fmt.Errorf("UNSUPPORTED: scraper worker failed to start")
+		}
+		contain, err = containProcess(cmd.Process.Pid)
+		if err != nil {
+			cmd.Process.Kill()
+			cmd.Wait()
+			return nil, fmt.Errorf("UNSUPPORTED: scraper process containment unavailable")
+		}
+		peer = pluginproto.NewPeer(ctx, stdout, stdin, "h-", nil)
+		go func() { _ = cmd.Wait(); cancel(); _ = peer.Close(); close(processDone) }()
+	}
 	cleaned := make(chan struct{})
-	go func() { _ = cmd.Wait(); cancel(); _ = peer.Close(); close(processDone) }()
 	go func() {
 		<-ctx.Done()
 		_ = peer.Close()
@@ -206,6 +216,9 @@ func (s *Session) PluginVersion() string { return s.version }
 func (s *Session) Close() error { s.cancel(); <-s.closed; return nil }
 
 func verifyWorker(config Config) error {
+	if config.Builtin {
+		return nil
+	}
 	if !filepath.IsAbs(config.WorkerPath) || len(config.WorkerSHA256) != 64 {
 		return fmt.Errorf("ACCESS_DENIED: invalid scraper executable identity")
 	}

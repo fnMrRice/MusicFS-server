@@ -15,21 +15,21 @@
 sh scripts/release.sh --os linux --output ./build/releases/linux-amd64 --web-root ../web/dist
 ```
 
-Web 先在独立仓库按自己的工具链构建。`--web-root` 可省略；只复制静态制品，拒绝隐藏文件、链接、源码映射和超限文件，不复制 Web 源码或 Git。默认 `bin` 只有 `musicfs` 和 `musicfs-plugins` 两个程序（Windows 带 `.exe`）。统一入口支持 `local`、`audio-ffmpeg`、`ncm`、`scraper-local`、`netease`、`qqmusic`、`applemusic`、`storage-sqlite`、`dsp-gain` 九种角色，通过 `--plugin <角色>` 分别启动进程。
+Web 先在独立仓库按自己的工具链构建。`--web-root` 可省略；只复制静态制品，拒绝隐藏文件、链接、源码映射和超限文件，不复制 Web 源码或 Git。默认 `bin` 保留 `musicfs` 和 `musicfs-plugins` 两个文件（Windows 带 `.exe`），运行时只启动 `musicfs`，官方内置插件全部在主进程。后一个程序仅是显式外部进程模式的兼容入口，保留九种 `--plugin <用途>` 选择值。
 
-需要分拆程序时，在 PowerShell 构建或发布命令加 `-SplitPlugins`，Shell 命令加 `--split-plugins`。此时额外输出 `musicfs-plugin-netease`、`musicfs-plugin-qqmusic`、`musicfs-plugin-applemusic`、`musicfs-plugin-online`、`musicfs-plugin-storage-sqlite`、`musicfs-plugin-dsp-gain`，合计八个程序；`musicfs-plugins` 仍包含全部九种角色。默认配置继续使用统一入口，独立入口需显式选择。
+需要外部兼容程序时，在 PowerShell 构建或发布命令加 `-SplitPlugins`，Shell 命令加 `--split-plugins`。此时额外输出 `musicfs-plugin-netease`、`musicfs-plugin-qqmusic`、`musicfs-plugin-applemusic`、`musicfs-plugin-online`、`musicfs-plugin-storage-sqlite`、`musicfs-plugin-dsp-gain`，合计八个程序；默认配置仍使用内置实现，构建文件本身不会启动插件进程。
 
 发布构建移除调试信息。`release.json` 记录源提交、脏树状态、平台、版本/协议、三个源码模块和实际编译依赖，并在 `components[].args` 中记录角色；`SHA256SUMS` 覆盖所有交付文件。存在 `.incomplete` 表示失败，不可当成完成的制品。校验清单证明文件一致性，不代表有发布者签名。
 
 安装包不包含 `docs/` 目录，运行、配置和协议文档保留在对应版本的源码仓库中。
 
-三个在线平台默认使用 `musicfs-plugins --plugin netease|qqmusic|applemusic`。只有缺少全量统一程序时，自动发现才尝试同目录的平台独立程序和在线统一程序，按相同插件 ID 去重。显式自定义入口、禁用状态和实例身份保留；已固定的程序摘要不会自动清除，详见[发现与迁移](configuration.md#内置插件程序与自动发现)。
+三个在线平台由 Server 编译内的独立平台模块装配，每个用户与实例保持独立账号。普通插件默认 `execution: builtin`，不依赖旧路径是否存在；显式 `execution: process` 才使用统一或独立入口及摘要校验。发现范围和旧配置的 UUID、账号、禁用状态保留规则见[发现与迁移](configuration.md#内置插件程序与自动发现)。
 
-新安装包将 SQLite 存储角色作为必需基础设施，`release.json` 标记为 `required: true`；生成的配置固定 `storage.backend: plugin`、`../bin/musicfs-plugins(.exe)`、`args: ['--plugin', 'storage-sqlite']` 及本次程序的实际 SHA-256，缺少文件时打包失败。数据库进入管理插件列表并标记“必需”，不提供禁用开关；程序缺失、校验失败或加载失败时拒绝启动。源仓库示例和未声明 storage 的旧配置保留内置 SQLite 兼容，外部数据库通用显示身份及迁移说明见[存储插件](../plugins/storage-plugins.md)。
+SQLite 是必需基础设施，`release.json` 标记 `required: true`；生成配置默认 `storage.backend: sqlite`，在 Server 主进程打开主库与实例状态库，不需要数据库插件程序。数据库初始化失败仍拒绝启动，不提供禁用或旁路开关。只有显式外部配置才校验程序和摘要，旧官方 Worker 配置的迁移及外部身份见[存储插件](../plugins/storage-plugins.md)。
 
-存储与可选 DSP 通过各自配置启动，不加入普通插件自动发现。默认 `audioDSP.chain/plugins` 均为空；需要 DSP 时，在部署 YAML 的 `audioDSP.plugins` 中指定 `../bin/musicfs-plugins(.exe)`、`args: ['--plugin', 'dsp-gain']` 及实际 SHA-256，再配置处理链并重启，详见[DSP 插件](../plugins/dsp-plugins.md)。更新统一二进制后须同步所有显式固定摘要。
+存储与可选 DSP 通过各自配置启动，不加入普通插件自动发现。默认 `audioDSP.chain/plugins` 均为空；官方 `musicfs.dsp.gain` 使用内置实现，登记名称及超时后配置处理链并重启，无需可执行路径或摘要，详见[DSP 插件](../plugins/dsp-plugins.md)。第三方外部节点仍须明确登记程序与固定摘要。音频工具 FFmpeg、ffprobe、fpcalc 可在主进程插件的控制下外部执行。
 
-本版官方 FFmpeg Worker 为 `0.2.0`，Server 要求精确匹配，因此 `musicfs` 与 `musicfs-plugins` 须同时升级；不能把旧版统一插件程序与新版 Server 混用，即使尚未启用额外 DSP。其他插件角色的实现版本保持各自记录值。
+本版官方 FFmpeg 实现为 `0.2.0`，Server 仍精确校验握手；内置代码随 Server 升级，显式外部模式须同步升级对应程序和固定摘要。四类新增算法及其他插件各自维护发行版本，不依赖 Server 版本号代替。
 
 配置示例自动改为 `../bin`，Windows 保留 `.exe`；内置插件默认自动发现，本地音乐默认没有选定的导入目录。允许访问的范围采用当前运行用户的 Music 目录及 Windows 首次探测结果，也可通过 `permissions.readDirectories` 显式覆盖；缺配置的插件显示待配置。复制为 `configs/server.yaml`，需要禁用时设置插件或实例 enabled: false，然后创建管理员令牌并启动。实际导入目录启动后从 Web 管理页面选择，保存不会自动扫描：
 

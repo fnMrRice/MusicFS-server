@@ -20,11 +20,12 @@ type FingerprintDetails interface {
 type Service struct {
 	Repository
 	details FingerprintDetails
+	scorer  candidates.Scorer
 	gate    chan struct{}
 }
 
-func New(repo Repository, details FingerprintDetails) *Service {
-	return &Service{Repository: repo, details: details, gate: make(chan struct{}, 1)}
+func New(repo Repository, details FingerprintDetails, scorer candidates.Scorer) *Service {
+	return &Service{Repository: repo, details: details, scorer: scorer, gate: make(chan struct{}, 1)}
 }
 
 func (s *Service) Refresh(ctx context.Context, owner, sourceID string, sourceIDs []string) (CandidatePage, error) {
@@ -50,7 +51,7 @@ func (s *Service) Refresh(ctx context.Context, owner, sourceID string, sourceIDs
 	if err != nil {
 		return CandidatePage{}, err
 	}
-	items, err := candidates.Find(ctx, anchor, others, snapshot.Blocked)
+	items, err := candidates.Find(ctx, s.scorer, anchor, others, snapshot.Blocked)
 	if err != nil {
 		return CandidatePage{}, comparisonError(err)
 	}

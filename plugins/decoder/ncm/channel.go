@@ -10,12 +10,15 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/fnMrRice/MusicFS-server/sdk/inprocess"
 )
 
 type dataChannel struct {
-	url    string
-	server *http.Server
-	stop   func() bool
+	url      string
+	server   *http.Server
+	stop     func() bool
+	handlers inprocess.Handlers
 }
 
 func newDataChannel(ctx context.Context, nonce, purpose string, input io.ReaderAt, size int64) (*dataChannel, error) {
@@ -67,6 +70,7 @@ func newDataChannel(ctx context.Context, nonce, purpose string, input io.ReaderA
 	})
 	limited := &channelListener{Listener: listener, slots: make(chan struct{}, 8), done: make(chan struct{})}
 	channel := &dataChannel{url: "http://" + host + path, server: server}
+	server.Handler = channel.handlers.Wrap(server.Handler)
 	channel.stop = context.AfterFunc(ctx, func() { _ = server.Close() })
 	go func() { _ = server.Serve(limited) }()
 	return channel, nil
@@ -75,6 +79,7 @@ func newDataChannel(ctx context.Context, nonce, purpose string, input io.ReaderA
 func (c *dataChannel) Close() {
 	c.stop()
 	_ = c.server.Close()
+	c.handlers.Wait()
 }
 
 func exactRange(headers []string, size int64) (int64, int64, bool) {

@@ -43,7 +43,7 @@ sh scripts/build.sh
 sh scripts/check.sh
 ```
 
-默认构建 musicfs、musicfs-plugins 两个程序。`-SplitPlugins` / `--split-plugins` 额外生成六个分拆程序；正式制品见[部署](../operations/deployment.md)。检查脚本覆盖三个模块，根目录的 `go test ./...` 不会跨越子模块。
+默认构建 musicfs、musicfs-plugins 两个文件；默认只启动 musicfs，所有官方内置实现运行于 Server 主进程，后者保留显式外部兼容入口。`-SplitPlugins` / `--split-plugins` 额外生成六个分拆程序；正式制品见[部署](../operations/deployment.md)。检查脚本覆盖三个模块，根目录的 `go test ./...` 不会跨越子模块。
 
 真实音频测试按需设置 MUSICFS_FFMPEG、MUSICFS_FFPROBE，指纹测试另设 MUSICFS_FPCALC。缺少工具时跳过的测试不计为通过；公网或真实账号测试先核对[验证方法](../validation/verification.md)中的入口限制。
 

@@ -48,16 +48,22 @@ func (d Detail) Encode() ([]byte, error) {
 // Validate checks the complete pinned algorithm identity without running tools.
 func (id Identity) Validate() error {
 	if id.NormalizationRevision != audio.NormalizationRevision || id.QualityRevision != QualityRevision || id.Algorithm != "chromaprint" || id.AlgorithmVersion != AlgorithmVersion || id.AlgorithmConfig != "cli-2-raw-v1" ||
-		id.ConfigRevision != identityRevision(id) || !validSHA(id.Decoder.SHA256) || !validSHA(id.Fpcalc.SHA256) || id.Decoder.Version == "" || len(id.Decoder.Version) > 512 ||
+		id.ConfigRevision != id.Revision() || !validSHA(id.Decoder.SHA256) || !validSHA(id.Fpcalc.SHA256) || id.Decoder.Version == "" || len(id.Decoder.Version) > 512 ||
 		len(id.Fpcalc.Version) > 512 || strings.ContainsAny(id.Fpcalc.Version, "\r\n") || !strings.HasPrefix(id.Fpcalc.Version, "fpcalc version 1.6.1 (") || !strings.HasSuffix(id.Fpcalc.Version, ")") {
 		return fmt.Errorf("INVALID_ARGUMENT: invalid fingerprint identity")
 	}
 	return nil
 }
 
-func identityRevision(id Identity) string {
+// Revision 根据完整算法及工具身份生成稳定的证据版本。
+func (id Identity) Revision() string {
 	id.ConfigRevision = ""
 	raw, _ := json.Marshal(id)
 	sum := sha256.Sum256(raw)
 	return "sha256-" + hex.EncodeToString(sum[:])
+}
+
+func validSHA(value string) bool {
+	b, err := hex.DecodeString(value)
+	return err == nil && len(b) == 32 && strings.ToLower(value) == value
 }

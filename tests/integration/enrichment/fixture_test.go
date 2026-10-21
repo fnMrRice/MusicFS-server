@@ -13,6 +13,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/plugins/scraper/local"
+	"github.com/fnMrRice/MusicFS-server/plugins/transform/thumbnail"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
@@ -97,7 +98,7 @@ func setup(t *testing.T) fixture {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { files.Close() })
-	content := mediastore.NewContent(store, store, files)
+	content := mediastore.NewContent(store, store, files, thumbnail.New())
 	workerPath := filepath.Join(dir, "scraper-worker")
 	if runtime.GOOS == "windows" {
 		workerPath += ".exe"
