@@ -48,6 +48,8 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 		return nil, fmt.Errorf("PROTOCOL_MISMATCH: handshake required")
 	}
 	switch method {
+	case "plugin.displayCount":
+		return w.displayCount(raw)
 	case "provider.scan":
 		var r pluginproto.ScanRequest
 		if json.Unmarshal(raw, &r) != nil {

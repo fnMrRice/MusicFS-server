@@ -2,10 +2,12 @@ package pluginhost
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/plugindisplay"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/accountstore"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
@@ -23,6 +25,10 @@ func (w *OnlineWorker) initializeAccount(ctx context.Context) error {
 	}
 	if len(secret) > 0 {
 		_, err = w.accountCall(ctx, online.AccountRequest{Action: "restore", Secret: secret})
+	} else {
+		// Initialize the optional display projection without making startup
+		// depend on a successful display-only state read.
+		_, _ = w.accountCall(ctx, online.AccountRequest{Action: "state"})
 	}
 	return err
 }
@@ -37,11 +43,22 @@ func (w *OnlineWorker) accountCall(ctx context.Context, request online.AccountRe
 	}
 	mutation := request.Action != "state" && request.Action != "signalCancel"
 	generation := w.accountDisplay.begin(mutation)
-	result, err := onlineCall[online.AccountResult](ctx, w, "provider.online.account", scope, pluginproto.OnlineAccount{Context: scope, Request: request})
+	wire, err := onlineCall[accountResultWire](ctx, w, "provider.online.account", scope, pluginproto.OnlineAccount{Context: scope, Request: request})
+	result := online.AccountResult{View: wire.View, Secret: wire.Secret}
+	if err == nil && len(wire.DisplayCount) > 0 {
+		// Invalid optional statistics never invalidate an otherwise valid login.
+		result.DisplayCount, _ = plugindisplay.Decode(wire.DisplayCount)
+	}
 	if request.Action != "signalCancel" {
-		w.accountDisplay.finish(generation, mutation, result.View, err == nil)
+		w.accountDisplay.finish(generation, mutation, result.View, result.DisplayCount, err == nil)
 	}
 	return result, err
+}
+
+type accountResultWire struct {
+	View         online.AccountView `json:"view"`
+	Secret       json.RawMessage    `json:"secret,omitempty"`
+	DisplayCount json.RawMessage    `json:"displayCount,omitempty"`
 }
 
 // PlatformAccount strips private state before returning to the HTTP service.

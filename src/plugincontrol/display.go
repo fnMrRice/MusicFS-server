@@ -1,6 +1,11 @@
 package plugincontrol
 
-import "context"
+import (
+	"context"
+	"maps"
+
+	"github.com/fnMrRice/MusicFS-server/sdk/plugindisplay"
+)
 
 // SnapshotFor resolves request-scoped account names without retaining them in
 // global runtime state or holding the manager lock during provider calls.
@@ -19,12 +24,16 @@ func (m *Manager) snapshotFor(ctx context.Context, owner string, scoped, allUser
 	m.mu.Lock()
 	names := make(map[string]func(context.Context, string) string)
 	accounts := make(map[string]func(context.Context, string) string)
+	counts := make(map[string]func() *plugindisplay.Count)
 	for id, runtime := range m.runtimes {
 		if runtime.hooks.InstanceName != nil {
 			names[id] = runtime.hooks.InstanceName
 		}
 		if runtime.hooks.AccountName != nil {
 			accounts[id] = runtime.hooks.AccountName
+		}
+		if runtime.hooks.DisplayCount != nil {
+			counts[id] = runtime.hooks.DisplayCount
 		}
 	}
 	m.mu.Unlock()
@@ -49,6 +58,35 @@ func (m *Manager) snapshotFor(ctx context.Context, owner string, scoped, allUser
 			instances = append(instances, instance)
 		}
 		snapshot.Items[pi].Instances = instances
+		if scoped {
+			snapshot.Items[pi].DisplayCount = collectDisplayCount(instances, counts)
+		}
 	}
 	return snapshot
+}
+
+// Counts are collected only after scope filtering and outside the manager lock.
+// A partial total is misleading, so every visible runtime must supply valid,
+// consistently labelled plugin data. An empty scope has no plugin-owned count.
+func collectDisplayCount(instances []Instance, hooks map[string]func() *plugindisplay.Count) *plugindisplay.Count {
+	var total *plugindisplay.Count
+	for _, instance := range instances {
+		resolve := hooks[instance.InstanceID]
+		if resolve == nil {
+			return nil
+		}
+		count := resolve()
+		if count == nil || count.Validate() != nil {
+			return nil
+		}
+		if total == nil {
+			total = count.Clone()
+			continue
+		}
+		if total.Unit != count.Unit || !maps.Equal(total.LocalizedUnits, count.LocalizedUnits) || count.Value > plugindisplay.MaxValue-total.Value {
+			return nil
+		}
+		total.Value += count.Value
+	}
+	return total
 }

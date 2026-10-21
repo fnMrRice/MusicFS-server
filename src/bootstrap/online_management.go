@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
+	"github.com/fnMrRice/MusicFS-server/sdk/plugindisplay"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/config"
 	"github.com/fnMrRice/MusicFS-server/src/onlinehost"
@@ -57,6 +58,13 @@ func registerOnlineManagement(ctx context.Context, c config.Config, manager *plu
 				return nil
 			}
 			return s.worker.PluginIdentity()
+		}, DisplayCount: func() *plugindisplay.Count {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if s.worker == nil {
+				return nil
+			}
+			return s.worker.DisplayCount()
 		}, PluginVersion: func() string {
 			s.mu.Lock()
 			defer s.mu.Unlock()

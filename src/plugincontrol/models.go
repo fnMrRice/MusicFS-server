@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/plugindisplay"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/config"
 )
@@ -15,6 +16,7 @@ type Hooks struct {
 	Capabilities   func() []string
 	PluginIdentity func() *pluginproto.PluginIdentity
 	PluginVersion  func() string
+	DisplayCount   func() *plugindisplay.Count
 	InstanceName   func(context.Context, string) string
 	AccountName    func(context.Context, string) string
 }
@@ -39,6 +41,7 @@ type Plugin struct {
 	PluginID                  string                      `json:"pluginId"`
 	Plugin                    *pluginproto.PluginIdentity `json:"plugin"`
 	Version                   string                      `json:"version,omitempty"`
+	DisplayCount              *plugindisplay.Count        `json:"displayCount,omitempty"`
 	SupportsMultipleInstances bool                        `json:"supportsMultipleInstances"`
 	ConfiguredEnabled         bool                        `json:"configuredEnabled"`
 	Instances                 []Instance                  `json:"instances"`

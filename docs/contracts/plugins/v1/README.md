@@ -12,6 +12,10 @@ FFmpeg/NCM 的单次任务握手使用 `DecoderHello`，额外必需 `taskId`。
 
 在线 Provider 的资料修订为 `online-authenticated-v3`，`provider.online.describe` 必须返回插件提供的 `plugin: {id,name,localizedNames,features}`，其 ID 与握手身份一致；Host 缓存并透传已验证值，不自行生成平台名称。显示语义、生命周期与版本兼容见 [插件身份与名称](../../../plugin-identity.md)，具体 wire 模型见 [online.schema.json](online.schema.json)。
 
+音乐来源可提供独立的展示统计 `{value, unit, localizedUnits}`；数字、默认单位与译名全部由插件负责。`value` 是 0—9007199254740991 的整数，`unit` 及每项译名是 1—128 个 Unicode 字符的纯文本；语言标签与身份译名采用相同校验，`localizedUnits` 必需且可为空对象。统计不能代替实例身份或权限。Web 不显示实例数量；插件上报的“个用户”“个来源”等单位也不由前端固定映射。
+
+本地来源增加 `plugin.displayCount`：Host 在初始化后发送 `{instanceId, rootIds}`，仅传当前配置选中的根 ID，不传物理路径；根 ID 非空、不可重复、最多 1024 项。Worker 要求 instanceId 与握手绑定一致，响应直接为统计对象；Local Files 以选中的目录来源生成数量和“个来源”译名。Host 在独立的 1 秒超时内查询，验证结果并缓存，管理查询不触发 RPC；旧插件不支持、查询失败、超时或统计格式非法时均省略统计，不阻断插件启动。在线来源通过[账号响应](account.md)的可选 `displayCount` 提供相同结构。此展示字段不增加目录访问能力或账号权限，Worker 与 Host 的严格响应解码须配套更新。
+
 Go 消费入口已迁到独立 `sdk` 模块，见 [SDK 使用与分发](../../../plugin-sdk.md)。在线插件的 `pluginVersion` 接受合法语义版本，不再固定为 `0.1.0`；通信版本与资料修订仍精确校验。能力可声明当前平台允许集合的子集，Manifest 启用能力须与描述中的 `supported=true` 集合一致。宿主保留对未知或未验证能力的拒绝；旧宿主可能拒绝新插件版本或能力子集，首次拆分升级先更新宿主。HTTP 数据结构与平台账号作用域保持不变。
 
 Manifest的 `configuration` 为插件提供的导入选项声明；不支持导入配置的音频插件发送null。Local Files 0.3.0声明 `local-import-v5`，字段为 `schemaRevision/importOptionsSchema/importDefaults/unavailableOptions`，标题与说明为纯文本。声明限制32 KiB、8层、每对象32属性；受限Schema支持有界字符串数组，拒绝外部引用/执行扩展。`ImportOptions` 和 `ScanScope` 保留必需 `excludePatterns` 数组，最多32条、每条UTF-8最多256字节；Host与发布范围共用根相对glob语义，见[扫描说明](../../../scanning.md)。规则排序绑定PlanDigest，cursor/grant不能在同任务中换规则；不兼容旧开发声明。

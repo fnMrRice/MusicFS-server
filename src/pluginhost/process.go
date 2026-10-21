@@ -14,25 +14,27 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/plugindisplay"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/sourceaccess"
 )
 
 type Worker struct {
-	config     Config
-	Access     *sourceaccess.Access
-	Manifest   pluginproto.Manifest
-	identity   *pluginproto.PluginIdentity
-	peer       *pluginproto.Peer
-	cmd        *exec.Cmd
-	cancel     context.CancelFunc
-	done       chan struct{}
-	privateDir string
-	state      *stateStore
-	mu         sync.Mutex
-	snapshots  map[string]entrySnapshot
-	scanGrants map[string]scanGrant
+	config       Config
+	Access       *sourceaccess.Access
+	Manifest     pluginproto.Manifest
+	identity     *pluginproto.PluginIdentity
+	displayCount *plugindisplay.Count
+	peer         *pluginproto.Peer
+	cmd          *exec.Cmd
+	cancel       context.CancelFunc
+	done         chan struct{}
+	privateDir   string
+	state        *stateStore
+	mu           sync.Mutex
+	snapshots    map[string]entrySnapshot
+	scanGrants   map[string]scanGrant
 }
 
 func Start(ctx context.Context, cfg Config) (*Worker, error) {
@@ -127,6 +129,9 @@ func Start(ctx context.Context, cfg Config) (*Worker, error) {
 	}
 	w.Manifest = ready.Manifest
 	w.identity = ready.Manifest.Plugin.Clone()
+	displayContext, cancelDisplay := context.WithTimeout(ctx, time.Second)
+	_ = w.loadDisplayCount(displayContext)
+	cancelDisplay()
 	return w, nil
 }
 

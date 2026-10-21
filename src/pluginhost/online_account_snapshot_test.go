@@ -18,7 +18,7 @@ func signedInDisplay() online.AccountView {
 func TestAccountDisplaySnapshotTracksValidatedNamesWithoutRPC(t *testing.T) {
 	w := &OnlineWorker{done: make(chan struct{})}
 	generation := w.accountDisplay.begin(true)
-	w.accountDisplay.finish(generation, true, signedInDisplay(), true)
+	w.accountDisplay.finish(generation, true, signedInDisplay(), nil, true)
 	// No peer is installed: this projection must never contact the worker.
 	view := w.PlatformSessionSnapshot()
 	if view.DisplayName != "Platform username" || view.LoginID != "" || view.QRURL != "" {
@@ -33,22 +33,22 @@ func TestAccountDisplaySnapshotTracksValidatedNamesWithoutRPC(t *testing.T) {
 func TestAccountDisplaySnapshotRejectsPreLogoutAndPendingResponses(t *testing.T) {
 	var state accountDisplaySnapshot
 	initial := state.begin(true)
-	state.finish(initial, true, signedInDisplay(), true)
+	state.finish(initial, true, signedInDisplay(), nil, true)
 	stale := state.begin(false)
 	state.invalidate()
-	state.finish(stale, false, signedInDisplay(), true)
+	state.finish(stale, false, signedInDisplay(), nil, true)
 	if got := state.current(); got.DisplayName != "" {
 		t.Fatal("pre-logout response restored a stale username", got)
 	}
 	changing := state.begin(true)
 	concurrent := state.begin(false)
-	state.finish(concurrent, false, signedInDisplay(), true)
+	state.finish(concurrent, false, signedInDisplay(), nil, true)
 	if got := state.current(); got.DisplayName != "" {
 		t.Fatal("pending account change exposed an old username", got)
 	}
 	next := signedInDisplay()
 	next.DisplayName, next.Revision = "Next account", "login-2"
-	state.finish(changing, true, next, true)
+	state.finish(changing, true, next, nil, true)
 	if got := state.current(); got.DisplayName != "Next account" {
 		t.Fatal("completed account change did not publish the new username", got)
 	}
@@ -57,9 +57,9 @@ func TestAccountDisplaySnapshotRejectsPreLogoutAndPendingResponses(t *testing.T)
 func TestAccountDisplaySnapshotClearsOnFailedMutationExpiryAndShutdown(t *testing.T) {
 	w := &OnlineWorker{done: make(chan struct{})}
 	initial := w.accountDisplay.begin(true)
-	w.accountDisplay.finish(initial, true, signedInDisplay(), true)
+	w.accountDisplay.finish(initial, true, signedInDisplay(), nil, true)
 	failed := w.accountDisplay.begin(true)
-	w.accountDisplay.finish(failed, true, signedInDisplay(), false)
+	w.accountDisplay.finish(failed, true, signedInDisplay(), nil, false)
 	if got := w.PlatformSessionSnapshot(); got.DisplayName != "" {
 		t.Fatal("failed account transition retained a username", got)
 	}
@@ -67,12 +67,12 @@ func TestAccountDisplaySnapshotClearsOnFailedMutationExpiryAndShutdown(t *testin
 	past := time.Now().Add(-time.Second)
 	expired.ExpiresAt = &past
 	token := w.accountDisplay.begin(false)
-	w.accountDisplay.finish(token, false, expired, true)
+	w.accountDisplay.finish(token, false, expired, nil, true)
 	if got := w.PlatformSessionSnapshot(); got.DisplayName != "" {
 		t.Fatal("expired account snapshot retained a username", got)
 	}
 	token = w.accountDisplay.begin(false)
-	w.accountDisplay.finish(token, false, signedInDisplay(), true)
+	w.accountDisplay.finish(token, false, signedInDisplay(), nil, true)
 	w.accountDisplay.invalidateOnError(context.Canceled)
 	if got := w.PlatformSessionSnapshot(); got.DisplayName == "" {
 		t.Fatal("ordinary cancellation discarded valid account display state")

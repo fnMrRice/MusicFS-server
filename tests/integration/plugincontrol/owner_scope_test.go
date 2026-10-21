@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/plugindisplay"
 	"github.com/fnMrRice/MusicFS-server/src/config"
 	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
@@ -28,16 +29,21 @@ func TestPluginManagementOwnerScopeAndAdministratorAllUsers(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer manager.Close()
-	for _, item := range []struct{ id, owner, account string }{
-		{ownID, "admin", "First account"},
-		{secondID, "admin", "Second account"},
-		{otherID, "other-admin", "Other private account"},
+	for _, item := range []struct {
+		id, owner, account string
+		count              int64
+	}{
+		{ownID, "admin", "First account", 7},
+		{secondID, "admin", "Second account", 3},
+		{otherID, "other-admin", "Other private account", 11},
 	} {
 		if err := manager.Register(item.id, plugincontrol.Hooks{AccountName: func(_ context.Context, owner string) string {
 			if owner == item.owner {
 				return item.account
 			}
 			return ""
+		}, DisplayCount: func() *plugindisplay.Count {
+			return &plugindisplay.Count{Value: item.count, Unit: "listeners", LocalizedUnits: map[string]string{"zh": "位听众"}}
 		}}, false); err != nil {
 			t.Fatal(err)
 		}
@@ -46,11 +52,12 @@ func TestPluginManagementOwnerScopeAndAdministratorAllUsers(t *testing.T) {
 	for _, tc := range []struct {
 		name, user, query string
 		ids               []string
+		count             int64
 	}{
-		{"default", "admin", "", []string{ownID, secondID}},
-		{"explicit-own", "admin", "?allUsers=false", []string{ownID, secondID}},
-		{"all-users", "admin", "?allUsers=true", []string{ownID, secondID, otherID}},
-		{"other-admin-own", "other-admin", "", []string{otherID}},
+		{"default", "admin", "", []string{ownID, secondID}, 10},
+		{"explicit-own", "admin", "?allUsers=false", []string{ownID, secondID}, 10},
+		{"all-users", "admin", "?allUsers=true", []string{ownID, secondID, otherID}, 21},
+		{"other-admin-own", "other-admin", "", []string{otherID}, 11},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			w := managementRequest(server, cookies[tc.user], "GET", "/admin/plugins"+tc.query, "", "", "")
@@ -62,6 +69,10 @@ func TestPluginManagementOwnerScopeAndAdministratorAllUsers(t *testing.T) {
 			}
 			if len(snapshot.Items) != 2 || len(snapshot.Items[0].Instances) != len(tc.ids) || len(snapshot.Items[1].Instances) != 1 {
 				t.Fatal("online scope or shared instances changed", w.Body.String())
+			}
+			count := snapshot.Items[0].DisplayCount
+			if count == nil || count.Value != tc.count || count.Unit != "listeners" || count.LocalizedUnits["zh"] != "位听众" || snapshot.Items[1].DisplayCount != nil {
+				t.Fatal("plugin display count did not follow the authorized scope", w.Body.String())
 			}
 			for index, id := range tc.ids {
 				item := snapshot.Items[0].Instances[index]

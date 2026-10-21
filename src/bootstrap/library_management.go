@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/plugindisplay"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/config"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
@@ -94,6 +95,12 @@ func configureLibraryManagement(runCtx context.Context, c config.Config, lib *li
 					return nil
 				}
 				return r.Worker.PluginIdentity()
+			}, DisplayCount: func() *plugindisplay.Count {
+				r, ok := lib.Runtime(id)
+				if !ok || r.Worker == nil {
+					return nil
+				}
+				return r.Worker.DisplayCount()
 			}, PluginVersion: func() string {
 				r, ok := lib.Runtime(id)
 				if !ok || r.Worker == nil {

@@ -3,6 +3,8 @@ package online
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/fnMrRice/MusicFS-server/sdk/plugindisplay"
 )
 
 // AccountView is the only account data exposed to HTTP consumers.
@@ -31,6 +33,7 @@ type AccountRequest struct {
 }
 
 type AccountResult struct {
-	View   AccountView     `json:"view"`
-	Secret json.RawMessage `json:"secret,omitempty"`
+	View         AccountView          `json:"view"`
+	Secret       json.RawMessage      `json:"secret,omitempty"`
+	DisplayCount *plugindisplay.Count `json:"displayCount,omitempty"`
 }

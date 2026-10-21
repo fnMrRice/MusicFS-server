@@ -3,6 +3,7 @@ package plugins_test
 import (
 	"encoding/json"
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/plugindisplay"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -26,6 +27,7 @@ func TestPlatformAccountWireSchema(t *testing.T) {
 		map[string]any{"jsonrpc": "2.0", "id": "request", "method": "provider.online.account", "params": pluginproto.OnlineAccount{Context: scope, Request: online.AccountRequest{Action: "begin"}}},
 		map[string]any{"jsonrpc": "2.0", "id": "request", "result": pluginproto.OnlineResult[online.AccountResult]{Context: scope, Value: online.AccountResult{View: online.AccountView{State: "signedOut"}}}},
 		map[string]any{"jsonrpc": "2.0", "id": "request", "result": pluginproto.OnlineResult[online.AccountResult]{Context: scope, Value: online.AccountResult{View: online.AccountView{State: "signedIn", AccountID: "12345", DisplayName: "Fixture listener", AvatarURL: "https://p2.music.126.net/fixture/avatar.jpg"}}}},
+		map[string]any{"jsonrpc": "2.0", "id": "request", "result": pluginproto.OnlineResult[online.AccountResult]{Context: scope, Value: online.AccountResult{View: online.AccountView{State: "signedOut"}, DisplayCount: &plugindisplay.Count{Value: 0, Unit: "users", LocalizedUnits: map[string]string{"zh": "个用户"}}}}},
 	}
 	for _, value := range values {
 		raw, _ := json.Marshal(value)

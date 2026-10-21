@@ -26,7 +26,12 @@ type accountState struct {
 }
 type accountSecret = session.Secret
 
-func (c *Client) Account(ctx context.Context, r AccountRequest) (AccountResult, error) {
+func (c *Client) Account(ctx context.Context, r AccountRequest) (result AccountResult, err error) {
+	defer func() {
+		if err == nil {
+			result.DisplayCount = accountDisplayCount(result.View)
+		}
+	}()
 	a := &c.account
 	if r.Action == "logout" || (r.Action == "signalCancel" && r.LoginID == "*") {
 		a.revoked.Store(true)
@@ -163,7 +168,7 @@ func (c *Client) Account(ctx context.Context, r AccountRequest) (AccountResult, 
 	default:
 		return AccountResult{}, domain.Fail("INVALID_ARGUMENT", "Unknown platform account operation")
 	}
-	result := AccountResult{View: a.view}
+	result = AccountResult{View: a.view}
 	if a.secret.AccountID != "" {
 		result.Secret, _ = json.Marshal(a.secret)
 	}
