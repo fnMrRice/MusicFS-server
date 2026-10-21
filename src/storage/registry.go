@@ -9,6 +9,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 )
 
@@ -39,7 +40,7 @@ func snapshotName(name string) bool {
 // Register only accepts a complete matching contract and never replaces an
 // existing implementation. Registration is intended for trusted server modules.
 func (r *Registry) Register(driver Driver) error {
-	if !backendName.MatchString(driver.Name) || driver.Version != ContractVersion ||
+	if !backendName.MatchString(driver.Name) || driver.Version != ContractVersion || !pluginproto.ValidPluginVersion(driver.PluginVersion) ||
 		!snapshotName(driver.SnapshotName) || !snapshotName(driver.RestoredName) ||
 		driver.Open == nil || driver.OpenMaintenance == nil ||
 		driver.BackupSchemaVersion == nil || driver.InspectBackup == nil {

@@ -85,7 +85,12 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 		}
 		c = current
 	}
-	pluginManager, err := plugincontrol.New(ctx, c, configuration, store)
+	storageDriver, err := storage.Lookup(c.Storage.Backend)
+	if err != nil {
+		store.Close()
+		return nil, nil, err
+	}
+	pluginManager, err := plugincontrol.New(ctx, c, configuration, store, storageDriver.PluginVersion)
 	if err != nil {
 		store.Close()
 		return nil, nil, err

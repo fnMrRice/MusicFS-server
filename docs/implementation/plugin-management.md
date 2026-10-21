@@ -13,6 +13,7 @@ Server 提供插件/实例状态查询、开关与设置管理，要求管理员
 | 对象/字段 | 规则 |
 | --- | --- |
 | pluginId / instanceId | 插件总开关作用于全部实例；各实例仍有独立保存开关和稳定 ID |
+| 插件项 version | 必填发行版本；最多 128 字符的有效 SemVer，与实例状态、配置修订及 Server 版本分离 |
 | configuredEnabled | 对象自身已保存的开关，插件与实例分别报告 |
 | effectiveEnabled | 按当前进程运行开关及必需配置计算，不按尚待重启的保存开关计算；不等于已就绪 |
 | acceptingNewWork | 当前运行开关、依赖、权限与运行状态满足准入；配置重建的 draining 期间为 false |
@@ -39,13 +40,17 @@ Server 提供插件/实例状态查询、开关与设置管理，要求管理员
 
 以下路由均以 `/api/v1` 为前缀，管理端点要求管理员。
 
+2026-10-21 基础设施展示增量：在普通插件后追加必需数据库及官方 DSP 增益条目。新增可选 `required`、`stateMutable`、`storage`、`dsp` 字段；当前普通插件明确返回 `stateMutable=true`，基础设施返回 `false` 且没有普通实例。数据库 `required=true`，状态修改返回 `UNSUPPORTED`（HTTP 415），不会保存停用或启动重建操作。`storage` 只展示后端标识、执行模式和宿主内存可用性；外部数据库以通用身份与真实握手版本展示，不从路径推测为 SQLite。`dsp` 显示未配置、已注册未入链或已入启动链，并保留 gain 各节点在完整链中的原始位置、内建/独立进程模式、节点版本和数值参数；不把配置参与状态称为正在处理。两者均不泄露程序路径、进程参数、摘要、连接选项或凭据。具体语义与第三方展示边界见 [DSP](../dsp-plugins.md) 和[数据库](../storage-plugins.md)。旧客户端可以忽略可选字段，但需容忍 `instances=[]`；新客户端以 `stateMutable=false` 或 `required=true` 阻止普通启停操作。
+
+2026-10-21 发行版本增量：`GET /admin/plugins` 的每个插件项必须包含有效 `version`。七种普通随包插件从 [sdk/bundledplugin/releases.go](../../sdk/bundledplugin/releases.go) 读取与 Worker 同源的发行声明；没有实例或尚无有效握手版本时仍返回声明，包括未启动、待配置、已禁用和启动失败的情况。成功握手的有效版本优先，不使用 Server 版本、实例修订或空字符串填充。未知插件 ID 仍由配置及管理层拒绝。版本可展示不等于 Worker 已就绪，客户端仍须读取实例运行状态；旧 Server 缺字段时的界面兼容提示不放宽当前 API 必填约束。
+
 2026-10-20 实例归属增量：两条插件列表默认只返回当前 MusicFS 用户的在线账号实例，共享非账号插件实例仍保留；管理员显式设置 `allUsers=true` 可查看所有用户实例，省略或 `false` 均保持本人范围。管理快照的账号实例携带 `ownerUserId`，可选 `accountName` 仅来自当前已验证、未过期且可用的平台账号显示快照，未登录或离线时省略；该字段不能作为授权依据，也不包含令牌、Cookie 或登录链接。
 
 部署在在线插件实例 `instanceId` 同级配置 `ownerUserId`，缺省兼容为 `admin`；不同 MusicFS 用户、同一用户的不同平台账号使用独立 UUID 实例并分别登录。当前产品仍只有 `admin` 登录入口，尚无多用户创建/注册功能；配置归属不等于提供新用户登录。`allUsers` 仅扩大管理展示，不扩大 `/online-instances` 或账号登录/退出请求的用户范围。旧客户端须兼容可选字段；原来依赖全量管理列表的管理员客户端应显式传 `allUsers=true`。配置及凭据边界见[YAML 配置](../configuration.md)。
 
 | 路由 | 作用 |
 | --- | --- |
-| GET /admin/plugins | 保存/应用修订、restartRequired、插件与实例开关及运行状态 |
+| GET /admin/plugins | 保存/应用修订、restartRequired、插件身份及必填发行版本、实例开关及运行状态 |
 | GET /admin/plugins/{pluginId}/instances | 实例保存开关、当前有效开关、状态、活动租约和重启原因 |
 | PUT /admin/plugins/{pluginId}/state | 保存总开关；停用需重启，启用可动态应用 |
 | PUT /admin/plugin-instances/{instanceId}/state | 保存实例开关，采用相同生效规则 |

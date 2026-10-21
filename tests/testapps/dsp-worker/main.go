@@ -39,7 +39,7 @@ func (h *helperNode) Process(block *audio.Block) error {
 
 func main() {
 	mode := os.Args[1]
-	if mode == "version" {
+	if mode == "version" || mode == "missing-version" || mode == "blank-version" || mode == "invalid-version" {
 		var header [12]byte
 		if _, err := io.ReadFull(os.Stdin, header[:]); err != nil {
 			os.Exit(3)
@@ -48,7 +48,16 @@ func main() {
 			os.Exit(3)
 		}
 		response := map[string]any{"protocolVersion": 1, "pluginVersion": "0.1.0", "name": "test.gain", "nodeVersion": audio.NodeVersion, "format": audio.Canonical, "preservesTiming": true, "stateless": true}
-		response["protocolVersion"] = 2
+		switch mode {
+		case "version":
+			response["protocolVersion"] = 2
+		case "missing-version":
+			delete(response, "pluginVersion")
+		case "blank-version":
+			response["pluginVersion"] = " "
+		case "invalid-version":
+			response["pluginVersion"] = "1.2"
+		}
 		body, _ := json.Marshal(response)
 		copy(header[:4], "MFD1")
 		binary.LittleEndian.PutUint32(header[4:], 1)
@@ -58,7 +67,7 @@ func main() {
 		io.Copy(io.Discard, os.Stdin)
 		return
 	}
-	err := dspworker.Serve(context.Background(), os.Stdin, os.Stdout, "test.gain", func(params map[string]float64) (audio.Node, error) {
+	err := dspworker.Serve(context.Background(), os.Stdin, os.Stdout, "test.gain", "0.1.0", func(params map[string]float64) (audio.Node, error) {
 		node, err := dsp.NewGain(params["gainDB"])
 		return &helperNode{Node: node, mode: mode}, err
 	})

@@ -117,6 +117,10 @@ func TestDefaultSQLiteAndRegistrationValidation(t *testing.T) {
 	for _, change := range []func(*storage.Driver){
 		func(d *storage.Driver) { d.Name = "../bad" },
 		func(d *storage.Driver) { d.Version++ },
+		func(d *storage.Driver) { d.PluginVersion = "" },
+		func(d *storage.Driver) { d.PluginVersion = " " },
+		func(d *storage.Driver) { d.PluginVersion = "1.0" },
+		func(d *storage.Driver) { d.PluginVersion = "1.0.0-01" },
 		func(d *storage.Driver) { d.Open = nil },
 		func(d *storage.Driver) { d.OpenMaintenance = nil },
 		func(d *storage.Driver) { d.InspectBackup = nil },

@@ -1,6 +1,8 @@
 package audioffmpeg
 
-const audioPluginVersion = "0.2.0"
+import "github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
+
+const audioPluginVersion = bundledplugin.FFmpegVersion
 
 // ProcessingIdentity describes the verified, fixed startup toolchain. A zero
 // Processor has no verified worker identity and cannot publish reusable output.

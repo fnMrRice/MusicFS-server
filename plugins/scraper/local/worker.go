@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/enrichment"
@@ -61,7 +62,7 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 		}
 		w.hello = hello
 		w.client = localClient(u.Host)
-		return pluginproto.Ready{InstanceID: hello.InstanceID, Nonce: hello.Nonce, Manifest: pluginproto.Manifest{PluginID: PluginID, Plugin: pluginconfig.Identity(PluginID), PluginVersion: "0.1.0", ProtocolVersion: pluginproto.ProtocolVersion, SupportsMultipleInstances: pluginconfig.SupportsMultipleInstances("musicfs.scraper.local"), Roles: []string{pluginconfig.Role("musicfs.scraper.local")}, Capabilities: []string{"scrape.search", "scrape.fetch", "lyrics", "artwork"}, Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: enrichment.MaxCandidates}}, nil
+		return pluginproto.Ready{InstanceID: hello.InstanceID, Nonce: hello.Nonce, Manifest: pluginproto.Manifest{PluginID: PluginID, Plugin: pluginconfig.Identity(PluginID), PluginVersion: bundledplugin.LocalScraperVersion, ProtocolVersion: pluginproto.ProtocolVersion, SupportsMultipleInstances: pluginconfig.SupportsMultipleInstances("musicfs.scraper.local"), Roles: []string{pluginconfig.Role("musicfs.scraper.local")}, Capabilities: []string{"scrape.search", "scrape.fetch", "lyrics", "artwork"}, Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: enrichment.MaxCandidates}}, nil
 	}
 	if w.hello.Nonce == "" {
 		return nil, fmt.Errorf("PROTOCOL_MISMATCH: scraper handshake required")

@@ -14,6 +14,9 @@ import (
 func (m *Manager) Change(ctx context.Context, owner string, change config.Change) (Operation, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if change.PluginID == m.storagePluginID() || change.PluginID == "musicfs.plugin.storage.sqlite" || change.PluginID == "musicfs.dsp.gain" {
+		return Operation{}, domain.Fail("UNSUPPORTED", "Infrastructure plugins are controlled by startup configuration")
+	}
 	if m.store == nil || m.repo == nil {
 		return Operation{}, domain.Fail("CONFIG_READ_ONLY", "Configuration file is not available for management")
 	}

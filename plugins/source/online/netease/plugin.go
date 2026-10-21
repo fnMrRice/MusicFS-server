@@ -6,6 +6,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/plugins/source/online/internal/adapter"
 	"github.com/fnMrRice/MusicFS-server/plugins/source/online/netease/driver"
+	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/sdk/provider"
@@ -21,7 +22,7 @@ func Plugin(options Options) provider.Plugin {
 		Features:       []string{"music-source"},
 	}
 	return provider.Plugin{
-		Descriptor: descriptor, Version: "0.1.0",
+		Descriptor: descriptor, Version: bundledplugin.NetEaseVersion,
 		NewClient: func(scope online.Scope, timeout time.Duration) (provider.Client, error) {
 			opts := options
 			opts.Timeout = timeout

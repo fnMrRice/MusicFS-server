@@ -6,6 +6,10 @@ Host 发出的 ID 为 `h-` 前缀，Worker 调用 Host 时用 `w-`。一帧只�
 
 `host.hello` 请求绑定 instanceId、配置修订和本次随机 nonce。成功结果为 Ready（逻辑上的 worker.ready），必须回显 instanceId、nonce，并用 manifest 声明精确 protocolVersion。1.0 只协商 1.0；主版本不匹配必须拒绝。每个角色实例独立 Worker，实例/账号权限由 Host 启动上下文固定，不能被请求字段切换。账户引用不是凭据。
 
+Manifest 的 `pluginVersion` 对 Provider、音频和 Scraper 都是必填项，必须是最多 128 字符的有效 SemVer；缺失、空白、不完整版本及带前导零的纯数字预发行标识均被拒绝。`pluginVersion` 是插件发行版本，独立于 `protocolVersion=1.0`、Server 版本和配置修订；发行号有效不代表协议兼容，角色的其他握手约束仍须满足。随包 Worker 与宿主元数据共用 [sdk/bundledplugin/releases.go](../../../../sdk/bundledplugin/releases.go) 的各插件声明。
+
+`GET /api/v1/admin/plugins` 的插件项 `version` 同样必填；尚无有效握手版本时使用随包声明，覆盖没有实例、未启动、待配置、已禁用或启动失败的状态，有效握手版本优先。该展示字段不授予运行能力，也不以宿主版本填充。独立 DSP 和存储采用专用握手，同样新增必填 `pluginVersion`；新宿主拒绝缺少发行号的旧 Worker，须配套升级，具体见 [DSP 插件](../../../dsp-plugins.md)与[存储插件](../../../storage-plugins.md)。
+
 `instanceId` 使用规范小写、非空 UUID，与插件 ID 和显示别名分离。Manifest 必须包含 `plugin`（`id/name/localizedNames/features`）与 `supportsMultipleInstances`；`name` 是插件提供的默认别名，`localizedNames` 提供语言别名。SDK 的多实例布尔值默认 `false`，官方在线来源和本地元数据提取声明 `true`，本地音乐、FFmpeg、NCM 声明 `false`。单实例插件最多保存一个实例，禁用实例同样计数。宿主核验握手声明，管理接口 `/admin/plugins` 对每个插件返回同名字段，客户端据此决定是否展示多实例入口。在线实例名称优先使用当前用户已验证的平台账号用户名，退出登录后不保留账号名，也不以 UUID 替代显示别名。
 
 FFmpeg/NCM 的单次任务握手使用 `DecoderHello`，额外必需 `taskId`。实例 UUID 在该配置生命周期内保持稳定；请求的任务 ID 必须匹配握手任务 ID，nonce 继续绑定本次通道。本地音乐和在线来源握手不传此字段。
@@ -16,7 +20,7 @@ FFmpeg/NCM 的单次任务握手使用 `DecoderHello`，额外必需 `taskId`。
 
 本地来源增加 `plugin.displayCount`：Host 在初始化后发送 `{instanceId, rootIds}`，仅传当前配置选中的根 ID，不传物理路径；根 ID 非空、不可重复、最多 1024 项。Worker 要求 instanceId 与握手绑定一致，响应直接为统计对象；Local Files 以选中的目录来源生成数量和“个来源”译名。Host 在独立的 1 秒超时内查询，验证结果并缓存，管理查询不触发 RPC；旧插件不支持、查询失败、超时或统计格式非法时均省略统计，不阻断插件启动。在线来源通过[账号响应](account.md)的可选 `displayCount` 提供相同结构。此展示字段不增加目录访问能力或账号权限，Worker 与 Host 的严格响应解码须配套更新。
 
-Go 消费入口已迁到独立 `sdk` 模块，见 [SDK 使用与分发](../../../plugin-sdk.md)。在线插件的 `pluginVersion` 接受合法语义版本，不再固定为 `0.1.0`；通信版本与资料修订仍精确校验。能力可声明当前平台允许集合的子集，Manifest 启用能力须与描述中的 `supported=true` 集合一致。宿主保留对未知或未验证能力的拒绝；旧宿主可能拒绝新插件版本或能力子集，首次拆分升级先更新宿主。HTTP 数据结构与平台账号作用域保持不变。
+Go 消费入口已迁到独立 `sdk` 模块，见 [SDK 使用与分发](../../../plugin-sdk.md)。在线插件的 `pluginVersion` 接受合法语义版本，不再固定为 `0.1.0`；通信版本与资料修订仍精确校验。能力可声明当前平台允许集合的子集，Manifest 启用能力须与描述中的 `supported=true` 集合一致。宿主保留对未知或未验证能力的拒绝；旧宿主可能拒绝新插件版本或能力子集，首次拆分升级先更新宿主。平台账号作用域保持不变；插件管理 `version` 必填规则见前文。
 
 Manifest的 `configuration` 为插件提供的导入选项声明；不支持导入配置的音频插件发送null。Local Files 0.3.0声明 `local-import-v5`，字段为 `schemaRevision/importOptionsSchema/importDefaults/unavailableOptions`，标题与说明为纯文本。声明限制32 KiB、8层、每对象32属性；受限Schema支持有界字符串数组，拒绝外部引用/执行扩展。`ImportOptions` 和 `ScanScope` 保留必需 `excludePatterns` 数组，最多32条、每条UTF-8最多256字节；Host与发布范围共用根相对glob语义，见[扫描说明](../../../scanning.md)。规则排序绑定PlanDigest，cursor/grant不能在同任务中换规则；不兼容旧开发声明。
 

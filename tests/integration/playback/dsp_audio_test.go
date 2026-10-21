@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
+	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/src/audio"
 	"github.com/fnMrRice/MusicFS-server/src/audio/dspworker"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
@@ -56,6 +57,9 @@ func TestDSPActualPlaybackCacheSeekRecoveryAndFingerprintIsolation(t *testing.T)
 	dsp, err := audioffmpeg.NewProcessor(ctx, cfg)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if dsp.DSPPluginVersion("musicfs.dsp.gain") != bundledplugin.GainVersion || dsp.DSPPluginVersion("unused.vendor.plugin") != "" {
+		t.Fatal("processor lost the verified DSP release or invented an unused plugin release")
 	}
 	f.player.UpdateAudio(dsp, nil)
 	f.request.Preferences.ForceProcessing = false

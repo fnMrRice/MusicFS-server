@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/src/config"
 	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
@@ -25,7 +26,7 @@ func TestPluginManagementHTTPVerifiedVersionMetadata(t *testing.T) {
 	}, false); err != nil {
 		t.Fatal(err)
 	}
-	for _, current := range []string{"", "2.3.4-rc.1+fixture"} {
+	for _, current := range []string{"", " ", "2.3.4-rc.1+fixture"} {
 		version = current
 		response := managementRequest(server, cookies["admin"], "GET", "/admin/plugins", "", "", "")
 		requireHTTP(t, response, 200, "")
@@ -37,11 +38,22 @@ func TestPluginManagementHTTPVerifiedVersionMetadata(t *testing.T) {
 			t.Fatal(err)
 		}
 		got, present := snapshot.Items[0]["version"]
-		if current == "" && present {
-			t.Fatal("HTTP response invented an unknown version", got)
+		want := current
+		if current == "" || current == " " {
+			want = bundledplugin.NCMVersion
 		}
-		if current != "" && got != current {
-			t.Fatal("HTTP response lost the verified plugin version", got)
+		if !present || got != want {
+			t.Fatal("HTTP response lost the declared or verified plugin version", got)
+		}
+		for _, invalid := range []any{nil, "", " ", "1.0", "1.0.0-01"} {
+			if invalid == nil {
+				delete(snapshot.Items[0], "version")
+			} else {
+				snapshot.Items[0]["version"] = invalid
+			}
+			if testkit.ContractSchema(t, "http", "ManagedPlugin").Validate(snapshot.Items[0]) == nil {
+				t.Fatalf("HTTP contract accepted invalid plugin version: %v", invalid)
+			}
 		}
 	}
 }

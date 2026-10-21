@@ -144,12 +144,26 @@ func TestExternalStorageAndDSPServerRestartAndPortableRestore(t *testing.T) {
 
 func assertStorageCannotBeDisabled(t *testing.T, c *client, managed plugincontrol.Snapshot) {
 	t.Helper()
+	storageID := ""
+	dspFound := false
 	for _, plugin := range managed.Items {
-		if strings.Contains(plugin.PluginID, "storage") || plugin.PluginID == "sqlite" {
-			t.Fatal("mandatory storage appeared in the optional plugin management list")
+		if plugin.Storage != nil {
+			storageID = plugin.PluginID
+			if !plugin.Required || plugin.StateMutable || plugin.Storage.Mode != "process" || plugin.Storage.RuntimeState != "ready" || plugin.Version != "0.1.0" || len(plugin.Instances) != 0 {
+				t.Fatalf("mandatory storage metadata is invalid: %+v", plugin)
+			}
+		}
+		if plugin.DSP != nil {
+			dspFound = true
+			if plugin.StateMutable || !plugin.DSP.Configured || plugin.DSP.ChainState != "in_chain" || len(plugin.DSP.Nodes) != 1 || plugin.DSP.Nodes[0].Position != 1 || plugin.DSP.Nodes[0].Params["gainDB"] != -6 || plugin.DSP.Nodes[0].Mode != "process" {
+				t.Fatalf("DSP startup configuration metadata is invalid: %+v", plugin)
+			}
 		}
 	}
-	for _, id := range []string{"musicfs.plugin.storage.sqlite", "storage", "sqlite"} {
+	if storageID == "" || !dspFound {
+		t.Fatal("infrastructure plugins are absent from the management list")
+	}
+	for _, id := range []string{storageID, "musicfs.plugin.storage.sqlite", "musicfs.dsp.gain", "storage", "sqlite"} {
 		request, err := http.NewRequest("PUT", c.base+"/api/v1/admin/plugins/"+id+"/state", strings.NewReader(`{"enabled":false,"mode":"force"}`))
 		if err != nil {
 			t.Fatal(err)
@@ -165,7 +179,11 @@ func assertStorageCannotBeDisabled(t *testing.T, c *client, managed plugincontro
 		}
 		body, readErr := io.ReadAll(response.Body)
 		response.Body.Close()
-		if readErr != nil || response.StatusCode != http.StatusNotFound || !bytes.Contains(body, []byte(`"NOT_FOUND"`)) {
+		wantStatus, wantCode := http.StatusUnsupportedMediaType, "UNSUPPORTED"
+		if id == "storage" || id == "sqlite" {
+			wantStatus, wantCode = http.StatusNotFound, "NOT_FOUND"
+		}
+		if readErr != nil || response.StatusCode != wantStatus || !bytes.Contains(body, []byte(`"`+wantCode+`"`)) {
 			t.Fatalf("mandatory storage disable was not rejected: id=%s status=%d %s err=%v", id, response.StatusCode, body, readErr)
 		}
 	}

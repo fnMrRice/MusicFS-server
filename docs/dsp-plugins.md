@@ -4,6 +4,8 @@
 
 本次官方音频 Worker 实现版本为 `0.2.0`。Host 握手要求该精确版本，旧 `0.1.0` 即使能忽略未知 JSON 字段也会在任何音频请求前被拒绝，避免遗漏配置 DSP。Server 与 `musicfs-plugins`（或独立 `musicfs-plugin-audio-ffmpeg`）须配套升级，包括未配置额外 DSP 的部署；更新后同步固定的可执行摘要。控制协议仍为 1.0，独立 DSP 帧协议仍为 v1。
 
+2026-10-21 发行版本增量：独立 DSP 的 ready 响应必须提供 `pluginVersion`，使用最多 128 字符的有效 SemVer，缺失、空白或无效值均被宿主拒绝；Worker 的 `Serve` 入口也在初始化节点前校验版本。该发行号与整数 `protocolVersion`、`nodeVersion` 分离。官方 gain 使用 [sdk/bundledplugin/releases.go](../sdk/bundledplugin/releases.go) 中的 `GainVersion`，当前为 `0.1.0`。Server、音频 Worker、统一插件程序及使用的独立 DSP 入口须配套升级并更新固定摘要；旧 DSP 即使帧协议仍为 v1，也会因缺少发行版本被新宿主拒绝。
+
 ## 配置与执行
 
 Server 的 `audioDSP` 是部署配置，修改后重启生效。先执行播放用户偏好的 gain，再按 `chain` 数组顺序执行节点；节点顺序会影响削波等结果，不自动排序或合并。配置非空链时，即使原曲格式可直接播放，也进入 `processed` 路径并要求终端支持 `audio/mpeg`。
@@ -42,7 +44,11 @@ audioDSP:
 
 内建 `gain` 仅接受 `gainDB`，范围 -96—12 dB；`bypass` 不接受参数。HTTP 用户偏好仍为 `gainDb`，原有 -60—0 dB 边界不变。配置中的外部路径、启动参数和可执行摘要不会出现在 Web 播放描述中。
 
-当前通过部署文件注册外部 DSP，尚无外部 DSP 商店、上传安装、自动发现或管理界面。所有配置节点均必需，运行失败会中止处理，不自动旁路。非空链要求音频实例启用；若启动时处理器或必需 DSP 不可用，Server 拒绝启动，避免静默退回原流。执行权限与工具设置还须满足[配置说明](configuration.md)。
+当前通过部署文件注册外部 DSP，尚无外部 DSP 商店、上传安装、自动发现或配置编辑界面。所有配置节点均必需，运行失败会中止处理，不自动旁路。非空链要求音频实例启用；若启动时处理器或必需 DSP 不可用，Server 拒绝启动，避免静默退回原流。执行权限与工具设置还须满足[配置说明](configuration.md)。
+
+2026-10-21 管理展示增量：插件列表固定展示官方 `musicfs.dsp.gain`，`stateMutable=false`、`instances=[]`，不通过普通实例启停或配置接口修改。其 `dsp.configured` 表示已注册官方外部 gain 或在启动链中使用内建/外部 gain；`chainState` 为 `not_configured`（未配置）、`not_in_chain`（已注册但未加入链）、`in_chain`（已加入启动链）。`nodes` 汇总内建 `gain` 与官方外部 `musicfs.dsp.gain`，分别保留 `mode=builtin/process`、完整原链从 1 开始的位置、节点协议版本及数值参数。重复节点保序，其他节点造成的位置间隔不会被重排；用户偏好增益及 `bypass` 不另列插件。
+
+这些字段描述本次启动配置，不表示当前正在播放或有 DSP 进程运行。`configuredEnabled` 对此行仅表示已加入配置链。发行版本默认来自官方共享声明；音频处理器现有初始化握手已验证外部 gain 时优先显示该发行版本，读取列表不会启动额外进程。任意第三方 DSP 尚无静态发行声明，当前不为其生成独立管理插件条目，也不冒用官方 gain 的版本；本展示不等同于完整第三方 DSP 目录。投影不含程序路径、启动参数、摘要或凭据，配置修改仍须编辑部署文件并重启 Server。
 
 ## 构建并使用示例
 
@@ -60,10 +66,10 @@ go build -o ./bin/musicfs-plugins.exe ./src/app/musicfs-plugins
 Go 插件入口调用：
 
 ```go
-dspworker.Serve(ctx, os.Stdin, os.Stdout, name, factory)
+dspworker.Serve(ctx, os.Stdin, os.Stdout, name, "0.1.0", factory)
 ```
 
-`factory` 类型为 `audio.Factory`，从 `map[string]float64` 参数创建 `audio.Node`。节点须额外实现 `Stateless() bool` 并返回 `true`；`DelayFrames()` 必须为 0。SDK 在握手时配置固定 PCM 格式，调用 `Process/Reset/Drain`，退出时调用 `Close`。完整入口见上述示例，SDK 位于 [src/audio/dspworker](../src/audio/dspworker)。
+`name` 和新增的 `version` 参数均为字符串；示例中的 `"0.1.0"` 应替换为插件自己的有效发行版本，官方 gain 两个入口共用 `bundledplugin.GainVersion`。`factory` 类型为 `audio.Factory`，从 `map[string]float64` 参数创建 `audio.Node`。节点须额外实现 `Stateless() bool` 并返回 `true`；`DelayFrames()` 必须为 0。SDK 在握手时配置固定 PCM 格式，调用 `Process/Reset/Drain`，退出时调用 `Close`。完整入口见上述示例，SDK 位于 [src/audio/dspworker](../src/audio/dspworker)。
 
 其他语言可按下述帧协议编写独立程序。当前没有已验证的 C++ DSP 示例；Go 接口本身不是跨语言 ABI。
 
@@ -110,6 +116,7 @@ hello 响应必须包含：
   "name": "musicfs.dsp.gain",
   "nodeVersion": 1,
   "format": {"sampleFormat": "f32le", "sampleRate": 48000, "channels": 2, "layout": "stereo"},
+  "pluginVersion": "0.1.0",
   "delayFrames": 0,
   "tailFrames": 0,
   "preservesTiming": true,
@@ -117,7 +124,7 @@ hello 响应必须包含：
 }
 ```
 
-宿主核验协议版本、节点名称/版本、格式及上述能力。名称必须与配置注册项精确一致；不能仅声明兼容版本范围或任意其他 PCM 格式。SHA-256 由宿主读取可执行文件核验，不依赖插件自报。
+宿主核验协议版本、节点名称/版本、插件发行版本、格式及上述能力；成功握手后可通过 `Process.PluginVersion()` 读取已验证发行版本。名称必须与配置注册项精确一致；不能仅声明兼容版本范围或任意其他 PCM 格式。SHA-256 由宿主读取可执行文件核验，不依赖插件自报。
 
 ## PCM 块与时间语义
 
@@ -151,7 +158,7 @@ v1 算法必须无状态：结果不依赖之前的 PCM 块、播放起点或 Re
 
 ## 验证记录
 
-本次已通过：
+2026-10-20 已通过以下检查；该历史记录不代表本次发行版本必填增量已完成验证：
 
 ```text
 go test ./src/audio/... ./plugins/decoder/ffmpeg ./plugins/dsp/gain/cmd/musicfs-plugin-dsp-gain

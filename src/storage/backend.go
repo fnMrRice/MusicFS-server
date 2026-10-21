@@ -92,6 +92,7 @@ type Options struct {
 type Driver struct {
 	Name                string
 	Version             int
+	PluginVersion       string
 	SnapshotName        string
 	RestoredName        string
 	Open                func(context.Context, Options) (Backend, error)

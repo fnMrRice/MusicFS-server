@@ -34,6 +34,7 @@ type Config struct {
 type Processor struct {
 	gate          atomic.Pointer[lifecycleBinding]
 	version       atomic.Pointer[string]
+	dspVersions   map[string]string
 	config        Config
 	Capabilities  Capabilities
 	slots         chan struct{}
@@ -70,7 +71,8 @@ func NewProcessor(ctx context.Context, cfg Config) (*Processor, error) {
 	if cfg.WorkerSHA256 == "" || hash != cfg.WorkerSHA256 {
 		return nil, fmt.Errorf("ACCESS_DENIED: audio worker checksum mismatch")
 	}
-	chain, err := buildDSP(ctx, 0, cfg.DSPChain, cfg.DSPPlugins)
+	dspVersions := map[string]string{}
+	chain, err := buildDSPWithVersions(ctx, 0, cfg.DSPChain, cfg.DSPPlugins, dspVersions)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +81,7 @@ func NewProcessor(ctx context.Context, cfg Config) (*Processor, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Processor{config: cfg, Capabilities: capabilities, slots: make(chan struct{}, cfg.MaxConcurrent), normalizeSlot: make(chan struct{}, 1), identity: ProcessingIdentity{WorkerSHA256: hash, FFmpegSHA256: capabilities.FFmpegSHA256, PluginVersion: audioPluginVersion, PipelineRevision: dspRevision(cfg, hash)}}, nil
+	return &Processor{config: cfg, dspVersions: dspVersions, Capabilities: capabilities, slots: make(chan struct{}, cfg.MaxConcurrent), normalizeSlot: make(chan struct{}, 1), identity: ProcessingIdentity{WorkerSHA256: hash, FFmpegSHA256: capabilities.FFmpegSHA256, PluginVersion: audioPluginVersion, PipelineRevision: dspRevision(cfg, hash)}}, nil
 }
 
 type bootstrap struct {

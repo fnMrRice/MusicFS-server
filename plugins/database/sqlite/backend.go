@@ -5,6 +5,7 @@ import (
 	"math"
 	"path/filepath"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
 )
@@ -20,7 +21,7 @@ func init() {
 
 func Driver() storage.Driver {
 	return storage.Driver{
-		Name: "sqlite", Version: storage.ContractVersion,
+		Name: "sqlite", Version: storage.ContractVersion, PluginVersion: bundledplugin.SQLiteVersion,
 		SnapshotName: "db.sqlite", RestoredName: "musicfs.sqlite",
 		Open: func(ctx context.Context, options storage.Options) (storage.Backend, error) {
 			if err := validateOptions(options); err != nil {

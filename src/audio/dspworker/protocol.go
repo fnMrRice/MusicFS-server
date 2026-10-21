@@ -31,6 +31,7 @@ type hello struct {
 
 type ready struct {
 	ProtocolVersion int          `json:"protocolVersion"`
+	PluginVersion   string       `json:"pluginVersion"`
 	Name            string       `json:"name"`
 	NodeVersion     int          `json:"nodeVersion"`
 	Format          audio.Format `json:"format"`

@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/audio"
 )
 
@@ -25,6 +26,7 @@ type Process struct {
 	cleanup func()
 	stop    sync.Once
 	timeout time.Duration
+	version string
 }
 
 func New(ctx context.Context, cfg Config, params map[string]float64) (*Process, error) {
@@ -83,15 +85,18 @@ func New(ctx context.Context, cfg Config, params map[string]float64) (*Process, 
 	}()
 	data, err := p.exchange(frameHello, marshal(hello{ProtocolVersion: ProtocolVersion, Name: cfg.Name, NodeVersion: audio.NodeVersion, Format: audio.Canonical, Params: params}))
 	var response ready
-	if err == nil && (json.Unmarshal(data, &response) != nil || response.ProtocolVersion != ProtocolVersion || response.NodeVersion != audio.NodeVersion || response.Name != cfg.Name || response.Format != audio.Canonical || response.DelayFrames != 0 || response.TailFrames != 0 || !response.PreservesTiming || !response.Stateless) {
+	if err == nil && (json.Unmarshal(data, &response) != nil || !pluginproto.ValidPluginVersion(response.PluginVersion) || response.ProtocolVersion != ProtocolVersion || response.NodeVersion != audio.NodeVersion || response.Name != cfg.Name || response.Format != audio.Canonical || response.DelayFrames != 0 || response.TailFrames != 0 || !response.PreservesTiming || !response.Stateless) {
 		err = fmt.Errorf("PROTOCOL_MISMATCH: unsupported DSP worker contract")
 	}
 	if err != nil {
 		p.Close()
 		return nil, err
 	}
+	p.version = response.PluginVersion
 	return p, nil
 }
+
+func (p *Process) PluginVersion() string { return p.version }
 
 func (p *Process) Configure(format audio.Format) error {
 	if format != audio.Canonical {

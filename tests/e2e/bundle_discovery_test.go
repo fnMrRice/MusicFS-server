@@ -24,8 +24,16 @@ func TestBundledPluginsAutostartPendingAndPersistedDisable(t *testing.T) {
 				t.Fatalf("plugins: %d %s", code, raw)
 			}
 			testkit.ValidateHTTP(t, "PluginManagementSnapshot", raw)
-			valid := len(snapshot.Items) == 7 && snapshot.RestartRequired == restartRequired
+			valid := len(snapshot.Items) == 9 && snapshot.RestartRequired == restartRequired
 			for _, p := range snapshot.Items {
+				if p.Storage != nil {
+					valid = valid && p.Required && !p.StateMutable && p.Storage.RuntimeState == "ready" && len(p.Instances) == 0
+					continue
+				}
+				if p.DSP != nil {
+					valid = valid && !p.StateMutable && p.DSP.ChainState == "not_configured" && len(p.Instances) == 0
+					continue
+				}
 				want := "ready"
 				if p.PluginID == "musicfs.plugin.source.localfiles" || p.PluginID == "musicfs.plugin.decoder.ffmpeg" {
 					want = "pending_configuration"

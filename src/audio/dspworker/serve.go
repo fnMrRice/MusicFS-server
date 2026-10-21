@@ -6,14 +6,15 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/audio"
 )
 
 // Serve exposes one version-1, frame-preserving node over stdin/stdout. Plugins
 // must write diagnostics to stderr; stdout belongs exclusively to this protocol.
 // Node implementations must have zero latency and no output tail.
-func Serve(ctx context.Context, input io.Reader, output io.Writer, name string, factory audio.Factory) error {
-	if !validName.MatchString(name) || factory == nil {
+func Serve(ctx context.Context, input io.Reader, output io.Writer, name, version string, factory audio.Factory) error {
+	if !validName.MatchString(name) || !pluginproto.ValidPluginVersion(version) || factory == nil {
 		return fmt.Errorf("invalid DSP worker identity")
 	}
 	kind, payload, err := readFrame(input)
@@ -36,7 +37,7 @@ func Serve(ctx context.Context, input io.Reader, output io.Writer, name string, 
 	if node.DelayFrames() != 0 || !ok || !stateless.Stateless() {
 		return fail(output, fmt.Errorf("UNSUPPORTED: DSP v1 requires stateless processing with zero latency"))
 	}
-	err = writeFrame(output, frameHello, marshal(ready{ProtocolVersion: ProtocolVersion, Name: name, NodeVersion: audio.NodeVersion, Format: audio.Canonical, PreservesTiming: true, Stateless: true}))
+	err = writeFrame(output, frameHello, marshal(ready{ProtocolVersion: ProtocolVersion, PluginVersion: version, Name: name, NodeVersion: audio.NodeVersion, Format: audio.Canonical, PreservesTiming: true, Stateless: true}))
 	for err == nil {
 		if err = ctx.Err(); err != nil {
 			return err

@@ -34,6 +34,14 @@ func Identity(pluginID string) *pluginproto.PluginIdentity {
 		identity.Name = "Local Metadata Extraction"
 		identity.LocalizedNames = map[string]string{"zh": "本地元数据提取", "zh-Hans": "本地元数据提取", "zh-Hant": "本機中繼資料擷取"}
 		identity.Features = []string{"lyrics", "artwork"}
+	case "musicfs.plugin.storage.sqlite":
+		identity.Name = "SQLite Database"
+		identity.LocalizedNames = map[string]string{"zh": "SQLite 数据库", "zh-Hans": "SQLite 数据库", "zh-Hant": "SQLite 資料庫"}
+		identity.Features = []string{"database"}
+	case "musicfs.dsp.gain":
+		identity.Name = "DSP Gain"
+		identity.LocalizedNames = map[string]string{"zh": "DSP 增益", "zh-Hans": "DSP 增益", "zh-Hant": "DSP 增益"}
+		identity.Features = []string{"audio-dsp"}
 	default:
 		return nil
 	}

@@ -23,10 +23,23 @@ func frame(kind uint32, data []byte) []byte {
 
 func serveFrames(input []byte) ([]byte, error) {
 	var output bytes.Buffer
-	err := dspworker.Serve(context.Background(), bytes.NewReader(input), &output, "test.gain", func(params map[string]float64) (audio.Node, error) {
+	err := dspworker.Serve(context.Background(), bytes.NewReader(input), &output, "test.gain", "0.1.0", func(params map[string]float64) (audio.Node, error) {
 		return dsp.NewGain(params["gainDB"])
 	})
 	return output.Bytes(), err
+}
+
+func TestDSPServeRequiresReleaseVersion(t *testing.T) {
+	for _, version := range []string{"", " ", "1.2", "1.2.3-01"} {
+		called := false
+		err := dspworker.Serve(t.Context(), bytes.NewReader(nil), io.Discard, "test.gain", version, func(map[string]float64) (audio.Node, error) {
+			called = true
+			return dsp.NewGain(0)
+		})
+		if err == nil || called {
+			t.Fatalf("invalid release reached DSP initialization: %q", version)
+		}
+	}
 }
 
 func TestBinaryFramesBoundPCMAndRejectOversize(t *testing.T) {

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
+	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/src/config"
 	"github.com/fnMrRice/MusicFS-server/src/plugincontrol"
 )
@@ -78,6 +79,11 @@ func TestDiscoveredPluginPendingConfigureAndDisableSurviveReload(t *testing.T) {
 		}
 	}
 	assertState("pending_configuration")
+	for _, plugin := range m.Snapshot().Items {
+		if plugin.Version == "" || plugin.Version != bundledplugin.Version(plugin.PluginID) {
+			t.Fatalf("pending bundle plugin lost its release declaration: %+v", plugin)
+		}
+	}
 	if starts.Load() != 0 {
 		t.Fatal("started an unconfigured plugin")
 	}

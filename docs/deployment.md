@@ -25,7 +25,7 @@ Web 先在独立仓库按自己的工具链构建。`--web-root` 可省略；只
 
 三个在线平台默认使用 `musicfs-plugins --plugin netease|qqmusic|applemusic`。只有缺少全量统一程序时，自动发现才尝试同目录的平台独立程序和在线统一程序，按相同插件 ID 去重。显式自定义入口、禁用状态和实例身份保留；已固定的程序摘要不会自动清除，详见[发现与迁移](configuration.md#内置插件程序与自动发现)。
 
-新安装包将 SQLite 存储角色作为必需基础设施，`release.json` 标记为 `required: true`；生成的配置固定 `storage.backend: plugin`、`../bin/musicfs-plugins(.exe)`、`args: ['--plugin', 'storage-sqlite']` 及本次程序的实际 SHA-256，缺少文件时打包失败。它不进入普通插件启停列表、不提供禁用开关；程序缺失、校验失败或加载失败时拒绝启动。源仓库示例和未声明 storage 的旧配置保留内置 SQLite 兼容，迁移说明见[存储插件](storage-plugins.md)。
+新安装包将 SQLite 存储角色作为必需基础设施，`release.json` 标记为 `required: true`；生成的配置固定 `storage.backend: plugin`、`../bin/musicfs-plugins(.exe)`、`args: ['--plugin', 'storage-sqlite']` 及本次程序的实际 SHA-256，缺少文件时打包失败。数据库进入管理插件列表并标记“必需”，不提供禁用开关；程序缺失、校验失败或加载失败时拒绝启动。源仓库示例和未声明 storage 的旧配置保留内置 SQLite 兼容，外部数据库通用显示身份及迁移说明见[存储插件](storage-plugins.md)。
 
 存储与可选 DSP 通过各自配置启动，不加入普通插件自动发现。默认 `audioDSP.chain/plugins` 均为空；需要 DSP 时，在部署 YAML 的 `audioDSP.plugins` 中指定 `../bin/musicfs-plugins(.exe)`、`args: ['--plugin', 'dsp-gain']` 及实际 SHA-256，再配置处理链并重启，详见[DSP 插件](dsp-plugins.md)。更新统一二进制后须同步所有显式固定摘要。
 

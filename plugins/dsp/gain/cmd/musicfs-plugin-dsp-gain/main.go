@@ -7,6 +7,7 @@ import (
 	"os/signal"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/dsp/gain"
+	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/src/audio"
 	"github.com/fnMrRice/MusicFS-server/src/audio/dspworker"
 )
@@ -21,7 +22,7 @@ func main() {
 		}
 		return registry.Create("gain", params)
 	}
-	if err := dspworker.Serve(ctx, os.Stdin, os.Stdout, "musicfs.dsp.gain", factory); err != nil {
+	if err := dspworker.Serve(ctx, os.Stdin, os.Stdout, "musicfs.dsp.gain", bundledplugin.GainVersion, factory); err != nil {
 		fmt.Fprintln(os.Stderr, "DSP worker failed:", err)
 		os.Exit(1)
 	}

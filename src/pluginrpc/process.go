@@ -30,7 +30,10 @@ type hello struct {
 	Options                         json.RawMessage
 }
 
-type ready struct{ Protocol, Contract, Nonce string }
+type ready struct {
+	Protocol, Contract, Nonce string
+	PluginVersion             string `json:"pluginVersion"`
+}
 
 type Process struct {
 	*Endpoint
@@ -38,6 +41,7 @@ type Process struct {
 	done        chan struct{}
 	once        sync.Once
 	initialized bool
+	version     string
 }
 
 func Start(ctx context.Context, cfg ProcessConfig, contract reflect.Type, mode string, options any) (*Process, error) {
@@ -112,7 +116,7 @@ func Start(ctx context.Context, cfg ProcessConfig, contract reflect.Type, mode s
 	h := hello{Protocol: Protocol, Contract: Fingerprint(contract), Nonce: domain.NewID(), Mode: mode, Options: body}
 	var r ready
 	if err = p.Peer.Call(startup, "persistence.hello", h, &r); err != nil ||
-		r.Protocol != h.Protocol || r.Contract != h.Contract || r.Nonce != h.Nonce {
+		r.Protocol != h.Protocol || r.Contract != h.Contract || r.Nonce != h.Nonce || !pluginproto.ValidPluginVersion(r.PluginVersion) {
 		p.Close()
 		if startup.Err() != nil {
 			return nil, startup.Err()
@@ -120,8 +124,11 @@ func Start(ctx context.Context, cfg ProcessConfig, contract reflect.Type, mode s
 		return nil, domain.Fail("PROTOCOL_MISMATCH", "Persistence plugin handshake failed")
 	}
 	p.initialized = true
+	p.version = r.PluginVersion
 	return p, nil
 }
+
+func (p *Process) PluginVersion() string { return p.version }
 
 // Available reports established connection health without issuing an RPC.
 func (p *Process) Available() bool {
@@ -149,7 +156,10 @@ func (p *Process) Close() error {
 // defined by its SDK. Options come from the trusted host's deployment settings.
 type Factory func(context.Context, string, json.RawMessage) (any, reflect.Type, io.Closer, error)
 
-func Serve(ctx context.Context, input io.ReadCloser, output io.WriteCloser, contracts map[string]reflect.Type, factory Factory) error {
+func Serve(ctx context.Context, input io.ReadCloser, output io.WriteCloser, version string, contracts map[string]reflect.Type, factory Factory) error {
+	if !pluginproto.ValidPluginVersion(version) {
+		return fmt.Errorf("invalid persistence plugin release version")
+	}
 	e := NewEndpoint()
 	var mu sync.Mutex
 	var resource io.Closer
@@ -194,7 +204,7 @@ func Serve(ctx context.Context, input io.ReadCloser, output io.WriteCloser, cont
 			return nil, err
 		}
 		initialized = true
-		return ready{Protocol: Protocol, Contract: h.Contract, Nonce: h.Nonce}, nil
+		return ready{Protocol: Protocol, Contract: h.Contract, Nonce: h.Nonce, PluginVersion: version}, nil
 	}
 	e.Peer = pluginproto.NewPeerWithLimit(ctx, input, output, "w-", handler, MaxMessageBytes)
 	<-e.Peer.Done()

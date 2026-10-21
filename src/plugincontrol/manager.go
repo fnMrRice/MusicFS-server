@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/config"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
 	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
@@ -42,11 +44,16 @@ type Manager struct {
 	started           bool
 	sequence          int64
 	subscribers       map[chan Event]struct{}
+	storageVersion    string
 }
 
-func New(ctx context.Context, desired config.Config, store *config.Store, repo Repository) (*Manager, error) {
+func New(ctx context.Context, desired config.Config, store *config.Store, repo Repository, storageVersions ...string) (*Manager, error) {
 	run, cancel := context.WithCancel(ctx)
 	m := &Manager{store: store, repo: repo, desired: desired, runtimes: map[string]*runtime{}, pending: map[string]*pendingOperation{}, ctx: run, cancel: cancel, done: make(chan struct{}), subscribers: map[chan Event]struct{}{}}
+	if err := m.initializeStorage(storageVersions); err != nil {
+		cancel()
+		return nil, err
+	}
 	if store != nil {
 		snap := store.Snapshot()
 		m.revision = snap.Revision
@@ -58,6 +65,10 @@ func New(ctx context.Context, desired config.Config, store *config.Store, repo R
 		}
 	}
 	for _, p := range desired.Plugins {
+		if !pluginproto.ValidPluginVersion(bundledplugin.Version(p.PluginID)) {
+			cancel()
+			return nil, domain.Fail("INVALID_ARGUMENT", "Plugin release version is required")
+		}
 		for _, i := range p.Instances {
 			m.runtimes[i.InstanceID] = &runtime{plugin: p, instance: i, gate: NewGate(p.CanStart(i)), state: "disabled", generation: 1}
 		}
@@ -161,7 +172,7 @@ func (m *Manager) Snapshot() Snapshot {
 		s.RestartRequired = s.RestartRequired || v.DiskChanged
 	}
 	for _, p := range m.desired.Plugins {
-		v := Plugin{PluginID: p.PluginID, Plugin: pluginconfig.Identity(p.PluginID), SupportsMultipleInstances: pluginconfig.SupportsMultipleInstances(p.PluginID), ConfiguredEnabled: p.Enabled, Instances: []Instance{}}
+		v := Plugin{PluginID: p.PluginID, Plugin: pluginconfig.Identity(p.PluginID), Version: bundledplugin.Version(p.PluginID), SupportsMultipleInstances: pluginconfig.SupportsMultipleInstances(p.PluginID), ConfiguredEnabled: p.Enabled, StateMutable: true, Instances: []Instance{}}
 		for _, i := range p.Instances {
 			if r := m.runtimes[i.InstanceID]; r != nil && r.hooks.PluginIdentity != nil {
 				if identity := r.hooks.PluginIdentity(); identity != nil && identity.Validate(p.PluginID) == nil {
@@ -170,6 +181,7 @@ func (m *Manager) Snapshot() Snapshot {
 				}
 			}
 		}
+		verifiedVersion := false
 		for _, i := range p.Instances {
 			name := i.Name
 			ownerUserID := ""
@@ -180,8 +192,10 @@ func (m *Manager) Snapshot() Snapshot {
 				name = v.Plugin.Name
 			}
 			r := m.runtimes[i.InstanceID]
-			if r != nil && v.Version == "" && r.hooks.PluginVersion != nil {
-				v.Version = r.hooks.PluginVersion()
+			if r != nil && !verifiedVersion && r.hooks.PluginVersion != nil {
+				if version := r.hooks.PluginVersion(); pluginproto.ValidPluginVersion(version) {
+					v.Version, verifiedVersion = version, true
+				}
 			}
 			if r == nil {
 				code := "RESTART_REQUIRED"
@@ -204,6 +218,7 @@ func (m *Manager) Snapshot() Snapshot {
 		}
 		s.Items = append(s.Items, v)
 	}
+	s.Items = append(s.Items, m.storagePluginLocked(), m.gainPluginLocked())
 	return s
 }
 

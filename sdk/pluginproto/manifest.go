@@ -22,7 +22,7 @@ type Manifest struct {
 }
 
 func (m Manifest) Validate(role string) error {
-	if m.PluginID == "" || m.PluginVersion == "" || m.ProtocolVersion != ProtocolVersion {
+	if m.PluginID == "" || !ValidPluginVersion(m.PluginVersion) || m.ProtocolVersion != ProtocolVersion {
 		return fmt.Errorf("PROTOCOL_MISMATCH: invalid plugin identity or protocol version")
 	}
 	found := false

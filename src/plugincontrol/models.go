@@ -16,6 +16,7 @@ type Hooks struct {
 	Capabilities   func() []string
 	PluginIdentity func() *pluginproto.PluginIdentity
 	PluginVersion  func() string
+	DSPVersion     func(string) string
 	DisplayCount   func() *plugindisplay.Count
 	InstanceName   func(context.Context, string) string
 	AccountName    func(context.Context, string) string
@@ -40,10 +41,14 @@ type Instance struct {
 type Plugin struct {
 	PluginID                  string                      `json:"pluginId"`
 	Plugin                    *pluginproto.PluginIdentity `json:"plugin"`
-	Version                   string                      `json:"version,omitempty"`
+	Version                   string                      `json:"version"`
 	DisplayCount              *plugindisplay.Count        `json:"displayCount,omitempty"`
 	SupportsMultipleInstances bool                        `json:"supportsMultipleInstances"`
 	ConfiguredEnabled         bool                        `json:"configuredEnabled"`
+	Required                  bool                        `json:"required,omitempty"`
+	StateMutable              bool                        `json:"stateMutable"`
+	Storage                   *StorageStatus              `json:"storage,omitempty"`
+	DSP                       *DSPStatus                  `json:"dsp,omitempty"`
 	Instances                 []Instance                  `json:"instances"`
 }
 type Snapshot struct {

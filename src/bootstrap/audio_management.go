@@ -58,6 +58,14 @@ func configureAudioManagement(c config.Config, manager *plugincontrol.Manager, p
 			}
 			hooks := plugincontrol.Hooks{
 				Ready: func() bool { mu.Lock(); defer mu.Unlock(); return ready },
+				DSPVersion: func(name string) string {
+					mu.Lock()
+					defer mu.Unlock()
+					if isAudio && currentAudio != nil {
+						return currentAudio.DSPPluginVersion(name)
+					}
+					return ""
+				},
 				PluginVersion: func() string {
 					mu.Lock()
 					defer mu.Unlock()

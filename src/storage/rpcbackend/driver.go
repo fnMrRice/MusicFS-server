@@ -17,6 +17,10 @@ import (
 
 type Client struct{ *pluginrpc.Process }
 
+// PluginVersion identifies this host-side transport adapter, not the worker it
+// connects to. Process.PluginVersion reports the worker's verified release.
+const PluginVersion = "0.1.0"
+
 var _ storage.Backend = (*Client)(nil)
 var _ storage.Maintenance = (*Client)(nil)
 
@@ -29,7 +33,7 @@ func init() {
 func Driver() storage.Driver {
 	portable := sqlite.Driver()
 	return storage.Driver{
-		Name: "plugin", Version: storage.ContractVersion,
+		Name: "plugin", Version: storage.ContractVersion, PluginVersion: PluginVersion,
 		SnapshotName: portable.SnapshotName, RestoredName: portable.RestoredName,
 		BackupSchemaVersion: portable.BackupSchemaVersion, InspectBackup: portable.InspectBackup,
 		Open: func(ctx context.Context, options storage.Options) (storage.Backend, error) {
@@ -64,7 +68,7 @@ func Serve(ctx context.Context, input io.ReadCloser, output io.WriteCloser, driv
 		"plugin-state":      reflect.TypeFor[plugindb.Backend](),
 		"plugin-state-read": reflect.TypeFor[plugindb.Backend](),
 	}
-	return pluginrpc.Serve(ctx, input, output, contracts, func(ctx context.Context, mode string, raw json.RawMessage) (any, reflect.Type, io.Closer, error) {
+	return pluginrpc.Serve(ctx, input, output, driver.PluginVersion, contracts, func(ctx context.Context, mode string, raw json.RawMessage) (any, reflect.Type, io.Closer, error) {
 		if mode == "plugin-state" || mode == "plugin-state-read" {
 			return plugindb.WorkerFactory(ctx, mode, raw)
 		}

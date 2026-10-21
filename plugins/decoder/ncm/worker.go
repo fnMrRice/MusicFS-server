@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/pluginconfig"
@@ -53,7 +54,7 @@ func (w *ncmWorker) handle(ctx context.Context, method string, raw json.RawMessa
 		}
 		w.hello = hello
 		return pluginproto.Ready{InstanceID: hello.InstanceID, Nonce: hello.Nonce, Manifest: pluginproto.Manifest{
-			PluginID: "musicfs.plugin.decoder.ncm", Plugin: pluginconfig.Identity("musicfs.plugin.decoder.ncm"), PluginVersion: "0.1.0", ProtocolVersion: pluginproto.ProtocolVersion,
+			PluginID: "musicfs.plugin.decoder.ncm", Plugin: pluginconfig.Identity("musicfs.plugin.decoder.ncm"), PluginVersion: bundledplugin.NCMVersion, ProtocolVersion: pluginproto.ProtocolVersion,
 			SupportsMultipleInstances: pluginconfig.SupportsMultipleInstances("musicfs.plugin.decoder.ncm"), Roles: []string{pluginconfig.Role("musicfs.plugin.decoder.ncm")}, Capabilities: []string{"audio.decrypt"}, Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH},
 			MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems,
 		}}, nil

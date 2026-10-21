@@ -36,6 +36,9 @@ func TestExternalDSPRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer p.Close()
+	if p.PluginVersion() != "0.1.0" {
+		t.Fatalf("worker release was not verified: %q", p.PluginVersion())
+	}
 	block := audio.Block{Format: audio.Canonical, Samples: []float32{1, -1, 0.25, -0.25}, Frames: 2, Sequence: 72, PositionFrames: 480000, End: true, Discontinuity: true}
 	if err = p.Process(&block); err != nil {
 		t.Fatal(err)
@@ -116,7 +119,7 @@ func TestExternalDSPRejectsChangedExecutableAndIdentity(t *testing.T) {
 }
 
 func TestExternalDSPRejectsUnsupportedContracts(t *testing.T) {
-	for _, mode := range []string{"stateful", "delayed", "version"} {
+	for _, mode := range []string{"stateful", "delayed", "version", "missing-version", "blank-version", "invalid-version"} {
 		t.Run(mode, func(t *testing.T) {
 			p, err := dspworker.New(context.Background(), helperConfig(t, mode), nil)
 			if p != nil {

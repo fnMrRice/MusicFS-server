@@ -21,6 +21,7 @@ SDK 包入口：
 - `sdk/provider`：通过接口和工厂注入业务实现的在线 Worker；处理握手、作用域、截止时间、取消、消息大小和并发限制。
 - `sdk/fault`：公共错误和随机请求标识。Server `domain.Error` 为同一类型的别名，保持 `errors.As` 行为。
 - `sdk/instanceid`：规范实例 UUID 和已有实例路径兼容规则。
+- `sdk/bundledplugin`：随包插件各自的发行版本声明，供 Worker 和宿主的未启动元数据共用。
 
 在线平台共用一个插件模块维护公共代码，分别生成 `musicfs-plugin-netease`、`musicfs-plugin-qqmusic`、`musicfs-plugin-applemusic`，各自只链接所属平台驱动，可以单独构建与部署。另提供 `unified` 装配包和 `musicfs-plugin-online --plugin netease|qqmusic|applemusic` 统一程序，方便只部署一个在线文件；仍按每个平台实例启动独立进程，平台选择必须与握手身份一致。SDK 不拥有平台登录、加密、HTTP 请求、Cookie 或平台显示名称。已知平台 ID、结果 URL 校验及最大允许能力目前仍是 SDK/宿主的官方来源策略，本次没有开放任意第三方身份、未知角色或音频能力。
 
@@ -43,11 +44,13 @@ Windows PowerShell 先执行 `$env:GOWORK = 'off'`，再执行对应 `go build` 
 
 ## 版本与能力兼容
 
-插件发布版本使用有界语义版本字符串，不再要求精确等于 `0.1.0`。通信兼容仍由 `protocolVersion=1.0` 和 `schemaRevision=online-authenticated-v3` 严格判断；版本号变化不会自动获得新方法或权限。
+所有插件必须声明发行版本，格式为最多 128 字符的有效语义版本（SemVer）；缺失、空白、无效格式及带前导零的纯数字预发行标识均拒绝。通用 Manifest 的 `pluginVersion` 由 `ValidPluginVersion` 统一校验，适用于 Provider、音频和 Scraper。发行版本独立于 Server 版本、SDK 模块依赖版本和通信协议；在线插件不要求精确等于 `0.1.0`，通信兼容仍由 `protocolVersion=1.0` 和 `schemaRevision=online-authenticated-v3` 严格判断。版本号变化不会自动获得新方法或权限；FFmpeg 等角色已有的精确版本约束仍保留。
+
+随包七种普通插件、DSP gain 和 SQLite 的发行版本统一定义在 [sdk/bundledplugin/releases.go](../sdk/bundledplugin/releases.go)，各插件独立演进。普通 Worker 和管理快照引用同一声明；`GET /admin/plugins` 的每项 `version` 必填，尚无有效握手版本时返回随包声明，包括未启动、待配置、已禁用或启动失败的情况；取得有效握手版本后优先返回实际版本。当前配置仅支持已声明的官方普通插件，未知 ID 仍被拒绝，不以 Server 版本或占位字符串代替插件版本。
 
 在线声明可以提供已知且已验证能力的子集。宿主分别验证 Manifest 与描述，并核对启用能力集合和显示身份一致；重复能力、未知能力、超出当前平台策略的能力、错误协议或声明不一致均拒绝启动。运行期间依据已验证声明展示与执行能力，不能用宿主默认能力覆盖插件自己的限制。新增上游能力仍须更新并验证宿主策略及协议，而不是通过提升插件版本绕过检查。
 
-公共 HTTP 字段与账号/实例身份不变。Web 与 Client 继续读取 Server 返回的能力；本次无需修改浏览器交互。旧宿主可能拒绝新的插件发布版本或能力子集，因此首次迁移应先升级宿主，再替换插件。
+账号与实例身份保持不变。Web 与 Client 继续读取 Server 返回的能力和必填发行版本；旧 Server 缺失版本时的界面兼容提示不替代服务端校验。2026-10-21 起，独立 DSP 和持久化 Worker 的 ready 响应也必须携带有效 `pluginVersion`；旧 Worker 缺少该字段会被新宿主拒绝。Server、`musicfs-plugins` 及使用的独立入口须配套升级并更新固定摘要，不能只依据未变化的帧协议号或接口合同号判断可混用。专用协议和升级边界见 [DSP 插件](dsp-plugins.md)与[存储插件](storage-plugins.md)。
 
 ## 分发与旧配置
 

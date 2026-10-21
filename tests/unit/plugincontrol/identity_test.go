@@ -22,7 +22,7 @@ func TestPluginSnapshotDeclaresIdentityAndInstanceSupport(t *testing.T) {
 	}
 	defer manager.Close()
 	snapshot := manager.Snapshot()
-	if len(snapshot.Items) != 2 || snapshot.Items[0].Plugin == nil || !snapshot.Items[0].SupportsMultipleInstances || snapshot.Items[1].SupportsMultipleInstances {
+	if len(snapshot.Items) != 4 || snapshot.Items[0].Plugin == nil || !snapshot.Items[0].SupportsMultipleInstances || snapshot.Items[1].SupportsMultipleInstances {
 		t.Fatal("missing plugin-owned identity or instance declaration", snapshot)
 	}
 	identity := pluginconfig.Identity(pluginID)

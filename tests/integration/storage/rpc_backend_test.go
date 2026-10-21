@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
+	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/auth"
 	"github.com/fnMrRice/MusicFS-server/src/library"
@@ -54,6 +55,10 @@ func storageWorker(t *testing.T, packages ...string) storage.Options {
 
 func requireStorageAvailable(t *testing.T, store storage.Backend, want bool) {
 	t.Helper()
+	version, ok := store.(interface{ PluginVersion() string })
+	if !ok || version.PluginVersion() != bundledplugin.SQLiteVersion {
+		t.Fatal("persistence worker did not retain its verified release")
+	}
 	status, ok := store.(storage.Availability)
 	if !ok {
 		t.Fatal("persistence worker does not report availability")

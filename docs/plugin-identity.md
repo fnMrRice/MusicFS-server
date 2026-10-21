@@ -1,6 +1,6 @@
 # 插件身份、显示别名与实例
 
-所有插件必须在握手 manifest 中提供 `plugin` 身份声明和 `supportsMultipleInstances` 布尔声明；其中 `plugin.name` 是必填显示别名，不能用插件 ID 或实例 UUID 代替。在线插件的 `provider.online.describe` 返回同一身份，宿主校验它与握手一致。Server 通过 `GET /api/v1/admin/plugins` 的插件项返回身份与多实例能力，通过来源接口返回来源身份。尚未启动的官方插件复用与 Worker 同源的声明；已验证的运行声明优先。别名、译名和功能分类归插件所有，前端不维护 ID 到名称的固定映射。
+采用通用控制协议的插件必须在握手 manifest 中提供 `plugin` 身份声明、`supportsMultipleInstances` 布尔声明和有效的 `pluginVersion` 发行版本；其中 `plugin.name` 是必填显示别名，不能用插件 ID 或实例 UUID 代替。在线插件的 `provider.online.describe` 返回同一身份，宿主校验它与握手一致。Server 通过 `GET /api/v1/admin/plugins` 的插件项返回身份、多实例能力与必填 `version`，通过来源接口返回来源身份。尚未启动的官方插件复用与 Worker 同源的声明；已验证的运行声明优先。别名、译名和功能分类归插件所有，前端不维护 ID 到名称的固定映射。DSP 与持久化插件使用各自专用握手，同样必须声明发行版本，见 [DSP 插件](dsp-plugins.md)与[存储插件](storage-plugins.md)。
 
 ## 命名与多实例规则
 
@@ -42,12 +42,15 @@
 | `plugin.localizedNames` | 语言标签到纯文本显示名的映射，可为空对象 |
 | `plugin.features` | 插件提供的功能分类；音乐来源声明 `music-source`，与逐项业务能力 `capabilities` 分开 |
 | `supportsMultipleInstances` | 插件是否允许多份独立配置；通过握手及管理接口查询 |
+| manifest `pluginVersion` / 管理项 `version` | 必填插件发行版本，使用最多 128 字符的有效 SemVer；不是 Server 版本、协议版本或实例修订 |
 | 管理项 `displayCount` | 可选 `{value, unit, localizedUnits}`；数字、默认单位及译名均由插件提供，只汇总当前管理范围内的完整有效值 |
 | `instanceId` | 全局唯一、稳定的小写 UUID，用于请求、配置和账号绑定；不随用户名改变 |
 | 在线实例 `name` | 当前已校验平台账号的用户名；未登录或无用户名时使用插件显示别名 |
 | 账号 `displayName` | 登录平台后取得的账号昵称，显示在账号状态中 |
 
 部署配置中的实例 `name` 作为旧管理员备注保留，示例与随包插件自动发现不预填，也不以 UUID 填充。在线实例显示名称由平台账号提供，不能用配置备注冒充用户名；同平台多实例可显示“插件别名 · 用户名”，未登录仅显示插件别名。账号退出或切换后及时清理旧用户名。账号名可能重复，操作仍绑定 UUID。
+
+随包发行版本来自 [sdk/bundledplugin/releases.go](../sdk/bundledplugin/releases.go)，与 Worker 共用同一声明。尚无有效握手版本时，管理项仍返回该声明，包括没有实例、未启动、待配置、已禁用或启动失败的情况；成功握手提供有效版本后优先采用实际版本。版本缺失、空白或不符合 SemVer 的握手被拒绝；版本字段存在不表示插件可用，运行状态仍独立报告。未知插件 ID 继续受现有配置策略限制，不伪造发行版本。
 
 默认名和每项译名必须为合法 UTF-8、1—128 个 Unicode 字符，不含控制字符或首尾空白。`localizedNames` 必须为非 null 对象，最多 64 项；语言标签最长 63 字符，使用 `^[A-Za-z]{1,8}(-[A-Za-z0-9]{1,8})*$` 限定形式并由语言标签解析器继续校验，不接受仅大小写不同的重复键。Schema 限定结构与长度；身份一致性、空白、重复语言标签及完整标签合法性由运行时继续检查。
 

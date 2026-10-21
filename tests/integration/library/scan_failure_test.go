@@ -73,7 +73,7 @@ func TestScanFailureWorkerProcess(t *testing.T) {
 		os.Exit(4)
 	}
 	ready := pluginproto.Ready{InstanceID: hello.InstanceID, Nonce: hello.Nonce, Manifest: pluginproto.Manifest{
-		PluginID: "musicfs.plugin.source.localfiles", Plugin: pluginconfig.Identity("musicfs.plugin.source.localfiles"), PluginVersion: "retry-test-v1", ProtocolVersion: pluginproto.ProtocolVersion,
+		PluginID: "musicfs.plugin.source.localfiles", Plugin: pluginconfig.Identity("musicfs.plugin.source.localfiles"), PluginVersion: "0.1.0-retry-test", ProtocolVersion: pluginproto.ProtocolVersion,
 		Roles: []string{"provider"}, Capabilities: []string{"library.scan"}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems, Configuration: pluginconfig.LocalFiles(),
 	}}
 	body, err := json.Marshal(ready)

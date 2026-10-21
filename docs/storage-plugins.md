@@ -2,7 +2,9 @@
 
 状态：2026-10-20。已提供受信任后端接口、内置 SQLite 后端及独立 SQLite Worker。PostgreSQL、MySQL、远程对象存储和跨语言存储 SDK 尚未实现。外部存储属于拥有全部核心数据访问能力的基础设施插件，不使用普通 Provider 的角色或权限。
 
-**SQLite 是必需的存储后端，不能被禁用。** `storage` 没有 `enabled` 开关，也不进入普通插件的启停列表；`enabled: false` 属于非法配置。选择独立 SQLite 插件后，程序缺失、校验失败或退出都不能用停用/旁路继续提供正常存储服务，也不自动切换数据库。后续支持其他后端时只能在完成数据迁移后停服替换，不能把“无数据库”作为运行模式。
+**数据库是必需的基础设施，不能被禁用。** `storage` 没有 `enabled` 开关；`enabled: false` 属于非法配置。管理插件列表展示已选择的数据库并标记 `required=true`、`stateMutable=false`，但不提供普通插件的启停操作。选择独立 SQLite 插件后，程序缺失、校验失败或退出都不能用停用/旁路继续提供正常存储服务，也不自动切换数据库。后续支持其他后端时只能在完成数据迁移后停服替换，不能把“无数据库”作为运行模式。
+
+2026-10-21 管理展示增量：内置 SQLite 使用 `musicfs.plugin.storage.sqlite` 身份；`storage.backend=plugin` 的协议目前只验证发行号而未声明具体后端身份，因此展示为 `musicfs.plugin.storage.plugin` /“外部数据库”，即使使用官方 SQLite Worker 也不从程序路径或参数猜测名称。`version` 使用实际成功握手的后端版本，绝不使用宿主传输适配器版本代替；其他受信任内置驱动使用其注册发行声明。`storage` 投影仅包含 `backend`、`mode=builtin/process` 和 `runtimeState=ready/unavailable/unknown`，可用性来自已打开后端的宿主内存信号，不在读取列表时探测数据库。基础设施没有普通管理实例，`instances=[]`；修改其状态返回 `UNSUPPORTED`，既不保存开关也不关闭数据库。
 
 ## 1. 配置与启动
 
@@ -53,9 +55,15 @@ storage:
 
 同程序内扩展可注册完整 `storage.Driver`。外部扩展使用 `storage/rpcbackend.Serve` 包装实现，宿主通过 `storage.backend=plugin` 选择可执行程序，不需要把新实现编译进宿主。首版外部 SDK 使用 Go：插件与宿主须匹配完整 Repository/DTO 合同；它不承诺任意旧版本二进制兼容或 C++ 通用 ABI。
 
+`storage.Driver` 必须分别声明 `Version: storage.ContractVersion` 和 `PluginVersion`：前者是整数接口合同版本，后者是最多 128 字符的有效 SemVer 发行版本。注册后端及启动 `rpcbackend.Serve` 时都拒绝缺失、空白或无效发行版本。官方 `sqlite.Driver()` 使用 [sdk/bundledplugin/releases.go](../sdk/bundledplugin/releases.go) 中的 `SQLiteVersion`，当前为 `0.1.0`；内置后端和独立 Worker 共用这一声明。外部入口将完整 Driver 交给 `rpcbackend.Serve(ctx, os.Stdin, os.Stdout, driver)`，ready 的发行号由 `driver.PluginVersion` 提供，不能用合同整数代替。
+
+宿主传输适配器自身的 `rpcbackend.Driver().PluginVersion` 当前为 `0.1.0`，仅标识适配器发行版本；实际外部后端版本来自成功握手后的 `Process.PluginVersion()`，两者不可混用。
+
 ## 3. 通信与故障
 
-持久化协议标识为 `musicfs-persistence/1`，使用独立 stdio 连接、随机握手 nonce 和完整 Go 接口/导出字段形状摘要。只有显式 Backend、Maintenance 或实例状态接口的方法可调用。修改接口后运行：
+持久化协议标识为 `musicfs-persistence/1`，使用独立 stdio 连接、随机握手 nonce 和完整 Go 接口/导出字段形状摘要。2026-10-21 起，`persistence.hello` 的 ready 响应新增必填 `pluginVersion`，宿主在接纳连接前校验其有效 SemVer；缺失或无效时拒绝握手并回收进程。该字段独立于协议标识和接口形状摘要，适用于 Backend、Maintenance 及实例状态模式。Server、统一插件程序及独立 SQLite 入口须配套升级并更新固定摘要；旧 Worker 即使协议和合同仍匹配，也会因未提供发行版本被拒绝。底层入口签名为 `pluginrpc.Serve(ctx, input, output, version, contracts, factory)`。
+
+只有显式 Backend、Maintenance 或实例状态接口的方法可调用。修改接口后运行：
 
 ```text
 go run ./scripts/generate-storage-rpc

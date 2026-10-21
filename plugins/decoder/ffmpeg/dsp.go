@@ -23,6 +23,15 @@ func CloneDSPChain(chain []audio.NodeSpec) []audio.NodeSpec {
 
 func (p *Processor) HasDSP() bool { return p != nil && len(p.config.DSPChain) != 0 }
 
+// DSPPluginVersion returns a release verified during processor initialization.
+// Reading it does not start an idle worker or query a playback process.
+func (p *Processor) DSPPluginVersion(name string) string {
+	if p == nil {
+		return ""
+	}
+	return p.dspVersions[name]
+}
+
 func (p *Processor) DSPChain() []audio.NodeSpec {
 	if p == nil {
 		return nil
@@ -31,6 +40,10 @@ func (p *Processor) DSPChain() []audio.NodeSpec {
 }
 
 func buildDSP(ctx context.Context, gain float64, chain []audio.NodeSpec, plugins []dspworker.Config) (*audio.Chain, error) {
+	return buildDSPWithVersions(ctx, gain, chain, plugins, nil)
+}
+
+func buildDSPWithVersions(ctx context.Context, gain float64, chain []audio.NodeSpec, plugins []dspworker.Config, versions map[string]string) (*audio.Chain, error) {
 	if err := ValidateDSP(chain, plugins); err != nil {
 		return nil, err
 	}
@@ -40,7 +53,11 @@ func buildDSP(ctx context.Context, gain float64, chain []audio.NodeSpec, plugins
 	}
 	for _, config := range plugins {
 		if err := registry.Register(config.Name, func(params map[string]float64) (audio.Node, error) {
-			return dspworker.New(ctx, config, params)
+			process, err := dspworker.New(ctx, config, params)
+			if err == nil && versions != nil {
+				versions[config.Name] = process.PluginVersion()
+			}
+			return process, err
 		}); err != nil {
 			return nil, err
 		}
