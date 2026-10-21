@@ -22,6 +22,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/lifecycle"
 	"github.com/fnMrRice/MusicFS-server/src/matching"
 	"github.com/fnMrRice/MusicFS-server/src/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/musicdirs"
 	"github.com/fnMrRice/MusicFS-server/src/personal"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
 	"github.com/fnMrRice/MusicFS-server/src/playlists"
@@ -63,7 +64,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	if err != nil {
 		return nil, nil, err
 	}
-	c, err = config.InitializeLocalDirectories(ctx, c)
+	c, err = config.InitializeLocalDirectories(ctx, c, musicdirs.Discover)
 	if err != nil {
 		store.Close()
 		return nil, nil, err

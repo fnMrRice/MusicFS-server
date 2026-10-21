@@ -45,7 +45,7 @@ func TestRecoveredOnlineTaskAcquiresGatesBeforeFirstObservation(t *testing.T) {
 		store.Close()
 		t.Fatal(err)
 	}
-	binding, _ := json.Marshal(struct{ Plugin, Instance, Binary, Schema string }{"musicfs.plugin.source.netease", "7fe223d0-a3bd-5e87-87f8-305dc26d9041", fmt.Sprintf("%x", sha256.Sum256(binary)), pluginproto.OnlineRevision})
+	binding, _ := json.Marshal(struct{ Plugin, Instance, Owner, Binary, Schema string }{"musicfs.plugin.source.netease", "7fe223d0-a3bd-5e87-87f8-305dc26d9041", "admin", fmt.Sprintf("%x", sha256.Sum256(binary)), pluginproto.OnlineRevision})
 	ref := playlists.Binding{RemoteRef: playlists.RemoteRef{InstanceID: "7fe223d0-a3bd-5e87-87f8-305dc26d9041", AccountID: "fixture-account", ExternalID: "92"}, Platform: "netease", ConfigRevision: fmt.Sprintf("%x", sha256.Sum256(binding))}
 	playlist, _, err := store.ImportRemotePlaylist(context.Background(), "admin", ref, "recovery-import")
 	if err != nil {

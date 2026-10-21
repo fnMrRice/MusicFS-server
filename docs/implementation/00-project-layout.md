@@ -43,6 +43,7 @@ server/
       musicfs-plugins/main.go
     bootstrap/            # Composition and lifecycle
     config/
+    musicdirs/            # Conventional music-directory discovery
     logging/
     domain/               # Stable domain IDs and small value types
     auth/
@@ -132,6 +133,9 @@ server/
 4. 共享 helper 放 tests/testkit；需要崩溃、乱序、超时的伪插件入口放 tests/testapps。测试代码、helper、夹具和脚本不放 src。
 5. 小型专用夹具可放测试目录自己的 testdata，共享音频放 tests/testdata。临时工作目录用测试提供的临时目录并可靠清理，不使用私人音乐库。
 6. 运行真实浏览器的 E2E 在 Web 仓库维护；Server 的 e2e 校验 HTTP/进程/磁盘行为，双方使用同一夹具说明。
+7. `scripts/check.ps1` / `scripts/check.sh` 在运行检查前拒绝 `src/**/*_test.go`。上述布局约束针对宿主源码；SDK 与插件独立模块在各自模块边界内维护测试。
+
+启动组装测试通过 `bootstrap.Serve` / `ServeWithOptions` 验证 HTTP、权限与生命周期；插件宿主和 DSP 测试通过独立测试进程验证协议、异常与退出，RPC 测试通过真实通道验证序列化及回调生命周期，不读取私有状态。`musicdirs` 负责系统目录探测，启动组装将探测函数传给配置初始化，测试使用临时目录提供相同依赖，不扫描私人音乐库。
 
 ### S-P0-04：构建与检查入口
 

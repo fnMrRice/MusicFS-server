@@ -104,6 +104,13 @@ func badWorker(mode string) {
 			_ = json.Unmarshal(raw, &r)
 			return pluginproto.OnlineResult[pluginproto.OnlineDescriptor]{Context: r.Context, Value: onlineplugins.Describe(online.Netease)}, nil
 		}
+		if method == "provider.online.account" {
+			var r pluginproto.OnlineAccount
+			if err := json.Unmarshal(raw, &r); err != nil {
+				return nil, err
+			}
+			return pluginproto.OnlineResult[online.AccountResult]{Context: r.Context, Value: online.AccountResult{View: online.AccountView{State: "signedIn", AccountID: "fixture-account", Revision: "fixture-revision"}}}, nil
+		}
 		var r pluginproto.OnlineSearch
 		_ = json.Unmarshal(raw, &r)
 		if strings.Contains(mode, "scope") {

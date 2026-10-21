@@ -13,6 +13,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/domain"
+	"github.com/fnMrRice/MusicFS-server/src/musicdirs"
 	"github.com/fnMrRice/MusicFS-server/src/plugindb"
 )
 
@@ -21,11 +22,9 @@ const defaultDirectoriesKey = "host-default-read-directories"
 // InitializeLocalDirectories runs under the server data lock, before plugins
 // start. The saved snapshot includes empty discovery results. Configuration
 // reads only load it; they never probe drives or recreate removed music roots.
-func InitializeLocalDirectories(ctx context.Context, c Config) (Config, error) {
-	return initializeLocalDirectories(ctx, c, discoverMusicDirectories)
-}
-
-func initializeLocalDirectories(ctx context.Context, c Config, discover func() []string) (Config, error) {
+// The composition root supplies system discovery; saved and explicit permissions
+// skip that dependency, including when a saved discovery result is empty.
+func InitializeLocalDirectories(ctx context.Context, c Config, discover func() []string) (Config, error) {
 	c = cloneConfig(c)
 	var discovered []string
 	probed := false
@@ -128,7 +127,7 @@ func applyLocalDirectoryDefaults(i *Instance, v pluginproto.StateValue) error {
 	for _, path := range paths {
 		seen[key(path)] = true
 	}
-	for _, path := range append([]string{defaultUserMusicDirectory()}, saved.ReadDirectories...) {
+	for _, path := range append([]string{musicdirs.Default()}, saved.ReadDirectories...) {
 		if path != "" && len(paths) < 256 && !seen[key(path)] {
 			paths = append(paths, path)
 			seen[key(path)] = true

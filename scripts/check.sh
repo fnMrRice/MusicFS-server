@@ -2,6 +2,11 @@
 set -eu
 cd "$(dirname "$0")/.."
 export GOWORK=off
+misplaced_tests="$(find src -name '*_test.go' -print)"
+if [ -n "$misplaced_tests" ]; then
+    printf 'Host tests must be under tests/:\n%s\n' "$misplaced_tests" >&2
+    exit 1
+fi
 mkdir -p build
 set -- src tests sdk plugins
 if [ -d scripts/release ]; then set -- "$@" scripts/release; fi

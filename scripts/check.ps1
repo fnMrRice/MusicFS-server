@@ -2,6 +2,10 @@ param([switch]$Race, [string]$TestTimeout = '20m')
 $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path $PSScriptRoot)
 $env:GOWORK = 'off'
+$misplacedTests = @(Get-ChildItem src -Recurse -File -Filter '*_test.go')
+if ($misplacedTests) {
+    throw "Host tests must be under tests/: $($misplacedTests.FullName -join ', ')"
+}
 New-Item -ItemType Directory -Force build | Out-Null
 New-Item -ItemType Directory -Force build/test-tmp | Out-Null
 $env:TMP = Join-Path (Get-Location) 'build/test-tmp'

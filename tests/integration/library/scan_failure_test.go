@@ -85,6 +85,13 @@ func TestScanFailureWorkerProcess(t *testing.T) {
 		if err != nil {
 			os.Exit(0)
 		}
+		if request.Method == "plugin.displayCount" {
+			failure := &pluginproto.RPCError{Code: -32000, Message: "Optional statistic unavailable", Data: pluginproto.ErrorData{Code: "UNSUPPORTED"}}
+			if framer.Write(pluginproto.Envelope{ID: request.ID, Error: failure}) != nil {
+				os.Exit(6)
+			}
+			continue
+		}
 		if request.Method != "provider.scan" {
 			os.Exit(6)
 		}
