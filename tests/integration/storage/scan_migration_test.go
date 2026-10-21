@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -31,23 +30,18 @@ func TestScanPlanMigrationDiscardsOnlyUnplannedTaskCaches(t *testing.T) {
 	if _, err = db.ExecContext(ctx, "CREATE TABLE schema_migrations(version INTEGER PRIMARY KEY)"); err != nil {
 		t.Fatal(err)
 	}
-	entries, err := migrations.Files.ReadDir(".")
+	steps, err := migrations.Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, entry := range entries {
-		version, _ := strconv.Atoi(strings.Split(entry.Name(), "_")[0])
-		if version < 1 || version > 6 {
+	for _, step := range steps {
+		if step.Version > 6 {
 			continue
 		}
-		raw, err := migrations.Files.ReadFile(entry.Name())
-		if err != nil {
+		if _, err = db.ExecContext(ctx, step.SQL); err != nil {
 			t.Fatal(err)
 		}
-		if _, err = db.ExecContext(ctx, string(raw)); err != nil {
-			t.Fatal(err)
-		}
-		if _, err = db.ExecContext(ctx, "INSERT INTO schema_migrations VALUES(?)", version); err != nil {
+		if _, err = db.ExecContext(ctx, "INSERT INTO schema_migrations VALUES(?)", step.Version); err != nil {
 			t.Fatal(err)
 		}
 	}

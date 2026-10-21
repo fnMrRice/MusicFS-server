@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
@@ -16,18 +15,11 @@ import (
 )
 
 func backupSchemaVersion() (int, error) {
-	entries, err := migrations.Files.ReadDir(".")
+	steps, err := migrations.Load()
 	if err != nil {
 		return 0, err
 	}
-	version := 0
-	for _, entry := range entries {
-		v, err := strconv.Atoi(strings.Split(entry.Name(), "_")[0])
-		if err == nil && v > version {
-			version = v
-		}
-	}
-	return version, nil
+	return steps[len(steps)-1].Version, nil
 }
 
 // The snapshot is read with immutable=1 after VACUUM INTO has closed it. It is

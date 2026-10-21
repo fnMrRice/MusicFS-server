@@ -8,8 +8,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/fnMrRice/MusicFS-server/src/storage/migrations"
@@ -41,28 +39,23 @@ func Open(ctx context.Context, path string) (*Store, error) {
 }
 func (s *Store) Close() error { return s.DB.Close() }
 func (s *Store) migrate(ctx context.Context, path string) error {
+	steps, err := migrations.Load()
+	if err != nil {
+		return err
+	}
 	if _, err := s.DB.ExecContext(ctx, "CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY)"); err != nil {
 		return fmt.Errorf("cannot initialize database: %w", err)
 	}
 	var current int
-	s.DB.QueryRowContext(ctx, "SELECT COALESCE(MAX(version),0) FROM schema_migrations").Scan(&current)
-	entries, err := migrations.Files.ReadDir(".")
-	if err != nil {
+	if err = s.DB.QueryRowContext(ctx, "SELECT COALESCE(MAX(version),0) FROM schema_migrations").Scan(&current); err != nil {
 		return err
 	}
-	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
-	latest := 0
-	for _, entry := range entries {
-		v, _ := strconv.Atoi(strings.Split(entry.Name(), "_")[0])
-		if v > latest {
-			latest = v
-		}
-	}
+	latest := steps[len(steps)-1].Version
 	if current > latest {
 		return errors.New("database schema is newer than this server")
 	}
-	for _, entry := range entries {
-		v, _ := strconv.Atoi(strings.Split(entry.Name(), "_")[0])
+	for _, step := range steps {
+		v := step.Version
 		if v <= current {
 			continue
 		}
@@ -74,15 +67,11 @@ func (s *Store) migrate(ctx context.Context, path string) error {
 				}
 			}
 		}
-		body, err := migrations.Files.ReadFile(entry.Name())
-		if err != nil {
-			return err
-		}
 		tx, err := s.DB.BeginTx(ctx, nil)
 		if err != nil {
 			return err
 		}
-		if _, err = tx.ExecContext(ctx, string(body)); err == nil {
+		if _, err = tx.ExecContext(ctx, step.SQL); err == nil {
 			_, err = tx.ExecContext(ctx, "INSERT INTO schema_migrations(version) VALUES (?)", v)
 		}
 		if err != nil {

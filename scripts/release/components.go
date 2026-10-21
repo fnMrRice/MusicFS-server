@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginrpc"
+	"github.com/fnMrRice/MusicFS-server/src/storage/migrations"
 )
 
 type component struct {
@@ -60,19 +61,13 @@ func components(splitPlugins bool) []component {
 }
 
 func (b builder) schemaVersion() (int, error) {
-	files, err := filepath.Glob(filepath.Join(b.root, "src", "storage", "migrations", "*.sql"))
+	files := os.DirFS(filepath.Join(b.root, "src", "storage", "migrations"))
+	entries, err := migrations.LoadFrom(files)
 	if err != nil {
 		return 0, err
 	}
-	for index, path := range files {
-		prefix, _, ok := strings.Cut(filepath.Base(path), "_")
-		version, err := strconv.Atoi(prefix)
-		if !ok || err != nil || version != index+1 {
-			return 0, fmt.Errorf("migration sequence is incomplete at %s", filepath.Base(path))
-		}
-	}
-	if len(files) == 0 {
+	if len(entries) == 0 {
 		return 0, fmt.Errorf("database migration sequence is empty")
 	}
-	return len(files), nil
+	return entries[len(entries)-1].Version, nil
 }
