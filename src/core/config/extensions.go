@@ -47,7 +47,7 @@ func SameStartupSettings(a, b Config) bool {
 		b.Storage.Backend = "sqlite"
 	}
 	return a.DataRoot == b.DataRoot && a.MediaRoot == b.MediaRoot && a.CacheRoot == b.CacheRoot &&
-		reflect.DeepEqual(a.Storage, b.Storage) && reflect.DeepEqual(a.AudioDSP, b.AudioDSP) &&
+		reflect.DeepEqual(a.Storage, b.Storage) && reflect.DeepEqual(a.AudioDSP, b.AudioDSP) && a.AudioChannels == b.AudioChannels &&
 		reflect.DeepEqual(a.Logging.normalized(a.DataRoot), b.Logging.normalized(b.DataRoot))
 }
 

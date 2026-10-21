@@ -64,12 +64,13 @@ func TestDSPActualPlaybackCacheSeekRecoveryAndFingerprintIsolation(t *testing.T)
 	f.player.UpdateAudio(dsp, nil)
 	f.request.Preferences.ForceProcessing = false
 	d := f.create(t, "dsp-forced-create")
-	if d.DeliveryMode != "processed" || d.SeekMode != "timeRestart" || len(d.EffectiveProcessing) != 3 {
+	if d.DeliveryMode != "processed" || d.SeekMode != "timeRestart" || len(d.EffectiveProcessing) != 4 {
 		t.Fatalf("configured DSP was not applied: %+v", d)
 	}
-	if d.EffectiveProcessing[0].Type != "gain" || d.EffectiveProcessing[0].GainDB != 0 ||
-		d.EffectiveProcessing[1].Type != "gain" || d.EffectiveProcessing[1].GainDB != -3 ||
-		d.EffectiveProcessing[2].Type != "musicfs.dsp.gain" || d.EffectiveProcessing[2].Parameters["gainDB"] != -6 {
+	if d.EffectiveProcessing[0].Type != "channelMix" || d.EffectiveProcessing[0].Parameters["outputChannels"] != 2 ||
+		d.EffectiveProcessing[1].Type != "gain" || d.EffectiveProcessing[1].GainDB != 0 ||
+		d.EffectiveProcessing[2].Type != "gain" || d.EffectiveProcessing[2].GainDB != -3 ||
+		d.EffectiveProcessing[3].Type != "musicfs.dsp.gain" || d.EffectiveProcessing[3].Parameters["gainDB"] != -6 {
 		t.Fatalf("effective DSP order or parameters differ: %+v", d.EffectiveProcessing)
 	}
 	processed, err := processedBytes(t, f, d)
@@ -114,7 +115,7 @@ func TestDSPActualPlaybackCacheSeekRecoveryAndFingerprintIsolation(t *testing.T)
 		t.Fatal("DSP parameter change retained the previous chain identity")
 	}
 	seek, err := f.player.Control(ctx, f.who, d.SessionID, "seek", playback.ControlRequest{AttemptID: d.AttemptID, PositionMs: 3000}, "dsp-existing-seek")
-	if err != nil || seek.EffectiveProcessing[2].Parameters["gainDB"] != -6 {
+	if err != nil || seek.EffectiveProcessing[3].Parameters["gainDB"] != -6 {
 		t.Fatalf("existing session did not retain its original DSP: %+v %v", seek, err)
 	}
 	originalTail, err := processedBytes(t, f, seek)

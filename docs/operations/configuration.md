@@ -4,7 +4,7 @@
 
 启动见[运行说明](running.md)；正式[示例配置](../../configs/server.example.yaml)和[编辑器 Schema](../../configs/server.schema.json)随代码维护。HTTP JSON、JSON-RPC、JSON Schema 和媒体清单继续使用各自格式。
 
-顶层 `storage` 选择内置 SQLite 或受信任的独立持久化插件，顶层 `audioDSP` 配置有序 DSP 链及外部节点；两者为启动配置，修改后重启生效。配置、构建和兼容边界见[存储插件](../plugins/storage-plugins.md)与[DSP 插件](../plugins/dsp-plugins.md)。非空 DSP 链要求启用且成功初始化音频处理器，不可因插件缺失静默直放。内置 DSP 要求音频插件也使用内置执行；外部 FFmpeg 插件与内置 DSP 的组合会被拒绝，避免将内置 gain 放入插件子进程。
+顶层 `storage` 选择存储后端，`audioDSP` 配置有序效果链及外部节点，`audioChannels.outputLayout` 选择 `stereo`（默认）、`'5.1'` 或 `'7.1'`；均为启动配置，修改后重启生效。内置效果包括 gain、equalizer、compressor、reverb；配置、范围与示例见[常见 DSP 与声道转换](../plugins/dsp-effects.md)、[DSP 协议](../plugins/dsp-plugins.md)及[存储插件](../plugins/storage-plugins.md)。非空 DSP 链和环绕声输出均要求可用音频实例，不得静默直放。环绕声额外要求内置音频执行与 Opus/WebM，客户端格式不兼容时明确拒绝；新内置效果也要求主进程执行。旧 MFD1 外部 DSP 只能用于双声道。
 
 网易云、QQ 音乐及 Apple Music 的每个实例可在 `instanceId` 同级配置 `ownerUserId`，省略时兼容为 `admin`。每个 MusicFS 用户使用自己的实例，同一用户的不同平台账号也应配置不同 UUID `instanceId` 并分别登录；单实例只保留一个当前平台账号。非账号插件不接受 `ownerUserId`。实例归属是部署配置，变更需重启；不要通过修改既有实例的归属转移凭据，分配新 UUID 后重新登录。凭据加密范围包含平台、用户及实例，跨用户不可恢复旧凭据。
 

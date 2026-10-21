@@ -42,6 +42,10 @@ func Identity(pluginID string) *pluginproto.PluginIdentity {
 		identity.Name = "FFmpeg Audio Processing"
 		identity.LocalizedNames = map[string]string{"zh": "FFmpeg 音频处理", "zh-Hans": "FFmpeg 音频处理", "zh-Hant": "FFmpeg 音訊處理"}
 		identity.Features = []string{"audio-processing"}
+	case "musicfs.plugin.decoder.channelmix":
+		identity.Name = "Audio Channel Conversion"
+		identity.LocalizedNames = map[string]string{"zh": "音频声道转换", "zh-Hans": "音频声道转换", "zh-Hant": "音訊聲道轉換"}
+		identity.Features = []string{"audio-processing"}
 	case "musicfs.plugin.decoder.ncm":
 		identity.Name = "NCM Decryption"
 		identity.LocalizedNames = map[string]string{"zh": "NCM 解密", "zh-Hans": "NCM 解密", "zh-Hant": "NCM 解密"}
@@ -57,6 +61,18 @@ func Identity(pluginID string) *pluginproto.PluginIdentity {
 	case "musicfs.dsp.gain":
 		identity.Name = "DSP Gain"
 		identity.LocalizedNames = map[string]string{"zh": "DSP 增益", "zh-Hans": "DSP 增益", "zh-Hant": "DSP 增益"}
+		identity.Features = []string{"audio-dsp"}
+	case "musicfs.dsp.equalizer":
+		identity.Name = "DSP Equalizer"
+		identity.LocalizedNames = map[string]string{"zh": "DSP 均衡器", "zh-Hans": "DSP 均衡器", "zh-Hant": "DSP 等化器"}
+		identity.Features = []string{"audio-dsp"}
+	case "musicfs.dsp.compressor":
+		identity.Name = "DSP Compressor"
+		identity.LocalizedNames = map[string]string{"zh": "DSP 压缩器", "zh-Hans": "DSP 压缩器", "zh-Hant": "DSP 壓縮器"}
+		identity.Features = []string{"audio-dsp"}
+	case "musicfs.dsp.reverb":
+		identity.Name = "DSP Reverb"
+		identity.LocalizedNames = map[string]string{"zh": "DSP 混响", "zh-Hans": "DSP 混响", "zh-Hant": "DSP 殘響"}
 		identity.Features = []string{"audio-dsp"}
 	default:
 		return nil

@@ -142,7 +142,7 @@ func validateDocumentShape(root *yaml.Node) error {
 		"enabled": boolShape, "instances": sequenceShape(instance),
 	}, "pluginId", "instances")
 	shape := mappingShape(map[string]fieldShape{
-		"storage": storageShape(), "audioDSP": audioDSPShape(), "logging": loggingShape(),
+		"storage": storageShape(), "audioDSP": audioDSPShape(), "audioChannels": audioChannelsShape(), "logging": loggingShape(),
 		"pluginBundle":  stringShape,
 		"configVersion": intShape, "listen": stringShape, "dataRoot": stringShape,
 		"mediaRoot": stringShape, "cacheRoot": stringShape, "webRoot": stringShape,
@@ -175,6 +175,11 @@ func validateDocumentShape(root *yaml.Node) error {
 	}
 	if err := validateLoggingNodes(root); err != nil {
 		return err
+	}
+	if channels := yamlField(root, "audioChannels"); channels != nil {
+		if layout := yamlField(channels, "outputLayout"); layout != nil && layout.Value == "" {
+			return nodeError(layout, "config.audioChannels.outputLayout", "expected a supported channel layout")
+		}
 	}
 	if version := yamlField(root, "configVersion"); version.Value != "1" {
 		return nodeError(version, "config.configVersion", "unsupported configuration version")

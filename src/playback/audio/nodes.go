@@ -37,7 +37,7 @@ func (r *Registry) Create(name string, params map[string]float64) (Node, error) 
 	if !ok {
 		return nil, fmt.Errorf("UNSUPPORTED: unknown DSP node")
 	}
-	return f(params)
+	return createLoggedNode(name, f, params)
 }
 
 func (r *Registry) CreateVersioned(spec NodeSpec) (Node, error) {

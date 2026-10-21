@@ -18,7 +18,7 @@ Server 是 Go 模块化单体，统一管理来源、曲库、歌单、资料补
 
 目录按功能聚合，不构成严格分层；扫描、识别、补全和写回仍由各业务调度。具体插件在根 plugins/，公共 SDK 和在线平台实现分别是独立 Go 模块，见[开发说明](development/README.md)。
 
-默认运行只启动 `musicfs`，所有官方内置插件编译到 Server 主进程：Local Files、FFmpeg、NCM、本地 Scraper、网易云、QQ 音乐、Apple Music、SQLite、DSP gain，以及指纹、标签、评分和缩略图实现。安装包中的 `musicfs-plugins` 保留九种兼容命令入口，只有显式外部进程配置才执行；它不再是默认运行前提。SQLite 与 DSP 使用专用接口和部署配置，不参加普通插件自动发现。FFmpeg、ffprobe、fpcalc 仍可作为受控外部工具运行。分拆构建与安装配置见[部署](operations/deployment.md)。
+默认运行只启动 `musicfs`，所有官方内置插件编译到 Server 主进程：Local Files、FFmpeg、NCM、本地 Scraper、网易云、QQ 音乐、Apple Music、SQLite、DSP 增益/均衡器/压缩器/混响、声道转换，以及指纹、标签、评分和缩略图实现。安装包中的 `musicfs-plugins` 保留九种兼容命令入口，只有显式外部进程配置才执行；它不再是默认运行前提。SQLite、声道转换与 DSP 使用专用接口和部署配置，不参加普通插件自动发现。FFmpeg、ffprobe、fpcalc 仍可作为受控外部工具运行。分拆构建与安装配置见[部署](operations/deployment.md)。
 
 当前具备本地/已挂载来源扫描、原流/处理/NCM 播放、识别与人工关联、内容补全与受限写回、在线资料与歌单接口、缓存、备份和生命周期协议。三平台账号接口已接入，真实账号完整登录尚待验收；在线整曲交付尚未实现。原生 NFS/SMB、Bilibili 和通用第三方插件接入仍为设计。
 
@@ -60,7 +60,7 @@ Server 是 Go 模块化单体，统一管理来源、曲库、歌单、资料补
 
 YAML 保存部署、权限和普通插件开关；Local Files 的实际目录及扫描/监听设置由管理 API 保存到宿主管理的插件配置数据库。permissions.readDirectories 是授权范围，添加目录不扩大权限，保存不自动扫描；默认授权及迁移见[实例配置](plugins/plugin-configuration.md)。插件声明角色、名称、版本和多实例能力，实例 UUID、插件 ID 和管理员别名彼此分离。
 
-SQLite 是必需后端，默认在主进程通过直接后端接口运行，显式进程配置才使用独立 Worker。主库的 Schema、内嵌 SQL 和迁移加载器位于 `plugins/database/sqlite/migrations`，实例状态库的建表、迁移及只读读取位于 `plugins/database/sqlite/state`；插件完成初始化后才返回可用后端。宿主保留业务数据与事务契约、后端选择、数据锁和生命周期协调，配置预加载只读且不建库；Server 仓库继续维护契约及插件实现。DSP 支持有序无状态节点，首版要求固定格式/帧数、零延迟和无尾音。数据库与 DSP 在管理列表只读展示，变更部署配置后重启，见[存储插件](plugins/storage-plugins.md)与[DSP 插件](plugins/dsp-plugins.md)。
+SQLite 是必需后端，默认在主进程通过直接后端接口运行，显式进程配置才使用独立 Worker。主库的 Schema、内嵌 SQL 和迁移加载器位于 `plugins/database/sqlite/migrations`，实例状态库的建表、迁移及只读读取位于 `plugins/database/sqlite/state`；插件完成初始化后才返回可用后端。宿主保留业务数据与事务契约、后端选择、数据锁和生命周期协调，配置预加载只读且不建库。内置 DSP 提供增益、EQ、压缩器和混响，有状态定位从曲首重建后裁切；独立声道转换先确定 stereo/5.1/7.1 布局，再交给多声道效果链及 MP3/Opus 编码。外部 MFD1 v1 仍仅支持无状态双声道。数据库、声道转换与 DSP 在管理列表只读展示，变更部署配置后重启，见[存储插件](plugins/storage-plugins.md)及[DSP 与声道转换](plugins/dsp-effects.md)。
 
 ## 来源与歌单
 

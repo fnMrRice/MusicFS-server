@@ -55,8 +55,8 @@ func TestDSPIdentityAndConfigImmutability(t *testing.T) {
 	if before == dspRevision(config, strings.Repeat("a", 64)) {
 		t.Fatal("DSP revision does not bind node parameters")
 	}
-	if dspRevision(Config{}, "") != "gain-v1" {
-		t.Fatal("legacy processing revision changed")
+	if !strings.HasPrefix(dspRevision(Config{}, ""), "dsp-v1:") {
+		t.Fatal("channel conversion identity missing from default processing revision")
 	}
 	if (*Processor)(nil).HasDSP() {
 		t.Fatal("nil processor has DSP")

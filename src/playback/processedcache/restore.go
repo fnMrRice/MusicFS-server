@@ -22,7 +22,7 @@ func (m *Manager) restore(ctx context.Context) error {
 	indexed := map[string]Record{}
 	for _, r := range records {
 		if r.Validate() == nil {
-			indexed[r.ID+".mp3"] = r
+			indexed[filepath.Base(m.path(r.ID, r.Identity.Profile))] = r
 		}
 	}
 	files, err := os.ReadDir(m.config.Root)
@@ -36,7 +36,7 @@ func (m *Manager) restore(ctx context.Context) error {
 		}
 		name := file.Name()
 		id, suffix, ok := strings.Cut(name, ".")
-		if !ok || !validHex(id, 48) || (suffix != "part" && suffix != "mp3") {
+		if !ok || !validHex(id, 48) || (suffix != "part" && suffix != "mp3" && suffix != "webm") {
 			continue
 		}
 		path := filepath.Join(m.config.Root, name)

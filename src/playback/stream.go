@@ -44,7 +44,7 @@ func (s *Stream) Process(output io.Writer) (err error) {
 	return s.processDirect(output)
 }
 func (s *Stream) processDirect(output io.Writer) error {
-	return s.processor.Process(s.Context, audioffmpeg.Plan{TaskID: s.Description.AttemptID, AssetID: s.Description.AssetID, Profile: "mp3-128", GainDB: s.gain, PositionMs: s.Description.PositionOriginMs}, s.File, s.Size, output)
+	return s.processor.Process(s.Context, audioffmpeg.Plan{TaskID: s.Description.AttemptID, AssetID: s.Description.AssetID, Profile: s.Description.OutputProfile.ID, GainDB: s.gain, PositionMs: s.Description.PositionOriginMs}, s.File, s.Size, output)
 }
 func (s *Service) OpenStream(ctx context.Context, who auth.Session, id, attempt string, head bool) (result *Stream, resultErr error) {
 	consumers := 0

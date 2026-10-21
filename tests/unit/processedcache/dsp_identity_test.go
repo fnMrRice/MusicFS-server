@@ -32,3 +32,30 @@ func TestDSPChainIdentitySeparatesCompletedOutput(t *testing.T) {
 		}
 	}
 }
+
+func TestChannelProfilesCannotReuseAnotherLayoutsCompletedOutput(t *testing.T) {
+	m, _, repo, _, _ := setup(t, 4096)
+	for _, profile := range []string{"mp3-128", "opus-5.1", "opus-7.1"} {
+		current := identity()
+		current.Profile = profile
+		pin := complete(t, m, repo, current, "output-"+profile)
+		defer pin.Close()
+		for _, other := range []string{"mp3-128", "opus-5.1", "opus-7.1"} {
+			if other == profile {
+				continue
+			}
+			candidate := current
+			candidate.Profile = other
+			key, err := candidate.Key()
+			currentKey, currentErr := current.Key()
+			if err != nil || currentErr != nil || key == currentKey {
+				t.Fatal("output layouts share a cache identity", profile, other)
+			}
+		}
+	}
+	invalid := identity()
+	invalid.Profile = "opus-unknown"
+	if _, err := invalid.Key(); err == nil {
+		t.Fatal("undefined cache output profile accepted")
+	}
+}

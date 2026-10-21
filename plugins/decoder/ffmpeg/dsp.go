@@ -5,14 +5,16 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/dsp/gain"
+	"github.com/fnMrRice/MusicFS-server/plugins/dsp/builtin"
+	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio/dspchain"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio/dspworker"
 )
 
-// ValidateDSP checks configuration without opening files or starting workers.
+// ValidateDSP 校验配置，不打开文件或启动插件。
 func ValidateDSP(chain []audio.NodeSpec, plugins []dspworker.Config) error {
 	return dspchain.Validate(chain, plugins)
 }
@@ -23,8 +25,8 @@ func CloneDSPChain(chain []audio.NodeSpec) []audio.NodeSpec {
 
 func (p *Processor) HasDSP() bool { return p != nil && len(p.config.DSPChain) != 0 }
 
-// DSPPluginVersion returns a release verified during processor initialization.
-// Reading it does not start an idle worker or query a playback process.
+// DSPPluginVersion 返回初始化时装配的内置发行号或握手验证过的外部发行号。
+// 查询不会启动空闲节点，也不会访问活动播放状态。
 func (p *Processor) DSPPluginVersion(name string) string {
 	if p == nil {
 		return ""
@@ -44,15 +46,36 @@ func buildDSP(ctx context.Context, gain float64, chain []audio.NodeSpec, plugins
 }
 
 func buildDSPWithVersions(ctx context.Context, gain float64, chain []audio.NodeSpec, plugins []dspworker.Config, versions map[string]string) (*audio.Chain, error) {
+	return buildDSPFormatVersions(ctx, gain, chain, plugins, audio.Canonical, versions)
+}
+
+func buildDSPFormat(ctx context.Context, gain float64, chain []audio.NodeSpec, plugins []dspworker.Config, format audio.Format) (*audio.Chain, error) {
+	return buildDSPFormatVersions(ctx, gain, chain, plugins, format, nil)
+}
+
+func buildDSPFormatVersions(ctx context.Context, gain float64, chain []audio.NodeSpec, plugins []dspworker.Config, format audio.Format, versions map[string]string) (*audio.Chain, error) {
+	if err := format.Validate(); err != nil {
+		return nil, err
+	}
 	if err := ValidateDSP(chain, plugins); err != nil {
 		return nil, err
 	}
 	registry := audio.NewRegistry()
-	if err := dsp.Register(registry); err != nil {
+	if err := builtin.Register(registry); err != nil {
 		return nil, err
 	}
 	for _, config := range plugins {
 		if err := registry.Register(config.Name, func(params map[string]float64) (audio.Node, error) {
+			if format != audio.Canonical {
+				if !config.Builtin {
+					return nil, fmt.Errorf("UNSUPPORTED: external DSP v1 requires stereo output")
+				}
+				// 多声道官方增益使用同一工厂，避免扩展仅双声道的 MFD1 协议。
+				if versions != nil {
+					versions[config.Name] = bundledplugin.GainVersion
+				}
+				return registry.Create("gain", params)
+			}
 			process, err := dspworker.New(ctx, config, params)
 			if err == nil && versions != nil {
 				versions[config.Name] = process.PluginVersion()
@@ -67,24 +90,41 @@ func buildDSPWithVersions(ctx context.Context, gain float64, chain []audio.NodeS
 	if err != nil {
 		return nil, err
 	}
-	if err = result.Configure(audio.Canonical); err != nil {
+	if err = result.Configure(format); err != nil {
 		result.Close()
 		return nil, err
+	}
+	if versions != nil {
+		for _, spec := range chain {
+			if short := builtin.EffectName(spec.Name); short != "" {
+				versions["musicfs.dsp."+short] = builtin.Version(spec.Name)
+			}
+		}
 	}
 	return result, nil
 }
 
 func dspRevision(cfg Config, workerSHA string) string {
-	if len(cfg.DSPChain) == 0 {
-		return "gain-v1"
+	layout := cfg.OutputLayout
+	if layout == "" {
+		layout = "stereo"
+	}
+	versions := map[string]string{"gain": bundledplugin.GainVersion}
+	for _, node := range cfg.DSPChain {
+		if version := builtin.Version(node.Name); version != "" {
+			versions[node.Name] = version
+		}
 	}
 	data, _ := json.Marshal(struct {
-		ProtocolVersion int                `json:"protocolVersion"`
-		WorkerSHA       string             `json:"workerSHA256"`
-		WorkerVersion   string             `json:"workerVersion"`
-		Chain           []audio.NodeSpec   `json:"chain"`
-		Plugins         []dspworker.Config `json:"plugins"`
-	}{dspworker.ProtocolVersion, workerSHA, audioPluginVersion, cfg.DSPChain, cfg.DSPPlugins})
+		ProtocolVersion   int                `json:"protocolVersion"`
+		WorkerSHA         string             `json:"workerSHA256"`
+		WorkerVersion     string             `json:"workerVersion"`
+		ChannelMixVersion string             `json:"channelMixVersion"`
+		OutputLayout      string             `json:"outputLayout"`
+		BuiltinVersions   map[string]string  `json:"builtinVersions"`
+		Chain             []audio.NodeSpec   `json:"chain"`
+		Plugins           []dspworker.Config `json:"plugins"`
+	}{dspworker.ProtocolVersion, workerSHA, audioPluginVersion, bundledplugin.ChannelMixVersion, layout, versions, cfg.DSPChain, cfg.DSPPlugins})
 	hash := sha256.Sum256(data)
 	return "dsp-v1:" + hex.EncodeToString(hash[:])
 }

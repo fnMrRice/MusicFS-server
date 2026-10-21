@@ -84,7 +84,7 @@ func TestProcessedCacheRetainsUnlinkedInputBudgetUntilReaderCloses(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.player, err = playback.New(context.Background(), f.repo.Store, f.repo.library, &audioffmpeg.Processor{}, playback.Config{CacheRoot: filepath.Join(filepath.Dir(f.path), "cache-retired"), MaxSessions: 8, MaxCacheBytes: 2 * info.Size()})
+	f.player, err = playback.New(context.Background(), f.repo.Store, f.repo.library, &audioffmpeg.Processor{Capabilities: syntheticAudioCapabilities(strings.Repeat("a", 64))}, playback.Config{CacheRoot: filepath.Join(filepath.Dir(f.path), "cache-retired"), MaxSessions: 8, MaxCacheBytes: 2 * info.Size()})
 	if err != nil {
 		t.Fatal(err)
 	}

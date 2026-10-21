@@ -162,6 +162,8 @@ func restoredConfig(ctx context.Context, dst *os.Root, destination string) error
 	c.NormalizeIdentities()
 	c.Storage = config.StorageConfig{Backend: "sqlite"}
 	c.AudioDSP = config.AudioDSPConfig{}
+	// 恢复时音频插件默认禁用，不能保留需要处理器的环绕声部署要求。
+	c.AudioChannels = config.AudioChannelsConfig{OutputLayout: "stereo"}
 	c.DataRoot = filepath.Join(destination, "data")
 	c.MediaRoot = filepath.Join(destination, "media")
 	c.CacheRoot = filepath.Join(destination, "cache")

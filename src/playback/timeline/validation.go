@@ -23,10 +23,15 @@ func (t Target) Validate() error {
 }
 func (p Profile) Validate() error {
 	decoded, err := hex.DecodeString(p.DecoderSHA256)
-	if p.OutputProfile != "mp3-128" || !ValidProcessingRevision(p.ProcessingRevision) || err != nil || len(decoded) != 32 || p.DecoderSHA256 != strings.ToLower(p.DecoderSHA256) || math.IsNaN(p.GainDB) || math.IsInf(p.GainDB, 0) || p.GainDB < -60 || p.GainDB > 0 {
+	if !ValidOutputProfile(p.OutputProfile) || !ValidProcessingRevision(p.ProcessingRevision) || err != nil || len(decoded) != 32 || p.DecoderSHA256 != strings.ToLower(p.DecoderSHA256) || math.IsNaN(p.GainDB) || math.IsInf(p.GainDB, 0) || p.GainDB < -60 || p.GainDB > 0 {
 		return domain.Fail("INVALID_ARGUMENT", "Unsupported timeline processing profile")
 	}
 	return nil
+}
+
+// ValidOutputProfile 仅接受已经定义固定声道布局及编码参数的输出身份。
+func ValidOutputProfile(profile string) bool {
+	return profile == "mp3-128" || profile == "opus-5.1" || profile == "opus-7.1"
 }
 
 // ValidProcessingRevision accepts the legacy gain pipeline or an immutable DSP

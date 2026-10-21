@@ -28,7 +28,12 @@ func (s *Service) RecoveryProfile() (timeline.Profile, error) {
 }
 
 func recoveryProfile(processor *audioffmpeg.Processor) (timeline.Profile, error) {
-	p := timeline.Profile{OutputProfile: "mp3-128", ProcessingRevision: "gain-v1"}
+	p := timeline.Profile{ProcessingRevision: "gain-v1"}
+	output, err := processor.OutputProfile()
+	if err != nil {
+		return p, domain.Fail("UNSUPPORTED", "A verified recovery processing profile is unavailable")
+	}
+	p.OutputProfile = output.ID
 	if processor != nil {
 		p.DecoderSHA256 = processor.Capabilities.FFmpegSHA256
 		if revision := processor.ProcessingIdentity().PipelineRevision; revision != "" {

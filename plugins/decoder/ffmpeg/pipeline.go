@@ -2,11 +2,9 @@ package audioffmpeg
 
 import (
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net/url"
 	"os/exec"
 	"strconv"
@@ -49,8 +47,16 @@ func validateLoopback(raw string) error {
 func Pipeline(ctx context.Context, r StartRequest, output io.Writer) (pipelineErr error) {
 	finish := pluginlog.Operation(ctx, "audio.pipeline")
 	defer func() { finish(pipelineErr) }()
-	if r.Plan.Profile != "mp3-128" || r.Plan.PositionMs < 0 || r.Plan.PositionMs > 24*60*60*1000 {
+	if ctx.Err() != nil {
+		return fmt.Errorf("CANCELED: audio processing stopped")
+	}
+	profile, supported := ProfileByID(r.Plan.Profile)
+	if !supported || r.Plan.PositionMs < 0 || r.Plan.PositionMs > 24*60*60*1000 {
 		return fmt.Errorf("UNSUPPORTED: invalid audio plan")
+	}
+	format, err := audio.FormatForLayout(profile.Layout)
+	if err != nil {
+		return err
 	}
 	if err := validateLoopback(r.InputURL); err != nil {
 		return err
@@ -59,16 +65,26 @@ func Pipeline(ctx context.Context, r StartRequest, output io.Writer) (pipelineEr
 	if err != nil || hash != r.FFmpegSHA256 {
 		return fmt.Errorf("ACCESS_DENIED: audio executable changed")
 	}
-	node, err := buildDSP(ctx, r.Plan.GainDB, r.DSPChain, r.DSPPlugins)
+	node, err := buildDSPFormat(ctx, r.Plan.GainDB, r.DSPChain, r.DSPPlugins, format)
 	if err != nil {
 		return err
 	}
 	defer node.Close()
+	requestCtx := ctx
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	decodeArgs := []string{"-hide_banner", "-nostdin", "-v", "error", "-protocol_whitelist", "http,tcp", "-format_whitelist", inputFormats, "-i", r.InputURL, "-ss", strconv.FormatFloat(float64(r.Plan.PositionMs)/1000, 'f', 3, 64), "-map", "0:a:0", "-vn", "-ac", "2", "-ar", "48000", "-f", "f32le", "-acodec", "pcm_f32le", "pipe:1"}
+	targetFrame := r.Plan.PositionMs * int64(format.SampleRate) / 1000
+	window := pcmWindow{DiscardFrames: targetFrame}
+	decodeArgs := []string{"-hide_banner", "-nostdin", "-v", "error", "-protocol_whitelist", "http,tcp", "-format_whitelist", inputFormats, "-guess_layout_max", "0", "-i", r.InputURL}
+	if node.Stateless() {
+		decodeArgs = append(decodeArgs, "-ss", strconv.FormatFloat(float64(r.Plan.PositionMs)/1000, 'f', 3, 64))
+		window = pcmWindow{StartFrame: targetFrame}
+	}
+	// 有状态链从曲首重建历史；仅在 DSP 处理之后丢弃目标位置之前的帧。
+	// WAV 扩展头携带原声道掩码，避免先下混后再上混丢失声道内容。
+	decodeArgs = append(decodeArgs, "-map", "0:a:0", "-vn", "-ar", "48000", "-f", "wav", "-acodec", "pcm_f32le", "pipe:1")
 	decoder := exec.CommandContext(ctx, r.FFmpegPath, decodeArgs...)
-	encoder := exec.CommandContext(ctx, r.FFmpegPath, "-hide_banner", "-nostdin", "-v", "error", "-f", "f32le", "-ar", "48000", "-ac", "2", "-i", "pipe:0", "-vn", "-codec:a", "libmp3lame", "-b:a", "128k", "-f", "mp3", "-write_xing", "0", "-id3v2_version", "0", "pipe:1")
+	encoder := exec.CommandContext(ctx, r.FFmpegPath, encoderArguments(profile)...)
 	decodeLog := logging.PluginStderr("musicfs.plugin.decoder.ffmpeg", "")
 	encodeLog := logging.PluginStderr("musicfs.plugin.decoder.ffmpeg", "")
 	defer decodeLog.Close()
@@ -86,16 +102,28 @@ func Pipeline(ctx context.Context, r StartRequest, output io.Writer) (pipelineEr
 	}
 	encoder.Stdout = output
 	if err = encoder.Start(); err != nil {
+		if requestCtx.Err() != nil {
+			return fmt.Errorf("CANCELED: audio processing stopped")
+		}
 		return fmt.Errorf("TEMPORARY_FAILURE: encoder failed to start")
 	}
 	if err = decoder.Start(); err != nil {
 		cancel()
 		encodeInput.Close()
 		encoder.Wait()
+		if requestCtx.Err() != nil {
+			return fmt.Errorf("CANCELED: audio processing stopped")
+		}
 		return fmt.Errorf("TEMPORARY_FAILURE: decoder failed to start")
 	}
-	err = transferPCM(ctx, decoded, encodeInput, node)
-	encodeInput.Close()
+	converted, err := convertedWAVReader(decoded, format)
+	if err == nil {
+		err = transferPCMFormatWindow(ctx, converted, encodeInput, node, format, window)
+	}
+	closeErr := encodeInput.Close()
+	if err == nil && closeErr != nil {
+		err = fmt.Errorf("TEMPORARY_FAILURE: encoder input close failed")
+	}
 	if err != nil {
 		cancel()
 	}
@@ -104,61 +132,14 @@ func Pipeline(ctx context.Context, r StartRequest, output io.Writer) (pipelineEr
 		cancel()
 	}
 	encodeErr := encoder.Wait()
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+	if requestCtx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return fmt.Errorf("CANCELED: audio processing stopped")
 	}
 	if err != nil {
 		return err
 	}
-	if ctx.Err() != nil {
-		return fmt.Errorf("CANCELED: audio processing stopped")
-	}
 	if decodeErr != nil || encodeErr != nil {
 		return fmt.Errorf("TEMPORARY_FAILURE: audio processing failed")
 	}
 	return nil
-}
-
-func transferPCM(ctx context.Context, input io.Reader, output io.Writer, node audio.Node) error {
-	buffer := make([]byte, 4096*2*4)
-	samples := make([]float32, 4096*2)
-	var frames int64
-	var sequence uint64
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		n, err := io.ReadFull(input, buffer)
-		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
-			return fmt.Errorf("TEMPORARY_FAILURE: decoder read failed")
-		}
-		if n%8 != 0 {
-			return fmt.Errorf("PROTOCOL_MISMATCH: unaligned PCM payload")
-		}
-		if n == 0 {
-			break
-		}
-		for i := range n / 4 {
-			samples[i] = math.Float32frombits(binary.LittleEndian.Uint32(buffer[i*4:]))
-		}
-		block := audio.Block{Format: audio.Canonical, Samples: samples[:n/4], Frames: n / 8, Sequence: sequence, PositionFrames: frames, End: err != nil}
-		if processErr := node.Process(&block); processErr != nil {
-			return processErr
-		}
-		for i, sample := range block.Samples {
-			binary.LittleEndian.PutUint32(buffer[i*4:], math.Float32bits(sample))
-		}
-		if _, writeErr := output.Write(buffer[:n]); writeErr != nil {
-			return fmt.Errorf("TEMPORARY_FAILURE: encoder write failed")
-		}
-		frames += int64(block.Frames)
-		sequence++
-		if err != nil {
-			break
-		}
-	}
-	if frames == 0 {
-		return fmt.Errorf("UNSUPPORTED: no decodable audio frames")
-	}
-	return node.Drain()
 }

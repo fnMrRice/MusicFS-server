@@ -8,8 +8,10 @@ import (
 	"log/slog"
 	"math"
 	"mime"
+	"strings"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
@@ -20,6 +22,25 @@ func supports(c Capabilities, wanted string) bool {
 		base, _, err := mime.ParseMediaType(f.MIME)
 		if err == nil && base == wanted && (f.CanPlay == "maybe" || f.CanPlay == "probably") {
 			return true
+		}
+	}
+	return false
+}
+
+// 客户端声明容器时可省略编解码器；显式声明时必须包含实际输出编解码器。
+func supportsOutputProfile(c Capabilities, profile audioffmpeg.Profile) bool {
+	for _, format := range c.Formats {
+		base, params, err := mime.ParseMediaType(format.MIME)
+		if err != nil || base != profile.MIME || format.CanPlay != "maybe" && format.CanPlay != "probably" {
+			continue
+		}
+		if params["codecs"] == "" {
+			return true
+		}
+		for _, codec := range strings.Split(params["codecs"], ",") {
+			if strings.EqualFold(strings.TrimSpace(codec), profile.Codec) {
+				return true
+			}
 		}
 	}
 	return false

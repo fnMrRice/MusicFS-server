@@ -92,7 +92,7 @@ func playbackService(t *testing.T) (*playback.Service, *gatedRepository, auth.Se
 	repo := &gatedRepository{Store: store, entered: make(chan struct{}), proceed: make(chan struct{})}
 	lib := library.New(repo, jobs.New(store), []library.Runtime{{ID: "root", Name: "Fixture", Owner: "admin", Worker: &pluginhost.Worker{Access: access}}}, nil)
 	repo.library = lib
-	service, err := playback.New(ctx, store, lib, &audioffmpeg.Processor{}, playback.Config{CacheRoot: filepath.Join(dir, "cache"), MaxSessions: 8, MaxCacheBytes: 16 << 20})
+	service, err := playback.New(ctx, store, lib, &audioffmpeg.Processor{Capabilities: syntheticAudioCapabilities("")}, playback.Config{CacheRoot: filepath.Join(dir, "cache"), MaxSessions: 8, MaxCacheBytes: 16 << 20})
 	if err != nil {
 		t.Fatal(err)
 	}

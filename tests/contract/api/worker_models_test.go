@@ -19,7 +19,7 @@ func TestHostAndAudioWireDTOsMatchContract(t *testing.T) {
 	testkit.ValidatePlugin(t, "StateResult", pluginproto.StateValue{Revision: 0})
 	testkit.ValidatePlugin(t, "ResourceRequest", pluginproto.Resource{RootID: "root", RelativePath: "a.wav", ObservedVersion: "v1"})
 	capabilities := audioffmpeg.Capabilities{Version: "test FFmpeg", Build: "test build", FFmpegSHA256: strings.Repeat("a", 64), FFprobeSHA256: strings.Repeat("b", 64), PCM: audio.Canonical,
-		Profiles: []audioffmpeg.Profile{{ID: "mp3-128", MIME: "audio/mpeg", Codec: "mp3", Container: "mp3", SampleRate: 48000, Channels: 2, BitrateBps: 128000, SeekMode: "timeRestart"}}}
+		Profiles: []audioffmpeg.Profile{{ID: "mp3-128", MIME: "audio/mpeg", Codec: "mp3", Container: "mp3", SampleRate: 48000, Channels: 2, Layout: "stereo", BitrateBps: 128000, SeekMode: "timeRestart"}}}
 	testkit.ValidatePlugin(t, "AudioCapabilities", capabilities)
 	request := audioffmpeg.StartRequest{Plan: audioffmpeg.Plan{TaskID: "task-1", AssetID: "asset-1", Profile: "mp3-128", GainDB: -6, PositionMs: 2000},
 		FFmpegPath: "C:/tools/ffmpeg.exe", FFmpegSHA256: strings.Repeat("a", 64), InputURL: "http://127.0.0.1:12345/" + strings.Repeat("c", 48) + "/input", OutputURL: "http://127.0.0.1:12345/" + strings.Repeat("c", 48) + "/output"}

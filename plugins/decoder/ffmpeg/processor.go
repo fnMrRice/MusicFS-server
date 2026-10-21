@@ -17,6 +17,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/dsp/builtin"
 	"github.com/fnMrRice/MusicFS-server/sdk/inprocess"
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
@@ -35,6 +36,7 @@ type Config struct {
 	MaxConcurrent                                              int
 	DSPChain                                                   []audio.NodeSpec
 	DSPPlugins                                                 []dspworker.Config
+	OutputLayout                                               string
 }
 type Processor struct {
 	gate          atomic.Pointer[lifecycleBinding]
@@ -80,7 +82,11 @@ func NewProcessor(ctx context.Context, cfg Config) (*Processor, error) {
 		return nil, fmt.Errorf("ACCESS_DENIED: audio worker checksum mismatch")
 	}
 	dspVersions := map[string]string{}
-	chain, err := buildDSPWithVersions(ctx, 0, cfg.DSPChain, cfg.DSPPlugins, dspVersions)
+	format, err := audio.FormatForLayout(cfg.OutputLayout)
+	if err != nil || format.Layout == "mono" {
+		return nil, fmt.Errorf("UNSUPPORTED: output layout must be stereo, 5.1 or 7.1")
+	}
+	chain, err := buildDSPFormatVersions(ctx, 0, cfg.DSPChain, cfg.DSPPlugins, format, dspVersions)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +95,11 @@ func NewProcessor(ctx context.Context, cfg Config) (*Processor, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Processor{config: cfg, dspVersions: dspVersions, Capabilities: capabilities, slots: make(chan struct{}, cfg.MaxConcurrent), normalizeSlot: make(chan struct{}, 1), identity: ProcessingIdentity{WorkerSHA256: hash, FFmpegSHA256: capabilities.FFmpegSHA256, PluginVersion: audioPluginVersion, PipelineRevision: dspRevision(cfg, hash)}}, nil
+	processor := &Processor{config: cfg, dspVersions: dspVersions, Capabilities: capabilities, slots: make(chan struct{}, cfg.MaxConcurrent), normalizeSlot: make(chan struct{}, 1), identity: ProcessingIdentity{WorkerSHA256: hash, FFmpegSHA256: capabilities.FFmpegSHA256, PluginVersion: audioPluginVersion, PipelineRevision: dspRevision(cfg, hash)}}
+	if _, err := processor.OutputProfile(); err != nil {
+		return nil, err
+	}
+	return processor, nil
 }
 
 type bootstrap struct {
@@ -98,6 +108,10 @@ type bootstrap struct {
 }
 
 func (p *Processor) Process(ctx context.Context, plan Plan, input io.ReadSeeker, size int64, output io.Writer) error {
+	profile, profileErr := p.OutputProfile()
+	if profileErr != nil || profile.ID != plan.Profile {
+		return fmt.Errorf("UNSUPPORTED: audio plan differs from configured output")
+	}
 	lease, err := p.AcquireLease(ctx)
 	if err != nil {
 		return err
@@ -292,6 +306,14 @@ func workerHash(cfg Config) (string, error) {
 // 内置 DSP 必须在 Server 主进程执行，不能随外部音频 Worker 转移到子进程。
 func validateExecution(cfg Config) error {
 	if !cfg.Builtin {
+		if cfg.OutputLayout != "" && cfg.OutputLayout != "stereo" {
+			return fmt.Errorf("UNSUPPORTED: channel conversion requires builtin audio execution")
+		}
+		for _, node := range cfg.DSPChain {
+			if builtin.EffectName(node.Name) != "" {
+				return fmt.Errorf("UNSUPPORTED: builtin DSP requires builtin audio execution")
+			}
+		}
 		for _, plugin := range cfg.DSPPlugins {
 			if plugin.Builtin {
 				return fmt.Errorf("UNSUPPORTED: builtin DSP requires builtin audio execution")

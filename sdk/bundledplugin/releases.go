@@ -5,13 +5,17 @@ package bundledplugin
 
 const (
 	LocalFilesVersion   = "0.3.0"
-	FFmpegVersion       = "0.2.0"
+	FFmpegVersion       = "0.3.0"
 	NCMVersion          = "0.1.0"
 	LocalScraperVersion = "0.1.0"
 	NetEaseVersion      = "0.1.0"
 	QQMusicVersion      = "0.1.0"
 	AppleMusicVersion   = "0.1.0"
 	GainVersion         = "0.1.0"
+	EqualizerVersion    = "0.1.0"
+	CompressorVersion   = "0.1.0"
+	ReverbVersion       = "0.1.0"
+	ChannelMixVersion   = "0.1.0"
 	SQLiteVersion       = "0.1.0"
 	ChromaprintVersion  = "0.1.0"
 	FLACVersion         = "0.1.0"
@@ -47,6 +51,14 @@ func Version(pluginID string) string {
 		return AppleMusicVersion
 	case "musicfs.dsp.gain":
 		return GainVersion
+	case "musicfs.dsp.equalizer":
+		return EqualizerVersion
+	case "musicfs.dsp.compressor":
+		return CompressorVersion
+	case "musicfs.dsp.reverb":
+		return ReverbVersion
+	case "musicfs.plugin.decoder.channelmix":
+		return ChannelMixVersion
 	case "musicfs.plugin.storage.sqlite":
 		return SQLiteVersion
 	default:

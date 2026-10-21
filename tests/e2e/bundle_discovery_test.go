@@ -24,7 +24,7 @@ func TestBundledPluginsAutostartPendingAndPersistedDisable(t *testing.T) {
 				t.Fatalf("plugins: %d %s", code, raw)
 			}
 			testkit.ValidateHTTP(t, "PluginManagementSnapshot", raw)
-			valid := len(snapshot.Items) == 13 && snapshot.RestartRequired == restartRequired
+			valid := len(snapshot.Items) == 17 && snapshot.RestartRequired == restartRequired
 			for _, p := range snapshot.Items {
 				if p.Builtin != nil {
 					valid = valid && p.Execution == "builtin" && !p.StateMutable && len(p.Instances) == 0

@@ -15,7 +15,7 @@ import (
 
 func TestPlaybackPluginLeaseSurvivesRequestAndDrainsUntilStop(t *testing.T) {
 	gate := plugincontrol.NewGate(true)
-	processor := &audioffmpeg.Processor{Capabilities: audioffmpeg.Capabilities{FFmpegSHA256: strings.Repeat("a", 64)}}
+	processor := &audioffmpeg.Processor{Capabilities: syntheticAudioCapabilities(strings.Repeat("a", 64))}
 	processor.SetGate(gate)
 	f := recoverySetup(t, processor, 0)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -51,7 +51,7 @@ func TestPlaybackPluginLeaseSurvivesRequestAndDrainsUntilStop(t *testing.T) {
 
 func TestPlaybackPluginForceCancelsStreamAndReleasesAfterCleanup(t *testing.T) {
 	gate := plugincontrol.NewGate(true)
-	processor := &audioffmpeg.Processor{Capabilities: audioffmpeg.Capabilities{FFmpegSHA256: strings.Repeat("a", 64)}}
+	processor := &audioffmpeg.Processor{Capabilities: syntheticAudioCapabilities(strings.Repeat("a", 64))}
 	processor.SetGate(gate)
 	f := recoverySetup(t, processor, 0)
 	d, err := f.player.Create(context.Background(), f.who, f.request, "force-playback")
@@ -83,14 +83,14 @@ func TestPlaybackPluginForceCancelsStreamAndReleasesAfterCleanup(t *testing.T) {
 
 func TestPlaybackSessionKeepsItsProcessorWhenNewSessionsAreReconfigured(t *testing.T) {
 	oldGate := plugincontrol.NewGate(true)
-	old := &audioffmpeg.Processor{Capabilities: audioffmpeg.Capabilities{FFmpegSHA256: strings.Repeat("a", 64)}}
+	old := &audioffmpeg.Processor{Capabilities: syntheticAudioCapabilities(strings.Repeat("a", 64))}
 	old.SetGate(oldGate)
 	f := recoverySetup(t, old, 0)
 	d, err := f.player.Create(context.Background(), f.who, f.request, "old-generation")
 	if err != nil {
 		t.Fatal(err)
 	}
-	next := &audioffmpeg.Processor{Capabilities: audioffmpeg.Capabilities{FFmpegSHA256: strings.Repeat("b", 64)}}
+	next := &audioffmpeg.Processor{Capabilities: syntheticAudioCapabilities(strings.Repeat("b", 64))}
 	next.SetGate(plugincontrol.NewGate(false))
 	f.player.UpdateAudio(next, nil)
 	oldGate.SetAccepting(false, false)

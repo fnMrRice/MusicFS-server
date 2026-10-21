@@ -72,8 +72,14 @@ func New(ctx context.Context, repo Repository, budget *Budget, c Config) (*Manag
 	return m, nil
 }
 
-func (m *Manager) now() time.Time        { return m.config.Now().UTC() }
-func (m *Manager) path(id string) string { return filepath.Join(m.config.Root, id+".mp3") }
+func (m *Manager) now() time.Time { return m.config.Now().UTC() }
+func (m *Manager) path(id, profile string) string {
+	extension := ".mp3"
+	if profile == "opus-5.1" || profile == "opus-7.1" {
+		extension = ".webm"
+	}
+	return filepath.Join(m.config.Root, id+extension)
+}
 func (m *Manager) reap() {
 	defer close(m.done)
 	tick := time.NewTicker(30 * time.Second)
@@ -119,7 +125,8 @@ func (m *Manager) Collect(ctx context.Context) {
 	for key, e := range m.entries {
 		if e.refs == 0 && (e.invalid || now.Sub(e.lastRelease) >= m.config.IdleTTL || now.Sub(e.record.CreatedAt) >= m.config.HardTTL) {
 			delete(m.entries, key)
-			m.garbage[m.path(e.record.ID)] = garbage{id: e.record.ID, path: m.path(e.record.ID), size: e.record.Size}
+			path := m.path(e.record.ID, e.record.Identity.Profile)
+			m.garbage[path] = garbage{id: e.record.ID, path: path, size: e.record.Size}
 		}
 	}
 	for path, g := range m.garbage {

@@ -119,9 +119,10 @@ func TestStartupSettingsPreserveExplicitEmptyCollections(t *testing.T) {
 
 func TestDeploymentChangesRequireRestartBeforeDatabaseReads(t *testing.T) {
 	for name, change := range map[string]string{
-		"storage": "storage: {backend: plugin, executable: './must-not-run', sha256: '" + strings.Repeat("a", 64) + "'}\n",
-		"roots":   "dataRoot: './new-data'\n",
-		"dsp":     "audioDSP: {chain: [{name: bypass, version: 1}]}\n",
+		"storage":  "storage: {backend: plugin, executable: './must-not-run', sha256: '" + strings.Repeat("a", 64) + "'}\n",
+		"roots":    "dataRoot: './new-data'\n",
+		"dsp":      "audioDSP: {chain: [{name: bypass, version: 1}]}\n",
+		"channels": "audioChannels: {outputLayout: '7.1'}\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "server.yaml")

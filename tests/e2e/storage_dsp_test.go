@@ -47,7 +47,7 @@ func TestExternalStorageAndDSPServerRestartAndPortableRestore(t *testing.T) {
 	}
 	cfg, base := yamlServiceConfig(t)
 	const instance = "b1548e96-3081-5c9c-8376-bf290e369d51"
-	cfg.Storage = config.StorageConfig{Backend: "plugin", Executable: storageWorker, SHA256: hashFile(storageWorker)}
+	cfg.Storage = config.StorageConfig{Execution: "process", Backend: "plugin", Executable: storageWorker, SHA256: hashFile(storageWorker)}
 	cfg.AudioDSP = config.AudioDSPConfig{
 		Chain:   []audio.NodeSpec{{Name: "musicfs.dsp.gain", Version: 1, Params: map[string]float64{"gainDB": -6}}},
 		Plugins: []dspworker.Config{{Name: "musicfs.dsp.gain", Executable: gainWorker, SHA256: hashFile(gainWorker), TimeoutMs: 5000}},
@@ -72,7 +72,7 @@ func TestExternalStorageAndDSPServerRestartAndPortableRestore(t *testing.T) {
 	request := playback.CreateRequest{SourceTrackID: track.ID, Capabilities: playback.Capabilities{HTMLAudio: true, Formats: []playback.Format{{MIME: "audio/wav", CanPlay: "probably"}, {MIME: "audio/mpeg", CanPlay: "probably"}}}}
 	code, raw, _ := c.request(t, "POST", "/api/v1/playback/sessions", request, "external-storage-dsp-create")
 	var description playback.Description
-	if code != 201 || json.Unmarshal(raw, &description) != nil || description.DeliveryMode != "processed" || len(description.EffectiveProcessing) != 2 || description.EffectiveProcessing[1].Type != "musicfs.dsp.gain" {
+	if code != 201 || json.Unmarshal(raw, &description) != nil || description.DeliveryMode != "processed" || len(description.EffectiveProcessing) != 3 || description.EffectiveProcessing[0].Type != "channelMix" || description.EffectiveProcessing[2].Type != "musicfs.dsp.gain" {
 		t.Fatalf("external server did not apply DSP: status=%d %s", code, raw)
 	}
 	pcm := fetchYAMLAudioPCM(t, c, ffmpeg, description.StreamURL)
@@ -153,9 +153,9 @@ func assertStorageCannotBeDisabled(t *testing.T, c *client, managed plugincontro
 				t.Fatalf("mandatory storage metadata is invalid: %+v", plugin)
 			}
 		}
-		if plugin.DSP != nil {
+		if plugin.PluginID == "musicfs.dsp.gain" && plugin.DSP != nil {
 			dspFound = true
-			if plugin.StateMutable || !plugin.DSP.Configured || plugin.DSP.ChainState != "in_chain" || len(plugin.DSP.Nodes) != 1 || plugin.DSP.Nodes[0].Position != 1 || plugin.DSP.Nodes[0].Params["gainDB"] != -6 || plugin.DSP.Nodes[0].Mode != "process" {
+			if plugin.StateMutable || !plugin.DSP.Configured || plugin.DSP.ChainState != "in_chain" || len(plugin.DSP.Nodes) != 1 || plugin.DSP.Nodes[0].Position != 1 || plugin.DSP.Nodes[0].Params["gainDB"] != -6 || plugin.DSP.Nodes[0].Mode != "builtin" {
 				t.Fatalf("DSP startup configuration metadata is invalid: %+v", plugin)
 			}
 		}

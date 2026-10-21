@@ -8,14 +8,14 @@ Provider 提供授权来源，Resolver 选择来源和输出，Audio Worker 处�
 
 - 格式兼容且不需要处理时使用原流或字节代理。
 - NCM 先由独立解密插件提取内部编码字节；纯解密为 `proxy`，需转码或 DSP 时再进入处理链，见 [NCM](ncm.md)。
-- 当前处理输出为 `mp3-128`。FFmpeg 解码为 `f32le / 48000 Hz / stereo`，依次执行用户 gain 和配置的 DSP 节点，再编码 MP3。
+- 当前处理输出提供 `mp3-128` 立体声与 `opus-5.1`、`opus-7.1` 环绕声。解码到 48 kHz float32 并保留源布局，独立声道转换插件转换到配置布局，再执行用户 gain、配置 DSP 和编码。参数、转换矩阵及布局约束见[常见 DSP 与声道转换](../plugins/dsp-effects.md)。
 - `audio.normalize` 为指纹提供独立规范化路径，跳过播放 DSP 链。
 
 ## 插件与控制边界
 
 内置音频控制面在主进程独立内存流上运行版本化 JSON-RPC，只有显式外部模式使用 stdio。正文仍走任务限定的二进制通道，不在 JSON 中传 PCM。Host 管理授权、超时、取消、背压和资源回收。实际字段见 [v1 Schema](../contracts/plugins/v1/protocol.schema.json)。
 
-官方音频 Worker 版本为 `0.2.0`，Host 精确校验后发送请求；旧 `0.1.0` 不能视为已执行 DSP，空链部署也须配套升级。`audio.prepare/start` 的可选 `dspChain/dspPlugins` 固定为版本 1。配置链按顺序使用内建节点或外部 Worker，详见 [DSP 插件](../plugins/dsp-plugins.md)。
+官方音频 Worker 版本为 `0.3.0`，Host 精确校验后发送请求；旧 `0.1.0/0.2.0` 不支持本次状态重建与声道处理，空链部署也须配套升级。节点参数仍为版本 1。内置 EQ、压缩器、混响支持有状态处理；外部 Worker 保持旧双声道无状态约束，详见 [DSP 插件](../plugins/dsp-plugins.md)。
 
 外部 DSP v1 仅允许无状态、固定格式和帧数、保持时标、零延迟、无尾音节点，启动前验证程序摘要。当前节点均为必需节点，失败明确报错，不自动旁路。DSP 配置重启生效；普通音频插件停用也在重启后生效，保存停用不会中断当前管线或拒绝新工作。实例配置重建按工作租约收尾。
 
@@ -23,9 +23,9 @@ Server 官方内置插件全部运行于主进程，FFmpeg/ffprobe 工具仍可�
 
 ## 播放表示与处理身份
 
-客户端提交实际 codec、container、MIME、传输和定位能力，Server 只选择已支持的输出。非空配置链强制 `processed`，要求客户端支持当前 `audio/mpeg`；没有兼容路径时返回明确错误。
+客户端提交实际 codec、container、MIME、传输和定位能力，Server 只选择已支持的输出。非空配置链或 5.1/7.1 配置强制 `processed`；按布局要求 MP3 或 Opus/WebM，缺少兼容路径返回明确错误，不静默降级布局。
 
-`effectiveProcessing` 按实际顺序报告用户 gain 和配置节点、版本、参数及 `execution: server`。空配置链修订为 `gain-v1`；非空链为 `dsp-v1:<SHA256>`，绑定有序节点、参数、外部程序配置/摘要及音频 Worker 身份。处理缓存与恢复证据使用同一链身份，桌面转场由 Client 执行。
+`effectiveProcessing` 按实际顺序报告声道转换、用户 gain 和配置节点、版本、参数及 `execution: server`。处理链修订统一为 `dsp-v1:<SHA256>`，绑定转换版本、输出布局、有序节点、参数、外部程序配置/摘要及音频 Worker 身份。处理缓存与恢复证据使用同一身份，桌面转场由 Client 执行。
 
 每个 attempt 固定源资产、输出 profile、处理身份、起点和 `representationId`。来源、字节版本、参数、编码配置或起点变化都产生新表示和地址；不能沿用旧 Range 或拼接缓冲。来源授权和版本检查不会因缓存命中省略，见[处理缓存](processed-cache.md)。
 
@@ -33,7 +33,7 @@ Server 官方内置插件全部运行于主进程，FFmpeg/ffprobe 工具仍可�
 
 本地原流先建立受磁盘配额约束的私有固定快照，再交付真实单 Range。只有固定且可随机访问的表示声明 `byteRange`，不继承其他表示的长度或验证器。
 
-处理输出边生成边交付，成功完整输出可缓存；命中仍为 `processed/timeRestart`，不提供 MP3 字节 Range。时间定位重新生成 attempt 和地址，客户端按 `positionOriginMs` 显示曲目进度并丢弃旧缓冲。未知时长或不能定位的输出不宣称可 seek。
+处理输出边生成边交付，成功完整输出可缓存；命中仍为 `processed/timeRestart`，不提供处理流字节 Range。时间定位重新生成 attempt 和地址；有状态链从曲首重建后丢弃目标前帧，无状态链保留快速定位。客户端按 `positionOriginMs` 显示曲目进度并丢弃旧缓冲。未知时长或不能定位的输出不宣称可 seek。
 
 `seek/recover` 校验当前 attempt、幂等键和代次，晚结果不能覆盖新状态。恢复次数与总时限有界。跨源继续播放须同时具备同 Recording、绑定两端资产及处理配置的有效时间映射、可定位输出；指纹相似或时长接近都不充分。当前人工固定偏移、恢复预算及 API 见[恢复与时间对齐](recovery.md)。
 
@@ -45,8 +45,8 @@ Server 官方内置插件全部运行于主进程，FFmpeg/ffprobe 工具仍可�
 
 ## 待扩展范围
 
-- AAC/fMP4、Opus/WebM、通用重新封装与更多浏览器/桌面输出矩阵。
-- 任意音频图、重采样/声道转换节点、有状态滤波、变速、预滚、延迟和尾音映射。
+- AAC/fMP4、通用重新封装与更多浏览器/桌面输出矩阵。
+- 任意音频图、自定义声道矩阵、空间上混、任意重采样节点、变速、前视延迟、曲尾追加和状态检查点。
 - 运行时热换图、Worker 内动态 C ABI、第三方插件权限隔离。
 - 真实 NAS 和在线完整音频的资源接入与跨源续播。
 

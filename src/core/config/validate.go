@@ -24,17 +24,23 @@ func (c Config) Validate() error {
 	if err := c.AudioDSP.Validate(); err != nil {
 		return err
 	}
-	if len(c.AudioDSP.Chain) > 0 {
+	if err := c.AudioChannels.Validate(); err != nil {
+		return err
+	}
+	if len(c.AudioDSP.Chain) > 0 || c.AudioChannels.RequiresProcessing() {
 		ready := false
 		for _, plugin := range c.Plugins {
 			if plugin.PluginID == "musicfs.plugin.decoder.ffmpeg" {
+				if c.AudioChannels.RequiresProcessing() && !plugin.InProcess() {
+					return errors.New("surround output requires builtin audio execution")
+				}
 				for _, instance := range plugin.Instances {
 					ready = ready || plugin.CanStart(instance)
 				}
 			}
 		}
 		if !ready {
-			return errors.New("configured DSP chain requires an enabled audio instance")
+			return errors.New("configured DSP or surround output requires an enabled audio instance")
 		}
 	}
 	if c.ConfigVersion != 1 {

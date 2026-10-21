@@ -17,6 +17,9 @@ storage:
 audioDSP:
   chain: []
   plugins: []
+audioChannels:
+  # 5.1 / 7.1 使用 Opus/WebM；客户端须支持该格式。
+  outputLayout: stereo
 webRoot: ''
 plugins:
   - pluginId: 'musicfs.plugin.source.localfiles'

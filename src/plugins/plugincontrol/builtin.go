@@ -13,7 +13,7 @@ type BuiltinStatus struct {
 
 func algorithmPlugin(id string) bool {
 	switch id {
-	case "musicfs.plugin.analysis.chromaprint", "musicfs.plugin.tags.flac", "musicfs.plugin.matching.standard", "musicfs.plugin.transform.thumbnail":
+	case "musicfs.plugin.analysis.chromaprint", "musicfs.plugin.tags.flac", "musicfs.plugin.matching.standard", "musicfs.plugin.transform.thumbnail", "musicfs.plugin.decoder.channelmix":
 		return true
 	}
 	return false
@@ -29,6 +29,7 @@ func (m *Manager) builtinPluginsLocked() []Plugin {
 		{"musicfs.plugin.tags.flac", m.desired.WriteBack.Enabled, []string{"tags.flac.rewrite"}},
 		{"musicfs.plugin.matching.standard", true, []string{"matching.candidates"}},
 		{"musicfs.plugin.transform.thumbnail", true, []string{"artwork.thumbnail256"}},
+		{"musicfs.plugin.decoder.channelmix", true, []string{"audio.channels.stereo", "audio.channels.5.1", "audio.channels.7.1"}},
 	}
 	result := make([]Plugin, 0, len(items))
 	for _, item := range items {

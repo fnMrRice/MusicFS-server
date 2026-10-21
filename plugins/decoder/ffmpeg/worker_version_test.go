@@ -22,7 +22,7 @@ func TestOldAudioWorkerHelper(t *testing.T) {
 	if !slices.Contains(os.Args, "--old-audio-worker") && !slices.Contains(os.Args, "--current-audio-worker") {
 		return
 	}
-	version := "0.1.0"
+	version := "0.2.0"
 	if slices.Contains(os.Args, "--current-audio-worker") {
 		version = audioPluginVersion
 	}
@@ -94,8 +94,8 @@ func TestAudioVersionAvailableOnlyAfterVerifiedHandshake(t *testing.T) {
 }
 
 func TestOldAudioWorkerRejectedBeforeProcessing(t *testing.T) {
-	if audioPluginVersion != "0.2.0" {
-		t.Fatal("DSP-aware worker requires implementation version 0.2.0")
+	if audioPluginVersion != "0.3.0" {
+		t.Fatal("stateful DSP worker requires implementation version 0.3.0")
 	}
 	path, err := os.Executable()
 	if err != nil {

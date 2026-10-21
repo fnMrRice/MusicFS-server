@@ -223,6 +223,7 @@ func (m *Manager) Snapshot() Snapshot {
 		s.Items = append(s.Items, v)
 	}
 	s.Items = append(s.Items, m.storagePluginLocked(), m.gainPluginLocked())
+	s.Items = append(s.Items, m.builtinDSPPluginsLocked()...)
 	s.Items = append(s.Items, m.builtinPluginsLocked()...)
 	return s
 }

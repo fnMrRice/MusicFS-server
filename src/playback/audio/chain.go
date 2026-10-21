@@ -7,8 +7,7 @@ import (
 
 const MaxChainNodes = 16
 
-// Chain v1 preserves frame count, format and timing; tails and look-ahead are
-// intentionally unsupported until the output timeline contract can carry them.
+// Chain 保持帧数、格式和时间轴不变，不支持额外尾音或前视延迟。
 type Chain struct{ nodes []Node }
 
 func NewChain(registry *Registry, specs []NodeSpec) (*Chain, error) {
@@ -28,6 +27,9 @@ func NewChain(registry *Registry, specs []NodeSpec) (*Chain, error) {
 }
 
 func (c *Chain) Configure(format Format) error {
+	if err := format.Validate(); err != nil {
+		return err
+	}
 	for _, node := range c.nodes {
 		if err := node.Configure(format); err != nil {
 			return err
@@ -93,3 +95,14 @@ func (c *Chain) Close() error {
 }
 
 func (*Chain) DelayFrames() int64 { return 0 }
+
+// Stateless 仅在所有节点明确声明无状态时允许跳过定位之前的音频。
+func (c *Chain) Stateless() bool {
+	for _, node := range c.nodes {
+		stateless, ok := node.(interface{ Stateless() bool })
+		if !ok || !stateless.Stateless() {
+			return false
+		}
+	}
+	return true
+}

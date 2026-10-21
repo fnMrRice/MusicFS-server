@@ -45,7 +45,12 @@ func TestInfrastructureHTTPInventoryAndStateProtection(t *testing.T) {
 	if !seen["musicfs.plugin.storage.sqlite"] || !seen["musicfs.dsp.gain"] {
 		t.Fatal("missing infrastructure inventory", seen)
 	}
-	for _, id := range []string{"musicfs.plugin.analysis.chromaprint", "musicfs.plugin.tags.flac", "musicfs.plugin.matching.standard", "musicfs.plugin.transform.thumbnail"} {
+	for _, id := range []string{"musicfs.dsp.equalizer", "musicfs.dsp.compressor", "musicfs.dsp.reverb"} {
+		if !seen[id] {
+			t.Fatal("missing builtin DSP inventory", id)
+		}
+	}
+	for _, id := range []string{"musicfs.plugin.analysis.chromaprint", "musicfs.plugin.tags.flac", "musicfs.plugin.matching.standard", "musicfs.plugin.transform.thumbnail", "musicfs.plugin.decoder.channelmix"} {
 		if !seen[id] {
 			t.Fatal("missing builtin algorithm inventory", id)
 		}

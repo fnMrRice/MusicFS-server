@@ -80,6 +80,7 @@ type Config struct {
 	Logging           LoggingConfig        `yaml:"logging,omitempty" json:"logging"`
 	Storage           StorageConfig        `yaml:"storage,omitempty" json:"storage,omitempty"`
 	AudioDSP          AudioDSPConfig       `yaml:"audioDSP,omitempty" json:"audioDSP,omitempty"`
+	AudioChannels     AudioChannelsConfig  `yaml:"audioChannels,omitempty" json:"audioChannels,omitempty"`
 	PluginBundle      string               `yaml:"pluginBundle,omitempty" json:"pluginBundle,omitempty"`
 	SourcePath        string               `yaml:"-" json:"-"`
 	SourceOverrides   map[string]string    `yaml:"-" json:"-"`

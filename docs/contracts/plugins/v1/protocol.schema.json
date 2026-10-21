@@ -843,8 +843,13 @@
       "properties": {"sampleFormat": {"const": "f32le"}, "sampleRate": {"const": 48000}, "channels": {"const": 2}, "layout": {"const": "stereo"}}
     },
     "AudioProfile": {
-      "type": "object", "required": ["id", "mime", "codec", "container", "sampleRate", "channels", "bitrateBps", "seekMode"],
-      "properties": {"id": {"const": "mp3-128"}, "mime": {"const": "audio/mpeg"}, "codec": {"const": "mp3"}, "container": {"const": "mp3"}, "sampleRate": {"const": 48000}, "channels": {"const": 2}, "bitrateBps": {"const": 128000}, "seekMode": {"const": "timeRestart"}}
+      "type": "object", "required": ["id", "mime", "codec", "container", "sampleRate", "channels", "layout", "bitrateBps", "seekMode"],
+      "properties": {"sampleRate": {"const": 48000}, "seekMode": {"const": "timeRestart"}},
+      "oneOf": [
+        {"properties": {"id": {"const": "mp3-128"}, "mime": {"const": "audio/mpeg"}, "codec": {"const": "mp3"}, "container": {"const": "mp3"}, "channels": {"const": 2}, "layout": {"const": "stereo"}, "bitrateBps": {"const": 128000}}},
+        {"properties": {"id": {"const": "opus-5.1"}, "mime": {"const": "audio/webm"}, "codec": {"const": "opus"}, "container": {"const": "webm"}, "channels": {"const": 6}, "layout": {"const": "5.1"}, "bitrateBps": {"const": 256000}}},
+        {"properties": {"id": {"const": "opus-7.1"}, "mime": {"const": "audio/webm"}, "codec": {"const": "opus"}, "container": {"const": "webm"}, "channels": {"const": 8}, "layout": {"const": "7.1"}, "bitrateBps": {"const": 384000}}}
+      ]
     },
     "SHA256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "AudioCapabilities": {
@@ -890,7 +895,7 @@
     },
     "AudioPlan": {
       "type": "object", "additionalProperties": false, "required": ["taskId", "assetId", "profile", "gainDB", "positionMs"],
-      "properties": {"taskId": {"$ref": "#/$defs/ID"}, "assetId": {"$ref": "#/$defs/ID"}, "profile": {"const": "mp3-128"}, "gainDB": {"type": "number", "minimum": -60, "maximum": 0}, "positionMs": {"type": "integer", "minimum": 0, "maximum": 86400000}}
+      "properties": {"taskId": {"$ref": "#/$defs/ID"}, "assetId": {"$ref": "#/$defs/ID"}, "profile": {"enum": ["mp3-128", "opus-5.1", "opus-7.1"]}, "gainDB": {"type": "number", "minimum": -60, "maximum": 0}, "positionMs": {"type": "integer", "minimum": 0, "maximum": 86400000}}
     },
     "TaskChannel": {"type": "string", "pattern": "^http://127\\.0\\.0\\.1:[0-9]+/[a-f0-9]{48}/(input|output)$", "description": "仅宿主创建的短期任务通道；不得记日志或交给浏览器。"},
     "DSPNodeSpec": {
@@ -900,12 +905,12 @@
         "version": {"const": 1},
         "params": {"type": "object", "maxProperties": 64, "propertyNames": {"minLength": 1, "maxLength": 64}, "additionalProperties": {"type": "number"}}
       },
-      "description": "有序、无状态的 DSP v1 节点。宿主继续检查名称已注册、参数含义及外部进程的格式/时标声明；内建 gain 使用 gainDB，范围 -96 到 12。"
+      "description": "有序、固定格式和帧数的节点参数版本1。内置 equalizer/compressor/reverb 支持有状态和多声道处理；外部 MFD1 v1 仍仅无状态双声道。宿主检查名称、参数及能力声明；gainDB 范围 -96 到 12。"
     },
     "DSPPlugin": {
       "type": "object", "additionalProperties": false, "required": ["name"],
       "properties": {
-        "name": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,63}$", "not": {"enum": ["gain", "bypass"]}},
+        "name": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,63}$", "not": {"enum": ["gain", "bypass", "equalizer", "compressor", "reverb", "musicfs.dsp.equalizer", "musicfs.dsp.compressor", "musicfs.dsp.reverb"]}},
         "builtin": {"type": "boolean", "description": "仅允许已编译的 musicfs.dsp.gain；主进程内执行不要求外部程序。"},
         "executable": {"type": "string", "description": "仅部署配置可指定；外部模式发送给音频 Worker 前已解析为绝对路径，内置模式不执行该文件。"},
         "sha256": {"type": "string"},
@@ -919,9 +924,9 @@
     "AudioStart": {
       "type": "object", "additionalProperties": false, "required": ["plan", "ffmpegPath", "ffmpegSHA256", "inputUrl", "outputUrl"],
       "properties": {"plan": {"$ref": "#/$defs/AudioPlan"}, "ffmpegPath": {"type": "string", "minLength": 1}, "ffmpegSHA256": {"$ref": "#/$defs/SHA256"}, "inputUrl": {"$ref": "#/$defs/TaskChannel"}, "outputUrl": {"$ref": "#/$defs/TaskChannel"}, "dspChain": {"type": "array", "maxItems": 15, "items": {"$ref": "#/$defs/DSPNodeSpec"}}, "dspPlugins": {"type": "array", "maxItems": 16, "items": {"$ref": "#/$defs/DSPPlugin"}}},
-      "description": "按用户 gain 再接 dspChain 顺序执行；dspPlugins 注册受信任内置或显式外部节点。builtin=true 仅用于 Server 内置音频会话，宿主拒绝外部 FFmpeg 与内置 DSP 的组合，并核验内置音频 Manifest 的 audio.dsp.builtin 声明。PCM 走有界二进制 DSP v1 管道，不进入 JSON-RPC。"
+      "description": "先按 profile 转换声道，再执行用户 gain 与 dspChain。内置多声道效果通过 Go 接口执行，有状态定位重建曲首历史后裁切；dspPlugins 注册的外部 MFD1 v1 节点只支持双声道。环绕输出与新内置效果要求内置音频执行。PCM 不进入 JSON-RPC。"
     },
-    "AudioPrepared": {"type": "object", "required": ["profile", "positionOriginMs", "seekMode"], "properties": {"profile": {"const": "mp3-128"}, "positionOriginMs": {"type": "integer", "minimum": 0}, "seekMode": {"const": "timeRestart"}}},
+    "AudioPrepared": {"type": "object", "required": ["profile", "positionOriginMs", "seekMode"], "properties": {"profile": {"enum": ["mp3-128", "opus-5.1", "opus-7.1"]}, "positionOriginMs": {"type": "integer", "minimum": 0}, "seekMode": {"const": "timeRestart"}}},
     "AudioComplete": {"type": "object", "required": ["state"], "properties": {"state": {"const": "complete"}}},
     "NCMID": {"type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[!-~]+$", "not": {"pattern": "[/\\\\?#]"}},
     "NCMNonce": {"type": "string", "pattern": "^[a-f0-9]{48}$"},

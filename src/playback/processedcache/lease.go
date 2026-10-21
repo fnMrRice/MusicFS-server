@@ -63,12 +63,12 @@ func (m *Manager) Acquire(identity Identity) *Lease {
 	if m.ctx.Err() != nil || e == nil || e.invalid || m.now().Sub(e.record.CreatedAt) >= m.config.HardTTL {
 		return nil
 	}
-	info, err := os.Lstat(m.path(e.record.ID))
+	info, err := os.Lstat(m.path(e.record.ID, e.record.Identity.Profile))
 	if err != nil || !info.Mode().IsRegular() || info.Size() != e.record.Size || !os.SameFile(info, e.info) || !info.ModTime().Equal(e.info.ModTime()) {
 		e.invalid = true
 		return nil
 	}
-	f, err := os.Open(m.path(e.record.ID))
+	f, err := os.Open(m.path(e.record.ID, e.record.Identity.Profile))
 	if err != nil {
 		return nil
 	}

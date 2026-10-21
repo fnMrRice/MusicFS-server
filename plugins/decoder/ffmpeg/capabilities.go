@@ -32,6 +32,7 @@ type Profile struct {
 	Container  string `json:"container"`
 	SampleRate int    `json:"sampleRate"`
 	Channels   int    `json:"channels"`
+	Layout     string `json:"layout"`
 	BitrateBps int    `json:"bitrateBps"`
 	SeekMode   string `json:"seekMode"`
 }
@@ -133,11 +134,26 @@ func Probe(ctx context.Context, ffmpeg, ffprobe string) (Capabilities, error) {
 	if err != nil {
 		return c, err
 	}
-	if !strings.Contains(encoders, "libmp3lame") || !strings.Contains(encoders, "pcm_f32le") || !strings.Contains(decoders, "pcm_f32le") || !strings.Contains(demuxers, " wav ") || !strings.Contains(muxers, " mp3 ") {
-		return c, fmt.Errorf("UNSUPPORTED: required audio components unavailable")
+	c.Profiles, err = profilesForComponents(encoders, decoders, demuxers, muxers)
+	if err != nil {
+		return c, err
 	}
 	c.PCM = audio.Canonical
 	c.Normalization = strings.Contains(encoders, "pcm_s16le") && strings.Contains(muxers, " s16le ")
-	c.Profiles = []Profile{{ID: "mp3-128", MIME: "audio/mpeg", Codec: "mp3", Container: "mp3", SampleRate: 48000, Channels: 2, BitrateBps: 128000, SeekMode: "timeRestart"}}
 	return c, nil
+}
+
+func profilesForComponents(encoders, decoders, demuxers, muxers string) ([]Profile, error) {
+	if !strings.Contains(encoders, "libmp3lame") || !strings.Contains(encoders, "pcm_f32le") || !strings.Contains(decoders, "pcm_f32le") || !strings.Contains(demuxers, " wav ") || !strings.Contains(demuxers, " f32le ") || !strings.Contains(muxers, " mp3 ") || !strings.Contains(muxers, " wav ") {
+		return nil, fmt.Errorf("UNSUPPORTED: required audio components unavailable")
+	}
+	stereo, _ := ProfileByID("mp3-128")
+	profiles := []Profile{stereo}
+	if strings.Contains(encoders, "libopus") && strings.Contains(muxers, " webm ") {
+		for _, id := range []string{"opus-5.1", "opus-7.1"} {
+			profile, _ := ProfileByID(id)
+			profiles = append(profiles, profile)
+		}
+	}
+	return profiles, nil
 }

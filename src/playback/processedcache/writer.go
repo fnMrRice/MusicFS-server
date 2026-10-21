@@ -106,10 +106,10 @@ func (w *Writer) Complete(ctx context.Context, publish func(context.Context, Rec
 	if err := w.file.Close(); err != nil {
 		return nil, err
 	}
-	if err := os.Rename(w.path, w.manager.path(w.id)); err != nil {
+	if err := os.Rename(w.path, w.manager.path(w.id, w.identity.Profile)); err != nil {
 		return nil, err
 	}
-	w.path = w.manager.path(w.id)
+	w.path = w.manager.path(w.id, w.identity.Profile)
 	info, err := os.Lstat(w.path)
 	if err != nil || !info.Mode().IsRegular() || info.Size() != w.size {
 		return nil, errors.New("processed cache output changed")

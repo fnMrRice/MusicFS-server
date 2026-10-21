@@ -14,6 +14,7 @@ import (
 type Gain struct {
 	multiplier float32
 	configured bool
+	format     audio.Format
 	logger     *slog.Logger
 }
 
@@ -33,9 +34,10 @@ func NewGain(db float64) (audio.Node, error) {
 	return &Gain{multiplier: float32(math.Pow(10, db/20)), logger: logger}, nil
 }
 func (g *Gain) Configure(format audio.Format) error {
-	if format != audio.Canonical {
-		return fmt.Errorf("UNSUPPORTED: unsupported PCM format")
+	if err := format.Validate(); err != nil {
+		return err
 	}
+	g.format = format
 	g.configured = true
 	g.log().Debug("DSP gain node configured")
 	return nil
@@ -49,13 +51,21 @@ func (g *Gain) Process(block *audio.Block) (processErr error) {
 	if !g.configured {
 		return fmt.Errorf("DSP not configured")
 	}
+	if block == nil {
+		return fmt.Errorf("invalid PCM block")
+	}
 	if err := block.Validate(); err != nil {
 		return err
 	}
-	for i, value := range block.Samples {
+	if block.Format != g.format {
+		return fmt.Errorf("UNSUPPORTED: PCM block differs from configured format")
+	}
+	for _, value := range block.Samples {
 		if math.IsNaN(float64(value)) || math.IsInf(float64(value), 0) {
 			return fmt.Errorf("invalid PCM sample")
 		}
+	}
+	for i, value := range block.Samples {
 		v := value * g.multiplier
 		block.Samples[i] = max(-1, min(1, v))
 	}
@@ -66,6 +76,7 @@ func (g *Gain) Reset() error { return nil }
 func (g *Gain) Drain() error { return nil }
 func (g *Gain) Close() error {
 	g.configured = false
+	g.format = audio.Format{}
 	g.log().Debug("DSP gain node closed")
 	return nil
 }

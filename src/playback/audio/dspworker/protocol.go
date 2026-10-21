@@ -1,4 +1,4 @@
-// Package dspworker implements the versioned, binary-PCM external DSP protocol.
+// Package dspworker 实现有版本的外部 DSP 二进制 PCM 协议。
 package dspworker
 
 import (
@@ -78,6 +78,9 @@ func readFrame(r io.Reader) (uint32, []byte, error) {
 }
 
 func encodeBlock(block *audio.Block) ([]byte, error) {
+	if block.Format != audio.Canonical {
+		return nil, fmt.Errorf("UNSUPPORTED: DSP v1 requires stereo PCM")
+	}
 	if err := block.Validate(); err != nil {
 		return nil, err
 	}

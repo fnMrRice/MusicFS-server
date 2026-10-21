@@ -36,6 +36,7 @@
 | [实例配置与目录](plugins/plugin-configuration.md) | 插件配置数据库、目录授权与管理 API |
 | [声明式设置页面](plugins/settings.md) | 插件字段、按钮、值校验与持久化 |
 | [DSP](plugins/dsp-plugins.md) | 有序处理链、PCM Worker 与定位限制 |
+| [常见 DSP 与声道转换](plugins/dsp-effects.md) | EQ、压缩器、混响，独立声道转换及 stereo/5.1/7.1 输出配置 |
 | [存储后端](plugins/storage-plugins.md) | 必需 SQLite、Backend 契约与独立 Worker |
 
 ## 曲库与歌单

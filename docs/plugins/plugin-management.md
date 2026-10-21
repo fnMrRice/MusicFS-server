@@ -40,7 +40,7 @@ Server 提供插件/实例状态查询、开关与设置管理，要求管理员
 
 以下路由均以 `/api/v1` 为前缀，管理端点要求管理员。
 
-在普通插件后追加必需数据库及官方 DSP 增益条目。可选字段包括 `required`、`stateMutable`、`storage`、`dsp`；当前普通插件明确返回 `stateMutable=true`，基础设施返回 `false` 且没有普通实例。数据库 `required=true`，状态修改返回 `UNSUPPORTED`（HTTP 415），不会保存停用或启动重建操作。`storage` 只展示后端标识、执行模式和宿主内存可用性；外部数据库以通用身份与真实握手版本展示，不从路径推测为 SQLite。`dsp` 显示未配置、已注册未入链或已入启动链，并保留 gain 各节点在完整链中的原始位置、内建/独立进程模式、节点版本和数值参数；不把配置参与状态称为正在处理。两者均不泄露程序路径、进程参数、摘要、连接选项或凭据。具体语义与第三方展示边界见 [DSP](dsp-plugins.md) 和[数据库](storage-plugins.md)。旧客户端可以忽略可选字段，但需容忍 `instances=[]`；新客户端以 `stateMutable=false` 或 `required=true` 阻止普通启停操作。
+在普通插件后追加必需数据库、官方 DSP 增益、均衡器、压缩器、混响及内置算法目录中的声道转换条目。可选字段包括 `required`、`stateMutable`、`storage`、`dsp`、`builtin`；基础设施和固定内置算法只读且没有普通实例。数据库 `required=true`，状态修改返回 `UNSUPPORTED`（HTTP 415），不会保存停用或创建重建操作。`storage` 展示后端、模式和可用性；`dsp` 展示配置参与状态，并保留各节点在完整链中的原始位置、模式、版本和参数；声道转换通过 `builtin.capabilities` 声明支持布局，实际输出以播放描述为准。目录信息不表示正在处理，不泄露程序路径、参数或凭据。具体语义见 [DSP](dsp-plugins.md)、[声道与效果](dsp-effects.md)及[数据库](storage-plugins.md)。客户端需容忍 `instances=[]`，并以 `stateMutable=false` 或 `required=true` 阻止普通启停操作。
 
 `GET /admin/plugins` 的每个插件项必须包含有效 `version`。七种普通随包插件从 [sdk/bundledplugin/releases.go](../../sdk/bundledplugin/releases.go) 读取与 Worker 同源的发行声明；没有实例或尚无有效握手版本时仍返回声明，包括未启动、待配置、已禁用和启动失败的情况。成功握手的有效版本优先，不使用 Server 版本、实例修订或空字符串填充。未知插件 ID 仍由配置及管理层拒绝。版本可展示不等于 Worker 已就绪，客户端仍须读取实例运行状态；旧 Server 缺字段时的界面兼容提示不放宽当前 API 必填约束。
 

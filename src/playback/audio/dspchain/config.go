@@ -5,12 +5,12 @@ import (
 	"maps"
 	"math"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/dsp/gain"
+	"github.com/fnMrRice/MusicFS-server/plugins/dsp/builtin"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio/dspworker"
 )
 
-// Validate checks configuration without opening files or starting workers.
+// Validate 校验配置，不打开文件或启动插件。
 func Validate(chain []audio.NodeSpec, plugins []dspworker.Config) error {
 	if len(chain) >= audio.MaxChainNodes || len(plugins) > audio.MaxChainNodes {
 		return fmt.Errorf("invalid DSP configuration: node limit exceeded")
@@ -26,7 +26,7 @@ func Validate(chain []audio.NodeSpec, plugins []dspworker.Config) error {
 		external[plugin.Name] = true
 	}
 	registry := audio.NewRegistry()
-	if err := dsp.Register(registry); err != nil {
+	if err := builtin.Register(registry); err != nil {
 		return err
 	}
 	for _, spec := range chain {

@@ -20,10 +20,15 @@ type CreateRequest struct {
 	Preferences   Preferences  `json:"preferences"`
 }
 type OutputProfile struct {
-	MIME      string  `json:"mime"`
-	Codec     *string `json:"codec"`
-	Container *string `json:"container"`
-	Transport string  `json:"transport"`
+	ID         string  `json:"id,omitempty"`
+	MIME       string  `json:"mime"`
+	Codec      *string `json:"codec"`
+	Container  *string `json:"container"`
+	Transport  string  `json:"transport"`
+	SampleRate int     `json:"sampleRate,omitempty"`
+	Channels   int     `json:"channels,omitempty"`
+	Layout     string  `json:"layout,omitempty"`
+	BitrateBps int     `json:"bitrateBps,omitempty"`
 }
 type Range struct {
 	StartMs int64 `json:"startMs"`

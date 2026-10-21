@@ -29,3 +29,24 @@ func TestDSPAlignmentRequiresExactProcessingChain(t *testing.T) {
 		}
 	}
 }
+
+func TestTimelineEvidenceRequiresTheSameOutputLayout(t *testing.T) {
+	for _, id := range []string{"mp3-128", "opus-5.1", "opus-7.1"} {
+		profile := timeline.Profile{OutputProfile: id, ProcessingRevision: "dsp-v1:" + strings.Repeat("a", 64), DecoderSHA256: strings.Repeat("b", 64)}
+		request := timeline.Request{RecordingID: "recording", From: timeline.Target{SourceTrackID: "from", AssetID: "asset-from", Version: "v1"}, To: timeline.Target{SourceTrackID: "to", AssetID: "asset-to", Version: "v1"}, Range: timeline.Range{EndMs: 6000}, OffsetMs: 1000, Profile: profile}
+		evidence := timeline.Evidence{Request: request, Origin: "manualAlignment", Revision: 1}
+		check := timeline.Check{From: request.From, To: request.To, PositionMs: 4000, Profile: profile}
+		if position, err := evidence.Map(check); err != nil || position != 5000 {
+			t.Fatal("matching output profile failed timeline validation", id, err)
+		}
+		for _, other := range []string{"mp3-128", "opus-5.1", "opus-7.1"} {
+			if other == id {
+				continue
+			}
+			check.Profile.OutputProfile = other
+			if _, err := evidence.Map(check); err == nil {
+				t.Fatal("different output layouts reused timeline evidence", id, other)
+			}
+		}
+	}
+}

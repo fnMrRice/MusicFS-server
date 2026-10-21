@@ -2,6 +2,7 @@ package processedcache_test
 
 import (
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -74,5 +75,39 @@ func TestInputReservationsAndOutputShareOneBudget(t *testing.T) {
 	}
 	if b.Release(100) || b.Used() != 11 {
 		t.Fatal("budget underflow")
+	}
+}
+
+func TestSurroundCacheRestoresItsWebMFileAndProfile(t *testing.T) {
+	for _, profile := range []string{"opus-5.1", "opus-7.1"} {
+		t.Run(profile, func(t *testing.T) {
+			manager, _, repo, root, _ := setup(t, 1024)
+			current := identity()
+			current.Profile = profile
+			pin := complete(t, manager, repo, current, "surround-output")
+			pin.Close()
+			manager.Close()
+			budget, _ := processedcache.NewBudget(1024)
+			restored, err := processedcache.New(t.Context(), repo, budget, processedcache.Config{Root: root})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer restored.Close()
+			lease := restored.Acquire(current)
+			if lease == nil {
+				t.Fatal("surround output did not survive cache restart")
+			}
+			defer lease.Close()
+			data, err := io.ReadAll(lease.File)
+			if err != nil || string(data) != "surround-output" || filepath.Ext(lease.File.Name()) != ".webm" {
+				t.Fatal("surround cache restored the wrong representation", lease.File.Name(), err)
+			}
+			other := current
+			other.Profile = "mp3-128"
+			if stale := restored.Acquire(other); stale != nil {
+				stale.Close()
+				t.Fatal("stereo session reused multichannel WebM cache")
+			}
+		})
 	}
 }

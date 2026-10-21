@@ -26,7 +26,7 @@ func (s *Service) cacheScope(a *session) cacheScope {
 		track: a.track,
 		identity: processedcache.Identity{Owner: a.user, ProviderID: a.track.ProviderID, SourceTrackID: a.track.ID, AssetID: a.track.AssetID, Version: a.track.Version,
 			InputSHA256: strings.Trim(a.etag, "\""), WorkerSHA256: tool.WorkerSHA256, FFmpegSHA256: tool.FFmpegSHA256, PluginVersion: tool.PluginVersion,
-			PipelineRevision: tool.PipelineRevision, Profile: "mp3-128", GainDB: a.gain, PositionMs: a.description.PositionOriginMs},
+			PipelineRevision: tool.PipelineRevision, Profile: a.description.OutputProfile.ID, GainDB: a.gain, PositionMs: a.description.PositionOriginMs},
 	}
 }
 

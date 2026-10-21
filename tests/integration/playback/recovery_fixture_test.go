@@ -106,7 +106,7 @@ func recoverySetup(t *testing.T, processor *audioffmpeg.Processor, maxBytes int6
 		t.Fatal(err)
 	}
 	if processor == nil {
-		processor = &audioffmpeg.Processor{Capabilities: audioffmpeg.Capabilities{FFmpegSHA256: strings.Repeat("a", 64)}}
+		processor = &audioffmpeg.Processor{Capabilities: syntheticAudioCapabilities(strings.Repeat("a", 64))}
 	}
 	if maxBytes == 0 {
 		maxBytes = 16 << 20
@@ -119,6 +119,11 @@ func recoverySetup(t *testing.T, processor *audioffmpeg.Processor, maxBytes int6
 	request.Preferences.ForceProcessing = true
 	return recoveryFixture{player, repo, who, request, tracks, *linked.RecordingID, path}
 }
+func syntheticAudioCapabilities(digest string) audioffmpeg.Capabilities {
+	profile, _ := audioffmpeg.ProfileByID("mp3-128")
+	return audioffmpeg.Capabilities{FFmpegSHA256: digest, Profiles: []audioffmpeg.Profile{profile}}
+}
+
 func shiftWave(t *testing.T, input []byte, ms int) []byte {
 	t.Helper()
 	var rate int

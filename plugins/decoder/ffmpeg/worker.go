@@ -13,6 +13,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 )
 
@@ -72,7 +73,8 @@ func (w *audioWorker) handle(ctx context.Context, method string, raw json.RawMes
 	if json.Unmarshal(raw, &r) != nil {
 		return nil, fmt.Errorf("ACCESS_DENIED: invalid audio request")
 	}
-	if r.Plan.Profile != "mp3-128" || r.Plan.PositionMs < 0 || r.Plan.TaskID != taskID || r.Plan.AssetID == "" {
+	profile, supported := ProfileByID(r.Plan.Profile)
+	if !supported || r.Plan.PositionMs < 0 || r.Plan.PositionMs > 24*60*60*1000 || r.Plan.TaskID != taskID || r.Plan.AssetID == "" {
 		return nil, fmt.Errorf("UNSUPPORTED: invalid audio plan")
 	}
 	if err := validateLoopback(r.InputURL); err != nil {
@@ -85,12 +87,16 @@ func (w *audioWorker) handle(ctx context.Context, method string, raw json.RawMes
 		return nil, err
 	}
 	if method == "audio.prepare" {
-		node, err := buildDSP(ctx, r.Plan.GainDB, r.DSPChain, r.DSPPlugins)
+		format, err := audio.FormatForLayout(profile.Layout)
+		if err != nil {
+			return nil, err
+		}
+		node, err := buildDSPFormat(ctx, r.Plan.GainDB, r.DSPChain, r.DSPPlugins, format)
 		if err != nil {
 			return nil, err
 		}
 		node.Close()
-		return map[string]any{"profile": "mp3-128", "positionOriginMs": r.Plan.PositionMs, "seekMode": "timeRestart"}, nil
+		return map[string]any{"profile": profile.ID, "positionOriginMs": r.Plan.PositionMs, "seekMode": profile.SeekMode}, nil
 	}
 	w.mu.Lock()
 	if w.active {
@@ -108,7 +114,7 @@ func (w *audioWorker) handle(ctx context.Context, method string, raw json.RawMes
 	if err != nil {
 		return nil, fmt.Errorf("ACCESS_DENIED: invalid output channel")
 	}
-	request.Header.Set("Content-Type", "audio/mpeg")
+	request.Header.Set("Content-Type", profile.MIME)
 	client := &http.Client{Transport: &http.Transport{Proxy: nil, ResponseHeaderTimeout: 30 * time.Minute}, CheckRedirect: func(*http.Request, []*http.Request) error {
 		return fmt.Errorf("ACCESS_DENIED: channel redirect refused")
 	}}

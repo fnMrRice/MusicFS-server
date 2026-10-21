@@ -13,6 +13,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
+	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
@@ -31,6 +32,7 @@ type preparedInput struct {
 	lease                *library.ReadLease
 	processed, decrypted bool
 	processor            *audioffmpeg.Processor
+	profile              audioffmpeg.Profile
 	decoder              *ncmdecoder.Processor
 	processing, decoding *plugincontrol.Lease
 }
@@ -104,11 +106,12 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 		return nil, domain.Fail("RATE_LIMITED", "Representation exceeds the cache budget")
 	}
 	p.reserved = size
-	processed := s.config.RequireDSP || r.Preferences.ForceProcessing || r.Preferences.GainDB != 0 || p.processor.HasDSP() || !originalCandidate(t) || !supports(r.Capabilities, t.MIME)
-	if processed && (p.processor == nil || !supports(r.Capabilities, "audio/mpeg")) {
-		return nil, domain.Fail("UNSUPPORTED", "No compatible audio processing profile is available")
-	}
+	processed := s.config.RequireDSP || r.Preferences.ForceProcessing || r.Preferences.GainDB != 0 || p.processor.HasDSP() || p.processor.RequiresChannelConversion() || !originalCandidate(t) || !supports(r.Capabilities, t.MIME)
 	if processed {
+		p.profile, err = p.processor.OutputProfile()
+		if err != nil || !supportsOutputProfile(r.Capabilities, p.profile) {
+			return nil, domain.Fail("UNSUPPORTED", "No compatible audio processing profile is available")
+		}
 		ctx, err = p.processingLease(ctx)
 		if err != nil {
 			return nil, err
@@ -187,15 +190,18 @@ func (p *preparedInput) describe(id string, gain float64, expiry time.Time) Desc
 		d.SeekableRange = &Range{EndMs: *t.DurationMs}
 	}
 	if p.processed {
-		codec, container := "mp3", "mp3"
+		profile := p.profile
 		d.DeliveryMode = "processed"
-		d.OutputProfile = OutputProfile{MIME: "audio/mpeg", Codec: &codec, Container: &container, Transport: "htmlAudio"}
+		d.OutputProfile = OutputProfile{ID: profile.ID, MIME: profile.MIME, Codec: &profile.Codec, Container: &profile.Container, Transport: "htmlAudio",
+			SampleRate: profile.SampleRate, Channels: profile.Channels, Layout: profile.Layout, BitrateBps: profile.BitrateBps}
 		d.SeekMode = "none"
 		if t.DurationMs != nil {
 			d.SeekMode = "timeRestart"
 			d.SeekableRange.EndMs = min(d.SeekableRange.EndMs, timeline.MaxPositionMs)
 		}
-		d.EffectiveProcessing = append(d.EffectiveProcessing, Processing{Type: "gain", GainDB: gain, Version: "1", Execution: "server"})
+		d.EffectiveProcessing = append(d.EffectiveProcessing,
+			Processing{Type: "channelMix", Version: bundledplugin.ChannelMixVersion, Execution: "server", Parameters: map[string]float64{"outputChannels": float64(profile.Channels)}},
+			Processing{Type: "gain", GainDB: gain, Version: "1", Execution: "server"})
 		for _, node := range p.processor.DSPChain() {
 			step := Processing{Type: node.Name, Version: strconv.Itoa(node.Version), Execution: "server", Parameters: node.Params}
 			if node.Name == "gain" {

@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+
+	"github.com/fnMrRice/MusicFS-server/plugins/dsp/builtin"
 )
 
 type Config struct {
@@ -24,7 +26,7 @@ var validName = regexp.MustCompile(`^[a-z][a-z0-9_.-]{0,63}$`)
 var validSHA = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 func (c Config) Validate() error {
-	if !validName.MatchString(c.Name) || c.Name == "gain" || c.Name == "bypass" || len(c.Args) > 32 || c.TimeoutMs != 0 && (c.TimeoutMs < 10 || c.TimeoutMs > 30000) {
+	if !validName.MatchString(c.Name) || c.Name == "gain" || c.Name == "bypass" || builtin.EffectName(c.Name) != "" || len(c.Args) > 32 || c.TimeoutMs != 0 && (c.TimeoutMs < 10 || c.TimeoutMs > 30000) {
 		return fmt.Errorf("invalid external DSP configuration")
 	}
 	if c.Builtin {
