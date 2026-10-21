@@ -17,42 +17,56 @@ webRoot: ''
 plugins:
   - pluginId: 'musicfs.plugin.source.localfiles'
     execution: builtin
+    enabled: true
     instances:
       - instanceId: 'b1548e96-3081-5c9c-8376-bf290e369d51'
+        enabled: true
         config: {}
   - pluginId: 'musicfs.plugin.decoder.ffmpeg'
     execution: builtin
+    enabled: true
     instances:
       - instanceId: '16b003e5-1bab-52bb-be10-0e83ec1c40ea'
+        enabled: true
         config:
           ffmpegPath: ''
           ffprobePath: ''
   - pluginId: 'musicfs.plugin.decoder.ncm'
     execution: builtin
+    enabled: true
     instances:
       - instanceId: '96412f52-9ff4-5a82-9eaa-7644a5837cda'
+        enabled: true
         config: {}
   - pluginId: 'musicfs.scraper.local'
     execution: builtin
+    enabled: true
     instances:
       - instanceId: 'd248bf34-1780-59d3-a557-9cf5d889e977'
+        enabled: true
         config: {}
   - pluginId: 'musicfs.plugin.source.netease'
     execution: builtin
+    enabled: true
     instances:
       - instanceId: 'a5e47aac-f949-5e45-9709-f28a0d8443df'
+        enabled: true
         ownerUserId: 'admin'
         config: {}
   - pluginId: 'musicfs.plugin.source.qqmusic'
     execution: builtin
+    enabled: true
     instances:
       - instanceId: 'fc2264bd-13bc-5dc6-be83-6c4428cf4d40'
+        enabled: true
         ownerUserId: 'admin'
         config: {}
   - pluginId: 'musicfs.plugin.source.applemusic'
     execution: builtin
+    enabled: true
     instances:
       - instanceId: '701b805f-494f-5509-897f-17c934b1a8ed'
+        enabled: true
         ownerUserId: 'admin'
         config: {}
 maxSessions: 8
