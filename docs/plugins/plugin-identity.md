@@ -58,6 +58,8 @@
 
 NCM 与 FFmpeg 声明 `audio-codec`，在插件列表归入“音频编解码”；声道转换与其他 DSP 声明 `audio-dsp`，归入“DSP”。分类由声明决定，不根据插件 ID 前缀推断。声道转换继续保留稳定 ID `musicfs.plugin.decoder.channelmix`，已有配置、日志关联和处理身份不因源码归类改变；其实现位于 `plugins/dsp/channelmix`。Web 继续识别旧版本插件声明的 `audio-processing`、`audio-decryption` 与 `decode` 分类。
 
+`plugins/transform/thumbnail`、`plugins/tags/*` 和 `plugins/scraper/*` 统一声明 `metadata`，在插件列表归入“元数据”。当前实现分别为封面缩略图、FLAC 标签格式和本地元数据提取；插件 ID、源码目录、执行角色和 SDK 接口保持不变。具体能力继续由 `capabilities` 声明，例如 `artwork.thumbnail256`、`tags.flac.rewrite`，以及 Scraper 的 `scrape.search`、`scrape.fetch`、`lyrics` 和 `artwork`。此分类调整不改变握手校验和多实例策略，不需要迁移现有配置。
+
 显示名只作为文本渲染，不作为 HTML、链接、请求路径、账号身份或配置值。Web 规范化语言标签后，依次匹配当前标签、同语言的书写体系、主语言、同语言且同书写体系的地区译名，均不匹配时使用插件默认名；例如繁体中文优先 `zh-TW`，再找 `zh-Hant`。插件名称不再送入产品自身的翻译字典；名称改变只影响显示，不改请求中的实例 ID。
 
 ## 插件管理的展示统计

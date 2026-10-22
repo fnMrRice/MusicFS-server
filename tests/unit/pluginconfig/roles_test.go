@@ -27,6 +27,9 @@ func TestOfficialManifestInstancePolicy(t *testing.T) {
 			if role == "audio" && (len(manifest.Plugin.Features) != 1 || manifest.Plugin.Features[0] != "audio-codec") {
 				t.Fatal("official audio plugin is not classified as an audio codec", manifest.Plugin)
 			}
+			if pluginID == "musicfs.scraper.local" && (role != "scraper" || len(manifest.Plugin.Features) != 1 || manifest.Plugin.Features[0] != "metadata") {
+				t.Fatal("metadata classification changed the scraper role or retained legacy features", manifest)
+			}
 			if err := pluginconfig.ValidateManifest(manifest, role); err != nil {
 				t.Fatal(err)
 			}

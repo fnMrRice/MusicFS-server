@@ -30,6 +30,14 @@ func TestBuiltinAlgorithmInventoryDescribesConfigurationWithoutRuntimeClaims(t *
 		if err := p.Plugin.Validate(id); err != nil {
 			t.Fatal(err)
 		}
+		if capability := map[string]string{
+			"musicfs.plugin.tags.flac":           "tags.flac.rewrite",
+			"musicfs.plugin.transform.thumbnail": "artwork.thumbnail256",
+		}[id]; capability != "" {
+			if len(p.Plugin.Features) != 1 || p.Plugin.Features[0] != "metadata" || p.Builtin.Capabilities[0] != capability {
+				t.Fatalf("metadata inventory lost its classification or specific capability: %+v", p)
+			}
+		}
 		encoded, err := json.Marshal(p)
 		if err != nil {
 			t.Fatal(err)

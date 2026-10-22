@@ -63,6 +63,9 @@ func TestPluginSnapshotRequiresDeclaredVersionWithoutInstances(t *testing.T) {
 		if got := manager.Snapshot().Items[0].Version; !pluginproto.ValidPluginVersion(got) || got != bundledplugin.Version(id) {
 			t.Fatalf("plugin %s has no declared release: %q", id, got)
 		}
+		if identity := manager.Snapshot().Items[0].Plugin; id == "musicfs.scraper.local" && (identity == nil || len(identity.Features) != 1 || identity.Features[0] != "metadata") {
+			t.Fatalf("unstarted scraper has no metadata classification: %+v", identity)
+		}
 		manager.Close()
 	}
 	if manager, err := plugincontrol.New(t.Context(), config.Config{Plugins: []config.Plugin{{PluginID: "third.party.unknown"}}}, nil, nil); err == nil {

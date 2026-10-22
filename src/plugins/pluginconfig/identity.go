@@ -14,7 +14,7 @@ func Identity(pluginID string) *pluginproto.PluginIdentity {
 	case "musicfs.plugin.tags.flac":
 		identity.Name = "FLAC Tag Format"
 		identity.LocalizedNames = map[string]string{"zh": "FLAC 标签格式", "zh-Hans": "FLAC 标签格式", "zh-Hant": "FLAC 標籤格式"}
-		identity.Features = []string{"tag-format"}
+		identity.Features = []string{"metadata"}
 	case "musicfs.plugin.matching.standard":
 		identity.Name = "Standard Recording Matching"
 		identity.LocalizedNames = map[string]string{"zh": "标准录音匹配", "zh-Hans": "标准录音匹配", "zh-Hant": "標準錄音匹配"}
@@ -22,7 +22,7 @@ func Identity(pluginID string) *pluginproto.PluginIdentity {
 	case "musicfs.plugin.transform.thumbnail":
 		identity.Name = "Artwork Thumbnail"
 		identity.LocalizedNames = map[string]string{"zh": "封面缩略图", "zh-Hans": "封面缩略图", "zh-Hant": "封面縮圖"}
-		identity.Features = []string{"content-transform"}
+		identity.Features = []string{"metadata"}
 	case "musicfs.plugin.source.localfiles":
 		identity.Name = "Local Music"
 		identity.LocalizedNames = map[string]string{"zh": "本地音乐", "zh-Hans": "本地音乐", "zh-Hant": "本機音樂", "ja": "ローカル音楽"}
@@ -53,7 +53,7 @@ func Identity(pluginID string) *pluginproto.PluginIdentity {
 	case "musicfs.scraper.local":
 		identity.Name = "Local Metadata Extraction"
 		identity.LocalizedNames = map[string]string{"zh": "本地元数据提取", "zh-Hans": "本地元数据提取", "zh-Hant": "本機中繼資料擷取"}
-		identity.Features = []string{"lyrics", "artwork"}
+		identity.Features = []string{"metadata"}
 	case "musicfs.plugin.storage.sqlite":
 		identity.Name = "SQLite Database"
 		identity.LocalizedNames = map[string]string{"zh": "SQLite 数据库", "zh-Hans": "SQLite 数据库", "zh-Hant": "SQLite 資料庫"}
