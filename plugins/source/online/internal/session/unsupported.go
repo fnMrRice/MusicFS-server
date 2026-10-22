@@ -5,6 +5,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/sdk/fault"
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
 // Unsupported lets drivers implement only their verified operations.
@@ -29,6 +30,9 @@ func (Unsupported) SearchEntities(context.Context, online.SearchRequest) (online
 }
 func (Unsupported) Metadata(context.Context, string) (online.Track, error) {
 	return online.Track{}, unsupported()
+}
+func (Unsupported) TrackDetails(context.Context, string) (pluginproto.TrackDetails, error) {
+	return pluginproto.TrackDetails{}, unsupported()
 }
 func (Unsupported) ObservePlaylist(context.Context, string) (online.PlaylistObservation, error) {
 	return online.PlaylistObservation{}, unsupported()

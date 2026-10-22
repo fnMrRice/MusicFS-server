@@ -41,7 +41,7 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 		w.ready = true
 		w.instance = hello.InstanceID
 		identity := Identity()
-		return pluginproto.Ready{InstanceID: hello.InstanceID, Nonce: hello.Nonce, Manifest: pluginproto.Manifest{PluginID: identity.ID, Plugin: identity, PluginVersion: bundledplugin.LocalFilesVersion, ProtocolVersion: pluginproto.ProtocolVersion, SupportsMultipleInstances: pluginconfig.SupportsMultipleInstances("musicfs.plugin.source.localfiles"), Roles: []string{pluginconfig.Role("musicfs.plugin.source.localfiles")}, Capabilities: []string{"library.scan", "metadata.read", "stream.resolve"}, Configuration: pluginconfig.LocalFiles(), Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}}, nil
+		return pluginproto.Ready{InstanceID: hello.InstanceID, Nonce: hello.Nonce, Manifest: pluginproto.Manifest{PluginID: identity.ID, Plugin: identity, PluginVersion: bundledplugin.LocalFilesVersion, ProtocolVersion: pluginproto.ProtocolVersion, SupportsMultipleInstances: pluginconfig.SupportsMultipleInstances("musicfs.plugin.source.localfiles"), Roles: []string{pluginconfig.Role("musicfs.plugin.source.localfiles")}, Capabilities: []string{"library.scan", "metadata.read", "stream.resolve", "track.details"}, Configuration: pluginconfig.LocalFiles(), Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}}, nil
 	}
 	w.mu.Lock()
 	ready := w.ready
@@ -59,6 +59,12 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 			return nil, fmt.Errorf("ACCESS_DENIED: invalid request")
 		}
 		return w.scan(ctx, r)
+	case "provider.trackDetails":
+		var r pluginproto.ResolveRequest
+		if err := pluginproto.DecodeOnline(raw, &r); err != nil {
+			return nil, err
+		}
+		return w.trackDetails(ctx, r)
 	case "provider.resolve", "provider.metadata":
 		var r pluginproto.ResolveRequest
 		if json.Unmarshal(raw, &r) != nil {

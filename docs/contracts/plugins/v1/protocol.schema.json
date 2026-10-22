@@ -4,6 +4,9 @@
   "title": "MusicFS JSON-RPC 2.0 控制面 1.0",
   "oneOf": [{"$ref": "#/$defs/Request"}, {"$ref": "#/$defs/Success"}, {"$ref": "#/$defs/Failure"}, {"$ref": "#/$defs/Cancel"}],
   "$defs": {
+    "TrackDetailField": {"type":"object","additionalProperties":false,"required":["id","label","value"],"properties":{"id":{"type":"string","pattern":"^[A-Za-z][A-Za-z0-9_.-]{0,63}$"},"label":{"type":"string","minLength":1,"maxLength":256},"value":{"type":"string","minLength":1,"maxLength":16384}}},
+    "TrackDetailSection": {"type":"object","additionalProperties":false,"required":["id","title","fields"],"properties":{"id":{"type":"string","pattern":"^[A-Za-z][A-Za-z0-9_.-]{0,63}$"},"title":{"type":"string","minLength":1,"maxLength":256},"fields":{"type":"array","minItems":1,"maxItems":64,"items":{"$ref":"#/$defs/TrackDetailField"}}}},
+    "TrackDetails": {"type":"object","additionalProperties":false,"required":["externalId","title","sections"],"properties":{"externalId":{"type":"string","minLength":1,"maxLength":128},"title":{"type":"string","minLength":1,"maxLength":4096},"sections":{"type":"array","maxItems":16,"items":{"$ref":"#/$defs/TrackDetailSection"}}}},
     "PluginDisplayCount": {"type":"object","additionalProperties":false,"required":["value","unit","localizedUnits"],"properties":{"value":{"type":"integer","minimum":0,"maximum":9007199254740991},"unit":{"type":"string","minLength":1,"maxLength":128},"localizedUnits":{"type":"object","maxProperties":64,"propertyNames":{"type":"string","maxLength":63,"pattern":"^[A-Za-z]{1,8}(-[A-Za-z0-9]{1,8})*$"},"additionalProperties":{"type":"string","minLength":1,"maxLength":128}}}},
     "DisplayCountRequest": {"type":"object","additionalProperties":false,"required":["instanceId","rootIds"],"properties":{"instanceId":{"$ref":"#/$defs/InstanceID"},"rootIds":{"type":"array","maxItems":1024,"uniqueItems":true,"items":{"type":"string","minLength":1,"maxLength":128}}}},
     "InstanceID": {"type": "string", "format": "uuid", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", "not": {"const": "00000000-0000-0000-0000-000000000000"}},
@@ -1025,7 +1028,8 @@
             "method": {
               "enum": [
                 "provider.resolve",
-                "provider.metadata"
+                "provider.metadata",
+                "provider.trackDetails"
               ]
             },
             "params": {
@@ -1165,6 +1169,9 @@
             },
             {
               "$ref": "#/$defs/Resource"
+            },
+            {
+              "$ref": "#/$defs/TrackDetails"
             },
             {
               "$ref": "#/$defs/Observation"

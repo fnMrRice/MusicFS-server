@@ -122,6 +122,7 @@ func Capabilities(platform string) []Capability {
 		{"metadata.tracks.batch", platform == Netease, "At most 50 public track identities per request"},
 		{"playlist.tracks", platform == Netease, "Digest-bound observation with batched display metadata; no audio authorization"},
 		{"metadata.track", platform == Netease, "Only Netease authenticated client detail has been verified"},
+		{"track.details", platform == Netease, "Provider-owned read-only track detail fields"},
 		{"playlist.observe", platform == Netease, "Unversioned public entry observations only"},
 		{"playlist.list", platform == Netease, "Current account playlists; account-bound paging tested; live account validation pending"},
 		{"recommendations.playlists", platform == Netease, "Login required; first-page recommendations; personalization is not verified"},

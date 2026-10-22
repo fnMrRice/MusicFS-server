@@ -24,6 +24,8 @@ func (w *OnlineWorker) requireOnlineCapability(method string, request any) error
 		capability = "search." + kind
 	case "provider.online.metadata":
 		capability = "metadata.track"
+	case "provider.online.trackDetails":
+		capability = "track.details"
 	case "provider.online.playlist":
 		capability = "playlist.observe"
 	case "provider.online.resolve":

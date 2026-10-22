@@ -15,14 +15,16 @@ type album struct {
 	Name string `json:"name"`
 }
 type neteaseSong struct {
-	ID       json.Number `json:"id"`
-	Name     string      `json:"name"`
-	Artists  []artist    `json:"artists"`
-	Album    album       `json:"album"`
-	Duration *int64      `json:"duration"`
-	AR       []artist    `json:"ar"`
-	AL       album       `json:"al"`
-	DT       *int64      `json:"dt"`
+	ID           json.Number `json:"id"`
+	Name         string      `json:"name"`
+	Artists      []artist    `json:"artists"`
+	Album        album       `json:"album"`
+	Duration     *int64      `json:"duration"`
+	AR           []artist    `json:"ar"`
+	AL           album       `json:"al"`
+	DT           *int64      `json:"dt"`
+	Aliases      []string    `json:"alia"`
+	Translations []string    `json:"tns"`
 }
 
 func (s neteaseSong) track(detail bool) (Track, error) {
@@ -68,11 +70,19 @@ func (s neteaseSong) track(detail bool) (Track, error) {
 }
 
 func (c *Client) Metadata(ctx context.Context, externalID string) (Track, error) {
-	if err := c.Require(ctx); err != nil {
+	song, err := c.metadataSong(ctx, externalID)
+	if err != nil {
 		return Track{}, err
 	}
+	return song.track(true)
+}
+
+func (c *Client) metadataSong(ctx context.Context, externalID string) (neteaseSong, error) {
+	if err := c.Require(ctx); err != nil {
+		return neteaseSong{}, err
+	}
 	if !numericID.MatchString(externalID) {
-		return Track{}, domain.Fail("INVALID_ARGUMENT", "Track identifier is invalid")
+		return neteaseSong{}, domain.Fail("INVALID_ARGUMENT", "Track identifier is invalid")
 	}
 	var response struct {
 		Code  *int          `json:"code"`
@@ -80,19 +90,19 @@ func (c *Client) Metadata(ctx context.Context, externalID string) (Track, error)
 	}
 	param := `[{"id":` + externalID + `}]`
 	if err := c.Get(ctx, "/api/v3/song/detail", url.Values{"c": {param}}, &response); err != nil {
-		return Track{}, err
+		return neteaseSong{}, err
 	}
 	if response.Code == nil {
-		return Track{}, upstreamInvalid()
+		return neteaseSong{}, upstreamInvalid()
 	}
 	if err := c.BusinessError(*response.Code, 200); err != nil {
-		return Track{}, err
+		return neteaseSong{}, err
 	}
 	if len(response.Songs) == 0 {
-		return Track{}, domain.Fail("NOT_FOUND", "Online track metadata was not found")
+		return neteaseSong{}, domain.Fail("NOT_FOUND", "Online track metadata was not found")
 	}
 	if len(response.Songs) != 1 || response.Songs[0].ID.String() != externalID {
-		return Track{}, upstreamInvalid()
+		return neteaseSong{}, upstreamInvalid()
 	}
-	return response.Songs[0].track(true)
+	return response.Songs[0], nil
 }

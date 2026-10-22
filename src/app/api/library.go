@@ -11,6 +11,13 @@ import (
 )
 
 func (s *Server) RegisterLibrary(service *library.Service) {
+	s.Handle("GET /api/v1/source-tracks/{id}/details", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
+		details, err := service.Details(r.Context(), session.User.ID, r.PathValue("id"))
+		if err != nil {
+			return err
+		}
+		return WriteJSON(w, http.StatusOK, details)
+	})
 	s.Handle("GET /api/v1/provider-instances", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		return WriteJSON(w, http.StatusOK, struct {
 			Items []library.Provider `json:"items"`

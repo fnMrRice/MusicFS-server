@@ -6,6 +6,7 @@ import (
 	"net/url"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
 type HTTP func(context.Context, string, string, string, map[string]string, map[string]string) ([]byte, *http.Response, error)
@@ -39,6 +40,7 @@ type Driver interface {
 	Search(context.Context, online.SearchRequest, int) ([]online.Track, bool, error)
 	SearchEntities(context.Context, online.SearchRequest) (online.SearchPage, error)
 	Metadata(context.Context, string) (online.Track, error)
+	TrackDetails(context.Context, string) (pluginproto.TrackDetails, error)
 	ObservePlaylist(context.Context, string) (online.PlaylistObservation, error)
 	Album(context.Context, string) (online.Album, error)
 	Artist(context.Context, string) (online.Artist, error)

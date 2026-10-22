@@ -23,6 +23,9 @@ func (UnimplementedClient) Search(context.Context, online.SearchRequest) (online
 func (UnimplementedClient) Metadata(context.Context, string) (online.Track, error) {
 	return online.Track{}, unsupported()
 }
+func (UnimplementedClient) TrackDetails(context.Context, string) (pluginproto.TrackDetails, error) {
+	return pluginproto.TrackDetails{}, unsupported()
+}
 func (UnimplementedClient) ObservePlaylist(context.Context, string) (online.PlaylistObservation, error) {
 	return online.PlaylistObservation{}, unsupported()
 }

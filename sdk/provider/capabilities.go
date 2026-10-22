@@ -4,6 +4,8 @@ func methodCapability(method string) string {
 	switch method {
 	case "provider.online.metadata":
 		return "metadata.track"
+	case "provider.online.trackDetails":
+		return "track.details"
 	case "provider.online.playlist":
 		return "playlist.observe"
 	case "provider.online.resolve":

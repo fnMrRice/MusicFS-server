@@ -15,6 +15,7 @@ type Client interface {
 	Account(context.Context, online.AccountRequest) (online.AccountResult, error)
 	Search(context.Context, online.SearchRequest) (online.SearchPage, error)
 	Metadata(context.Context, string) (online.Track, error)
+	TrackDetails(context.Context, string) (pluginproto.TrackDetails, error)
 	ObservePlaylist(context.Context, string) (online.PlaylistObservation, error)
 	Resolve(context.Context, string) error
 	Album(context.Context, string) (online.Album, error)

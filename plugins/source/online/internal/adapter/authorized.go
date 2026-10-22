@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	domain "github.com/fnMrRice/MusicFS-server/sdk/fault"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
 type accountContextKey struct{}
@@ -59,6 +60,11 @@ func (c *Client) Search(ctx context.Context, r SearchRequest) (SearchPage, error
 }
 func (c *Client) Metadata(ctx context.Context, id string) (Track, error) {
 	return authorized(ctx, c, func(ctx context.Context) (Track, error) { return c.driver.Metadata(ctx, id) })
+}
+func (c *Client) TrackDetails(ctx context.Context, id string) (pluginproto.TrackDetails, error) {
+	return authorized(ctx, c, func(ctx context.Context) (pluginproto.TrackDetails, error) {
+		return c.driver.TrackDetails(ctx, id)
+	})
 }
 func (c *Client) MetadataBatch(ctx context.Context, ids []string) (TrackBatch, error) {
 	return authorized(ctx, c, func(ctx context.Context) (TrackBatch, error) { return c.driver.MetadataBatch(ctx, ids) })

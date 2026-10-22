@@ -70,7 +70,7 @@ func (s *Service) Providers(ctx context.Context, user string) []Provider {
 			case <-r.Worker.Done():
 			default:
 				availability = "available"
-				capabilities = []string{"library.scan", "metadata.read", "stream.resolve"}
+				capabilities = append(capabilities, r.Worker.Manifest.Capabilities...)
 			}
 		}
 		items = append(items, Provider{ID: r.ID, Name: r.Name, Plugin: r.Plugin.Clone(), Capabilities: capabilities, Availability: availability, AccountState: "notRequired", ScanState: s.repo.ProviderScanState(ctx, user, r.ID), Configuration: safeProviderConfiguration(r), Roots: s.providerRoots(ctx, r)})

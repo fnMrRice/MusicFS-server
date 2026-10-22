@@ -38,6 +38,8 @@ Manifest 的 `configuration` 为插件提供的导入选项声明；不支持导
 
 观测字段中必需但可为 `null` 的 `bitrateMode` 与 `providerSha512`：模式仅接受 `cbr/vbr/unknown`，摘要必须是 128 个小写十六进制字符。`bitrateBps` 仅接受正整数或 `null`，质量档位不能作为数值。Provider 的摘要与码率属于申报证据，不能自行声明 `verified` 或选择 `bitrateOrigin`；Host 单独记录其实际探测来源，并将证据绑定到当前资产、版本、扫描代次和算法配置。未知值须显式发送 `null`。
 
+`track.details` 能力使用 `provider.trackDetails`，请求为 `ResolveRequest`，结果为插件提供的 `TrackDetails` 有序纯文本分组。在线版本使用 `provider.online.trackDetails` 与 `OnlineReference`。宿主只在曲目所有者和来源实例权限校验后调用；本地详情额外校验当前文件版本。此详情接口允许用户查看自己来源内的相对路径和根标识，仍不暴露服务器绝对路径。结构、上限与错误语义见[来源曲目详情](../../../library/source-track-details.md)。
+
 ## 取消、错误与 Host 服务
 
 `$/cancelRequest` 是无 ID 通知，其 params.id 指向在途调用。已返回后取消幂等；已取消的晚结果只可回收，不可发布。重复终态、重复活跃 ID、未知响应 ID 都视为协议错误。取消不是强制 OS 沙箱；拒绝退出的受管 Worker 由 Host 在宽限期后回收。

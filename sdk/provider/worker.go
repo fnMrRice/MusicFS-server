@@ -91,7 +91,7 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 		run = func(ctx context.Context) (any, error) {
 			return client.Search(ctx, online.SearchRequest{Kind: r.Kind, Query: r.Query, Limit: r.Limit, Cursor: r.Cursor})
 		}
-	case "provider.online.metadata", "provider.online.playlist", "provider.online.resolve":
+	case "provider.online.metadata", "provider.online.trackDetails", "provider.online.playlist", "provider.online.resolve":
 		var r pluginproto.OnlineReference
 		if err = pluginproto.DecodeOnline(raw, &r); err != nil {
 			return nil, err
@@ -101,6 +101,12 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 			switch method {
 			case "provider.online.metadata":
 				return client.Metadata(ctx, r.ExternalID)
+			case "provider.online.trackDetails":
+				details, err := client.TrackDetails(ctx, r.ExternalID)
+				if err == nil {
+					err = details.Validate(r.ExternalID)
+				}
+				return details, err
 			case "provider.online.playlist":
 				return client.ObservePlaylist(ctx, r.ExternalID)
 			default:

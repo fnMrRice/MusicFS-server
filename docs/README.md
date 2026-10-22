@@ -47,6 +47,7 @@
 | [扫描](library/scanning.md) | 范围、排除、监听、重试与完整发布 |
 | [曲库查询](library/catalog-query.md) | 搜索、筛选、排序和固定结果分页 |
 | [录音聚合曲库](library/recording-groups.md) | 人工合并后按歌曲显示与多版本展开 |
+| [来源曲目详情](library/source-track-details.md) | 对应来源插件提供的分组字段、身份与版本校验 |
 | [自动重复识别](library/duplicate-detection.md) | 插件候选、后台识别、进度与人工确认 |
 | [来源专辑](library/albums.md) | 显式成员、发行关联和专辑封面 |
 | [个人数据](library/personal-library.md) | 资料、收藏与最近播放 |
