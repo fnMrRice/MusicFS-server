@@ -84,7 +84,7 @@ Local Files 访问 Server 本机或已挂载文件系统；远程客户端的路
 
 SQLite WAL 放本地文件系统；备份同时保存数据库及被引用的媒体和恢复状态，缓存可重建。凭据由宿主按实例保护，配置、日志和客户端响应不得暴露；见[配置](operations/configuration.md)与[备份](operations/backup.md)。
 
-日志由 `src/core/logging` 统一管理，使用 `log/slog` 与 `lumberjack` 同时输出控制台及服务端、插件独立文件。默认 `info`，历史日志轮转压缩并保留30天；配置文件提供默认等级与插件覆盖，管理员 `GET/PUT /admin/logging` 可原子调整当前进程的等级且不持久化。接口只增加管理员能力，不改变现有任务、事件或插件协议，客户端无需改变现有请求；文件与诊断边界见[日志](operations/logging.md)。
+日志由 `src/core/logging` 统一管理，使用 `log/slog` 与 `lumberjack` 同时输出控制台及服务端、插件独立文件。默认 `info`，同一 UTC 日期的服务端与插件历史切片合并为一个 `logs-YYYY-MM-DD.tar.gz` 并保留30天；配置文件提供默认等级与插件覆盖，管理员 `GET/PUT /admin/logging` 可原子调整当前进程的等级且不持久化。接口只增加管理员能力，不改变现有任务、事件或插件协议，客户端无需改变现有请求；文件与诊断边界见[日志](operations/logging.md)。
 
 ## 播放与生命周期
 

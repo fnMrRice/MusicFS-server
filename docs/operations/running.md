@@ -37,7 +37,7 @@ export MUSICFS_ADMIN_TOKEN="$(./build/linux/musicfs token)"
 
 将生成的管理员凭据用于 Web 登录，保存在自己的凭据管理中，不写入配置、URL 或 Git。服务保持前台运行，Ctrl+C 正常退出；默认独立启动，客户端托管模式见[生命周期](lifecycle.md)。
 
-默认 `info` 日志同时写控制台与 `dataRoot/logs/server.log`，插件各自写入 `dataRoot/logs/plugins/<pluginId>.log`。旧日志自动压缩并保留30天；临时排错可通过管理员接口开启 `debug/trace`，目录、等级配置与接口说明见[日志](logging.md)。
+默认 `info` 日志同时写控制台与 `dataRoot/logs/server.log`，插件各自写入 `dataRoot/logs/plugins/<pluginId>.log`。同一 UTC 日期的服务端与插件历史切片合并压缩为 `dataRoot/logs/logs-YYYY-MM-DD.tar.gz`，保留30天；临时排错可通过管理员接口开启 `debug/trace`，目录、等级配置与接口说明见[日志](logging.md)。
 
 ## 选择音乐目录与扫描
 

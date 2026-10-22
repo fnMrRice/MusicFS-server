@@ -2,7 +2,6 @@ package logging_test
 
 import (
 	"bytes"
-	"compress/gzip"
 	"context"
 	"encoding/json"
 	"io"
@@ -124,37 +123,6 @@ func TestConcurrentLoggingAndConfiguration(t *testing.T) {
 	}
 }
 
-func waitArchive(t *testing.T, pattern string) string {
-	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
-		paths, err := filepath.Glob(pattern)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, path := range paths {
-			f, err := os.Open(path)
-			if err != nil {
-				continue
-			}
-			reader, err := gzip.NewReader(f)
-			if err == nil {
-				data, readErr := io.ReadAll(reader)
-				reader.Close()
-				f.Close()
-				if readErr == nil {
-					return string(data)
-				}
-			} else {
-				f.Close()
-			}
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	t.Fatal("compressed archive was not completed")
-	return ""
-}
-
 func TestRotationCompressionAndThirtyDayRetention(t *testing.T) {
 	dir := t.TempDir()
 	old := time.Now().UTC().Add(-31 * 24 * time.Hour).Format("2006-01-02T15-04-05.000")
@@ -178,11 +146,25 @@ func TestRotationCompressionAndThirtyDayRetention(t *testing.T) {
 		t.Fatal(err)
 	}
 	m.Logger().Info("current server record")
-	if text := waitArchive(t, filepath.Join(dir, "server-*.gz")); !strings.Contains(text, "archived server record") || strings.Contains(text, "current server record") {
-		t.Fatal("archive content is wrong")
+	m.Logger().Info("current plugin record", "pluginId", pluginID)
+	if err := m.Close(); err != nil {
+		t.Fatal(err)
 	}
-	if text := waitArchive(t, filepath.Join(dir, "plugins", pluginID+"-*.gz")); !strings.Contains(text, "archived plugin record") {
-		t.Fatal("plugin archive content is wrong")
+	paths := bundlePaths(t, dir)
+	if len(paths) != 1 {
+		t.Fatalf("server and plugin logs should share one archive: %v", paths)
+	}
+	entries := readBundle(t, paths[0])
+	if len(entries) != 2 {
+		t.Fatalf("unexpected archive members: %v", entries)
+	}
+	for name, text := range entries {
+		if strings.Contains(text, "current") || name == "server.log" || name == "plugins/"+pluginID+".log" {
+			t.Fatal("active logs were included in the archive")
+		}
+		if strings.HasPrefix(name, "server-") && !strings.Contains(text, "archived server record") || strings.HasPrefix(name, "plugins/"+pluginID+"-") && !strings.Contains(text, "archived plugin record") {
+			t.Fatalf("archive member content is wrong: %s", name)
+		}
 	}
 	if text := contents(t, filepath.Join(dir, "server.log")); strings.Contains(text, "archived server record") || !strings.Contains(text, "current server record") {
 		t.Fatal("active file was not rotated")
@@ -199,8 +181,13 @@ func TestPreviousDayFileRotatesAtStartup(t *testing.T) {
 	if err := os.Chtimes(path, yesterday, yesterday); err != nil {
 		t.Fatal(err)
 	}
-	newManager(t, dir, io.Discard).Logger().Info("today")
-	if text := waitArchive(t, filepath.Join(dir, "server-*.gz")); text != "yesterday\n" {
+	m := newManager(t, dir, io.Discard)
+	m.Logger().Info("today")
+	if err := m.Close(); err != nil {
+		t.Fatal(err)
+	}
+	entries := readBundle(t, bundlePath(dir, yesterday))
+	if len(entries) != 1 || !hasBundleContent(entries, "yesterday\n") {
 		t.Fatal("previous day was not archived")
 	}
 }
@@ -232,8 +219,7 @@ func TestStartupDoesNotRenewExpiredActiveLogs(t *testing.T) {
 	if strings.Contains(contents(t, path), "expired") {
 		t.Fatal("expired active log was retained")
 	}
-	archives, err := filepath.Glob(filepath.Join(dir, "server-*.gz"))
-	if err != nil || len(archives) != 0 {
+	if archives := bundlePaths(t, dir); len(archives) != 0 {
 		t.Fatal("expired active log was given a new retention period")
 	}
 }
@@ -259,30 +245,12 @@ func TestSizeRotationFollowedByManualRotationPreservesBothArchives(t *testing.T)
 	if err := m.Close(); err != nil {
 		t.Fatal(err)
 	}
-	paths, err := filepath.Glob(filepath.Join(dir, "server-*.log.gz"))
-	if err != nil || len(paths) != 2 {
-		t.Fatalf("rotation lost an archive: %v (%v)", paths, err)
+	paths := bundlePaths(t, dir)
+	if len(paths) != 1 {
+		t.Fatalf("size and manual rotations should share one archive: %v", paths)
 	}
-	var total int64
-	for _, path := range paths {
-		f, err := os.Open(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		reader, err := gzip.NewReader(f)
-		if err != nil {
-			f.Close()
-			t.Fatal(err)
-		}
-		n, err := io.Copy(io.Discard, reader)
-		reader.Close()
-		f.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		total += n
-	}
-	if total <= oldSize+512 {
+	count, total := bundleStats(t, paths[0])
+	if count != 2 || total <= oldSize+512 {
 		t.Fatal("size-triggered archive contents were overwritten")
 	}
 }

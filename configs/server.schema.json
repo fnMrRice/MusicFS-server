@@ -9,7 +9,7 @@
   "properties": {
     "logging": {
       "type": "object", "additionalProperties": false,
-      "description": "服务端和每个插件分别保存 JSON 日志；每天或达到100 MiB轮转，旧文件压缩并保留30天。文件配置重启生效，管理员 API 可临时调整等级。",
+      "description": "服务端和每个插件分别保存 JSON 日志；每天或达到100 MiB轮转，同一 UTC 日期的历史日志合并为一个 tar.gz 包并保留30天。文件配置重启生效，管理员 API 可临时调整等级。",
       "properties": {
         "directory": {"allOf": [{"$ref": "#/$defs/NonemptyPath"}, {"pattern": "\\S"}], "description": "省略时使用生效 dataRoot 下的 logs；显式相对路径以 YAML 所在目录解析。"},
         "level": {"enum": ["trace", "debug", "info", "warn", "error"], "default": "info"},

@@ -53,7 +53,7 @@
 
 优先级为内置默认值 → YAML → 支持的环境变量 → 显式CLI参数。支持 `MUSICFS_LISTEN`、`MUSICFS_DATA_ROOT`、`MUSICFS_MEDIA_ROOT`、`MUSICFS_CACHE_ROOT`、`MUSICFS_WEB_ROOT`、`MUSICFS_LOG_LEVEL` 和 `MUSICFS_ADMIN_TOKEN`；当前CLI仅为普通配置提供 `--web-root` 覆盖，`--config`选择文件。插件及实例开关不接受环境或CLI覆盖。
 
-`logging` 可省略或逐项覆盖。日志同时写控制台及文件：服务端 `server.log`，每个插件独立写入 `plugins/<pluginId>.log`；同插件多个实例通过日志字段区分。每天或单文件达到100 MiB轮转，旧日志自动 gzip 压缩，保留30天，运行中每小时清理。日志目录不得与音乐根重叠。配置文件变更在重启后生效；管理员可通过 `GET/PUT /api/v1/admin/logging` 读取或临时调整等级，PUT 须提供完整 `level` 与 `plugins`，并通过登录、Origin 与 CSRF 校验。运行时修改不写回 YAML，重启恢复启动值，具体等级用途及调用示例见[日志](logging.md)。
+`logging` 可省略或逐项覆盖。日志同时写控制台及文件：服务端 `server.log`，每个插件独立写入 `plugins/<pluginId>.log`；同插件多个实例通过日志字段区分。每天或单文件达到100 MiB轮转，同一 UTC 日期的服务端与插件历史切片合并为日志根目录下的 `logs-YYYY-MM-DD.tar.gz`，保留原切片名及插件目录层级，活动日志不入包；按归档 UTC 日期保留30天，运行中每小时清理。日志目录不得与音乐根重叠。配置文件变更在重启后生效；管理员可通过 `GET/PUT /api/v1/admin/logging` 读取或临时调整等级，PUT 须提供完整 `level` 与 `plugins`，并通过登录、Origin 与 CSRF 校验。运行时修改不写回 YAML，重启恢复启动值，具体等级用途及调用示例见[日志](logging.md)。
 
 管理员令牌至少24字符，只通过 `MUSICFS_ADMIN_TOKEN` 注入，不是YAML字段。读写服务的 `Snapshot` 清空该值；凭据、环境变量和CLI生效值不写回文件。不要把凭据放入URL、长期测试材料或Git。
 

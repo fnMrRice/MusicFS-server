@@ -1,7 +1,6 @@
 package logging
 
 import (
-	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
 	"errors"
@@ -29,6 +28,9 @@ func (m *Manager) cleanup(now time.Time) error {
 	}
 	m.mu.RUnlock()
 	var result error
+	groups := map[string][]archiveSource{}
+	var temporaries []string
+	cutoff := now.UTC().AddDate(0, 0, -RetentionDays).Format(time.DateOnly)
 	for _, plugins := range []bool{false, true} {
 		directory := m.directory
 		if plugins {
@@ -45,6 +47,18 @@ func (m *Manager) cleanup(now time.Time) error {
 				continue
 			}
 			path := filepath.Join(directory, entry.Name())
+			if !plugins {
+				if day, ok := bundleDay(entry.Name()); ok {
+					if day < cutoff {
+						result = errors.Join(result, removeArchive(path, info))
+					}
+					continue
+				}
+				if bundleTemporaryName.MatchString(entry.Name()) {
+					temporaries = append(temporaries, path)
+					continue
+				}
+			}
 			if plugins && strings.HasSuffix(entry.Name(), ".log") && active[strings.TrimSuffix(entry.Name(), ".log")] {
 				continue
 			}
@@ -58,7 +72,8 @@ func (m *Manager) cleanup(now time.Time) error {
 				if stamp.Before(now.UTC().Add(-RetentionDays * 24 * time.Hour)) {
 					result = errors.Join(result, removeArchive(path, info))
 				} else if !strings.HasSuffix(path, ".gz") {
-					result = errors.Join(result, compressArchive(path))
+					day := stamp.Format(time.DateOnly)
+					groups[day] = append(groups[day], archiveSource{path: path, name: relativeArchiveName(entry.Name(), plugins), info: info})
 				}
 				continue
 			}
@@ -68,12 +83,30 @@ func (m *Manager) cleanup(now time.Time) error {
 			}
 			archived, err := m.archiveInactive(path, id, now)
 			if err == nil && archived != "" {
-				err = compressArchive(archived)
+				info, err = os.Lstat(archived)
+				if err == nil {
+					stamp, _ := ownedArchive(filepath.Base(archived), true)
+					day := stamp.Format(time.DateOnly)
+					groups[day] = append(groups[day], archiveSource{path: archived, name: relativeArchiveName(filepath.Base(archived), true), info: info})
+				}
 			}
 			result = errors.Join(result, err)
 		}
 	}
+	for day, sources := range groups {
+		result = errors.Join(result, compressBundle(filepath.Join(m.directory, "logs-"+day+".tar.gz"), sources))
+	}
+	for _, path := range temporaries {
+		result = errors.Join(result, recoverBundleTemporary(path, m.directory))
+	}
 	return result
+}
+
+func relativeArchiveName(name string, plugins bool) string {
+	if plugins {
+		return "plugins/" + name
+	}
+	return name
 }
 
 func ownedArchive(name string, plugins bool) (time.Time, bool) {
@@ -132,72 +165,6 @@ func recoverTemporary(path, source string) error {
 		return removeArchive(path, info)
 	}
 	return nil
-}
-
-func compressArchive(path string) error {
-	source, err := os.Lstat(path)
-	if os.IsNotExist(err) || err == nil && !source.Mode().IsRegular() {
-		return nil
-	}
-	if err != nil {
-		return errors.New("cannot inspect uncompressed log archive")
-	}
-	input, err := os.Open(path)
-	if err != nil {
-		return errors.New("cannot open log archive")
-	}
-	defer input.Close()
-	if opened, err := input.Stat(); err != nil || !os.SameFile(source, opened) {
-		return errors.New("log archive changed before compression")
-	}
-	temporary, err := os.CreateTemp(filepath.Dir(path), temporaryPrefix+filepath.Base(path)+".gz.tmp-*")
-	if err != nil {
-		return errors.New("cannot create compressed log archive")
-	}
-	defer os.Remove(temporary.Name())
-	defer temporary.Close()
-	hash := sha256.New()
-	writer := gzip.NewWriter(temporary)
-	writer.ModTime = source.ModTime().UTC()
-	written, copyErr := io.Copy(writer, io.TeeReader(input, hash))
-	err = errors.Join(copyErr, writer.Close())
-	if err == nil {
-		err = temporary.Sync()
-	}
-	err = errors.Join(err, temporary.Close(), input.Close())
-	if err != nil || written != source.Size() || !sameArchive(path, source) {
-		return errors.New("cannot finish compressed log archive")
-	}
-	target := path + ".gz"
-	existing, statErr := os.Lstat(target)
-	if statErr != nil && !os.IsNotExist(statErr) || statErr == nil && !existing.Mode().IsRegular() {
-		return errors.New("compressed log archive destination is unavailable")
-	}
-	if statErr == nil {
-		digest, size, checkErr := gzipDigest(target, source.Size())
-		if checkErr == nil {
-			if size != written || !bytes.Equal(digest[:], hash.Sum(nil)) {
-				return errors.New("compressed log archive conflicts with its source")
-			}
-			if !sameArchive(target, existing) {
-				return errors.New("compressed log archive changed during verification")
-			}
-			return removeArchive(path, source)
-		}
-		if errors.Is(checkErr, errArchiveTooLarge) {
-			return errors.New("compressed log archive conflicts with its source")
-		}
-		// 完整原文仍在时可重建损坏 gzip；有效且不同的归档永远不会被覆盖。
-		if !sameArchive(target, existing) {
-			return errors.New("compressed log archive changed during recovery")
-		}
-	} else if !absent(target) {
-		return errors.New("compressed log archive appeared during compression")
-	}
-	if err := os.Rename(temporary.Name(), target); err != nil {
-		return errors.New("cannot publish compressed log archive")
-	}
-	return removeArchive(path, source)
 }
 
 func gzipDigest(path string, limit int64) ([32]byte, int64, error) {
