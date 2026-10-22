@@ -82,7 +82,6 @@ func (s *Service) OpenStream(ctx context.Context, who auth.Session, id, attempt 
 		}
 		a.consumers[attempt]++
 	}
-	a.lastAccess = time.Now()
 	consumers = a.active
 	stream := &Stream{Description: a.description, File: f, Size: a.size, ETag: a.etag, Context: streamCtx, processor: a.processor, gain: a.gain}
 	stream.decodeOutput = a.decodeOutput
@@ -104,7 +103,6 @@ func (s *Service) OpenStream(ctx context.Context, who auth.Session, id, attempt 
 				delete(a.consumers, attempt)
 			}
 		}
-		a.lastAccess = time.Now()
 		s.collect()
 		consumers := a.active
 		s.mu.Unlock()

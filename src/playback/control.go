@@ -106,7 +106,6 @@ func (s *Service) Control(ctx context.Context, who auth.Session, id, operation s
 	a.cachePin = nil
 	a.attemptCtx, a.cancelAttempt = context.WithCancel(a.ctx)
 	a.description = d
-	a.lastAccess = time.Now()
 	applied = true
 	return d, nil
 }

@@ -230,7 +230,6 @@ func (s *Service) installRecovery(a *session, p *preparedInput, d Description) {
 	s.garbage[a.path] = a.size
 	a.path, a.etag, a.size, a.track, a.sourceLease = p.path, p.etag, p.size, p.track, p.lease
 	a.description = d
-	a.lastAccess = time.Now()
 	s.collect()
 }
 func setAttempt(d *Description, position int64) {

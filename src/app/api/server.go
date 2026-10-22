@@ -182,8 +182,12 @@ func (w *responseWriter) Write(b []byte) (int, error) {
 func (w *responseWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
 func (w *responseWriter) Flush() {
+	_ = w.FlushError()
+}
+
+func (w *responseWriter) FlushError() error {
 	if !w.wroteHeader {
 		w.WriteHeader(http.StatusOK)
 	}
-	_ = http.NewResponseController(w.ResponseWriter).Flush()
+	return http.NewResponseController(w.ResponseWriter).Flush()
 }

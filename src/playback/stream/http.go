@@ -14,7 +14,8 @@ import (
 func Serve(w http.ResponseWriter, r *http.Request, stream *playback.Stream) error {
 	defer stream.Close()
 	controller := http.NewResponseController(w)
-	// Cancellation must interrupt a blocked network write, not only file reads.
+	// 浏览器缓冲充足时会暂停读取，正常背压不能被固定写超时中断。
+	// 仅在会话或请求取消时打断阻塞写入，确保停止播放仍能释放资源。
 	deadlineDone := make(chan struct{})
 	stopDeadline := context.AfterFunc(stream.Context, func() {
 		_ = controller.SetWriteDeadline(time.Now())
@@ -26,6 +27,8 @@ func Serve(w http.ResponseWriter, r *http.Request, stream *playback.Stream) erro
 		}
 		_ = controller.SetWriteDeadline(time.Time{})
 	}()
+	output := &deliveryWriter{ResponseWriter: w, controller: controller, ctx: stream.Context, sessionID: stream.Description.SessionID}
+	w = output
 	w.Header().Set("Content-Type", stream.Description.OutputProfile.MIME)
 	w.Header().Set("Cache-Control", "private, no-store")
 	if stream.Description.DeliveryMode == "proxy" {
@@ -35,10 +38,10 @@ func Serve(w http.ResponseWriter, r *http.Request, stream *playback.Stream) erro
 			}
 		}
 		w.Header().Set("ETag", stream.ETag)
-		http.ServeContent(&idleWriter{ResponseWriter: w, controller: controller}, r, "audio", time.Time{}, stream.File)
-		return nil
+		http.ServeContent(w, r, "audio", time.Time{}, stream.File)
+		return output.err
 	}
-	// Processed output has no byte-range, length, or source validator.
+	// 处理后的流不提供字节范围、长度或源文件校验标识。
 	w.Header().Set("Accept-Ranges", "none")
 	if r.Method == http.MethodHead {
 		w.WriteHeader(http.StatusOK)
@@ -56,7 +59,7 @@ func Serve(w http.ResponseWriter, r *http.Request, stream *playback.Stream) erro
 		}
 	}()
 	first := bufio.NewReaderSize(reader, 32<<10)
-	// Wait for an actual encoded frame before starting HTTP output.
+	// 首个编码帧就绪后再发送 HTTP 响应。
 	started := make(chan error, 1)
 	go func() { _, err := first.Peek(1024); started <- err }()
 	select {
@@ -70,19 +73,17 @@ func Serve(w http.ResponseWriter, r *http.Request, stream *playback.Stream) erro
 		return context.Canceled
 	}
 	w.WriteHeader(http.StatusOK)
-	_ = controller.SetWriteDeadline(time.Now().Add(15 * time.Second))
-	if err := controller.Flush(); err != nil {
+	if err := output.FlushError(); err != nil {
 		return err
 	}
 	buffer := make([]byte, 32<<10)
 	for {
 		n, readErr := first.Read(buffer)
 		if n > 0 {
-			controller.SetWriteDeadline(time.Now().Add(15 * time.Second))
 			if _, err := w.Write(buffer[:n]); err != nil {
 				return err
 			}
-			if err := controller.Flush(); err != nil {
+			if err := output.FlushError(); err != nil {
 				return err
 			}
 		}
@@ -97,15 +98,3 @@ func Serve(w http.ResponseWriter, r *http.Request, stream *playback.Stream) erro
 		}
 	}
 }
-
-type idleWriter struct {
-	http.ResponseWriter
-	controller *http.ResponseController
-}
-
-func (w *idleWriter) Write(data []byte) (int, error) {
-	_ = w.controller.SetWriteDeadline(time.Now().Add(15 * time.Second))
-	return w.ResponseWriter.Write(data)
-}
-
-func (w *idleWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }

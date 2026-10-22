@@ -49,7 +49,6 @@ type session struct {
 	cancelAttempt           context.CancelFunc
 	active                  int
 	consumers               map[string]int
-	lastAccess              time.Time
 	capabilities            Capabilities
 	recovery                timeline.Budget
 	sourceLease             *library.ReadLease
@@ -130,7 +129,8 @@ func (s *Service) reap() {
 		}
 		s.mu.Lock()
 		for id, a := range s.sessions {
-			if a.ctx.Err() != nil || time.Now().After(a.description.ExpiresAt) || (a.active == 0 && time.Since(a.lastAccess) > 90*time.Second) {
+			// 浏览器可能已缓存完整音频；没有 HTTP 消费者不代表已经停止播放。
+			if a.ctx.Err() != nil || !time.Now().Before(a.description.ExpiresAt) {
 				s.stopLocked(context.Background(), id, a)
 			}
 		}
