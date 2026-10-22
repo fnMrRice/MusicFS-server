@@ -9,6 +9,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/catalog"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
@@ -135,7 +136,7 @@ func (c *Client) CreateTimeline(a0 context.Context, a1 string, a2 timeline.Reque
 	return r0, err
 }
 
-func (c *Client) CurrentEnrichment(a0 context.Context, a1 enrichment.Work) (err error) {
-	err = c.Invoke(a0, "CurrentEnrichment", []any{a1}, []any{})
-	return err
+func (c *Client) CreateWork(a0 context.Context, a1 string, a2 works.CreateRequest, a3 string) (r0 works.Work, err error) {
+	err = c.Invoke(a0, "CreateWork", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
 }

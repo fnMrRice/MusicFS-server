@@ -17,6 +17,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
+func (c *Client) Releases(a0 context.Context, a1 string, a2 string, a3 int) (r0 []albums.Release, err error) {
+	err = c.Invoke(a0, "Releases", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) RemotePlaylist(a0 context.Context, a1 string, a2 string) (r0 playlists.RemotePlaylist, err error) {
 	err = c.Invoke(a0, "RemotePlaylist", []any{a1, a2}, []any{&r0})
 	return r0, err
@@ -129,10 +134,5 @@ func (c *Client) SetExclusion(a0 context.Context, a1 string, a2 matching.Exclusi
 
 func (c *Client) SetPublicationStage(a0 context.Context, a1 string, a2 string, a3 string, a4 string) (err error) {
 	err = c.Invoke(a0, "SetPublicationStage", []any{a1, a2, a3, a4}, []any{})
-	return err
-}
-
-func (c *Client) SetWritebackState(a0 context.Context, a1 string, a2 string, a3 string, a4 string) (err error) {
-	err = c.Invoke(a0, "SetWritebackState", []any{a1, a2, a3, a4}, []any{})
 	return err
 }

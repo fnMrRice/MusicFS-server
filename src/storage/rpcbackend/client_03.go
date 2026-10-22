@@ -17,6 +17,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
+func (c *Client) FinishHash(a0 context.Context, a1 identification.HashJob, a2 identification.Result, a3 int64) (err error) {
+	err = c.Invoke(a0, "FinishHash", []any{a1, a2, a3}, []any{})
+	return err
+}
+
 func (c *Client) FinishMediaBackup(a0 context.Context, a1 string) (err error) {
 	err = c.Invoke(a0, "FinishMediaBackup", []any{a1}, []any{})
 	return err
@@ -129,10 +134,5 @@ func (c *Client) ListGroupedTracks(a0 context.Context, a1 string, a2 string, a3 
 
 func (c *Client) ListProcessedCache(a0 context.Context) (r0 []processedcache.Record, err error) {
 	err = c.Invoke(a0, "ListProcessedCache", []any{}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) ListScrapeDocuments(a0 context.Context, a1 string, a2 string) (r0 []mediastore.DerivedObject, err error) {
-	err = c.Invoke(a0, "ListScrapeDocuments", []any{a1, a2}, []any{&r0})
 	return r0, err
 }

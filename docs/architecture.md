@@ -4,6 +4,8 @@
 
 ## 模块与交付
 
+内容类型和手工作品资料由 `src/library/contenttypes`、`src/library/works` 管理，音乐／ASMR声明来自 `plugins/content`。CUE 解析位于独立SDK；完整作品包、附件和分段播放仍按[作品库实施阶段](../../docs/content-library.md)推进，当前范围见[作品资料](library/works.md)。
+
 Server 是 Go 模块化单体，统一管理来源、曲库、歌单、资料补全和音频交付。宿主按七类职责组织，子包说明见[源码导航](../src/README.md)。
 
 | 模块 | 职责 |

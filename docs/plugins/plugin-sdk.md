@@ -29,6 +29,12 @@ SDK 包入口：
 
 在线平台共用一个插件模块维护公共代码。默认由 Server 固定选择已编译的平台实现，在主进程为每个用户和实例创建独立会话，平台选择必须与握手身份一致。可选的 `musicfs-plugin-netease`、`musicfs-plugin-qqmusic`、`musicfs-plugin-applemusic` 及 `musicfs-plugin-online --plugin <平台>` 保留独立构建与进程部署能力。SDK 不拥有平台登录、加密、HTTP 请求、Cookie 或平台显示名称。已知平台 ID、结果 URL 校验及最大允许能力仍是 SDK/宿主的官方来源策略，未开放任意第三方身份、未知角色或音频能力。
 
+## 内容类型与 CUE 增量
+
+`sdk/contenttype` 提供已校验的内容类型声明，音乐和 ASMR 内置实现位于 `plugins/content/music`、`plugins/content/asmr`，由启动装配注入只读注册表。当前仅声明名称、角色、外部编号命名空间与固定作品视图；通过独立进程内接口接入，不扩展通用 Manifest 角色，也不提供任意第三方动态加载。作品资料、存储和HTTP语义见[作品资料](../library/works.md)。
+
+`sdk/cuesheet` 是无文件访问的纯文本解析包，输出相对文件引用和每秒75帧的音轨范围；消费方仍需授权与实际资产／时长验证。解析支持与间隙规则见[解析说明](../../sdk/cuesheet/README.md)，尚未接入扫描或分段播放。
+
 ## 构建与测试
 
 默认使用根目录 `scripts/build.ps1` 或 `scripts/build.sh` 构建 `musicfs` 与保留九种兼容入口的 `musicfs-plugins`。默认运行只启动 `musicfs`，内置插件不需要后一个文件。所有模块仍以 `GOWORK=off` 构建，不依赖开发者本机的 `go.work`。显式指定 PowerShell `-SplitPlugins` 或 shell `--split-plugins` 才额外生成平台、SQLite、DSP 等独立文件；发布脚本支持同名选项。源码模块、交付文件数量与运行时进程数量分别管理。

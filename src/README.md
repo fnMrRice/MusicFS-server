@@ -20,6 +20,8 @@
 - `bootstrap`：加载配置、打开存储、组装业务服务和插件、启动 HTTP 服务及处理退出。
 - `api`：路由、请求校验、鉴权中间件、调用业务服务和响应转换。
 
+作品资料入口为 `app/api/works.go`，通过 `app/bootstrap/works.go` 注入内容插件；`library/works` 定义资料合同，`library/contenttypes` 保存不可变声明。具体 SQLite 实现位于 `plugins/database/sqlite/works_*.go`。
+
 ### core：服务基础
 
 - `auth`：MusicFS 登录、会话和请求安全校验。

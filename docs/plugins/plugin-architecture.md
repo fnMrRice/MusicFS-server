@@ -4,6 +4,8 @@ Server 保持 Go 模块化单体，官方内置插件运行于 Server 主进程�
 
 ## 当前能力
 
+2026-10-22 内容类型增量：`plugins/content/music`、`plugins/content/asmr` 通过独立的进程内声明接口注册，供通用作品资料和界面使用；`sdk/cuesheet` 提供纯解析基础。它们不属于下表的通用 Worker 角色，尚无动态安装或启停操作，完整范围见[作品资料](../library/works.md)。
+
 默认交付 `musicfs` 与 `musicfs-plugins` 两个程序；运行时只需启动 Server。来源、Scraper、解码、DSP、SQLite 以及分析、标签、评分、内容变换实现均编译到 `musicfs`，在主进程执行。每个实例或任务仍有独立上下文、账号状态和取消范围。`musicfs-plugins --plugin <用途>` 保留为可选的外部进程入口，只有显式选择进程模式才执行。源码分为 Server、SDK、在线插件三个 Go 模块，见[SDK 与构建](plugin-sdk.md)。
 
 | 用途 | 当前职责 | 协议与限制 |

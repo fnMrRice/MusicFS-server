@@ -16,6 +16,11 @@ import (
 	"time"
 )
 
+func (c *Client) ListScrapeDocuments(a0 context.Context, a1 string, a2 string) (r0 []mediastore.DerivedObject, err error) {
+	err = c.Invoke(a0, "ListScrapeDocuments", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) ListTracks(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 library.Page, err error) {
 	err = c.Invoke(a0, "ListTracks", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
@@ -129,11 +134,4 @@ func (c *Client) PrepareContent(a0 context.Context, a1 string, a2 mediastore.Upl
 func (c *Client) PrepareRestoredDatabase(a0 context.Context, a1 []mediastore.BackupObject) (err error) {
 	err = c.Invoke(a0, "PrepareRestoredDatabase", []any{a1}, []any{})
 	return err
-}
-
-func (c *Client) ProviderScanState(a0 context.Context, a1 string, a2 string) (r0 string) {
-	if err := c.Invoke(a0, "ProviderScanState", []any{a1, a2}, []any{&r0}); err != nil {
-		return "failed"
-	}
-	return r0
 }

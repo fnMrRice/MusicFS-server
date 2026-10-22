@@ -15,6 +15,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/sourcedisplay"
+	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
@@ -63,6 +64,7 @@ type Backend interface {
 	sourcedisplay.Repository
 	timeline.Repository
 	writebackhost.Repository
+	works.Repository
 	Close() error
 }
 

@@ -36,6 +36,7 @@
 | [实例配置与目录](plugins/plugin-configuration.md) | 插件配置数据库、目录授权与管理 API |
 | [声明式设置页面](plugins/settings.md) | 插件字段、按钮、值校验与持久化 |
 | [DSP](plugins/dsp-plugins.md) | 有序处理链、PCM Worker 与定位限制 |
+| [音频编解码插件](plugins/audio-codecs.md) | 格式识别、解码链和显式转码能力 |
 | [常见 DSP 与声道转换](plugins/dsp-effects.md) | EQ、压缩器、混响，独立声道转换及 stereo/5.1/7.1 输出配置 |
 | [DSP 配置页面](plugins/dsp-settings.md) | 每用户链、管理员全局默认、输入输出协商与可调缓冲区 |
 | [存储后端](plugins/storage-plugins.md) | 必需 SQLite、Backend 契约与独立 Worker |
@@ -50,6 +51,7 @@
 | [来源曲目详情](library/source-track-details.md) | 对应来源插件提供的分组字段、身份与版本校验 |
 | [自动重复识别](library/duplicate-detection.md) | 插件候选、后台识别、进度与人工确认 |
 | [来源专辑](library/albums.md) | 显式成员、发行关联和专辑封面 |
+| [内容类型与作品资料](library/works.md) | 音乐／ASMR插件声明、作品建档与编辑、资料检索及实现边界 |
 | [个人数据](library/personal-library.md) | 资料、收藏与最近播放 |
 | [个人与聚合歌单](library/playlists.md) | 本地编辑、出处、隐藏与重建 |
 | [来源歌单列表](library/source-playlists.md) | 插件当前账号可见的歌单 |

@@ -17,6 +17,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
+func (c *Client) CurrentEnrichment(a0 context.Context, a1 enrichment.Work) (err error) {
+	err = c.Invoke(a0, "CurrentEnrichment", []any{a1}, []any{})
+	return err
+}
+
 func (c *Client) DatabaseSize(a0 context.Context) (r0 int64, err error) {
 	err = c.Invoke(a0, "DatabaseSize", []any{}, []any{&r0})
 	return r0, err
@@ -129,10 +134,5 @@ func (c *Client) FinishAutomationAction(a0 context.Context, a1 string, a2 enrich
 
 func (c *Client) FinishEnrichment(a0 context.Context, a1 enrichment.Work, a2 enrichment.Outcome) (err error) {
 	err = c.Invoke(a0, "FinishEnrichment", []any{a1, a2}, []any{})
-	return err
-}
-
-func (c *Client) FinishHash(a0 context.Context, a1 identification.HashJob, a2 identification.Result, a3 int64) (err error) {
-	err = c.Invoke(a0, "FinishHash", []any{a1, a2, a3}, []any{})
 	return err
 }

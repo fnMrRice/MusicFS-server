@@ -19,6 +19,13 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 )
 
+func (c *Client) ProviderScanState(a0 context.Context, a1 string, a2 string) (r0 string) {
+	if err := c.Invoke(a0, "ProviderScanState", []any{a1, a2}, []any{&r0}); err != nil {
+		return "failed"
+	}
+	return r0
+}
+
 func (c *Client) Publish(a0 context.Context, a1 jobs.Job, a2 library.ScanPublication) (err error) {
 	err = c.Invoke(a0, "Publish", []any{a1, a2}, []any{})
 	return err
@@ -131,10 +138,5 @@ func (c *Client) ReferencePublication(a0 context.Context, a1 string, a2 string) 
 
 func (c *Client) Release(a0 context.Context, a1 string, a2 string) (r0 albums.Release, err error) {
 	err = c.Invoke(a0, "Release", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) Releases(a0 context.Context, a1 string, a2 string, a3 int) (r0 []albums.Release, err error) {
-	err = c.Invoke(a0, "Releases", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
 }
