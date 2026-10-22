@@ -23,10 +23,11 @@ def identifier(layout):
 
 def definitions():
     cases = []
-    for rate in MP3_RATES:
-        cases.append({"properties": {name: {"const": value} for name, value in {
-            "id": f"mp3-{rate}", "mime": "audio/mpeg", "codec": "mp3", "container": "mp3", "channels": 2, "layout": "stereo", "bitrateBps": rate * 1000,
-        }.items()}})
+    for layout, channels, prefix in [("stereo", 2, "mp3-"), ("mono", 1, "mp3-mono-")]:
+        for rate in MP3_RATES:
+            cases.append({"properties": {name: {"const": value} for name, value in {
+                "id": f"{prefix}{rate}", "mime": "audio/mpeg", "codec": "mp3", "container": "mp3", "channels": channels, "layout": layout, "bitrateBps": rate * 1000,
+            }.items()}})
     for layout, channels, default in [("5.1", 6, 256000), ("7.1", 8, 384000)]:
         common = {name: {"const": value} for name, value in {
             "mime": "audio/webm", "codec": "opus", "container": "webm", "channels": channels, "layout": layout,
@@ -44,7 +45,7 @@ def replace_definition(text, name, definition):
 
 
 def main():
-    ids = {"anyOf": [{"enum": [f"mp3-{rate}" for rate in MP3_RATES] + ["opus-5.1", "opus-7.1"]}, identifier("5.1"), identifier("7.1")]}
+    ids = {"anyOf": [{"enum": [f"{prefix}{rate}" for prefix in ["mp3-", "mp3-mono-"] for rate in MP3_RATES] + ["opus-5.1", "opus-7.1"]}, identifier("5.1"), identifier("7.1")]}
     for relative, plugin in [("docs/contracts/http.schema.json", False), ("docs/contracts/plugins/v1/protocol.schema.json", True)]:
         path = ROOT / relative
         text = path.read_text(encoding="utf-8")

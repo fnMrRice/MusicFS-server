@@ -123,6 +123,7 @@ func TestOriginalFLACMultichannelMetadataAndRequiredConversion(t *testing.T) {
 	}
 	processor = flacTestProcessor(t, "5.1")
 	f := metadataPlaybackFixture(t, "source.flac", flacTestPayload(t), processor, nil)
+	f.request.Preferences.DSPExecution = "server"
 	f.request.Capabilities.Formats = append(f.request.Capabilities.Formats, playback.Format{MIME: `audio/webm; codecs="opus"`, CanPlay: "probably"})
 	description := f.create(t, "flac-required-channel-conversion")
 	if description.DeliveryMode != "processed" || description.OutputProfile.Channels != 6 || description.OutputProfile.Codec == nil || *description.OutputProfile.Codec != "opus" {

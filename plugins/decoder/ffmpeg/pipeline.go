@@ -26,15 +26,16 @@ type Plan struct {
 	DecodeOutput string  `json:"decodeOutput,omitempty"`
 }
 type StartRequest struct {
-	Plan           Plan               `json:"plan"`
-	FFmpegPath     string             `json:"ffmpegPath"`
-	FFmpegSHA256   string             `json:"ffmpegSHA256"`
-	InputURL       string             `json:"inputUrl"`
-	OutputURL      string             `json:"outputUrl"`
-	DSPChain       []audio.NodeSpec   `json:"dspChain,omitempty"`
-	DSPPlugins     []dspworker.Config `json:"dspPlugins,omitempty"`
-	BufferFrames   int                `json:"bufferFrames,omitempty"`
-	DisableEffects bool               `json:"disableEffects,omitempty"`
+	Plan              Plan               `json:"plan"`
+	FFmpegPath        string             `json:"ffmpegPath"`
+	FFmpegSHA256      string             `json:"ffmpegSHA256"`
+	InputURL          string             `json:"inputUrl"`
+	OutputURL         string             `json:"outputUrl"`
+	DSPChain          []audio.NodeSpec   `json:"dspChain,omitempty"`
+	DSPPlugins        []dspworker.Config `json:"dspPlugins,omitempty"`
+	BufferFrames      int                `json:"bufferFrames,omitempty"`
+	DisableEffects    bool               `json:"disableEffects,omitempty"`
+	DisableChannelMix bool               `json:"disableChannelMix,omitempty"`
 }
 
 const inputFormats = "wav,mp3,flac,aiff,ogg,mov,matroska,webm,aac"
@@ -89,14 +90,24 @@ func Pipeline(ctx context.Context, r StartRequest, output io.Writer) (pipelineEr
 	defer cancel()
 	targetFrame := r.Plan.PositionMs * int64(format.SampleRate) / 1000
 	window := pcmWindow{DiscardFrames: targetFrame}
-	decodeArgs := []string{"-hide_banner", "-nostdin", "-v", "error", "-protocol_whitelist", "http,tcp", "-format_whitelist", inputFormats, "-guess_layout_max", "0", "-i", r.InputURL}
+	guessChannels := "0"
+	if r.DisableChannelMix {
+		// 普通 PCM WAV 不带掩码，单/双声道按格式约定识别；不猜测多声道位置。
+		guessChannels = "2"
+	}
+	decodeArgs := []string{"-hide_banner", "-nostdin", "-v", "error", "-protocol_whitelist", "http,tcp", "-format_whitelist", inputFormats, "-guess_layout_max", guessChannels, "-i", r.InputURL}
 	if node.Stateless() {
 		decodeArgs = append(decodeArgs, "-ss", strconv.FormatFloat(float64(r.Plan.PositionMs)/1000, 'f', 3, 64))
 		window = pcmWindow{StartFrame: targetFrame}
 	}
 	// 有状态链从曲首重建历史；仅在 DSP 处理之后丢弃目标位置之前的帧。
 	// WAV 扩展头携带原声道掩码，避免先下混后再上混丢失声道内容。
-	decodeArgs = append(decodeArgs, "-map", "0:a:0", "-vn", "-ar", "48000", "-f", "wav", "-acodec", decodeOutput, "pipe:1")
+	decodeArgs = append(decodeArgs, "-map", "0:a:0", "-vn", "-ar", "48000")
+	if r.DisableChannelMix {
+		// 输出档案已优先保留来源声道；仅在编码器或客户端限制下由解码器兼容降混。
+		decodeArgs = append(decodeArgs, "-ac", strconv.Itoa(profile.Channels), "-channel_layout", profile.Layout)
+	}
+	decodeArgs = append(decodeArgs, "-f", "wav", "-acodec", decodeOutput, "pipe:1")
 	decoder := exec.CommandContext(ctx, r.FFmpegPath, decodeArgs...)
 	encoder := exec.CommandContext(ctx, r.FFmpegPath, encoderArguments(profile)...)
 	decodeLog := logging.PluginStderr("musicfs.plugin.decoder.ffmpeg", "")
@@ -130,7 +141,12 @@ func Pipeline(ctx context.Context, r StartRequest, output io.Writer) (pipelineEr
 		}
 		return fmt.Errorf("TEMPORARY_FAILURE: decoder failed to start")
 	}
-	converted, err := convertedWAVReaderOutput(decoded, format, decodeOutput)
+	var converted io.Reader
+	if r.DisableChannelMix {
+		converted, err = decodedWAVWithoutMix(decoded, format, decodeOutput)
+	} else {
+		converted, err = convertedWAVReaderOutput(decoded, format, decodeOutput)
+	}
 	if err == nil {
 		err = transferPCMFormatsWindow(ctx, converted, encodeInput, node, format, node.Output().Format, frames, window)
 	}

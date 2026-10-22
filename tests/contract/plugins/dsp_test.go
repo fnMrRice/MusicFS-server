@@ -17,9 +17,10 @@ func TestAudioDSPWireContract(t *testing.T) {
 		Plan:       audioffmpeg.Plan{TaskID: "dsp-task", AssetID: "asset", Profile: "mp3-128", GainDB: -3},
 		FFmpegPath: "C:/tools/ffmpeg.exe", FFmpegSHA256: strings.Repeat("a", 64),
 		InputURL: "http://127.0.0.1:12345/" + strings.Repeat("b", 48) + "/input", OutputURL: "http://127.0.0.1:12345/" + strings.Repeat("b", 48) + "/output",
-		DSPChain:     []audio.NodeSpec{{Name: "gain", Version: 1, Params: map[string]float64{"gainDB": -6}}, {Name: "musicfs.dsp.gain", Version: 1, Params: map[string]float64{"gainDB": -9}}, {Name: "bypass", Version: 1}},
-		DSPPlugins:   []dspworker.Config{{Name: "musicfs.dsp.gain", Executable: "C:/tools/dsp.exe", SHA256: strings.Repeat("c", 64), TimeoutMs: 5000}},
-		BufferFrames: 4096,
+		DSPChain:          []audio.NodeSpec{{Name: "gain", Version: 1, Params: map[string]float64{"gainDB": -6}}, {Name: "musicfs.dsp.gain", Version: 1, Params: map[string]float64{"gainDB": -9}}, {Name: "bypass", Version: 1}},
+		DSPPlugins:        []dspworker.Config{{Name: "musicfs.dsp.gain", Executable: "C:/tools/dsp.exe", SHA256: strings.Repeat("c", 64), TimeoutMs: 5000}},
+		BufferFrames:      4096,
+		DisableChannelMix: true,
 	}
 	testkit.ValidatePlugin(t, "AudioStart", request)
 	raw, err := json.Marshal(request)
@@ -30,6 +31,7 @@ func TestAudioDSPWireContract(t *testing.T) {
 		testkit.ValidatePlugin(t, "", pluginproto.Envelope{JSONRPC: "2.0", ID: "h-1", Method: method, Params: raw})
 	}
 	for _, mutate := range []func(map[string]any){
+		func(v map[string]any) { v["disableChannelMix"] = "true" },
 		func(v map[string]any) { v["bufferFrames"] = 63 },
 		func(v map[string]any) { v["bufferFrames"] = 16385 },
 		func(v map[string]any) { v["bufferFrames"] = 64.5 },

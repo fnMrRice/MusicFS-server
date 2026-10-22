@@ -39,6 +39,7 @@ type Config struct {
 	OutputLayout                                               string
 	BufferFrames                                               int
 	DisableEffects                                             bool
+	DisableChannelMix                                          bool
 }
 type Processor struct {
 	parent          *Processor
@@ -54,6 +55,9 @@ type Processor struct {
 }
 
 func NewProcessor(ctx context.Context, cfg Config) (*Processor, error) {
+	if cfg.DisableChannelMix {
+		cfg.OutputLayout, cfg.DSPChain = "stereo", WithoutChannelMixNodes(cfg.DSPChain)
+	}
 	if cfg.DisableEffects {
 		cfg.DSPChain, cfg.DSPPlugins = nil, nil
 	}
@@ -162,7 +166,7 @@ func (p *Processor) Process(ctx context.Context, plan Plan, input io.ReadSeeker,
 		return fmt.Errorf("RATE_LIMITED: audio processing is busy")
 	}
 	return p.run(ctx, plan.TaskID, readerAt, size, output, func(peer *pluginproto.Peer, inputURL, outputURL string) error {
-		request := StartRequest{Plan: plan, FFmpegPath: p.config.FFmpegPath, FFmpegSHA256: p.Capabilities.FFmpegSHA256, InputURL: inputURL, OutputURL: outputURL, DSPChain: p.config.DSPChain, DSPPlugins: p.config.DSPPlugins, BufferFrames: p.config.BufferFrames, DisableEffects: p.config.DisableEffects}
+		request := StartRequest{Plan: plan, FFmpegPath: p.config.FFmpegPath, FFmpegSHA256: p.Capabilities.FFmpegSHA256, InputURL: inputURL, OutputURL: outputURL, DSPChain: p.config.DSPChain, DSPPlugins: p.config.DSPPlugins, BufferFrames: p.config.BufferFrames, DisableEffects: p.config.DisableEffects, DisableChannelMix: p.config.DisableChannelMix}
 		if err := peer.Call(ctx, "audio.prepare", request, nil); err != nil {
 			return err
 		}

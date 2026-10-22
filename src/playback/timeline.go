@@ -87,6 +87,9 @@ func (s *Service) AddTimeline(ctx context.Context, owner string, r timeline.Requ
 	profile, err := s.RecoveryProfileForUser(ctx, owner)
 	profile = matchRecoveryBitrate(profile, r.Profile.OutputProfile)
 	processor, _ := s.audioSnapshot()
+	if s.config.DisableChannelMix || processor.ChannelMixDisabled() {
+		profile = matchRecoveryChannels(profile, r.Profile.OutputProfile, processor)
+	}
 	if !s.config.DisableEffects && !processor.EffectsDisabled() {
 		profile.GainDB = r.Profile.GainDB
 	}
@@ -94,6 +97,7 @@ func (s *Service) AddTimeline(ctx context.Context, owner string, r timeline.Requ
 		// 客户端模式的证据必须绑定无效果身份与零服务端增益。
 		clientProfile, clientErr := s.RecoveryProfileForUser(ctx, owner, "client")
 		clientProfile = matchRecoveryBitrate(clientProfile, r.Profile.OutputProfile)
+		clientProfile = matchRecoveryChannels(clientProfile, r.Profile.OutputProfile, processor)
 		if clientErr != nil || r.Profile != clientProfile {
 			if err != nil {
 				return timeline.Evidence{}, err
@@ -113,6 +117,15 @@ func matchRecoveryBitrate(expected timeline.Profile, requested string) timeline.
 	base, baseOK := audioffmpeg.ProfileByID(expected.OutputProfile)
 	selected, selectedOK := audioffmpeg.ProfileByID(requested)
 	if baseOK && selectedOK && selected.Codec == base.Codec && selected.Layout == base.Layout {
+		expected.OutputProfile = requested
+	}
+	return expected
+}
+
+// 来源声道由会话选择，人工证据仍必须绑定已探测编码能力与同一无扩展身份。
+func matchRecoveryChannels(expected timeline.Profile, requested string, processor *audioffmpeg.Processor) timeline.Profile {
+	selected, valid := audioffmpeg.ProfileByID(requested)
+	if valid && processor.SupportsProfile(selected) {
 		expected.OutputProfile = requested
 	}
 	return expected

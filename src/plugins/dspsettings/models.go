@@ -28,6 +28,7 @@ type Config struct {
 	Plugins           []dspworker.Config
 	Available         bool
 	DisableEffects    bool
+	DisableChannelMix bool
 	UnavailableReason string
 	OutputLayouts     []string
 	Validate          func(context.Context, Options) error

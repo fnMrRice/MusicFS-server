@@ -4,6 +4,7 @@ import "fmt"
 
 // AudioChannelsConfig 是声道转换插件的启动配置，影响编码与客户端协商。
 type AudioChannelsConfig struct {
+	Enabled      bool   `yaml:"enabled,omitempty" json:"enabled"`
 	OutputLayout string `yaml:"outputLayout,omitempty" json:"outputLayout,omitempty"`
 }
 
@@ -17,9 +18,9 @@ func (c AudioChannelsConfig) Validate() error {
 }
 
 func (c AudioChannelsConfig) RequiresProcessing() bool {
-	return c.OutputLayout == "5.1" || c.OutputLayout == "7.1"
+	return c.Enabled && (c.OutputLayout == "5.1" || c.OutputLayout == "7.1")
 }
 
 func audioChannelsShape() fieldShape {
-	return mappingShape(map[string]fieldShape{"outputLayout": stringShape})
+	return mappingShape(map[string]fieldShape{"enabled": boolShape, "outputLayout": stringShape})
 }

@@ -66,6 +66,9 @@ func (p *Processor) AvailableOutputLayouts() []string {
 	if p == nil {
 		return result
 	}
+	if p.config.DisableChannelMix {
+		return []string{"stereo"}
+	}
 	for _, candidate := range p.Capabilities.Profiles {
 		if profile, ok := ProfileByID(candidate.ID); ok && (p.config.Builtin || profile.Layout == "stereo") {
 			result = append(result, profile.Layout)
@@ -84,6 +87,9 @@ func (p *Processor) ValidateSettings(ctx context.Context, options dspsettings.Op
 	}
 	if p.config.DisableEffects && len(options.Chain) != 0 {
 		return fmt.Errorf("UNSUPPORTED: server audio effects are disabled")
+	}
+	if p.config.DisableChannelMix && (options.OutputLayout != "stereo" || len(WithoutChannelMixNodes(options.Chain)) != len(options.Chain)) {
+		return fmt.Errorf("UNSUPPORTED: server channel mixing is disabled")
 	}
 	if options.BufferFrames == 0 {
 		return fmt.Errorf("INVALID_ARGUMENT: DSP buffer frames must be specified")

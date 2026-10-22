@@ -13,12 +13,17 @@ var mp3Bitrates = []int{32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256
 func ProfileByID(id string) (Profile, bool) {
 	profile := Profile{ID: id, SampleRate: 48000, SeekMode: "timeRestart"}
 	if value, ok := strings.CutPrefix(id, "mp3-"); ok {
+		mono := strings.HasPrefix(value, "mono-")
+		value = strings.TrimPrefix(value, "mono-")
 		kbps, err := strconv.Atoi(value)
 		if err != nil || strconv.Itoa(kbps) != value || !slices.Contains(mp3Bitrates, kbps) {
 			return Profile{}, false
 		}
 		profile.MIME, profile.Codec, profile.Container = "audio/mpeg", "mp3", "mp3"
 		profile.Layout, profile.Channels, profile.BitrateBps = "stereo", 2, kbps*1000
+		if mono {
+			profile.Layout, profile.Channels = "mono", 1
+		}
 		return profile, true
 	}
 	for _, layout := range []string{"5.1", "7.1"} {
@@ -48,6 +53,13 @@ func ProfileByID(id string) (Profile, bool) {
 func (p *Processor) OutputProfile() (Profile, error) {
 	if p == nil {
 		return Profile{}, fmt.Errorf("UNSUPPORTED: audio processor is unavailable")
+	}
+	if p.config.DisableChannelMix && p.selectedProfile != "" {
+		profile, valid := ProfileByID(p.selectedProfile)
+		if valid && p.SupportsProfile(profile) {
+			return profile, nil
+		}
+		return Profile{}, fmt.Errorf("UNSUPPORTED: selected source encoding profile is unavailable")
 	}
 	id := "mp3-128"
 	switch p.config.OutputLayout {
@@ -93,6 +105,9 @@ func (p *Processor) WithSourceBitrate(bitrate int64) (*Processor, error) {
 			nearest = kbps
 		}
 		id = "mp3-" + strconv.Itoa(nearest)
+		if profile.Layout == "mono" {
+			id = "mp3-mono-" + strconv.Itoa(nearest)
+		}
 	} else {
 		bps := min(max(bitrate, 500), int64(256000*profile.Channels))
 		id = "opus-" + profile.Layout
@@ -107,5 +122,5 @@ func (p *Processor) WithSourceBitrate(bitrate int64) (*Processor, error) {
 
 // 环绕声部署始终处理音频；默认立体声仅在已需处理时转换。
 func (p *Processor) RequiresChannelConversion() bool {
-	return p != nil && p.config.OutputLayout != "" && p.config.OutputLayout != "stereo"
+	return p != nil && !p.config.DisableChannelMix && p.config.OutputLayout != "" && p.config.OutputLayout != "stereo"
 }

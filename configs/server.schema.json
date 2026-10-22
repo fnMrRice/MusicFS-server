@@ -17,7 +17,7 @@
       }
     },
     "storage": {"type":"object","additionalProperties":false,"description":"默认内置 SQLite 在 Server 主进程运行；旧官方 SQLite Worker 配置自动迁移。显式外部后端使用进程模式，数据库不能禁用。","properties":{"backend":{"type":"string","pattern":"^[a-z][a-z0-9-]{0,63}$","default":"sqlite"},"options":{"type":"object","maxProperties":32,"additionalProperties":{"type":"string","maxLength":4096}},"executable":{"$ref":"#/$defs/NonemptyPath"},"sha256":{"type":"string","pattern":"^[a-fA-F0-9]{64}$"},"args":{"type":"array","maxItems":64,"items":{"type":"string","maxLength":4096}},"execution":{"enum":["builtin","process"],"default":"builtin"}},"if":{"required":["backend"],"properties":{"backend":{"const":"plugin"}}},"then":{"required":["executable","sha256"]},"else":{"not":{"anyOf":[{"required":["executable"]},{"required":["sha256"]},{"required":["args"]}]}},"allOf":[{"if":{"required":["execution"],"properties":{"execution":{"const":"process"}}},"then":{"required":["backend"],"properties":{"backend":{"const":"plugin"}}}},{"if":{"required":["execution","backend"],"properties":{"execution":{"const":"builtin"},"backend":{"const":"plugin"}}},"then":{"anyOf":[{"properties":{"executable":{"pattern":"(^|[/\\\\])[mM][uU][sS][iI][cC][fF][sS]\\-[pP][lL][uU][gG][iI][nN]\\-[sS][tT][oO][rR][aA][gG][eE]\\-[sS][qQ][lL][iI][tT][eE](\\.[eE][xX][eE])?$"}}},{"properties":{"executable":{"pattern":"(^|[/\\\\])[mM][uU][sS][iI][cC][fF][sS]\\-[pP][lL][uU][gG][iI][nN]\\-[sS][qQ][lL][iI][tT][eE](\\.[eE][xX][eE])?$"}}},{"required":["args"],"properties":{"executable":{"pattern":"(^|[/\\\\])[mM][uU][sS][iI][cC][fF][sS]\\-[pP][lL][uU][gG][iI][nN][sS](\\.[eE][xX][eE])?$"},"args":{"enum":[["--plugin","storage-sqlite"],["--plugin=storage-sqlite"]]}}}]}}]},
-    "audioChannels": {"type":"object","additionalProperties":false,"properties":{"outputLayout":{"enum":["stereo","5.1","7.1"],"default":"stereo"}},"description":"声道转换插件的输出布局；环绕声输出要求内置音频处理器与 Opus/WebM，配置重启生效。"},
+    "audioChannels": {"type": "object", "additionalProperties": false, "properties": {"outputLayout": {"enum": ["stereo", "5.1", "7.1"], "default": "stereo"}, "enabled": {"type": "boolean", "default": false}}, "description": "声道扩展插件默认禁用；仅显式启用时应用 outputLayout，修改后重启生效。禁用时编码器按来源声道选择兼容格式。"},
     "audioDSP": {
       "type": "object", "additionalProperties": false,
       "description": "服务端音效默认禁用；启用后按用户增益和配置顺序处理，非空链要求已启用的 FFmpeg 实例。声道转换独立配置，重启生效。",
@@ -146,7 +146,7 @@
   },
   "allOf": [
     {
-      "if": {"required": ["audioChannels"], "properties": {"audioChannels": {"required": ["outputLayout"], "properties": {"outputLayout": {"enum": ["5.1", "7.1"]}}}}},
+      "if": {"required": ["audioChannels"], "properties": {"audioChannels": {"required": ["enabled", "outputLayout"], "properties": {"outputLayout": {"enum": ["5.1", "7.1"]}, "enabled": {"const": true}}}}},
       "then": {
         "required": ["plugins"],
         "properties": {

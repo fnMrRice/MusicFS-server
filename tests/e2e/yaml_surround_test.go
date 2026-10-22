@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	audioffmpeg "github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
@@ -33,7 +34,7 @@ func TestYAMLSurroundDSPPlaybackAndRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg, base := yamlServiceConfig(t)
-	cfg.AudioChannels = config.AudioChannelsConfig{OutputLayout: "5.1"}
+	cfg.AudioChannels = config.AudioChannelsConfig{Enabled: true, OutputLayout: "5.1"}
 	cfg.AudioDSP = config.AudioDSPConfig{Enabled: true, Chain: []audio.NodeSpec{
 		{Name: "equalizer", Version: 1, Params: map[string]float64{"frequencyHz": 440, "gainDB": -6, "q": 1}},
 		{Name: "compressor", Version: 1, Params: map[string]float64{"thresholdDB": -24, "ratio": 4}},
@@ -95,7 +96,8 @@ func createYAMLSurroundPlayback(t *testing.T, c *client, trackID, key string) pl
 		t.Fatalf("YAML surround negotiation failed: %d %s", code, raw)
 	}
 	profile := description.OutputProfile
-	if description.DeliveryMode != "processed" || profile.ID != "opus-5.1" || profile.MIME != "audio/webm" || profile.Channels != 6 || profile.Layout != "5.1" || profile.Codec == nil || *profile.Codec != "opus" || profile.Container == nil || *profile.Container != "webm" {
+	encoding, valid := audioffmpeg.ProfileByID(profile.ID)
+	if !valid || description.DeliveryMode != "processed" || encoding.Layout != "5.1" || encoding.BitrateBps != profile.BitrateBps || profile.MIME != "audio/webm" || profile.Channels != 6 || profile.Layout != "5.1" || profile.Codec == nil || *profile.Codec != "opus" || profile.Container == nil || *profile.Container != "webm" {
 		t.Fatalf("YAML output layout did not reach playback: %+v", description)
 	}
 	want := []string{"channelMix", "gain", "equalizer", "compressor", "reverb"}

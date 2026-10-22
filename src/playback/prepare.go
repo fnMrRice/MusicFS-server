@@ -127,21 +127,7 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 	}
 	p.reserved = size
 	processed := p.decodeOutput != "native" || s.config.RequireDSP && r.Preferences.DSPExecution != "client" || r.Preferences.ForceProcessing || p.gain != 0 || p.processor.HasDSP() || p.processor.RequiresChannelConversion() || !originalCandidate(t) || !supports(r.Capabilities, t.MIME)
-	// 原流会话也保留后续跨源恢复所需的码率视图，但不因缺少编码器阻止原流播放。
-	// 跨源恢复沿用活动会话编码身份，新会话才按当前来源选择码率。
-	if len(fixed) == 0 && p.processor != nil {
-		selected, selectErr := p.processor.WithSourceBitrate(sourceBitrate)
-		if selectErr == nil {
-			p.processor = selected
-		} else if processed {
-			return nil, domain.Fail("UNSUPPORTED", "No compatible audio processing profile is available")
-		}
-	}
 	if processed {
-		p.profile, err = p.processor.OutputProfile()
-		if err != nil || !supportsOutputProfile(r.Capabilities, p.profile) {
-			return nil, domain.Fail("UNSUPPORTED", "No compatible audio processing profile is available")
-		}
 		if p.processing == nil {
 			ctx, err = p.processingLease(ctx)
 			if err != nil {
@@ -189,6 +175,9 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 			return nil, err
 		}
 	}
+	if err = p.selectProcessingProfile(ctx, r.Capabilities, sourceBitrate, processed, len(fixed) > 0); err != nil {
+		return nil, err
+	}
 	p.track, p.size, p.etag, p.processed, p.decrypted = t, n, fmt.Sprintf("\"%x\"", hash.Sum(nil)), processed, decrypted
 	ok = true
 	if slog.Default().Enabled(ctx, slog.Level(-8)) {
@@ -233,8 +222,10 @@ func (p *preparedInput) describe(id string, gain float64, expiry time.Time) Desc
 			d.SeekMode = "timeRestart"
 			d.SeekableRange.EndMs = min(d.SeekableRange.EndMs, timeline.MaxPositionMs)
 		}
-		d.EffectiveProcessing = append(d.EffectiveProcessing,
-			Processing{Type: "channelMix", Version: bundledplugin.ChannelMixVersion, Execution: "server", Parameters: map[string]float64{"outputChannels": float64(profile.Channels)}})
+		if !p.processor.ChannelMixDisabled() {
+			d.EffectiveProcessing = append(d.EffectiveProcessing,
+				Processing{Type: "channelMix", Version: bundledplugin.ChannelMixVersion, Execution: "server", Parameters: map[string]float64{"outputChannels": float64(profile.Channels)}})
+		}
 		if !p.processor.EffectsDisabled() {
 			d.EffectiveProcessing = append(d.EffectiveProcessing, Processing{Type: "gain", GainDB: gain, Version: "1", Execution: "server"})
 		}

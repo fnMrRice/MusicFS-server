@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// ProbeOutputMetadata 只补充原流的展示属性；调用方决定探测失败时继续播放。
+// ProbeOutputMetadata 读取原流属性，也为禁用声道插件时的转码选择提供输入声道。
 // 复用已配置的探测器和插件租约，并限制并发及等待时间。
 func (p *Processor) ProbeOutputMetadata(ctx context.Context, input io.ReadSeeker, size int64) (Metadata, error) {
 	if p == nil || p.config.FFprobePath == "" {

@@ -12,7 +12,7 @@ import (
 )
 
 func TestChannelOutputProfilesBindCodecLayoutAndEncoding(t *testing.T) {
-	for _, id := range []string{"mp3-32", "mp3-112", "mp3-128", "mp3-192", "mp3-320", "opus-5.1", "opus-7.1", "opus-5.1-500", "opus-5.1-1536000", "opus-7.1-2048000"} {
+	for _, id := range []string{"mp3-mono-32", "mp3-mono-128", "mp3-mono-320", "mp3-32", "mp3-112", "mp3-128", "mp3-192", "mp3-320", "opus-5.1", "opus-7.1", "opus-5.1-500", "opus-5.1-1536000", "opus-7.1-2048000"} {
 		profile, ok := audioffmpeg.ProfileByID(id)
 		if !ok {
 			t.Fatal("missing supported channel profile", id)

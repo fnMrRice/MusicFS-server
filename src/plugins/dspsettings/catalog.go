@@ -12,6 +12,15 @@ func catalog(cfg Config) []builtin.Descriptor {
 		return []builtin.Descriptor{}
 	}
 	items := builtin.Catalog()
+	if cfg.DisableChannelMix {
+		filtered := items[:0]
+		for _, item := range items {
+			if item.Name != "channelmix" {
+				filtered = append(filtered, item)
+			}
+		}
+		items = filtered
+	}
 	known := map[string]bool{}
 	for _, item := range items {
 		known[item.Name] = true

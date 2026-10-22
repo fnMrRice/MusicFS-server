@@ -25,6 +25,9 @@ func (p *Processor) WithoutEffects() *Processor {
 }
 
 func buildRequestedDSP(ctx context.Context, r StartRequest, format audio.Format) (*audio.Chain, error) {
+	if r.DisableChannelMix {
+		r.DSPChain = WithoutChannelMixNodes(r.DSPChain)
+	}
 	if !r.DisableEffects {
 		return buildDSPFormat(ctx, r.Plan.GainDB, r.DSPChain, r.DSPPlugins, format)
 	}

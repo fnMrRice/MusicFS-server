@@ -20,8 +20,16 @@ func TestChannelConversionIsAnImmutableBuiltinAlgorithm(t *testing.T) {
 	if item.Plugin == nil || !reflect.DeepEqual(item.Plugin.Features, []string{"audio-dsp"}) {
 		t.Fatal("channel converter is not classified as DSP", item.Plugin)
 	}
-	if item.StateMutable || item.SupportsMultipleInstances || item.Execution != "builtin" || item.Version != bundledplugin.ChannelMixVersion || item.Builtin == nil || !item.Builtin.Configured || !item.ConfiguredEnabled || item.Instances == nil || len(item.Instances) != 0 {
+	if item.StateMutable || item.SupportsMultipleInstances || item.Execution != "builtin" || item.Version != bundledplugin.ChannelMixVersion || item.Builtin == nil || item.Builtin.Configured || item.ConfiguredEnabled || item.Instances == nil || len(item.Instances) != 0 {
 		t.Fatal("invalid channel converter declaration", item)
+	}
+	enabled, err := plugincontrol.New(t.Context(), config.Config{AudioChannels: config.AudioChannelsConfig{Enabled: true}}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer enabled.Close()
+	if item := managedItem(t, enabled, id); !item.ConfiguredEnabled || !item.Builtin.Configured {
+		t.Fatal("explicit channel plugin enablement was not published", item)
 	}
 	if !reflect.DeepEqual(item.Builtin.Capabilities, []string{"audio.channels.stereo", "audio.channels.5.1", "audio.channels.7.1"}) {
 		t.Fatal("channel converter capabilities differ", item.Builtin.Capabilities)

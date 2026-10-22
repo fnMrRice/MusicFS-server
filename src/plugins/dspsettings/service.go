@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"unicode/utf8"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/dsp/builtin"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio/dspchain"
@@ -193,6 +194,16 @@ func (s *Service) update(ctx context.Context, owner, id, scope string, cfg Confi
 	} else if cfg.DisableEffects {
 		// 继承旧全局配置时只校验仍会执行的输出布局，不重新激活历史效果。
 		selected.Chain = []audio.NodeSpec{}
+	}
+	if request.InheritGlobal && cfg.DisableChannelMix {
+		selected.OutputLayout = "stereo"
+		chain := []audio.NodeSpec{}
+		for _, node := range selected.Chain {
+			if builtin.EffectName(node.Name) != "channelmix" {
+				chain = append(chain, node)
+			}
+		}
+		selected.Chain = chain
 	}
 	if _, err := validate(ctx, cfg, selected); err != nil {
 		return Page{}, err

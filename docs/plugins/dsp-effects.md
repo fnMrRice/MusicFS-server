@@ -1,6 +1,6 @@
 # 常见 DSP 与声道转换
 
-内置均衡器、压缩器、混响及声道转换随 Server 构建交付。服务端听感效果默认停用，Web 通过本地 DSP 实时调整参数；必要声道转换仍在 Server 执行。以下描述保留的服务端算法，须显式设 `audioDSP.enabled=true` 才会对服务端 DSP 会话启用；已有会话、跳转与恢复固定创建时设置。部署 YAML 需重启生效。执行边界见 [本地 DSP](../playback/local-dsp.md)，协议见 [DSP 插件](dsp-plugins.md)，接口见 [DSP 配置](dsp-settings.md)。
+内置均衡器、压缩器、混响及声道转换随 Server 构建交付，音效与声道插件均默认禁用。Web 实时处理音效和输出布局，服务端保留必要编解码，并优先保留源声道。以下描述保留的服务端算法，音效须显式设 `audioDSP.enabled=true`，声道插件须显式设 `audioChannels.enabled=true`，且会话采用服务端执行；已有会话、跳转与恢复固定创建时设置。部署 YAML 需重启生效。执行边界见 [本地 DSP](../playback/local-dsp.md)，协议见 [DSP 插件](dsp-plugins.md)，接口见 [DSP 配置](dsp-settings.md)。
 
 ## 配置示例
 
@@ -8,6 +8,7 @@
 
 ```yaml
 audioChannels:
+  enabled: true # 默认 false；此处显式演示服务端声道插件
   outputLayout: stereo # 可选 stereo、'5.1'、'7.1'
 audioDSP:
   enabled: true
@@ -47,7 +48,7 @@ EQ 公式依据 [W3C Audio EQ Cookbook](https://www.w3.org/TR/2021/NOTE-audio-eq
 
 ## 声道转换的位置与边界
 
-`musicfs.plugin.decoder.channelmix` 是独立的内置声道转换插件，在插件列表归入 DSP，源码位于 `plugins/dsp/channelmix`；保留原 ID 以兼容已有配置和处理身份。转换规则与效果节点分离。实际管线为：
+`musicfs.plugin.decoder.channelmix` 是独立的内置声道转换插件，在插件列表归入 DSP，源码位于 `plugins/dsp/channelmix`。默认禁用；转换规则与效果节点分离。仅显式启用且服务端执行时采用以下管线：
 
 **解码并重采样到 48 kHz → 保留源布局的 PCM → 声道转换 → 用户增益 → 配置 DSP 链 → 编码封装。**
 
@@ -67,7 +68,7 @@ DSP 的新输入输出协商允许声道布局变化，编码封装和采样率�
 | `'5.1'` | 6 声道、48 kHz Opus/WebM，目标码率按来源选择；未知时 `opus-5.1`（256 kbit/s） | 支持 Opus/WebM |
 | `'7.1'` | 8 声道、48 kHz Opus/WebM，目标码率按来源选择；未知时 `opus-7.1`（384 kbit/s） | 支持 Opus/WebM |
 
-默认立体声只在需要处理的播放中转换，兼容原流仍可直接交付。配置 5.1/7.1 会强制处理并要求内置音频实例、可用 libopus 编码器和 WebM 封装；依赖缺失时启动失败，不退回原流或双声道。浏览器格式探测只能确认解码可能性，不能证明操作系统、声卡或音箱最终输出了独立 6/8 声道；物理环绕声仍需对应设备验收。
+上表仅在 `audioChannels.enabled=true` 且服务端执行时生效：默认立体声只在需要处理的播放中转换，配置 5.1/7.1 强制处理并要求内置音频实例及 Opus/WebM。禁用或客户端执行时忽略该设置，优先保留来源布局，需要时用 FFmpeg 做编码兼容降混。浏览器格式探测不能证明声卡或音箱最终输出独立 6/8 声道，物理环绕声仍需对应设备验收。
 
 ## 定位、缓存与兼容性
 
@@ -77,7 +78,7 @@ DSP 的新输入输出协商允许声道布局变化，编码封装和采样率�
 
 可移植备份恢复会将声道输出重置为默认 `stereo`，并与原有策略一起停用音频实例、清除处理缓存；恢复后须重新确认工具与布局配置，避免在未配置音频实例时强制环绕声。
 
-FFmpeg Worker 当前为 `0.6.0`，Host 精确校验发行版本。HTTP `outputProfile` 和 `effectiveProcessing` 报告实际输出与处理顺序，码率身份规则见[音频处理](../playback/audio-processing.md)。客户端必须正确协商 MIME。Web 已探测 Opus/WebM；本次没有承诺所有浏览器与音响设备均能输出物理环绕声。
+FFmpeg Worker 当前为 `0.7.0`，Host 精确校验发行版本。HTTP `outputProfile` 和 `effectiveProcessing` 报告实际输出与处理顺序，码率身份规则见[音频处理](../playback/audio-processing.md)。客户端必须正确协商 MIME。Web 已探测 Opus/WebM；本次没有承诺所有浏览器与音响设备均能输出物理环绕声。
 
 外部 MFD1 DSP v1 保持无状态、固定双声道、零延迟、无追加尾音的原约束，多声道管线拒绝使用这些外部节点。内置新效果直接调用 Go 接口，不把其有状态、多声道能力冒充成 MFD1 v1 的扩展。原官方 gain 在多声道管线使用同一内置增益工厂。
 

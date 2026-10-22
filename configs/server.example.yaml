@@ -15,12 +15,13 @@ logging:
 storage:
   backend: 'sqlite'
 audioDSP:
-  # 服务端音效默认停用，Web 在本地实时处理；声道转换独立保留。
+  # 服务端音效默认停用，Web 在本地实时处理。
   enabled: false
   chain: []
   plugins: []
 audioChannels:
-  # 5.1 / 7.1 使用 Opus/WebM；客户端须支持该格式。
+  # 声道扩展在 Web 完成；禁用时忽略 outputLayout，尽量保留输入声道。
+  enabled: false
   outputLayout: stereo
 webRoot: ''
 plugins:

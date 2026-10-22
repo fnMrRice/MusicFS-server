@@ -23,7 +23,7 @@ func TestClientDSPBypassesStoredEffectsAndGainWithoutServerProcessor(t *testing.
 			if scope == "global" {
 				owner, storageID = dspsettings.GlobalOwner, dspsettings.GlobalStorageID
 			}
-			options := dspsettings.Options{Chain: []audio.NodeSpec{{Name: "reverb", Version: 1}}, OutputLayout: "stereo", BufferFrames: 64}
+			options := dspsettings.Options{Chain: []audio.NodeSpec{{Name: "reverb", Version: 1}}, OutputLayout: "7.1", BufferFrames: 64}
 			if _, err := repo.PutPluginSettings(t.Context(), owner, storageID, 0, settings.Values{"schemaRevision": dspsettings.SchemaRevision, "settings": options}); err != nil {
 				t.Fatal(err)
 			}
@@ -118,7 +118,7 @@ func TestClientDSPActualAudioCacheSeekAndRecoveryStayWithoutEffects(t *testing.T
 
 func assertClientProcessing(t *testing.T, description playback.Description) {
 	t.Helper()
-	if description.DSPExecution != "client" || len(description.EffectiveProcessing) != 1 || description.EffectiveProcessing[0].Type != "channelMix" {
+	if description.DSPExecution != "client" || len(description.EffectiveProcessing) != 0 {
 		t.Fatalf("client session regained server effects: %+v", description)
 	}
 }
@@ -160,7 +160,7 @@ func TestDisabledEffectsDoNotLoadExternalPluginsAndKeepSurroundConversion(t *tes
 	f.request.Preferences.GainDB = -30
 	description := f.create(t, "disabled-effects-surround")
 	assertClientProcessing(t, description)
-	if description.OutputProfile.Layout != "7.1" || !p.RequiresChannelConversion() || p.HasDSP() || len(p.DSPPlugins()) != 0 {
+	if description.OutputProfile.Layout != "stereo" || !p.RequiresChannelConversion() || p.HasDSP() || len(p.DSPPlugins()) != 0 {
 		t.Fatalf("disabled effects removed format conversion or retained plugins: %+v", description)
 	}
 	if _, err := processedBytes(t, f, description); err != nil {

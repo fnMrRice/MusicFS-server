@@ -1,16 +1,16 @@
 # Server DSP 插件
 
-服务端听感效果目前默认禁用，`audioDSP.enabled=false`；保留实现和历史配置，播放只执行必要解密、编解码与声道转换。Web 音效在浏览器实时执行，执行归属与防重复规则见 [Web 本地 DSP](../playback/local-dsp.md)。以下效果链配置仅在部署显式启用且会话使用 `dspExecution=server` 时执行。
+服务端听感效果和声道插件默认禁用：`audioDSP.enabled=false`、`audioChannels.enabled=false`。保留实现和历史配置，播放只执行必要解密、编解码及编码兼容适配，优先保留源声道。Web 音效与输出布局在浏览器实时执行，执行归属与防重复规则见 [Web 本地 DSP](../playback/local-dsp.md)。以下效果链配置仅在相应插件显式启用且会话使用 `dspExecution=server` 时执行。
 
 官方内置 DSP 已提供增益、参数均衡器、压缩器、混响和可排序声道转换，支持 mono、stereo、5.1、7.1 PCM 的逐节点输入输出协商。播放入口先自动适配所选布局，链末须匹配编码输出；节点可声明输出不能继续 DSP，此时禁止追加后继。内置有状态效果通过从曲首重建历史支持定位，保持帧数、零算法延迟且不追加曲尾。显式登记的第三方外部 DSP v1 仍仅支持无状态双声道节点。参数与格式见[常见 DSP 与声道转换](dsp-effects.md)，页面、个人覆盖和全局默认见[DSP 配置](dsp-settings.md)。当前运行验证范围为 Windows；其他平台和任意第三方算法需分别验证。
 
-官方音频 Worker 实现版本为 `0.6.0`。Host 握手要求该精确版本，旧版本在音频请求前被拒绝，避免遗漏目标码率、DSP、声道转换或状态重建。内置音频实现随 Server 升级；显式外部进程模式需要配套升级 `musicfs-plugins`（或独立入口）并更新固定摘要。控制协议仍为 1.0，独立 MFD1 DSP 帧协议仍为 v1；内置有状态、多声道效果不使用该帧协议。
+官方音频 Worker 实现版本为 `0.7.0`。Host 握手要求该精确版本，旧版本在音频请求前被拒绝，避免遗漏目标码率、DSP、声道转换或状态重建。内置音频实现随 Server 升级；显式外部进程模式需要配套升级 `musicfs-plugins`（或独立入口）并更新固定摘要。控制协议仍为 1.0，独立 MFD1 DSP 帧协议仍为 v1；内置有状态、多声道效果不使用该帧协议。
 
 内置和外部 DSP 的 ready 响应都必须提供 `pluginVersion`，使用最多 128 字符的有效 SemVer，缺失、空白或无效值均被宿主拒绝；Worker 的 `Serve` 入口也在初始化节点前校验版本。该发行号与整数 `protocolVersion`、`nodeVersion` 分离。官方 gain 使用 [sdk/bundledplugin/releases.go](../../sdk/bundledplugin/releases.go) 中的 `GainVersion`，当前为 `0.1.0`。内置 DSP 版本随 Server 构建升级；显式外部节点须同步升级程序及固定摘要。旧节点即使帧协议仍为 v1，也会因缺少发行版本被拒绝。
 
 ## 配置与执行
 
-Server 的 `audioDSP` 与 `audioChannels` 是部署配置，修改后重启生效。先转换到目标声道布局，再执行播放用户偏好的 gain 和 `chain` 数组中的节点；节点顺序会影响削波等结果，不自动排序或合并。配置非空链或环绕声输出时，即使原曲格式可直接播放，也进入 `processed` 路径。立体声要求终端支持 MP3，5.1/7.1 要求 Opus/WebM。
+Server 的 `audioDSP` 与 `audioChannels` 是部署配置，修改后重启生效。仅在相应插件显式启用且服务端执行时，先转换到目标声道布局，再执行播放用户偏好的 gain 和 `chain` 数组中的节点；节点顺序会影响削波等结果，不自动排序或合并。配置非空链或环绕声输出时，即使原曲格式可直接播放，也进入 `processed` 路径。立体声要求终端支持 MP3，5.1/7.1 要求 Opus/WebM。
 
 ```yaml
 audioDSP:

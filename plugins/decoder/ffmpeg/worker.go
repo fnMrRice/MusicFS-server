@@ -94,6 +94,9 @@ func (w *audioWorker) handle(ctx context.Context, method string, raw json.RawMes
 		return nil, err
 	}
 	if !r.DisableEffects {
+		if r.DisableChannelMix {
+			r.DSPChain = WithoutChannelMixNodes(r.DSPChain)
+		}
 		if err := ValidateDSP(r.DSPChain, r.DSPPlugins); err != nil {
 			return nil, err
 		}
