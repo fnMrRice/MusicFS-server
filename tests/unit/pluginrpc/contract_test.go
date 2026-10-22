@@ -10,14 +10,15 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage"
 )
 
-func TestPersistenceFingerprintsSurviveSourceLayoutMigration(t *testing.T) {
-	// Captured from the real contracts before the source directory migration.
+func TestPersistenceContractFingerprints(t *testing.T) {
+	// 固定当前接口身份；backend 已增加歌曲聚合、匹配设置和多声道字段。
+	// 其余接口继续保留源码目录迁移前的指纹，目录调整不应改变协议身份。
 	for _, test := range []struct {
 		name     string
 		contract reflect.Type
 		want     string
 	}{
-		{"backend", reflect.TypeFor[storage.Backend](), "2d73311980654791060d6cb15deef78194c48d7f18cfccae4bf75ec3310c1831"},
+		{"backend", reflect.TypeFor[storage.Backend](), "f02acb788c93da9615c84c01d8254aa81b1205482e4dd414ea9482ee167c54da"},
 		{"maintenance", reflect.TypeFor[storage.Maintenance](), "c2b65a92a0386d7990000f825babaf527dfb541184711fca13d26cc5298fa013"},
 		{"plugin-state", reflect.TypeFor[plugindb.Backend](), "3585f631ae09e5d4694d439d5d2a72e5d8d2f30cf9b64ac2003dd674eb12c401"},
 	} {

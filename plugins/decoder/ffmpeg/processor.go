@@ -108,10 +108,6 @@ type bootstrap struct {
 }
 
 func (p *Processor) Process(ctx context.Context, plan Plan, input io.ReadSeeker, size int64, output io.Writer) error {
-	profile, profileErr := p.OutputProfile()
-	if profileErr != nil || profile.ID != plan.Profile {
-		return fmt.Errorf("UNSUPPORTED: audio plan differs from configured output")
-	}
 	lease, err := p.AcquireLease(ctx)
 	if err != nil {
 		return err
@@ -119,6 +115,10 @@ func (p *Processor) Process(ctx context.Context, plan Plan, input io.ReadSeeker,
 	defer lease.Close()
 	if lease != nil {
 		ctx = lease.Context()
+	}
+	profile, profileErr := p.OutputProfile()
+	if profileErr != nil || profile.ID != plan.Profile {
+		return fmt.Errorf("UNSUPPORTED: audio plan differs from configured output")
 	}
 	if plan.TaskID == "" || plan.AssetID == "" || size <= 0 {
 		return fmt.Errorf("ACCESS_DENIED: invalid task input")
