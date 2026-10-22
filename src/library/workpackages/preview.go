@@ -11,7 +11,10 @@ import (
 )
 
 func (s *Service) Preview(ctx context.Context, owner, workID string, input Selection) (Preview, error) {
-	if err := validateSelection(input); err != nil {
+	if !validKind(input.Kind) {
+		return Preview{}, domain.Fail("INVALID_ARGUMENT", "Invalid work package kind")
+	}
+	if err := validateLocation(input); err != nil {
 		return Preview{}, err
 	}
 	work, err := s.works.Work(ctx, owner, workID)
@@ -35,6 +38,7 @@ func (s *Service) Preview(ctx context.Context, owner, workID string, input Selec
 	if err != nil {
 		return Preview{}, err
 	}
+	pkg.Kind = input.Kind
 	packages, err := s.repo.WorkPackages(ctx, owner, workID)
 	if err != nil {
 		return Preview{}, err

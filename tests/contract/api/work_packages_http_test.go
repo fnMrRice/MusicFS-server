@@ -14,11 +14,13 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/content/asmr"
+	"github.com/fnMrRice/MusicFS-server/plugins/content/music"
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/sdk/contenttype"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/app/api"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/library/contenttypes"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
@@ -76,10 +78,15 @@ func newPackageHTTP(t *testing.T) *packageHTTPFixture {
 	}
 	t.Cleanup(func() { store.Close() })
 	lib := library.New(store, jobs.New(store), []library.Runtime{{ID: packageProvider, Owner: "admin", Name: "本地音声", Worker: worker, ConfigRevision: "1", ImportDefaults: pluginproto.ImportOptions{Recursive: true}, RootNames: map[string]string{"music": "作品目录"}}}, nil)
-	service := workpackages.New(store, store, lib, map[string]contenttype.PackageOrganizer{"asmr": asmr.PackageOrganizer()})
+	service := workpackages.New(store, store, lib, map[string]contenttype.PackageOrganizer{"asmr": asmr.PackageOrganizer(), "music": music.PackageOrganizer()})
 	server, _ := testServer()
 	server.RegisterLibrary(lib)
 	server.RegisterWorkPackages(service)
+	registry, err := contenttypes.New(music.Descriptor(), asmr.Descriptor())
+	if err != nil {
+		t.Fatal(err)
+	}
+	server.RegisterWorks(works.New(store, registry))
 	cookie, session := login(t, server)
 	work, err := store.CreateWork(ctx, "admin", works.CreateRequest{ContentType: "asmr", Title: "雨夜音声"}, "package-work-create")
 	if err != nil {
@@ -112,8 +119,12 @@ func (f *packageHTTPFixture) request(t *testing.T, method, suffix string, body a
 }
 
 func (f *packageHTTPFixture) preview(t *testing.T) workpackages.Preview {
+	return f.previewKind(t, "directory")
+}
+
+func (f *packageHTTPFixture) previewKind(t *testing.T, kind string) workpackages.Preview {
 	t.Helper()
-	w := f.request(t, "POST", "/package-previews", workpackages.Selection{ProviderID: packageProvider, RootID: "music", Path: "RJ123456"}, "", nil)
+	w := f.request(t, "POST", "/package-previews", workpackages.Selection{ProviderID: packageProvider, RootID: "music", Path: "RJ123456", Kind: kind}, "", nil)
 	if w.Code != 200 {
 		t.Fatal("preview", w.Code, w.Body.String())
 	}
@@ -221,7 +232,7 @@ func TestWorkPackagesHTTPRejectsChangedPreviewAndUnauthorizedAccess(t *testing.T
 			t.Fatal("anonymous access", w.Code)
 		}
 	}
-	w = f.request(t, "POST", "/package-previews", workpackages.Selection{ProviderID: packageProvider, RootID: "music", Path: "../outside"}, "", nil)
+	w = f.request(t, "POST", "/package-previews", workpackages.Selection{ProviderID: packageProvider, RootID: "music", Path: "../outside", Kind: "directory"}, "", nil)
 	if w.Code != 400 {
 		t.Fatal("traversal accepted", w.Code)
 	}

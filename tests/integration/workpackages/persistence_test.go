@@ -13,6 +13,7 @@ import (
 func TestPackageTreeTracksAttachmentsPersistAndReplayAfterRestart(t *testing.T) {
 	store, work, filename := fixture(t)
 	input := publication(work.ID)
+	input.Package.Kind = "cd_dump"
 	p, err := store.PublishWorkPackage(t.Context(), "alice", input, "preview-one", "import-once")
 	if err != nil {
 		t.Fatal(err)

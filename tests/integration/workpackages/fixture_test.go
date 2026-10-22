@@ -37,7 +37,7 @@ func createWork(t *testing.T, store *sqlite.Store, owner string) works.Work {
 
 func publication(work string) workpackages.Publication {
 	root := "RJ123456"
-	p := workpackages.Package{WorkID: work, ProviderID: "local", RootID: "music", RelativePath: root, Name: root,
+	p := workpackages.Package{WorkID: work, Kind: "directory", ProviderID: "local", RootID: "music", RelativePath: root, Name: root,
 		RootIdentity: "root-identity", ConfigRevision: "config-v1", Signature: "snapshot-v1", Nodes: []workpackages.Node{
 			{Path: ".", Name: root, Kind: "directory", SourcePath: root},
 			{Path: "WAV", Name: "WAV", Kind: "directory", SourcePath: root + "/WAV", Order: 1},

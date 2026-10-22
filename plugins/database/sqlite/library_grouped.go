@@ -135,8 +135,8 @@ func (s *Store) ListGroupedTracks(ctx context.Context, owner, provider, cursor s
 }
 
 func groupedLibraryItems(ctx context.Context, tx *sql.Tx, owner, provider string) ([]library.Track, error) {
-	rows, err := tx.QueryContext(ctx, `SELECT t.document,COALESCE(l.recording_id,'') FROM tracks t
- LEFT JOIN recording_source_links l ON l.owner=t.owner AND l.source_id=t.id WHERE t.owner=? ORDER BY t.id`, owner)
+	rows, err := tx.QueryContext(ctx, ordinaryMusicSources+`SELECT t.document,COALESCE(l.recording_id,'') FROM tracks t
+ LEFT JOIN recording_source_links l ON l.owner=t.owner AND l.source_id=t.id WHERE t.owner=? AND `+ordinaryMusicTrack+` ORDER BY t.id`, owner, owner)
 	if err != nil {
 		return nil, err
 	}

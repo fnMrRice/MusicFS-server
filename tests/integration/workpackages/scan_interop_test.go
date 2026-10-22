@@ -48,7 +48,11 @@ func TestPackageImportReusesScannedSourcesWithoutChangingUnrelatedTracks(t *test
 		t.Fatal("package import duplicated an existing source identity")
 	}
 	after, err := store.ListTracks(t.Context(), "alice", "local", "", 100)
-	if err != nil || len(after.Items) != 2 {
-		t.Fatal("package import changed source count", err)
+	if err != nil || len(after.Items) != 1 || after.Items[0].ID == audio.SourceTrackID {
+		t.Fatal("ordinary music browse retained an ASMR source", err)
+	}
+	var count int
+	if err = store.DB.QueryRowContext(t.Context(), "SELECT COUNT(*) FROM tracks WHERE owner=? AND provider=?", "alice", "local").Scan(&count); err != nil || count != 2 {
+		t.Fatal("package import changed stored source count", err)
 	}
 }

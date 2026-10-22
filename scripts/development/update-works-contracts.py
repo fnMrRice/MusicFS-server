@@ -80,6 +80,7 @@ list_works["parameters"] = [
     {"name": name, "in": "query", "schema": schema, "description": description}
     for name, schema, description in [
         ("contentType", identifier, "精确内容类型，可查询已停用类型的资料"),
+        ("packageKind", {"enum": ["directory", "cd_dump"]}, "至少有一个指定副本类型的作品，与其他条件取交集；多个包不重复作品"),
         ("q", text(256, 1), "标题、简介、外部编号、署名的字面子串；ASCII 大小写不敏感"),
         ("tag", text(64, 1), "精确标签"), ("credit", text(256, 1), "精确参与者名称"),
         ("after", text(128, 1), "上一页 nextAfter；改变筛选条件应重新从首屏读取"),
@@ -118,7 +119,24 @@ def add_entries(path, section, additions):
     path.write_text(result, encoding="utf-8", newline="\n")
 
 
+def sync_entries(path, section, additions):
+    """仅替换本脚本维护的单行定义，其余契约格式与内容保持原样。"""
+    source = path.read_text(encoding="utf-8")
+    existing = json.loads(source)[section]
+    for key, value in additions.items():
+        if key not in existing or existing[key] == value:
+            continue
+        pattern = r"^    " + re.escape(json.dumps(key)) + r": .*?,?$"
+        line = "    " + json.dumps(key) + ": " + json.dumps(value, ensure_ascii=False) + ","
+        source, count = re.subn(pattern, lambda match: line, source, flags=re.M)
+        if count != 1:
+            raise ValueError(f"Expected a single owned contract line: {key}")
+    json.loads(source)
+    path.write_text(source, encoding="utf-8", newline="\n")
+    add_entries(path, section, additions)
+
+
 if __name__ == "__main__":
-    add_entries(ROOT / "docs/contracts/http.schema.json", "$defs", definitions)
-    add_entries(ROOT / "docs/contracts/openapi.yaml", "paths", paths)
+    sync_entries(ROOT / "docs/contracts/http.schema.json", "$defs", definitions)
+    sync_entries(ROOT / "docs/contracts/openapi.yaml", "paths", paths)
     print("Work contracts updated")

@@ -118,7 +118,7 @@ def group_query(value):
     params = value['get']['parameters']
     if not any(p.get('name') == 'groupBy' for p in params):
         params.append({'name': 'groupBy', 'in': 'query', 'schema': {'enum': ['recording']}})
-    value['get']['description'] = 'groupBy=recording时先按本人录音关联聚合再分页；含完整versions及matchingRevision，优先可播放版本为代表。provider过滤保留组内所有本人来源。游标绑定本人、provider和分组模式，固定两种修订，10分钟过期。'
+    value['get']['description'] = '普通音乐范围排除本人已发布ASMR作品或CD抓轨副本的音频，分类及计数只含可见成员。groupBy=recording时先按本人录音关联聚合再分页；含可见音乐versions及matchingRevision，优先可播放版本为代表。provider过滤保留组内所有可见音乐来源。游标绑定本人、provider和分组模式，固定两种修订，10分钟过期。'
 
 
 api = replace_definition(api, '/source-tracks', group_query)

@@ -14,6 +14,8 @@ func TestPackageImportRejectsMalformedOrIncompleteSnapshots(t *testing.T) {
 		name   string
 		mutate func(*workpackages.Publication)
 	}{
+		{"missing-kind", func(p *workpackages.Publication) { p.Package.Kind = "" }},
+		{"invalid-kind", func(p *workpackages.Publication) { p.Package.Kind = "physical_disc" }},
 		{"missing-root", func(p *workpackages.Publication) { p.Package.Nodes = p.Package.Nodes[1:] }},
 		{"empty-tree", func(p *workpackages.Publication) { p.Package.Nodes = nil }},
 		{"parent-escape", func(p *workpackages.Publication) { p.Package.RelativePath = "../escape" }},

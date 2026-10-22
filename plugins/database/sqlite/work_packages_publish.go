@@ -88,9 +88,9 @@ func (s *Store) PublishWorkPackage(ctx context.Context, owner string, input work
 	if err != nil {
 		return empty, err
 	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO work_packages(id,owner,work_id,provider_id,root_id,relative_path,revision,document)
-		VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET revision=excluded.revision,document=excluded.document`,
-		p.ID, owner, p.WorkID, p.ProviderID, p.RootID, p.RelativePath, p.Revision, raw)
+	_, err = tx.ExecContext(ctx, `INSERT INTO work_packages(id,owner,work_id,provider_id,root_id,relative_path,kind,revision,document)
+		VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET kind=excluded.kind,revision=excluded.revision,document=excluded.document`,
+		p.ID, owner, p.WorkID, p.ProviderID, p.RootID, p.RelativePath, p.Kind, p.Revision, raw)
 	if err != nil {
 		return empty, err
 	}

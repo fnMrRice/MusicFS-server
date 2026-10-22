@@ -53,6 +53,10 @@ func (s *Store) Works(ctx context.Context, owner string, query works.Query) ([]w
 	if query.ContentType != "" {
 		clauses, args = append(clauses, "w.content_type=?"), append(args, query.ContentType)
 	}
+	if query.PackageKind != "" {
+		clauses = append(clauses, "EXISTS(SELECT 1 FROM work_packages p WHERE p.owner=w.owner AND p.work_id=w.id AND p.kind=?)")
+		args = append(args, query.PackageKind)
+	}
 	if query.Q != "" {
 		clauses = append(clauses, `(instr(lower(w.title),lower(?))>0 OR instr(lower(w.description),lower(?))>0
 		 OR EXISTS(SELECT 1 FROM work_external_ids e WHERE e.work_id=w.id AND (instr(lower(e.value),lower(?))>0 OR instr(lower(e.namespace),lower(?))>0))

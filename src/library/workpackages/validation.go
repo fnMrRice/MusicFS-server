@@ -23,11 +23,13 @@ func validText(value string, limit int) bool {
 	return value != "" && utf8.ValidString(value) && utf8.RuneCountInString(value) <= limit && strings.IndexFunc(value, unicode.IsControl) < 0
 }
 
+func validKind(kind string) bool { return kind == "directory" || kind == "cd_dump" }
+
 // ValidatePublication 不信任调用方提供的节点 ID；目录父子关系由规范路径确定。
 func ValidatePublication(input Publication) error {
 	p := input.Package
 	invalid := func() error { return domain.Fail("INVALID_ARGUMENT", "Invalid work package publication") }
-	if !works.ValidID(p.WorkID) || !works.ValidID(p.ProviderID) || !validText(p.RootID, 512) || strings.ContainsAny(p.RootID, "/\\") ||
+	if !validKind(p.Kind) || !works.ValidID(p.WorkID) || !works.ValidID(p.ProviderID) || !validText(p.RootID, 512) || strings.ContainsAny(p.RootID, "/\\") ||
 		!ValidPath(p.RelativePath, true) || !validText(p.Name, 256) || !validText(p.RootIdentity, 512) ||
 		!validText(p.ConfigRevision, 512) || !validText(p.Signature, 512) ||
 		input.ExpectedWorkRevision < 1 || input.ExpectedPackageRevision < 0 || input.ExpectedPackageRevision == math.MaxInt64 ||

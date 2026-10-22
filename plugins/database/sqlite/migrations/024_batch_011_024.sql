@@ -241,3 +241,8 @@ CREATE TABLE personal_collection_cursors (
  position INTEGER NOT NULL,expires_at TEXT NOT NULL
 );
 CREATE INDEX personal_collection_cursors_owner ON personal_collection_cursors(owner,kind);
+
+-- migration: 024_plugin_management.sql
+CREATE TABLE plugin_operations (
+ id TEXT PRIMARY KEY, owner TEXT NOT NULL, document BLOB NOT NULL
+);

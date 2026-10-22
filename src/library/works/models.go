@@ -60,6 +60,7 @@ type UpdateRequest struct {
 
 type Query struct {
 	ContentType string `json:"contentType"`
+	PackageKind string `json:"packageKind"`
 	Q           string `json:"q"`
 	Tag         string `json:"tag"`
 	Credit      string `json:"credit"`

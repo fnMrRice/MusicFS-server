@@ -19,6 +19,7 @@ const (
 type Package struct {
 	ID             string    `json:"packageId"`
 	WorkID         string    `json:"workId"`
+	Kind           string    `json:"kind"`
 	ProviderID     string    `json:"providerInstanceId"`
 	RootID         string    `json:"rootId"`
 	RelativePath   string    `json:"relativePath"`

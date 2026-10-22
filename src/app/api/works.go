@@ -113,6 +113,8 @@ func workQuery(r *http.Request) (works.Query, error) {
 		switch key {
 		case "contentType":
 			query.ContentType = list[0]
+		case "packageKind":
+			query.PackageKind = list[0]
 		case "q":
 			query.Q = list[0]
 		case "tag":

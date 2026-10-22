@@ -5,12 +5,16 @@
 ## 使用流程
 
 1. 在来源设置中为本地音乐来源添加允许访问的目录。
-2. 进入作品详情，选择“导入本地作品包”，依次选择本人可用的来源、授权根和文件夹。
+2. 进入作品详情，选择“导入本地作品包”，指定普通目录或 CD 抓轨副本，再选择本人可用的来源、授权根和文件夹。
 3. 查看完整目录树和目录／音轨／附件数量；确认后一次保存。
 4. 在详情选择包，展开目录，播放单条音轨或明确选中的目录，预览或下载附件。
 5. 文件变更后重新选择同一位置导入，更新原包及修订，不创建重复包。
 
 包边界由用户选择，不自动按 RJ 或专辑名猜测。目录、空目录、正篇／特典、有／无 BGM、WAV／MP3 副本均原样保留，路径数字自然排序。音乐可用相同流程保留 CD1／CD2 目录，目前没有独立发行或碟片实体。识别到的音频按完整文件播放；CUE、字幕、抓轨日志等作为附件保存，不生成分段音轨或同步字幕。
+
+副本类型 `kind` 为 `directory`（普通目录）或 `cd_dump`（CD 抓轨副本）。它描述文件包的来源形式，不改变作品的内容类型：音乐专辑、ASMR 音声均可拥有抓轨副本，也可同时拥有普通目录副本。抓轨文件可来自手工抓轨或下载；本功能不读取实体光盘，不根据 CUE 或文件名自动认定抓轨来源。
+
+确认归属后，ASMR 作品的副本和任何内容类型的 CD 抓轨副本从普通音乐曲目浏览中排除；专辑、歌手、流派、目录和筛选统计使用同一范围，见[曲库查询](catalog-query.md#普通音乐范围)。普通音乐的目录副本继续显示。作品包树、音轨播放、附件和既有收藏／歌单仍保留，排除不是删除音频。重新导入修改副本类型后，新曲库查询按当前类型计算。
 
 ## API 与响应
 
@@ -20,14 +24,14 @@
 | --- | --- |
 | `GET /package-sources` | 可用本地来源及授权根的 ID、名称；不公开绝对路径 |
 | `GET /package-directories` | 必需 `providerInstanceId/rootId/path`；返回当前路径和直接子目录 |
-| `POST /package-previews` | `{providerInstanceId,rootId,path}`；返回 `previewId/expiresAt/package/counts/warnings` |
+| `POST /package-previews` | 必需 `{providerInstanceId,rootId,path,kind}`；返回 `previewId/expiresAt/package/counts/warnings` |
 | `POST /packages` | `{previewId}` 及 `Idempotency-Key`；确认导入并返回包 |
 | `GET /packages` | `{items:[...]}`；返回保存的树及当前匹配资产的音轨 |
 | `GET /packages/{packageId}/attachments/{nodeId}` | 安全预览；`?download=1` 下载原件 |
 
 `path` 是使用 `/` 的授权根相对路径，根目录为 `.`。拒绝绝对路径、上跳、反斜杠、特殊控制字符及符号链接／链接祖先。目录选择最多返回1000个直接子目录，超限报错，不截断或伪装完整列表。
 
-包包含 `packageId/workId/providerInstanceId/rootId/relativePath/name/revision/importedAt/nodes`。节点包含稳定 `nodeId/parentId`、包内 `path/name`、`kind/order`、MIME和大小；种类为 `directory/audio/attachment`。音频带 `sourceTrackId/assetId/track`；资产或文件版本不再匹配时 `track` 为 null。附件带 `attachmentKind`，值为 `image/text/download`。内部根身份、文件版本、资源引用及服务器绝对路径不发送到浏览器。
+包包含 `packageId/workId/kind/providerInstanceId/rootId/relativePath/name/revision/importedAt/nodes`。节点包含稳定 `nodeId/parentId`、包内 `path/name`、`kind/order`、MIME和大小；节点种类为 `directory/audio/attachment`，与包的副本类型分别表达不同含义。音频带 `sourceTrackId/assetId/track`；资产或文件版本不再匹配时 `track` 为 null。附件带 `attachmentKind`，值为 `image/text/download`。内部根身份、文件版本、资源引用及服务器绝对路径不发送到浏览器。
 
 预览节点 ID 使用当前相对路径，确认后才分配持久节点 ID。客户端不能将预览 ID 用作附件读取或播放身份。预览不创建来源曲目；只有确认后的音轨才能进入播放链。
 
@@ -39,9 +43,11 @@
 
 同用户、来源、根和相对位置对应同一包；同一位置不能同时归入该用户的不同作品。每个作品最多64包。未变路径保留节点 ID；重导入时可明确识别为同一来源文件的音轨移动保留节点 ID。复制产生的新文件、歧义硬链接和整个包根移动不保证原身份，当前没有移动包根的重定位操作。移出包的节点从树移除，但不删除来源曲库中的曲目。
 
+重新导入同一位置可显式修改副本类型，包 ID 与来源音轨身份保持稳定，包修订递增；旧确认的幂等回执保留当时类型。`GET /api/v1/works?packageKind=cd_dump` 按当前包类型筛选作品，不限定内容类型，同一作品有多个抓轨包也只返回一次；可以和 `contentType/tag/q/credit` 取交集。
+
 预览在内存保留15分钟，每用户最多4个待确认预览，全局32个，同时最多4个导入／预览操作。重启后未确认预览失效；确认结果及其幂等信息在数据库保存24小时，响应丢失应以相同预览 ID、相同幂等键重试，不先换键重做。未知结果在 Web 中锁定参数；明确资源变化或修订冲突后重新预览。
 
-预览／确认校验 Origin 与 CSRF，正文最多64 KiB，处理期限90秒；来源操作另有限时。作品资料不会被文件名或音频标签覆盖，包重导入不修改作品资料修订。SQLite `027_work_packages.sql` 新增包及幂等表，完整树作为有界文档与关联音轨原子保存；不在业务代码增加旧库兼容分支。
+预览／确认校验 Origin 与 CSRF，正文最多64 KiB，处理期限90秒；来源操作另有限时。作品资料不会被文件名或音频标签覆盖，包重导入不修改作品资料修订。SQLite `027_work_packages.sql` 新增包表，完整树作为有界文档与关联音轨、既有幂等表回执原子保存。`028_work_package_kinds.sql` 增加副本类型索引，并将旧包和对应导入回执补为 `directory`；不在业务代码增加旧库兼容分支。
 
 ## 附件与生命周期
 

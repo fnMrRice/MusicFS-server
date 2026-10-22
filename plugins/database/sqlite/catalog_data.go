@@ -66,7 +66,7 @@ func catalogDirectories(owner, provider, root, filename string) []catalog.Direct
 
 func readCatalogData(ctx context.Context, tx *sql.Tx, owner, provider string) (catalogData, error) {
 	data := catalogData{tracks: []catalogTrack{}, albums: []catalog.Album{}, members: map[string][]string{}}
-	rows, err := tx.QueryContext(ctx, `SELECT t.document,t.root_id,t.path,EXISTS(SELECT 1 FROM personal_favorites f WHERE f.owner=t.owner AND f.source_track_id=t.id) FROM tracks t WHERE t.owner=? AND (?='' OR t.provider=?) ORDER BY t.id LIMIT ?`, owner, provider, provider, catalog.MaxItems+1)
+	rows, err := tx.QueryContext(ctx, ordinaryMusicSources+`SELECT t.document,t.root_id,t.path,EXISTS(SELECT 1 FROM personal_favorites f WHERE f.owner=t.owner AND f.source_track_id=t.id) FROM tracks t WHERE t.owner=? AND (?='' OR t.provider=?) AND `+ordinaryMusicTrack+` ORDER BY t.id LIMIT ?`, owner, owner, provider, provider, catalog.MaxItems+1)
 	if err != nil {
 		return data, err
 	}
@@ -99,7 +99,7 @@ func readCatalogData(ctx context.Context, tx *sql.Tx, owner, provider string) (c
 	if err != nil {
 		return data, err
 	}
-	rows, err = tx.QueryContext(ctx, `SELECT a.id,a.provider_id,a.name,a.revision,(SELECT b.object_id FROM album_cover_heads h JOIN album_cover_bindings b ON b.id=h.binding_id JOIN media_content_objects o ON o.id=b.object_id JOIN tracks t ON t.id=b.source_id AND t.owner=b.owner AND t.asset_id=b.asset_id AND t.version=b.asset_version JOIN source_assets v ON v.id=b.asset_id AND v.owner=b.owner AND v.current=1 WHERE h.owner=a.owner AND h.target_kind='sourceAlbum' AND h.target_id=a.id AND b.target_revision=a.revision AND o.state='available') FROM source_albums a WHERE a.owner=? AND (?='' OR a.provider_id=?) ORDER BY a.id LIMIT ?`, owner, provider, provider, catalog.MaxItems+1)
+	rows, err = tx.QueryContext(ctx, ordinaryMusicSources+`SELECT a.id,a.provider_id,a.name,a.revision,(SELECT b.object_id FROM album_cover_heads h JOIN album_cover_bindings b ON b.id=h.binding_id JOIN media_content_objects o ON o.id=b.object_id JOIN tracks t ON t.id=b.source_id AND t.owner=b.owner AND t.asset_id=b.asset_id AND t.version=b.asset_version JOIN source_assets v ON v.id=b.asset_id AND v.owner=b.owner AND v.current=1 WHERE h.owner=a.owner AND h.target_kind='sourceAlbum' AND h.target_id=a.id AND b.target_revision=a.revision AND o.state='available' AND `+ordinaryMusicTrack+`) FROM source_albums a WHERE a.owner=? AND (?='' OR a.provider_id=?) AND `+ordinaryMusicAlbum+` ORDER BY a.id LIMIT ?`, owner, owner, provider, provider, catalog.MaxItems+1)
 	if err != nil {
 		return data, err
 	}
@@ -121,7 +121,7 @@ func readCatalogData(ctx context.Context, tx *sql.Tx, owner, provider string) (c
 	if err != nil {
 		return data, err
 	}
-	rows, err = tx.QueryContext(ctx, `SELECT m.album_id,m.source_id FROM source_album_members m JOIN source_albums a ON a.id=m.album_id JOIN tracks t ON t.id=m.source_id AND t.owner=a.owner AND t.provider=a.provider_id WHERE a.owner=? AND (?='' OR a.provider_id=?) ORDER BY m.album_id,m.position`, owner, provider, provider)
+	rows, err = tx.QueryContext(ctx, ordinaryMusicSources+`SELECT m.album_id,m.source_id FROM source_album_members m JOIN source_albums a ON a.id=m.album_id JOIN tracks t ON t.id=m.source_id AND t.owner=a.owner AND t.provider=a.provider_id WHERE a.owner=? AND (?='' OR a.provider_id=?) AND `+ordinaryMusicTrack+` ORDER BY m.album_id,m.position`, owner, owner, provider, provider)
 	if err != nil {
 		return data, err
 	}

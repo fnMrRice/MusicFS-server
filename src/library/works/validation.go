@@ -91,6 +91,9 @@ func NormalizeUpdate(request UpdateRequest) (UpdateRequest, error) {
 }
 
 func NormalizeQuery(query Query) (Query, error) {
+	if query.PackageKind != "" && query.PackageKind != "directory" && query.PackageKind != "cd_dump" {
+		return query, domain.Fail("INVALID_ARGUMENT", "Invalid work package kind filter")
+	}
 	if (query.ContentType != "" && !contenttype.ValidID(query.ContentType)) || (query.After != "" && !ValidID(query.After)) || query.Limit < 1 || query.Limit > MaxPageSize+1 {
 		return query, domain.Fail("INVALID_ARGUMENT", "Invalid work query")
 	}

@@ -11,6 +11,14 @@ import (
 )
 
 func (s *Server) RegisterLibrary(service *library.Service) {
+	s.Handle("GET /api/v1/source-tracks/{id}", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
+		// 显式来源引用不受普通音乐浏览范围影响，仍按当前账号验证所有者。
+		track, err := service.Track(r.Context(), session.User.ID, r.PathValue("id"))
+		if err != nil {
+			return err
+		}
+		return WriteJSON(w, http.StatusOK, track)
+	})
 	s.Handle("GET /api/v1/source-tracks/{id}/details", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		details, err := service.Details(r.Context(), session.User.ID, r.PathValue("id"))
 		if err != nil {

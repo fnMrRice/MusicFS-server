@@ -25,6 +25,7 @@ type Selection struct {
 	ProviderID string `json:"providerInstanceId"`
 	RootID     string `json:"rootId"`
 	Path       string `json:"path"`
+	Kind       string `json:"kind"`
 }
 type Counts struct {
 	Directories int `json:"directories"`
@@ -88,7 +89,7 @@ func (s *Service) Browse(ctx context.Context, owner, workID string, input Select
 	if _, err := s.works.Work(ctx, owner, workID); err != nil {
 		return library.PackageDirectories{}, err
 	}
-	if err := validateSelection(input); err != nil {
+	if err := validateLocation(input); err != nil {
 		return library.PackageDirectories{}, err
 	}
 	return s.library.BrowsePackageDirectories(ctx, owner, input.ProviderID, input.RootID, input.Path)
@@ -135,7 +136,7 @@ func (s *Service) populateTracks(ctx context.Context, owner string, pkg *Package
 	return nil
 }
 
-func validateSelection(input Selection) error {
+func validateLocation(input Selection) error {
 	if !works.ValidID(input.ProviderID) || !works.ValidID(input.RootID) || !ValidPath(input.Path, true) {
 		return domain.Fail("INVALID_ARGUMENT", "Invalid package selection")
 	}

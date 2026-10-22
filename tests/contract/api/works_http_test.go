@@ -114,7 +114,7 @@ func TestWorksHTTPRegistrationEditingPrivacyAndQueries(t *testing.T) {
 			t.Fatalf("private work exposed: %d", w.Code)
 		}
 	}
-	for _, path := range []string{"/works?limit=101", "/works?limit=0", "/works?q=a&q=b", "/works?unknown=x", "/works?after=", "/content-types?q=x"} {
+	for _, path := range []string{"/works?limit=101", "/works?limit=0", "/works?q=a&q=b", "/works?unknown=x", "/works?after=", "/works?packageKind=physical_disc", "/works?packageKind=", "/works?packageKind=directory&packageKind=cd_dump", "/content-types?q=x"} {
 		if w = request("GET", path, nil, "", nil); w.Code != 400 {
 			t.Fatalf("invalid query accepted: %s %d", path, w.Code)
 		}

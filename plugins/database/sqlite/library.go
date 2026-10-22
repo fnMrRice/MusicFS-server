@@ -189,7 +189,7 @@ func (s *Store) ListTracks(ctx context.Context, user, provider, cursor string, l
 		if err != nil {
 			return page, err
 		}
-		rows, err := tx.QueryContext(ctx, "SELECT document FROM tracks WHERE owner=? AND (?='' OR provider=?)", user, provider, provider)
+		rows, err := tx.QueryContext(ctx, ordinaryMusicSources+"SELECT t.document FROM tracks t WHERE t.owner=? AND (?='' OR t.provider=?) AND "+ordinaryMusicTrack, user, user, provider, provider)
 		if err != nil {
 			return page, err
 		}
