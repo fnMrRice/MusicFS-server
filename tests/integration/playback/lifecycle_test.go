@@ -114,6 +114,9 @@ func TestOriginalPlaybackChecksFormatOwnershipAndImmutableBytes(t *testing.T) {
 	if d.OutputProfile.Codec == nil || *d.OutputProfile.Codec != "pcm_s16le" || d.SeekableRange == nil || d.SeekableRange.EndMs != 6000 {
 		t.Fatal("WAV format was not validated without FFprobe")
 	}
+	if d.OutputProfile.Channels != 2 || d.OutputProfile.SampleRate != 48000 || d.OutputProfile.Layout != "stereo" {
+		t.Fatalf("WAV playback lost verified output metadata: %+v", d.OutputProfile)
+	}
 	retry, err := service.Create(context.Background(), who, request, "create-once")
 	if err != nil || retry.AttemptID != d.AttemptID {
 		t.Fatal("create retry generated another attempt", err)

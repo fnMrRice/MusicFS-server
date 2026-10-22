@@ -31,6 +31,8 @@ type Metadata struct {
 	Genre         *string
 	Year          *int64
 	SampleRateHz  *int64
+	Channels      int
+	Layout        string
 	BitrateOrigin string
 	ProbeVersion  string
 }
@@ -71,7 +73,7 @@ func ProbeMetadata(ctx context.Context, ffprobePath string, input io.ReadSeeker,
 	server := &http.Server{Handler: mux, ReadHeaderTimeout: 2 * time.Second, IdleTimeout: 2 * time.Second, MaxHeaderBytes: 8192, BaseContext: func(net.Listener) context.Context { return ctx }}
 	go server.Serve(listener)
 	defer server.Close()
-	out, err := toolOutput(ctx, ffprobePath, "-v", "error", "-protocol_whitelist", "http,tcp", "-format_whitelist", inputFormats, "-select_streams", "a:0", "-show_entries", "program_version=version:stream=codec_name,bit_rate,duration,sample_rate:format=format_name,duration,bit_rate:format_tags=title,artist,album,genre,date,year", "-show_program_version", "-of", "json", "http://"+listener.Addr().String()+path)
+	out, err := toolOutput(ctx, ffprobePath, "-v", "error", "-protocol_whitelist", "http,tcp", "-format_whitelist", inputFormats, "-select_streams", "a:0", "-show_entries", "program_version=version:stream=codec_name,bit_rate,duration,sample_rate,channels,channel_layout:format=format_name,duration,bit_rate:format_tags=title,artist,album,genre,date,year", "-show_program_version", "-of", "json", "http://"+listener.Addr().String()+path)
 	if err != nil {
 		return result, fmt.Errorf("UNSUPPORTED: audio metadata unavailable: %w", err)
 	}
@@ -84,6 +86,8 @@ func ProbeMetadata(ctx context.Context, ffprobePath string, input io.ReadSeeker,
 			Duration   string `json:"duration"`
 			Bitrate    string `json:"bit_rate"`
 			SampleRate string `json:"sample_rate"`
+			Channels   int    `json:"channels"`
+			Layout     string `json:"channel_layout"`
 		} `json:"streams"`
 		Format struct {
 			Name     string            `json:"format_name"`
@@ -99,6 +103,10 @@ func ProbeMetadata(ctx context.Context, ffprobePath string, input io.ReadSeeker,
 	result.ProbeVersion = wire.ProgramVersion.Version
 	result.Codec = &stream.Codec
 	result.Container = &wire.Format.Name
+	if stream.Channels >= 1 && stream.Channels <= 32 {
+		result.Channels = stream.Channels
+		result.Layout = stream.Layout
+	}
 	if rate, err := strconv.ParseInt(stream.SampleRate, 10, 64); err == nil && rate > 0 && rate <= 1000000 {
 		result.SampleRateHz = &rate
 	}

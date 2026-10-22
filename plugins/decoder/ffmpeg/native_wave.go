@@ -12,6 +12,7 @@ import (
 type NativeWave struct {
 	Codec, Container       string
 	DurationMs, BitrateBps int64
+	Channels, SampleRate   int
 }
 
 func InspectNativeWave(path string, fileSize int64) (NativeWave, error) {
@@ -30,6 +31,7 @@ func InspectNativeWave(path string, fileSize int64) (NativeWave, error) {
 		return NativeWave{}, invalid()
 	}
 	var rate, block uint32
+	var channels uint16
 	var dataSize int64
 	for offset, chunks := int64(12), 0; offset+8 <= end && chunks < 1024; chunks++ {
 		var chunk [8]byte
@@ -49,7 +51,7 @@ func InspectNativeWave(path string, fileSize int64) (NativeWave, error) {
 			if _, err := f.ReadAt(format[:], offset+8); err != nil {
 				return NativeWave{}, invalid()
 			}
-			channels := binary.LittleEndian.Uint16(format[2:4])
+			channels = binary.LittleEndian.Uint16(format[2:4])
 			rate = binary.LittleEndian.Uint32(format[4:8])
 			block = uint32(binary.LittleEndian.Uint16(format[12:14]))
 			if binary.LittleEndian.Uint16(format[:2]) != 1 || (channels != 1 && channels != 2) || binary.LittleEndian.Uint16(format[14:]) != 16 || block != uint32(channels)*2 || rate < 8000 || rate > 192000 || binary.LittleEndian.Uint32(format[8:12]) != rate*block {
@@ -69,5 +71,5 @@ func InspectNativeWave(path string, fileSize int64) (NativeWave, error) {
 	codec, container := "pcm_s16le", "wav"
 	duration := dataSize * 1000 / int64(rate*block)
 	bitrate := int64(rate*block) * 8
-	return NativeWave{Codec: codec, Container: container, DurationMs: duration, BitrateBps: bitrate}, nil
+	return NativeWave{Codec: codec, Container: container, DurationMs: duration, BitrateBps: bitrate, Channels: int(channels), SampleRate: int(rate)}, nil
 }

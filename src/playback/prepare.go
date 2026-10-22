@@ -169,8 +169,8 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 	if err = p.checkLeases(); err != nil {
 		return nil, err
 	}
-	if !processed && t.MIME == "audio/wav" {
-		if err = inspectWave(p.path, &t); err != nil {
+	if !processed {
+		if err = p.inspectOriginalProfile(ctx, &t); err != nil {
 			return nil, err
 		}
 	}
@@ -199,7 +199,8 @@ func (r preparationReader) Read(p []byte) (int, error) {
 }
 func (p *preparedInput) describe(id string, gain float64, expiry time.Time) Description {
 	t := p.track
-	d := Description{SessionID: id, AssetID: t.AssetID, DeliveryMode: "proxy", OutputProfile: OutputProfile{MIME: t.MIME, Codec: t.Codec, Container: t.Container, Transport: "htmlAudio"}, ExpiresAt: expiry, SeekMode: "byteRange", EffectiveProcessing: []Processing{}, ResumeDecision: "continue"}
+	d := Description{SessionID: id, AssetID: t.AssetID, DeliveryMode: "proxy", OutputProfile: OutputProfile{MIME: t.MIME, Codec: t.Codec, Container: t.Container, Transport: "htmlAudio",
+		SampleRate: p.profile.SampleRate, Channels: p.profile.Channels, Layout: p.profile.Layout}, ExpiresAt: expiry, SeekMode: "byteRange", EffectiveProcessing: []Processing{}, ResumeDecision: "continue"}
 	d.DSPExecution = p.dspExecution
 	if p.decrypted {
 		d.EffectiveProcessing = append(d.EffectiveProcessing, Processing{Type: "ncmDecrypt", Version: "1", Execution: "server"})

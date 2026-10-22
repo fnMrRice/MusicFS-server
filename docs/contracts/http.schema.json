@@ -1119,9 +1119,9 @@
     },
     "OutputProfile": {
       "type": "object", "required": ["mime", "codec", "container", "transport"],
-      "properties": {"id": {"enum": ["mp3-128", "opus-5.1", "opus-7.1"]}, "mime": {"type": "string", "minLength": 1}, "codec": {"$ref": "#/$defs/NullableString"}, "container": {"$ref": "#/$defs/NullableString"}, "transport": {"const": "htmlAudio"}, "sampleRate": {"const": 48000}, "channels": {"enum": [2, 6, 8]}, "layout": {"enum": ["stereo", "5.1", "7.1"]}, "bitrateBps": {"enum": [128000, 256000, 384000]}},
+      "properties": {"id": {"enum": ["mp3-128", "opus-5.1", "opus-7.1"]}, "mime": {"type": "string", "minLength": 1}, "codec": {"$ref": "#/$defs/NullableString"}, "container": {"$ref": "#/$defs/NullableString"}, "transport": {"const": "htmlAudio"}, "sampleRate": {"type": "integer", "minimum": 1, "maximum": 1000000}, "channels": {"enum": [1, 2, 6, 8]}, "layout": {"enum": ["mono", "stereo", "5.1", "7.1"]}, "bitrateBps": {"enum": [128000, 256000, 384000]}},
       "if": {"required": ["id"]},
-      "then": {"required": ["sampleRate", "channels", "layout", "bitrateBps"], "oneOf": [
+      "then": {"required": ["sampleRate", "channels", "layout", "bitrateBps"], "properties": {"sampleRate": {"const": 48000}}, "oneOf": [
         {"properties": {"id": {"const": "mp3-128"}, "mime": {"const": "audio/mpeg"}, "codec": {"const": "mp3"}, "container": {"const": "mp3"}, "channels": {"const": 2}, "layout": {"const": "stereo"}, "bitrateBps": {"const": 128000}}},
         {"properties": {"id": {"const": "opus-5.1"}, "mime": {"const": "audio/webm"}, "codec": {"const": "opus"}, "container": {"const": "webm"}, "channels": {"const": 6}, "layout": {"const": "5.1"}, "bitrateBps": {"const": 256000}}},
         {"properties": {"id": {"const": "opus-7.1"}, "mime": {"const": "audio/webm"}, "codec": {"const": "opus"}, "container": {"const": "webm"}, "channels": {"const": 8}, "layout": {"const": "7.1"}, "bitrateBps": {"const": 384000}}}
