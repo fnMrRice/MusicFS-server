@@ -57,6 +57,7 @@ type matchingMutation struct {
 	tx                        *sql.Tx
 	owner, route, key, digest string
 	result                    matching.Mutation
+	replay                    []byte
 }
 
 func (s *Store) beginMatching(ctx context.Context, owner, operation, key string, expected int64, request any) (*matchingMutation, bool, error) {
@@ -93,6 +94,7 @@ func (s *Store) beginMatching(ctx context.Context, owner, operation, key string,
 		for i := range m.result.Changes {
 			m.result.Changes[i].Owner = owner
 		}
+		m.replay = result
 		return m, true, nil
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
@@ -113,6 +115,11 @@ func (s *Store) beginMatching(ctx context.Context, owner, operation, key string,
 }
 
 func (m *matchingMutation) finish(ctx context.Context) (matching.Mutation, error) {
+	return m.finishResponse(ctx, nil)
+}
+
+// finishResponse 共用审计与提交逻辑，并允许批量操作保存完整的幂等响应。
+func (m *matchingMutation) finishResponse(ctx context.Context, response func(matching.Mutation) any) (matching.Mutation, error) {
 	if _, err := m.tx.ExecContext(ctx, "INSERT INTO matching_revisions(owner,revision) VALUES(?,?) ON CONFLICT(owner) DO UPDATE SET revision=excluded.revision", m.owner, m.result.Revision); err != nil {
 		return m.result, err
 	}
@@ -132,7 +139,11 @@ func (m *matchingMutation) finish(ctx context.Context) (matching.Mutation, error
 			return m.result, err
 		}
 	}
-	raw, err := json.Marshal(m.result)
+	var value any = m.result
+	if response != nil {
+		value = response(m.result)
+	}
+	raw, err := json.Marshal(value)
 	if err != nil {
 		return m.result, err
 	}

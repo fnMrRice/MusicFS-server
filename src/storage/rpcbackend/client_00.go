@@ -71,6 +71,11 @@ func (c *Client) BeginWriteback(a0 context.Context, a1 string, a2 string, a3 wri
 	return err
 }
 
+func (c *Client) BulkMerge(a0 context.Context, a1 string, a2 matching.BulkMergeRequest, a3 string) (r0 matching.BulkMergeResult, err error) {
+	err = c.Invoke(a0, "BulkMerge", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) CancelCatalogQuery(a0 context.Context, a1 string, a2 string) (err error) {
 	err = c.Invoke(a0, "CancelCatalogQuery", []any{a1, a2}, []any{})
 	return err
@@ -128,10 +133,5 @@ func (c *Client) CatalogFacets(a0 context.Context, a1 string, a2 string) (r0 cat
 
 func (c *Client) CatalogQueryPage(a0 context.Context, a1 string, a2 string, a3 string, a4 int, a5 *catalog.Query) (r0 catalog.Page, err error) {
 	err = c.Invoke(a0, "CatalogQueryPage", []any{a1, a2, a3, a4, a5}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) ChangePlaylistHidden(a0 context.Context, a1 string, a2 string, a3 string, a4 playlists.ChangeHiddenRequest, a5 string) (r0 playlists.HiddenRules, err error) {
-	err = c.Invoke(a0, "ChangePlaylistHidden", []any{a1, a2, a3, a4, a5}, []any{&r0})
 	return r0, err
 }

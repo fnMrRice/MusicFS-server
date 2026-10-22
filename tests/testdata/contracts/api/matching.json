@@ -91,5 +91,92 @@
       ],
       "snapshot": {}
     }
+  },
+  {
+    "name": "bulk-merge-score",
+    "schema": "BulkMergeRequest",
+    "valid": true,
+    "value": {
+      "expectedRevision": 0,
+      "mode": "score",
+      "minimumScore": 0
+    }
+  },
+  {
+    "name": "bulk-merge-title-artist",
+    "schema": "BulkMergeRequest",
+    "valid": true,
+    "value": {
+      "expectedRevision": 0,
+      "mode": "title_artist"
+    }
+  },
+  {
+    "name": "bulk-merge-score-missing-threshold",
+    "schema": "BulkMergeRequest",
+    "valid": false,
+    "value": {
+      "expectedRevision": 0,
+      "mode": "score"
+    }
+  },
+  {
+    "name": "bulk-merge-score-high-threshold",
+    "schema": "BulkMergeRequest",
+    "valid": false,
+    "value": {
+      "expectedRevision": 0,
+      "mode": "score",
+      "minimumScore": 101
+    }
+  },
+  {
+    "name": "bulk-merge-score-fraction",
+    "schema": "BulkMergeRequest",
+    "valid": false,
+    "value": {
+      "expectedRevision": 0,
+      "mode": "score",
+      "minimumScore": 34.5
+    }
+  },
+  {
+    "name": "bulk-merge-title-extra-threshold",
+    "schema": "BulkMergeRequest",
+    "valid": false,
+    "value": {
+      "expectedRevision": 0,
+      "mode": "title_artist",
+      "minimumScore": 35
+    }
+  },
+  {
+    "name": "bulk-merge-missing-revision",
+    "schema": "BulkMergeRequest",
+    "valid": false,
+    "value": {
+      "mode": "title_artist"
+    }
+  },
+  {
+    "name": "bulk-merge-unknown-mode",
+    "schema": "BulkMergeRequest",
+    "valid": false,
+    "value": {
+      "expectedRevision": 0,
+      "mode": "automatic"
+    }
+  },
+  {
+    "name": "bulk-merge-source-injection",
+    "schema": "BulkMergeRequest",
+    "valid": false,
+    "value": {
+      "expectedRevision": 0,
+      "mode": "title_artist",
+      "sourceTrackIds": [
+        "private"
+      ]
+    }
   }
 ]

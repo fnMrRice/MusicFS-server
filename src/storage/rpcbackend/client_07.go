@@ -13,6 +13,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
+func (c *Client) SourceAlbum(a0 context.Context, a1 string, a2 string) (r0 albums.SourceAlbum, err error) {
+	err = c.Invoke(a0, "SourceAlbum", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) SourceAlbums(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 []albums.SourceAlbum, err error) {
 	err = c.Invoke(a0, "SourceAlbums", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err

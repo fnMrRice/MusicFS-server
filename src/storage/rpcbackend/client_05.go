@@ -5,7 +5,9 @@ package rpcbackend
 import (
 	"context"
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
+	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
+	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
@@ -16,6 +18,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 )
+
+func (c *Client) Publish(a0 context.Context, a1 jobs.Job, a2 library.ScanPublication) (err error) {
+	err = c.Invoke(a0, "Publish", []any{a1, a2}, []any{})
+	return err
+}
 
 func (c *Client) PublishEvidence(a0 context.Context, a1 string, a2 identification.Ticket, a3 identification.Result) (err error) {
 	err = c.Invoke(a0, "PublishEvidence", []any{a1, a2, a3}, []any{})
@@ -129,10 +136,5 @@ func (c *Client) Release(a0 context.Context, a1 string, a2 string) (r0 albums.Re
 
 func (c *Client) Releases(a0 context.Context, a1 string, a2 string, a3 int) (r0 []albums.Release, err error) {
 	err = c.Invoke(a0, "Releases", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) RemotePlaylist(a0 context.Context, a1 string, a2 string) (r0 playlists.RemotePlaylist, err error) {
-	err = c.Invoke(a0, "RemotePlaylist", []any{a1, a2}, []any{&r0})
 	return r0, err
 }

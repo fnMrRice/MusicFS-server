@@ -18,6 +18,7 @@ type matchingAPI interface {
 	Recording(context.Context, string, string) (matching.Recording, error)
 	GetLink(context.Context, string, string) (matching.Link, error)
 	ManualLink(context.Context, string, matching.LinkRequest, string) (matching.Mutation, error)
+	BulkMerge(context.Context, string, matching.BulkMergeRequest, string) (matching.BulkMergeResult, error)
 	Unlink(context.Context, string, matching.UnlinkRequest, string) (matching.Mutation, error)
 	Split(context.Context, string, matching.SplitRequest, string) (matching.Mutation, error)
 	SetExclusion(context.Context, string, matching.ExclusionRequest, string) (matching.Mutation, error)
@@ -42,8 +43,9 @@ func (s *Server) RegisterMatching(service matchingAPI) {
 			return err
 		}
 		return WriteJSON(w, http.StatusOK, struct {
-			Revision int64 `json:"revision"`
-		}{revision})
+			Revision           int64 `json:"revision"`
+			BulkMergeAvailable bool  `json:"bulkMergeAvailable"`
+		}{revision, true})
 	})
 	s.Handle("POST /api/v1/source-tracks/{id}/match-candidates/refresh", true, true, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		var input struct {
@@ -113,6 +115,7 @@ func (s *Server) RegisterMatching(service matchingAPI) {
 		return WriteJSON(w, http.StatusOK, page)
 	})
 	s.registerMatchingMutations(service)
+	s.registerMatchingBulkMerge(service)
 }
 
 func matchingPage(r *http.Request, defaultLimit, maximum int) (string, int, error) {

@@ -6,7 +6,6 @@ import (
 	"context"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
@@ -16,6 +15,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"time"
 )
+
+func (c *Client) ListTracks(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 library.Page, err error) {
+	err = c.Invoke(a0, "ListTracks", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) ManualLink(a0 context.Context, a1 string, a2 matching.LinkRequest, a3 string) (r0 matching.Mutation, err error) {
 	err = c.Invoke(a0, "ManualLink", []any{a1, a2, a3}, []any{&r0})
@@ -132,9 +136,4 @@ func (c *Client) ProviderScanState(a0 context.Context, a1 string, a2 string) (r0
 		return "failed"
 	}
 	return r0
-}
-
-func (c *Client) Publish(a0 context.Context, a1 jobs.Job, a2 library.ScanPublication) (err error) {
-	err = c.Invoke(a0, "Publish", []any{a1, a2}, []any{})
-	return err
 }
