@@ -30,6 +30,8 @@ type ContentMetadata struct {
 type ContentObject struct {
 	Object
 	Metadata  ContentMetadata `json:"metadata"`
+	Width     int             `json:"width,omitempty"`
+	Height    int             `json:"height,omitempty"`
 	State     string          `json:"state"`
 	CreatedAt time.Time       `json:"createdAt"`
 }
@@ -40,6 +42,9 @@ type UploadInput struct {
 	MIME     string
 	Size     int64
 	SHA256   string
+	// 尺寸由内容校验器解码图片正文取得，HTTP 不接受调用方提供这些字段。
+	Width  int `json:"Width,omitempty"`
+	Height int `json:"Height,omitempty"`
 }
 
 type Binding struct {

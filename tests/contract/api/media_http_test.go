@@ -120,6 +120,8 @@ func TestMediaHTTPPreviewSelectionPrivacyAndMissingFiles(t *testing.T) {
 		{"no-key", path, "text/plain", "", lyrics, 400, nil}, {"empty", path, "text/plain", "upload-check", nil, 415, nil},
 		{"private-target", uploadPath(targets["other"], "lyrics", ""), "text/plain", "upload-check", lyrics, 404, nil},
 		{"fake-origin", path + "&origin=scraper", "text/plain", "upload-check", lyrics, 400, nil},
+		{"fake-width", uploadPath(targets["admin"], "artwork", "") + "&width=8192", "image/png", "upload-check", testkit.ScraperPNG(), 400, nil},
+		{"fake-height", uploadPath(targets["admin"], "artwork", "") + "&height=8192", "image/png", "upload-check", testkit.ScraperPNG(), 400, nil},
 		{"filename", path + "&filename=..%2Fsecret.txt", "text/plain", "upload-check", lyrics, 400, nil},
 		{"remote-url", path + "&url=https%3A%2F%2Fprivate.invalid", "text/plain", "upload-check", lyrics, 400, nil},
 		{"duplicate-field", path + "&field=artwork", "text/plain", "upload-check", lyrics, 400, nil},
@@ -245,8 +247,14 @@ func TestMediaHTTPPreviewSelectionPrivacyAndMissingFiles(t *testing.T) {
 	}
 	w = request("POST", uploadPath(targets["admin"], "artwork", ""), cover.Bytes(), "image/png", "upload-cover-key", nil)
 	var artwork mediastore.ContentObject
-	if w.Code != 201 || json.Unmarshal(w.Body.Bytes(), &artwork) != nil || artwork.Metadata.Format != "png" {
+	if w.Code != 201 || json.Unmarshal(w.Body.Bytes(), &artwork) != nil || artwork.Metadata.Format != "png" || artwork.Width != 2 || artwork.Height != 2 {
 		t.Fatal("valid cover upload failed")
+	}
+	testkit.ValidateHTTP(t, "ContentObject", w.Body.Bytes())
+	w = request("GET", "/media/"+artwork.ID+"/info", nil, "", "", nil)
+	var artworkInfo mediastore.ContentObject
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &artworkInfo) != nil || artworkInfo.Width != 2 || artworkInfo.Height != 2 {
+		t.Fatal("persisted cover dimensions were not exposed")
 	}
 	w = request("PUT", selectionPath, selectBody(artwork.ID, 3), "application/json", "select-cover-key", nil)
 	if w.Code != 200 {

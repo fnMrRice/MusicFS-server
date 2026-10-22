@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"sort"
+	"strings"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library/catalog"
@@ -37,8 +38,8 @@ func (s *Store) CatalogFacets(ctx context.Context, owner, provider string) (cata
 		if format := catalogFormat(t); format != "" {
 			formats[format]++
 		}
-		if t.Genre != nil && *t.Genre != "" {
-			genres[*t.Genre]++
+		if genre := strings.ToLower(strings.TrimSpace(catalogText(t.Genre))); genre != "" {
+			genres[genre]++
 		}
 		if t.Year != nil {
 			years[*t.Year]++

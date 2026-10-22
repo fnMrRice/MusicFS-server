@@ -95,8 +95,11 @@ func (c Config) Validate() error {
 			return errors.New("writable roots must be nonempty paths")
 		}
 		for j := i + 1; j < len(writable); j++ {
+			if i == 0 && j == 1 && mediaInsideData(path, writable[j]) {
+				continue
+			}
 			if overlaps(path, writable[j]) {
-				return errors.New("data, media and cache roots must be separate")
+				return errors.New("writable roots must be separate except for media inside the data root")
 			}
 		}
 	}

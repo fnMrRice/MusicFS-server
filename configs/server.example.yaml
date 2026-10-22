@@ -6,7 +6,7 @@ allowedOrigins:
   - 'http://127.0.0.1:8080'
   - 'http://127.0.0.1:5173'
 dataRoot: '../data'
-mediaRoot: '../media'
+# 封面等媒体默认保存在 dataRoot/media；无需指定仓库路径。
 cacheRoot: '../cache'
 logging:
   # 省略 directory 时使用 dataRoot 下的 logs；显式相对路径以本文件目录为基准。

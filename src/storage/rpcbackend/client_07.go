@@ -4,6 +4,7 @@ package rpcbackend
 
 import (
 	"context"
+	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/sourcedisplay"
@@ -14,6 +15,16 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) SelectRecordingCover(a0 context.Context, a1 string, a2 library.SelectRecordingCoverRequest, a3 string) (r0 library.RecordingCover, err error) {
+	err = c.Invoke(a0, "SelectRecordingCover", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SetConfigOperationStatus(a0 context.Context, a1 string, a2 string) (err error) {
+	err = c.Invoke(a0, "SetConfigOperationStatus", []any{a1, a2}, []any{})
+	return err
+}
 
 func (c *Client) SetDefaultSource(a0 context.Context, a1 string, a2 matching.DefaultSourceRequest, a3 string) (r0 matching.Mutation, err error) {
 	err = c.Invoke(a0, "SetDefaultSource", []any{a1, a2, a3}, []any{&r0})

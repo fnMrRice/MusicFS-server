@@ -52,6 +52,11 @@ func (s *Service) resolvedPolicy(w enrichment.AutomationWork) (enrichment.Automa
 		p.Fields = []string{"lyrics"}
 		p.Languages = []string{}
 	}
+	if w.Reason == "importArtwork" {
+		p.Enabled = true
+		p.Fields = []string{"artwork"}
+		p.Languages = []string{}
+	}
 	if p.Enabled && len(p.InstancePriority) == 0 {
 		for _, r := range s.runtimeSnapshot() {
 			if r.Owner == w.Owner && (r.Host != nil || r.Enabled) {

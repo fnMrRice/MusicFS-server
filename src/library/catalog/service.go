@@ -26,8 +26,18 @@ func (q Query) Normalize() (Query, error) {
 	if q.Order == "" {
 		q.Order = "asc"
 	}
-	if q.Type != "tracks" && q.Type != "albums" && q.Type != "artists" {
+	if q.Type != "tracks" && q.Type != "albums" && q.Type != "artists" && q.Type != "categories" {
 		return q, domain.Fail("INVALID_ARGUMENT", "Invalid catalog result type")
+	}
+	if q.CategoryKind != "" && !slices.Contains([]string{"artist", "album", "genre", "folder"}, q.CategoryKind) {
+		return q, invalidQuery()
+	}
+	if q.Type == "categories" && q.CategoryKind == "" ||
+		q.CategoryKind != "" && q.Type != "categories" && q.Type != "tracks" ||
+		q.CategoryID != "" && q.CategoryKind == "" ||
+		q.Type == "tracks" && q.CategoryKind != "" && q.CategoryID == "" ||
+		q.ParentID != "" && (q.Type != "categories" || q.CategoryKind != "folder" || q.CategoryID != "") {
+		return q, invalidQuery()
 	}
 	if !validText(q.Q, 256) || !validText(q.Format, 64) {
 		return q, invalidQuery()
@@ -38,6 +48,7 @@ func (q Query) Normalize() (Query, error) {
 		}
 		*values = append([]string{}, (*values)...)
 		for i, value := range *values {
+			value = strings.TrimSpace(value)
 			if !validText(value, 256) || value == "" {
 				return q, invalidQuery()
 			}
@@ -69,7 +80,7 @@ func (q Query) Normalize() (Query, error) {
 		slices.Sort(*values)
 		*values = slices.Compact(*values)
 	}
-	for _, id := range []string{q.ProviderInstanceID, q.ArtistID, q.SourceAlbumID, q.RootID, q.DirectoryID} {
+	for _, id := range []string{q.ProviderInstanceID, q.ArtistID, q.SourceAlbumID, q.RootID, q.DirectoryID, q.CategoryID, q.ParentID} {
 		if !validText(id, 128) || strings.IndexFunc(id, unicode.IsSpace) >= 0 {
 			return q, invalidQuery()
 		}

@@ -28,11 +28,11 @@ Go 消费入口位于独立 `sdk` 模块，见 [SDK 使用与分发](../../../pl
 
 ## Local Files 配置与扫描
 
-Manifest 的 `configuration` 为插件提供的导入选项声明；不支持导入配置的音频插件发送null。Local Files 0.3.0声明 `local-import-v5`，字段为 `schemaRevision/importOptionsSchema/importDefaults/unavailableOptions`，标题与说明为纯文本。声明限制32 KiB、8层、每对象32属性；受限Schema支持有界字符串数组，拒绝外部引用/执行扩展。`ImportOptions` 和 `ScanScope` 保留必需 `excludePatterns` 数组，最多32条、每条UTF-8最多256字节；Host与发布范围共用根相对glob语义，见[扫描说明](../../../library/scanning.md)。规则排序绑定PlanDigest，cursor/grant不能在同任务中换规则。
+Manifest 的 `configuration` 为插件提供的导入选项声明；不支持导入配置的音频插件发送null。Local Files 0.3.0声明 `local-import-v6`，字段为 `schemaRevision/importOptionsSchema/importDefaults/unavailableOptions`，标题与说明为纯文本。声明限制32 KiB、8层、每对象32属性；受限Schema支持有界字符串数组，拒绝外部引用/执行扩展。`ImportOptions` 和 `ScanScope` 保留必需 `excludePatterns` 数组，最多32条、每条UTF-8最多256字节；Host与发布范围共用根相对glob语义，见[扫描说明](../../../library/scanning.md)。规则排序绑定PlanDigest，cursor/grant不能在同任务中换规则。
 
 `ImportOptions`、`ImportOverrides` 与 `ScanScope` 包含可选布尔字段 `skipHidden` 和 `respectNoMedia`。新实例默认均为 `true`，分别跳过点开头及 Windows 隐藏属性条目、跳过含 `.nomedia` 的目录及子树。旧持久计划省略时继续按 `false/false` 解释，旧摘要保持不变；配置声明的 `importDefaults` 则总是显式发送两个字段，包含 `false`。
 
-宿主实际执行根授权、递归上限和排除，不依赖worker自行过滤后声称完整。Host 将隐藏内容与 `.nomedia` 的动态排除附加到内部发布证据，并校验 Worker 返回页与该 Host 枚举页一致；排除证据不增加 wire 字段，Worker 无权声明。数据库对账保留被排除范围的旧记录。`importLyrics:true` 已接入扫描后的持久歌词补缺，需要可用本地Scraper；逐目标失败不伪装成功，见[自动补缺](../../../metadata/metadata.md#导入歌词与自动补缺)。
+宿主实际执行根授权、递归上限和排除，不依赖worker自行过滤后声称完整。Host 将隐藏内容与 `.nomedia` 的动态排除附加到内部发布证据，并校验 Worker 返回页与该 Host 枚举页一致；排除证据不增加 wire 字段，Worker 无权声明。数据库对账保留被排除范围的旧记录。`importLyrics:true` 与默认开启的 `importArtwork:true` 分别接入扫描后的持久歌词、封面补缺，需要可用本地Scraper；逐目标失败不伪装成功，封面保存到部署数据目录中的媒体存储，见[自动补缺](../../../metadata/metadata.md#导入歌词与自动补缺)。
 
 `provider.scan` 携带 scope（rootId/rootIdentity/recursive/maxDepth）、planDigest 和 Host 生成的单页 grantId。Worker 调用 `host.entries` 必须携带该 grantId；授权绑定任务、代次、范围和游标，不能跨任务、根或选项重用。返回页包含 scanId/generation/page/planDigest，末页 complete 还须结合 issues 和根身份决定是否可以发布完整请求范围。recursive=true 且 maxDepth=0 表示不限深度，不能映射为64；recursive=false/maxDepth=0 只覆盖根本层，正数深度1—64保持既有语义。Host目录遍历、目录监听和数据库缺失对账使用同一范围规则；范围外曲目不能被标记缺失。Entry 的 fileIdentity 为原始身份，linkCount 为实际硬链接数，不能按本轮枚举数量改写身份。持久来源身份由 Host 命名空间状态维护。`provider.resolve` 返回受限资源引用，rootId/relativePath 只在受信任控制面使用，浏览器看不到它们；Host 实际打开时仍需验证根、版本和授权。
 

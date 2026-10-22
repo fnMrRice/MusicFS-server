@@ -11,6 +11,22 @@ import (
 )
 
 func (s *Server) RegisterCatalog(service *catalog.Service) {
+	s.Handle("GET /api/v1/library/categories", true, false, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
+		values := r.URL.Query()
+		if values.Has("type") {
+			return invalidCatalogParameter()
+		}
+		values.Set("type", "categories")
+		query, cursor, limit, err := catalogSearchRequest(values)
+		if err != nil {
+			return err
+		}
+		page, err := service.Search(r.Context(), a.User.ID, query, cursor, limit)
+		if err != nil {
+			return err
+		}
+		return WriteJSON(w, http.StatusOK, page)
+	})
 	s.Handle("GET /api/v1/library/search", true, false, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
 		query, cursor, limit, err := catalogSearchRequest(r.URL.Query())
 		if err != nil {
@@ -84,7 +100,7 @@ func (s *Server) RegisterCatalog(service *catalog.Service) {
 func catalogSearchRequest(values url.Values) (catalog.Query, string, int, error) {
 	q := catalog.Query{}
 	allowed := map[string]bool{}
-	for _, key := range []string{"type", "providerInstanceId", "q", "artistId", "sourceAlbumId", "rootId", "directoryId", "format", "favoriteOnly", "availableOnly", "minBitrateBps", "maxBitrateBps", "sort", "order", "cursor", "limit"} {
+	for _, key := range []string{"type", "categoryKind", "categoryId", "parentId", "providerInstanceId", "q", "artistId", "sourceAlbumId", "rootId", "directoryId", "format", "favoriteOnly", "availableOnly", "minBitrateBps", "maxBitrateBps", "sort", "order", "cursor", "limit"} {
 		allowed[key] = false
 	}
 	for _, key := range []string{"genres", "formats", "years", "sampleRatesHz", "availability", "unknownFields"} {
@@ -94,6 +110,7 @@ func catalogSearchRequest(values url.Values) (catalog.Query, string, int, error)
 		return q, "", 0, err
 	}
 	q.Type, q.ProviderInstanceID, q.Q = values.Get("type"), values.Get("providerInstanceId"), values.Get("q")
+	q.CategoryKind, q.CategoryID, q.ParentID = values.Get("categoryKind"), values.Get("categoryId"), values.Get("parentId")
 	q.ArtistID, q.SourceAlbumID, q.RootID, q.DirectoryID = values.Get("artistId"), values.Get("sourceAlbumId"), values.Get("rootId"), values.Get("directoryId")
 	q.Format, q.Sort, q.Order = values.Get("format"), values.Get("sort"), values.Get("order")
 	q.Genres, q.Formats, q.Availability, q.UnknownFields = values["genres"], values["formats"], values["availability"], values["unknownFields"]

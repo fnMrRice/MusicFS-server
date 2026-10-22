@@ -8,18 +8,13 @@ from pathlib import Path
 
 helpers = runpy.run_path(str(Path(__file__).with_name("update-works-contracts.py")))
 root, sync = helpers["ROOT"], helpers["sync_entries"]
-schema_path = root / "docs/contracts/http.schema.json"
-query = copy.deepcopy(json.loads(schema_path.read_text(encoding="utf-8"))["$defs"]["CatalogQuery"])
-# 未限定来源的规范化查询会返回空字符串，响应合同需保留这个已存在的状态。
-query["properties"]["providerInstanceId"] = {"anyOf": [{"$ref": "#/$defs/InstanceID"}, {"const": ""}]}
-sync(schema_path, "$defs", {"CatalogQuery": query})
 api_path = root / "docs/contracts/openapi.yaml"
 paths = json.loads(api_path.read_text(encoding="utf-8"))["paths"]
 scope = "普通音乐范围排除本人已发布ASMR作品或CD抓轨副本的音频，分类及计数只含可见成员。"
 updates = {}
 for route, method in (
     ("/source-tracks", "get"), ("/source-albums", "get"),
-    ("/library/search", "get"),
+    ("/library/search", "get"), ("/library/categories", "get"),
     ("/library/facets", "get"), ("/library/queries", "post"),
 ):
     value = copy.deepcopy(paths[route])

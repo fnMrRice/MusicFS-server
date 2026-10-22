@@ -55,7 +55,7 @@ func TestAutomaticMetadataActualServerImportDepthLocksAndRestart(t *testing.T) {
 	t.Run("explicit-import-independent-of-global-policy", func(t *testing.T) {
 		startNCMServer(t, cfg, base)
 		c := login(t, base, cfg.AdminToken)
-		scan, tracks := automaticScan(t, c, map[string]any{"recursive": false, "importLyrics": false}, "automatic-disabled-scan")
+		scan, tracks := automaticScan(t, c, map[string]any{"recursive": false, "importLyrics": false, "importArtwork": false}, "automatic-disabled-scan")
 		results := waitAutomatic(t, c, scan, 2)
 		if len(tracks) != 2 {
 			t.Fatalf("root-only scan: %d", len(tracks))
@@ -69,7 +69,7 @@ func TestAutomaticMetadataActualServerImportDepthLocksAndRestart(t *testing.T) {
 		if selection := metadataSelection(t, c, rootID); len(selection.Bindings) != 0 {
 			t.Fatal("disabled import selected content")
 		}
-		scan, _ = automaticScan(t, c, map[string]any{"recursive": false, "importLyrics": true}, "automatic-import-root")
+		scan, _ = automaticScan(t, c, map[string]any{"recursive": false, "importLyrics": true, "importArtwork": false}, "automatic-import-root")
 		results = waitAutomatic(t, c, scan, 4)
 		for _, id := range []string{rootID, taggedID} {
 			result := automaticResult(t, results, id, "importLyrics")
@@ -94,7 +94,7 @@ func TestAutomaticMetadataActualServerImportDepthLocksAndRestart(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(music, "root.lrc"), samples["root.lrc"], 0600); err != nil {
 			t.Fatal(err)
 		}
-		scan, tracks = automaticScan(t, c, map[string]any{"recursive": true, "maxDepth": 1, "importLyrics": true}, "automatic-depth-one")
+		scan, tracks = automaticScan(t, c, map[string]any{"recursive": true, "maxDepth": 1, "importLyrics": true, "importArtwork": false}, "automatic-depth-one")
 		results = waitAutomatic(t, c, scan, 6)
 		if len(tracks) != 3 || tracks["deep.wav"].ID != "" {
 			t.Fatal("lyrics import escaped scan depth")
@@ -119,7 +119,7 @@ func TestAutomaticMetadataActualServerImportDepthLocksAndRestart(t *testing.T) {
 		cfg.Metadata.Automatic.Languages = []string{}
 		startNCMServer(t, cfg, base)
 		c := login(t, base, cfg.AdminToken)
-		scan, tracks := automaticScan(t, c, map[string]any{"importLyrics": false}, "automatic-global-restart")
+		scan, tracks := automaticScan(t, c, map[string]any{"importLyrics": false, "importArtwork": false}, "automatic-global-restart")
 		savedScan = scan
 		results := waitAutomatic(t, c, scan, 4)
 		if len(tracks) != 4 || tracks["root.wav"].ID != rootID || tracks["tagged.mp3"].ID != taggedID {
@@ -161,7 +161,7 @@ func TestAutomaticMetadataActualServerImportDepthLocksAndRestart(t *testing.T) {
 		if selection := metadataSelection(t, c, rootID); selection.Revision != 2 || selection.Bindings[0].ObjectID != lockedObject {
 			t.Fatal("disabled scraper changed saved choice")
 		}
-		scan, _ := automaticScan(t, c, map[string]any{"recursive": false, "importLyrics": true}, "automatic-disabled-worker")
+		scan, _ := automaticScan(t, c, map[string]any{"recursive": false, "importLyrics": true, "importArtwork": false}, "automatic-disabled-worker")
 		for _, result := range waitAutomatic(t, c, scan, 4) {
 			if result.Reason == "importLyrics" && (result.State != "failed" || result.FailureCode == nil || *result.FailureCode != "SOURCE_OFFLINE") {
 				t.Fatalf("disabled scraper silently succeeded: %+v", result)

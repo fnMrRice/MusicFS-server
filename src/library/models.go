@@ -15,6 +15,7 @@ type Track struct {
 	Title               *string               `json:"title"`
 	Artists             []string              `json:"artists"`
 	Album               *string               `json:"album"`
+	CoverObjectID       *string               `json:"coverObjectId"`
 	Genre               *string               `json:"genre"`
 	Year                *int64                `json:"year"`
 	SampleRateHz        *int64                `json:"sampleRateHz"`

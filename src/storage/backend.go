@@ -49,6 +49,7 @@ type Backend interface {
 	jobs.Repository
 	library.Repository
 	library.GroupedRepository
+	library.RecordingCoverRepository
 	matching.Repository
 	matching.AutomationRepository
 	settings.Repository

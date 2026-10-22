@@ -50,7 +50,7 @@ func referenceContent(ctx context.Context, tx *sql.Tx, p mediastore.Publication)
 	if err = contentCurrentTarget(ctx, tx, p.Owner, input.Metadata.Target); err != nil {
 		return err
 	}
-	object := mediastore.ContentObject{Object: p.Object, Metadata: input.Metadata, State: "available", CreatedAt: time.Now().UTC()}
+	object := mediastore.ContentObject{Object: p.Object, Metadata: input.Metadata, Width: input.Width, Height: input.Height, State: "available", CreatedAt: time.Now().UTC()}
 	raw, err := json.Marshal(object)
 	if err != nil {
 		return err

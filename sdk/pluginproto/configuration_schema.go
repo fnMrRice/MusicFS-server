@@ -148,6 +148,7 @@ func optionValue(options ImportOptions) map[string]any {
 	// flags to preserve digests of plans persisted before these options existed.
 	value["skipHidden"] = options.SkipHidden
 	value["respectNoMedia"] = options.RespectNoMedia
+	value["importArtwork"] = options.ImportArtwork
 	return value
 }
 

@@ -1,11 +1,13 @@
 package sqlite
 
 import (
+	"context"
 	"encoding/json"
 	"slices"
 	"sort"
 	"strings"
 
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library/catalog"
 )
 
@@ -46,7 +48,7 @@ func catalogTrackFilter(owner string, t catalogTrack, q catalog.Query) bool {
 	if q.ArtistID != "" && !slices.ContainsFunc(t.Artists, func(name string) bool { return artistID(owner, t.ProviderID, name) == q.ArtistID }) {
 		return false
 	}
-	if len(q.Genres) > 0 && !slices.Contains(q.Genres, strings.ToLower(catalogText(t.Genre))) || len(q.Years) > 0 && (t.Year == nil || !slices.Contains(q.Years, *t.Year)) || len(q.SampleRatesHz) > 0 && (t.SampleRateHz == nil || !slices.Contains(q.SampleRatesHz, *t.SampleRateHz)) {
+	if len(q.Genres) > 0 && !slices.Contains(q.Genres, strings.ToLower(strings.TrimSpace(catalogText(t.Genre)))) || len(q.Years) > 0 && (t.Year == nil || !slices.Contains(q.Years, *t.Year)) || len(q.SampleRatesHz) > 0 && (t.SampleRateHz == nil || !slices.Contains(q.SampleRatesHz, *t.SampleRateHz)) {
 		return false
 	}
 	if q.MinBitrateBps != nil && (t.BitrateBps == nil || *t.BitrateBps < *q.MinBitrateBps) || q.MaxBitrateBps != nil && (t.BitrateBps == nil || *t.BitrateBps > *q.MaxBitrateBps) {
@@ -61,12 +63,8 @@ func catalogTrackFilter(owner string, t catalogTrack, q catalog.Query) bool {
 }
 func catalogUnknown(t catalogTrack, field string) bool {
 	switch field {
-	case "artist":
-		return len(t.Artists) == 0
-	case "album":
-		return catalogText(t.Album) == "" && len(t.albumIDs) == 0
-	case "genre":
-		return catalogText(t.Genre) == ""
+	case "artist", "album", "genre":
+		return len(catalogCategoryNames(t, field)) == 0
 	case "year":
 		return t.Year == nil
 	case "sampleratehz", "sampleRateHz":
@@ -85,7 +83,7 @@ func catalogArtists(owner string, tracks []catalogTrack) []catalog.Artist {
 	for _, t := range tracks {
 		seen := map[string]bool{}
 		for _, name := range t.Artists {
-			if name == "" || seen[name] {
+			if strings.TrimSpace(name) == "" || seen[name] {
 				continue
 			}
 			seen[name] = true
@@ -114,15 +112,32 @@ type catalogResult struct {
 	track    *catalogTrack
 }
 
-func catalogResults(owner string, data catalogData, q catalog.Query) ([]json.RawMessage, error) {
+func catalogResults(ctx context.Context, owner string, data catalogData, q catalog.Query) ([]json.RawMessage, error) {
+	var categories catalogCategoryIndex
+	if q.Type == "categories" || q.CategoryID != "" {
+		var err error
+		categories, err = prepareCatalogCategories(ctx, owner, data, q)
+		if err != nil {
+			return nil, err
+		}
+	}
 	tracks := []catalogTrack{}
 	for _, t := range data.tracks {
-		if catalogTrackFilter(owner, t, q) {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		if catalogTrackFilter(owner, t, q) && (q.CategoryID == "" || slices.Contains(categories.members[t.ID], q.CategoryID)) {
 			tracks = append(tracks, t)
 		}
 	}
 	items := []catalogResult{}
 	switch q.Type {
+	case "categories":
+		var err error
+		items, err = catalogCategoryResults(ctx, categories, tracks, q)
+		if err != nil {
+			return nil, err
+		}
 	case "tracks":
 		for i := range tracks {
 			t := &tracks[i]
@@ -150,6 +165,9 @@ func catalogResults(owner string, data catalogData, q catalog.Query) ([]json.Raw
 			}
 		}
 	}
+	if len(items) > catalog.MaxItems {
+		return nil, domain.Fail("RATE_LIMITED", "Catalog result count exceeds its resource budget")
+	}
 	sort.Slice(items, func(i, j int) bool {
 		a, b := items[i], items[j]
 		comparison := 0
@@ -167,10 +185,18 @@ func catalogResults(owner string, data catalogData, q catalog.Query) ([]json.Raw
 		return comparison < 0
 	})
 	result := make([]json.RawMessage, 0, len(items))
+	bytes := 0
 	for _, item := range items {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		raw, err := json.Marshal(item.data)
 		if err != nil {
 			return nil, err
+		}
+		bytes += len(raw)
+		if bytes > catalog.MaxSnapshotBytes {
+			return nil, domain.Fail("RATE_LIMITED", "Catalog result bytes exceed their resource budget")
 		}
 		result = append(result, raw)
 	}

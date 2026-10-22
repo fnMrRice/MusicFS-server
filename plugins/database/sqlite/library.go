@@ -117,10 +117,15 @@ func (s *Store) Publish(ctx context.Context, supplied jobs.Job, publication libr
 }
 func (s *Store) FindTrack(ctx context.Context, user, id string) (library.Track, error) {
 	var t library.Track
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return t, err
+	}
+	defer tx.Rollback()
 	var raw []byte
 	var external, root, path, version, mime, owner string
 	var size int64
-	err := s.DB.QueryRowContext(ctx, "SELECT document,owner,external_id,root_id,path,version,mime,size FROM tracks WHERE id=? AND owner=?", id, user).Scan(&raw, &owner, &external, &root, &path, &version, &mime, &size)
+	err = tx.QueryRowContext(ctx, "SELECT document,owner,external_id,root_id,path,version,mime,size FROM tracks WHERE id=? AND owner=?", id, user).Scan(&raw, &owner, &external, &root, &path, &version, &mime, &size)
 	if errors.Is(err, sql.ErrNoRows) {
 		return t, domain.Fail("NOT_FOUND", "Track not found")
 	}
@@ -137,7 +142,8 @@ func (s *Store) FindTrack(ctx context.Context, user, id string) (library.Track, 
 	t.Version = version
 	t.MIME = mime
 	t.Size = size
-	return t, nil
+	err = populateTrackCovers(ctx, tx, user, &t)
+	return t, err
 }
 func (s *Store) ProviderScanState(ctx context.Context, user, id string) string {
 	var state string
@@ -264,6 +270,9 @@ func (s *Store) ListTracks(ctx context.Context, user, provider, cursor string, l
 		if _, err = tx.ExecContext(ctx, "DELETE FROM library_snapshots WHERE id=?", snapshot); err != nil {
 			return page, err
 		}
+	}
+	if err = populatePageTrackCovers(ctx, tx, user, &page); err != nil {
+		return page, err
 	}
 	return page, tx.Commit()
 }

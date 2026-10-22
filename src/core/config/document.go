@@ -100,6 +100,11 @@ func parseDocument(raw []byte, path string, overrides map[string]string, expecte
 	if err := applyOverrides(&c, overrides); err != nil {
 		return nil, err
 	}
+	_, mediaEnvironment := os.LookupEnv("MUSICFS_MEDIA_ROOT")
+	_, mediaOverride := overrides["MEDIA_ROOT"]
+	if c.MediaRoot == "" && (yamlField(root, "mediaRoot") != nil || mediaEnvironment || mediaOverride) {
+		return nil, errors.New("mediaRoot must be a nonempty path when specified")
+	}
 	if c.Logging.Level == "" {
 		return nil, errors.New("logging.level must be trace, debug, info, warn or error")
 	}

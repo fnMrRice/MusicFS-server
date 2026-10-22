@@ -33,7 +33,7 @@
     "allowLoopbackHttp": {"type": "boolean", "default": false},
     "allowedOrigins": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
     "dataRoot": {"$ref": "#/$defs/NonemptyPath", "default": "data"},
-    "mediaRoot": {"$ref": "#/$defs/NonemptyPath", "default": "media"},
+    "mediaRoot": {"$ref": "#/$defs/NonemptyPath", "description": "省略时使用生效 dataRoot 下的 media；显式路径覆盖此默认值，相对路径以配置文件目录解析。"},
     "cacheRoot": {"$ref": "#/$defs/NonemptyPath", "default": "cache"},
     "webRoot": {"$ref": "#/$defs/Path"},
     "tlsCert": {"$ref": "#/$defs/Path"},
@@ -224,69 +224,7 @@
     },
     "DSPPlugin": {"type":"object","additionalProperties":false,"required":["name"],"properties":{"name":{"type":"string","pattern":"^[a-z][a-z0-9_.-]{0,63}$","not":{"enum":["gain","bypass","equalizer","compressor","reverb","musicfs.dsp.equalizer","musicfs.dsp.compressor","musicfs.dsp.reverb","channelmix","musicfs.dsp.channelmix","musicfs.plugin.decoder.channelmix"]}},"executable":{"$ref":"#/$defs/NonemptyPath"},"sha256":{"type":"string","pattern":"^[a-fA-F0-9]{64}$"},"args":{"type":"array","maxItems":32,"items":{"type":"string","maxLength":4096}},"timeoutMs":{"type":"integer","anyOf":[{"const":0},{"minimum":10,"maximum":30000}],"default":5000},"builtin":{"type":"boolean","description":"官方 musicfs.dsp.gain 在主进程内执行；其他插件不可声明内置。"}},"if":{"properties":{"name":{"const":"musicfs.dsp.gain"}}},"else":{"required":["executable","sha256"]},"allOf":[{"if":{"required":["builtin"],"properties":{"builtin":{"const":true}}},"then":{"properties":{"name":{"const":"musicfs.dsp.gain"}}}}]},
     "OnlinePlugin": {"allOf": [{"$ref": "#/$defs/Plugin"}], "description": "按 MusicFS 用户及音乐平台账号隔离的在线实例；ownerUserId 省略时为 admin。每个实例只绑定一个平台账号，多个账号配置不同 instanceId。加载器额外限制三平台总共最多16实例。禁止配置URL、Cookie、token或导入选项。", "properties": {"pluginId": {"enum": ["musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic"]}, "instances": {"type": "array", "maxItems": 16, "items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"config": {"type": "object", "additionalProperties": false}, "importDefaults": false}}}}},
-    "ImportOverrides": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "recursive": {
-          "type": "boolean"
-        },
-        "maxDepth": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 64,
-          "description": "开启递归时 0 表示不限深度，1—64 表示最多进入的子目录层数；关闭递归时只能为 0。"
-        },
-        "importLyrics": {
-          "type": "boolean"
-        },
-        "skipHidden": {"type": "boolean", "description": "跳过点开头条目和 Windows 隐藏文件、目录。"},
-        "respectNoMedia": {"type": "boolean", "description": "遵循 .nomedia 标记，跳过所在目录及子目录。"},
-        "excludePatterns": {
-          "type": "array",
-          "maxItems": 32,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 256
-          },
-          "description": "根相对 / 路径，*、? 和独立段 **；大小写敏感。匹配目录排除整支。运行时另验证UTF-8字节上限、禁止绝对/点路径、反斜线、字符类和否定。"
-        }
-      },
-      "if": {
-        "properties": {
-          "recursive": {
-            "const": true
-          }
-        },
-        "required": [
-          "recursive"
-        ]
-      },
-      "then": {
-        "properties": {
-          "maxDepth": {
-            "minimum": 0
-          }
-        }
-      },
-      "else": {
-        "if": {
-          "required": [
-            "recursive"
-          ]
-        },
-        "then": {
-          "properties": {
-            "maxDepth": {
-              "const": 0
-            }
-          }
-        }
-      },
-      "description": "部分覆盖；关闭且未给深度规范为 0；从关闭切换开启且未给深度恢复 0；开启递归时 0 表示不限深度，1—64 表示子目录层数。null 与未知字段拒绝。importLyrics 在成功扫描后按资产版本补齐缺失且未人工锁定的歌词；需启用本地 Scraper。"
-    },
+    "ImportOverrides": {"type": "object", "additionalProperties": false, "properties": {"recursive": {"type": "boolean"}, "maxDepth": {"type": "integer", "minimum": 0, "maximum": 64, "description": "开启递归时 0 表示不限深度，1—64 表示最多进入的子目录层数；关闭递归时只能为 0。"}, "importLyrics": {"type": "boolean"}, "skipHidden": {"type": "boolean", "description": "跳过点开头条目和 Windows 隐藏文件、目录。"}, "respectNoMedia": {"type": "boolean", "description": "遵循 .nomedia 标记，跳过所在目录及子目录。"}, "excludePatterns": {"type": "array", "maxItems": 32, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 256}, "description": "根相对 / 路径，*、? 和独立段 **；大小写敏感。匹配目录排除整支。运行时另验证UTF-8字节上限、禁止绝对/点路径、反斜线、字符类和否定。"}, "importArtwork": {"type": "boolean", "description": "扫描成功后提取内嵌或同名旁置封面并保存媒体数据目录；只补缺失且未锁定的封面。Local Files 默认开启，可按目录或本次扫描关闭。"}}, "if": {"properties": {"recursive": {"const": true}}, "required": ["recursive"]}, "then": {"properties": {"maxDepth": {"minimum": 0}}}, "else": {"if": {"required": ["recursive"]}, "then": {"properties": {"maxDepth": {"const": 0}}}}, "description": "部分覆盖；关闭且未给深度规范为 0；从关闭切换开启且未给深度恢复 0；开启递归时 0 表示不限深度，1—64 表示子目录层数。null 与未知字段拒绝。importLyrics 在成功扫描后按资产版本补齐缺失且未人工锁定的歌词；需启用本地 Scraper。"},
     "ID": {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,128}$"},
     "InstanceID": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", "not": {"const": "00000000-0000-0000-0000-000000000000"}},
     "Path": {"type": "string", "not": {"pattern": "\u0000"}},

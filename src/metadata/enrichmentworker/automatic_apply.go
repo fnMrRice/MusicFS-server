@@ -27,10 +27,35 @@ func (s *Service) applyAutomaticTarget(ctx context.Context, repo enrichment.Auto
 	slices.Sort(keys)
 	for _, key := range keys {
 		candidates := groups[key]
+		dimensions := map[string][2]int{}
+		if candidates[0].Field == "artwork" {
+			for _, candidate := range candidates {
+				object, err := s.content.ContentObject(ctx, w.Owner, *candidate.PreviewObjectID)
+				if err != nil {
+					return err
+				}
+				dimensions[candidate.CandidateID] = [2]int{object.Width, object.Height}
+			}
+		}
 		slices.SortFunc(candidates, func(a, b enrichment.PreviewCandidate) int {
-			pa, pb := slices.Index(w.Policy.InstancePriority, a.InstanceID), slices.Index(w.Policy.InstancePriority, b.InstanceID)
-			if pa != pb {
-				return pa - pb
+			if a.Field == "artwork" {
+				// 仅使用从实际图片字节验证并持久化的宽高，未知尺寸按零处理。
+				x, y := dimensions[a.CandidateID], dimensions[b.CandidateID]
+				areaX, areaY := int64(x[0])*int64(x[1]), int64(y[0])*int64(y[1])
+				if areaX != areaY {
+					if areaX > areaY {
+						return -1
+					}
+					return 1
+				}
+				if edgeX, edgeY := min(x[0], x[1]), min(y[0], y[1]); edgeX != edgeY {
+					return edgeY - edgeX
+				}
+			} else {
+				pa, pb := slices.Index(w.Policy.InstancePriority, a.InstanceID), slices.Index(w.Policy.InstancePriority, b.InstanceID)
+				if pa != pb {
+					return pa - pb
+				}
 			}
 			if a.CandidateID < b.CandidateID {
 				return -1
@@ -43,7 +68,7 @@ func (s *Service) applyAutomaticTarget(ctx context.Context, repo enrichment.Auto
 		c := candidates[0]
 		a := enrichment.AutomationAction{Field: c.Field, Language: c.Language, Status: "pending", Reason: "eligible", CandidateID: &c.CandidateID}
 		for _, other := range candidates[1:] {
-			if other.InstanceID == c.InstanceID && other.SHA256 != c.SHA256 {
+			if c.Field != "artwork" && other.InstanceID == c.InstanceID && other.SHA256 != c.SHA256 {
 				a.Status = "skipped"
 				a.Reason = "ambiguous"
 			}

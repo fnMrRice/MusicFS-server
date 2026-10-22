@@ -107,7 +107,7 @@ type Config struct {
 }
 
 func defaults() Config {
-	return Config{Listen: "127.0.0.1:8080", DataRoot: "data", MediaRoot: "media", CacheRoot: "cache", MaxSessions: 8, MaxProcessing: 2, MaxCacheBytes: 1 << 30, SessionTTLSeconds: 3600,
+	return Config{Listen: "127.0.0.1:8080", DataRoot: "data", CacheRoot: "cache", MaxSessions: 8, MaxProcessing: 2, MaxCacheBytes: 1 << 30, SessionTTLSeconds: 3600,
 		Logging:        LoggingConfig{Level: "info", Plugins: map[string]string{}},
 		Hashing:        HashingConfig{MaxConcurrent: 1, BytesPerSecond: 4 << 20},
 		Fingerprinting: FingerprintingConfig{MaxConcurrent: 1, TimeoutSeconds: 30},

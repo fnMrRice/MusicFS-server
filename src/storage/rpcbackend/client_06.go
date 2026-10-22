@@ -18,6 +18,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
+func (c *Client) ReferencePublication(a0 context.Context, a1 string, a2 string) (err error) {
+	err = c.Invoke(a0, "ReferencePublication", []any{a1, a2}, []any{})
+	return err
+}
+
 func (c *Client) Release(a0 context.Context, a1 string, a2 string) (r0 albums.Release, err error) {
 	err = c.Invoke(a0, "Release", []any{a1, a2}, []any{&r0})
 	return r0, err
@@ -131,9 +136,4 @@ func (c *Client) SelectContentGuarded(a0 context.Context, a1 string, a2 mediasto
 func (c *Client) SelectCover(a0 context.Context, a1 string, a2 albums.SelectCoverRequest, a3 string, a4 mediastore.Guard) (r0 albums.CoverSelection, err error) {
 	err = c.Invoke(a0, "SelectCover", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
-}
-
-func (c *Client) SetConfigOperationStatus(a0 context.Context, a1 string, a2 string) (err error) {
-	err = c.Invoke(a0, "SetConfigOperationStatus", []any{a1, a2}, []any{})
-	return err
 }

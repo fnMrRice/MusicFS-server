@@ -17,6 +17,9 @@ const SnapshotTTL = 10 * time.Minute
 
 type Query struct {
 	Type               string   `json:"type"`
+	CategoryKind       string   `json:"categoryKind,omitempty"`
+	CategoryID         string   `json:"categoryId,omitempty"`
+	ParentID           string   `json:"parentId,omitempty"`
 	ProviderInstanceID string   `json:"providerInstanceId"`
 	Q                  string   `json:"q"`
 	ArtistID           string   `json:"artistId"`

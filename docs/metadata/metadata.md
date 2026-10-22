@@ -65,15 +65,19 @@ Content-Type: application/json
 
 ## 导入歌词与自动补缺
 
-Local Files 的当前配置声明为 `local-import-v5`，支持 `importLyrics=true`。可设在实例或目录的 `importDefaults`，也可在本次扫描的 `options` 覆盖。扫描只为本轮授权范围内成功观察的来源创建持久触发记录，绑定扫描代次、来源和资产版本；失败或取消不触发成功导入。
+Local Files 的当前配置声明为 `local-import-v6`，支持 `importLyrics=true` 和默认开启的 `importArtwork=true`。可设在实例或目录的 `importDefaults`，也可在本次扫描的 `options` 覆盖。扫描只为本轮授权范围内成功观察的来源创建持久触发记录，绑定扫描代次、来源和资产版本；失败或取消不触发成功导入。
 
-显式导入只补歌词，全局 `metadata.automatic.enabled=false` 也会执行；全局自动策略可另行选择歌词、封面、语言和实例顺序。具体配置见[配置说明](../operations/configuration.md#自动补齐策略)。两种原因分别记录为 `importLyrics` 和 `automatic`；全局关闭对应记录为 skipped，没有隐藏的自动选用。
+歌词导入只补歌词，封面导入只补封面，全局 `metadata.automatic.enabled=false` 时两者仍按扫描选项执行；全局自动策略可另行选择歌词、封面、语言和实例顺序。具体配置见[配置说明](../operations/configuration.md#自动补齐策略)。三种原因分别记录为 `importLyrics`、`importArtwork` 和 `automatic`；全局关闭仅使 `automatic` 记录为 skipped。
+
+封面直接从内嵌图片或同名旁置文件提取并写入媒体对象存储，默认路径为部署配置 `dataRoot/media/objects`，由已解析的 `mediaRoot` 管理；可显式配置独立媒体根。不会向源码目录或音乐原件写文件。已有历史曲目重新扫描后补齐；异步任务完成后刷新曲目列表，即可通过 `coverObjectId` 展示。缺少可用本地 Scraper、没有图片或提取失败均按实际任务结果记录。
 
 `GET /api/v1/scan-jobs/{id}/metadata-results?limit=50&cursor=...` 返回 `{items,nextCursor}`，只限当前用户；limit 为1—200，默认50。游标只可用于原扫描，错误或跨扫描游标为410，别人的扫描为404。扫描状态 succeeded 只表示曲库扫描完成，应继续查看此接口各项的 `state`（queued/preparing/running/completed/skipped/failed）、`jobId`、`failureCode` 和 `actions`；`jobId` 可进一步读取原候选任务与问题。没有可用Scraper时，显式导入明确 failed，不报告空的成功。
 
 每项 action 说明字段/语言、applied/skipped/failed 等状态及原因，成功时给出 bindingId；不泄漏源路径、内部策略、资源票据或内部修订。completed 仍可能包含跳过或失败的 action，不能仅看总状态。常见跳过原因：manualLocked（人工锁）、existingContent（已有可用内容）、ambiguous（同优先实例的同槽候选摘要冲突）、noEligibleCandidate（没有明确属于当前来源的候选）。
 
-自动选用仅接受本地内嵌内容或同名旁置内容，不自动选目录通用封面；按实例顺序选候选，不靠文件顺序打破内容歧义。只补空或不可用且未锁定的字段/语言，不覆盖现有可用内容，也不自动加人工锁。人工选用后再扫描，即使旁置文件变化，也保留已选对象和人工锁。任务发布复核资产、候选与文件状态，重启不会把已成功选用重复执行成新修订。源音频和旁置文件始终只读。
+自动选用仅接受本地内嵌内容或同名旁置内容，不自动选目录通用封面。封面优先像素面积较大的图片，面积相同时优先短边较大的图片，再按稳定候选编号决定；尺寸由服务端验证图片正文取得。歌词仍按实例顺序选择，同级内容歧义时跳过。只补空或不可用且未锁定的字段/语言，不覆盖现有可用内容，也不自动加人工锁。人工选用后再扫描，即使旁置文件变化，也保留已选对象和人工锁。任务发布复核资产、候选与文件状态，重启不会把已成功选用重复执行成新修订。源音频和旁置文件始终只读。
+
+合并版本的 Recording 封面通过 `GET/PUT /api/v1/recordings/{id}/cover` 读取和选择。默认在当前成员有效封面中按像素面积、短边降序及对象编号升序选择，历史未知尺寸排在已知尺寸之后。Web 可预览各来源图片及尺寸并人工选用，`objectId:null` 恢复自动。人工偏好独立保存，不修改来源图片绑定或默认播放来源；被选图片失效或移出后暂时回退自动结果，偏好编号仍保留。写入须携带当前封面修订、CSRF 和幂等键。
 
 保存停用 Scraper 后当前任务及新导入仍按运行状态执行；重启后新导入按不可用失败，已有内容和结果仍可读取，普通播放保持独立。
 

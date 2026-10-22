@@ -101,7 +101,7 @@ func TestYAMLPluginImportOptionsHTTPAndScopedLibrary(t *testing.T) {
 		Items []library.Provider `json:"items"`
 	}
 	_ = json.Unmarshal(raw, &descriptor)
-	if descriptor.Items[0].Configuration.ImportDefaults.Recursive || descriptor.Items[0].Configuration.ImportDefaults.MaxDepth != 0 || descriptor.Items[0].Configuration.SchemaRevision != "local-import-v5" || len(descriptor.Items[0].Configuration.UnavailableOptions) != 0 {
+	if descriptor.Items[0].Configuration.ImportDefaults.Recursive || descriptor.Items[0].Configuration.ImportDefaults.MaxDepth != 0 || !descriptor.Items[0].Configuration.ImportDefaults.ImportArtwork || descriptor.Items[0].Configuration.SchemaRevision != "local-import-v6" || len(descriptor.Items[0].Configuration.UnavailableOptions) != 0 {
 		t.Fatalf("wrong loaded defaults: %s", raw)
 	}
 	sequence := 0

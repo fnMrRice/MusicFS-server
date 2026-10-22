@@ -16,7 +16,7 @@
 
 布尔值只接受未加引号的小写 `true` / `false`；`"false"`、`yes`、`on`不替代布尔值。整数字段须为规范十进制，不接受浮点、十六进制、前导零或数值字符串；DSP `params` 单独允许有限数值，拒绝 NaN、Inf 和数值字符串。允许中文、注释、空格及带反斜线的Windows路径；Windows路径建议用单引号，如 `'D:\Music Files'`。语法和字段错误只返回位置与安全说明，不回显原始敏感值。
 
-相对路径以配置文件所在目录为基准，包括默认目录以及环境/命令行覆盖的相对路径。`dataRoot`、`mediaRoot`、`cacheRoot` 必须彼此分离，音乐根不得与任一可写根重叠。数据库仍放本地文件系统；音乐可来自已挂载目录。
+相对路径以配置文件所在目录为基准，包括默认目录以及环境/命令行覆盖的相对路径。未指定 `mediaRoot` 时，它随生效的部署 `dataRoot` 解析为 `dataRoot/media`，提取的封面等媒体对象写入其中的 `objects` 子目录，不依赖源码仓库位置。显式 `mediaRoot` 仍作为存储覆盖，不自动搬迁已有对象；旧部署若曾显式配置媒体目录，继续使用原配置以保留已有引用。媒体根可为数据根的严格子目录，不能等于或包含数据根；缓存仍与两者分离，音乐根不得与任一可写根重叠。数据库仍放本地文件系统；音乐可来自已挂载目录。
 
 ## 2. 服务字段与覆盖
 
@@ -24,7 +24,7 @@
 | --- | --- |
 | `configVersion` | 必填，当前仅1 |
 | `listen` | `127.0.0.1:8080`；合法监听地址和1—65535端口 |
-| `dataRoot`、`mediaRoot`、`cacheRoot` | `data`、`media`、`cache`，以配置目录解析，须非空且分离 |
+| `dataRoot`、`mediaRoot`、`cacheRoot` | `data`、生效 `dataRoot/media`、`cache`；显式相对路径以配置目录解析，媒体可嵌套于数据根，缓存保持分离 |
 | `webRoot` | 可选构建制品目录；也可通过CLI `--web-root`指定 |
 | `logging.directory` | 省略时为生效 `dataRoot` 下的 `logs`；显式相对路径以 YAML 目录解析，不接受空路径 |
 | `logging.level` | 默认 `info`；支持小写 `trace/debug/info/warn/error` |
@@ -96,6 +96,7 @@ importDefaults:
   recursive: true
   maxDepth: 0
   importLyrics: false
+  importArtwork: true
   skipHidden: true
   respectNoMedia: true
   excludePatterns: ['**/cache', '*.tmp']
@@ -103,7 +104,7 @@ importDefaults:
 
 插件默认递归、深度和歌词导入值为 `true/0/false`，然后依次叠加实例默认、目录默认与单次扫描请求的部分覆盖。根目录中的文件深度为 0：关闭递归且未给深度时规范为 0，只查找当前目录；显式 `recursive: false` 搭配非 0 深度拒绝。从关闭切到开启且本层未给深度时恢复 0。开启递归时，0 表示查找全部子目录、不设深度上限；1—64 表示最多进入的子目录层数，例如 1 包含直接子目录。只覆盖深度会保留继承的递归开关，矛盾时拒绝；null、未知选项、数值字符串均拒绝。
 
-Local Files当前声明 `schemaRevision=local-import-v5`，插件版本0.3.0。高级选项默认 `skipHidden:true/respectNoMedia:true`：跳过点开头文件、目录以及 Windows 隐藏属性条目，遵循 `.nomedia` 标记，跳过其所在目录及子树；不读取标记文件的内容。Web 的「包含隐藏文件和目录」对应 `skipHidden:false`。目录树仍展示授权范围，筛选控制实际导入。关闭某项只取消对应筛选，不扩大访问授权。
+Local Files当前声明 `schemaRevision=local-import-v6`，插件版本0.3.0。封面导入默认 `importArtwork:true`，可按目录或本次扫描关闭。高级选项默认 `skipHidden:true/respectNoMedia:true`：跳过点开头文件、目录以及 Windows 隐藏属性条目，遵循 `.nomedia` 标记，跳过其所在目录及子树；不读取标记文件的内容。Web 的「包含隐藏文件和目录」对应 `skipHidden:false`。目录树仍展示授权范围，筛选控制实际导入。关闭某项只取消对应筛选，不扩大访问授权。
 
 `excludePatterns` 默认空数组；实例与每次请求可整组替换，显式 `[]` 清除继承规则，不是追加。规则排序后写入有效计划和幂等摘要，换规则的同键请求冲突；只有本轮完整覆盖的非排除范围可推断缺失，排除范围内既有曲目/资产/证据保持原状。隐藏项和 `.nomedia` 的实际排除范围由宿主记录，也不会把既有曲目标记缺失。它是扫描范围设置，不是撤销读取授权或删除曲库的操作。
 
@@ -124,7 +125,7 @@ metadata:
 
 `enabled` 默认false；开启后成功扫描可补齐缺失或不可用且未人工锁定的内容。`fields` 默认歌词和封面，开启时不可为空。`instancePriority` 最多4个不重复的本地Scraper实例，按声明顺序优先；空数组按启用实例的配置顺序解析；已启用但启动校验失败的实例仍作为失败依赖报告。全局自动补齐或实例默认导入歌词开启时，显式优先项必须引用已配置 Scraper，且至少配置一个 Scraper；没有显式顺序时最多4个启用实例。禁用依赖保留策略意图，实际任务明确失败，不伪造补齐成功。
 
-`languages` 最多16项，空数组不筛选；语言归一、未知语言和封面规则与[手动任务](../metadata/metadata.md)一致。显式 `importLyrics=true` 使用同一实例优先顺序，但只请求歌词且不继承全局语言过滤。策略在任务准备时持久化，重启后继续已有快照；配置修改重启后用于新准备的任务。自动选用只接受内嵌或同名旁置候选，同优先级存在内容歧义会跳过，目录通用封面不自动认定属于每首歌曲。人工锁始终保留；不会写回原音频或旁置文件。
+`languages` 最多16项，空数组不筛选；语言归一、未知语言和封面规则与[手动任务](../metadata/metadata.md)一致。`importLyrics=true` 使用同一实例优先顺序，但只请求歌词且不继承全局语言过滤；`importArtwork=true` 独立请求封面，不受全局自动开关限制。缺少可用 Scraper 时封面导入明确失败，扫描本身仍可完成。策略在任务准备时持久化，重启后继续已有快照；配置修改重启后用于新准备的任务。自动选用只接受内嵌或同名旁置候选，封面按真实像素面积及短边优选，歌词同优先级存在内容歧义会跳过，目录通用封面不自动认定属于每首歌曲。人工锁始终保留；不会写回原音频或旁置文件。
 
 客户端先读取 Provider 的 `configuration` 与安全 `roots[{id,name}]`，再提交 `mode/schemaRevision/rootIds/options`；不返回磁盘路径或真实根身份。详见[共同契约](../contracts/README.md)。扫描任务固定有效选项、根及插件/配置版本，范围外曲目保留；不能把一次浅层扫描当作完整音乐根的删除证明。
 

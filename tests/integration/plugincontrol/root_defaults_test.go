@@ -23,7 +23,7 @@ func TestRootImportDefaultsPersistWithoutChangingOtherDirectories(t *testing.T) 
 	}
 	initialCount := manager.SnapshotForScope(context.Background(), "admin", false).Items[0].DisplayCount.Value
 	options := func(recursive, hidden bool) map[string]any {
-		return map[string]any{"recursive": recursive, "maxDepth": 0, "importLyrics": false, "excludePatterns": []string{}, "skipHidden": hidden, "respectNoMedia": false}
+		return map[string]any{"recursive": recursive, "maxDepth": 0, "importLyrics": false, "importArtwork": hidden, "excludePatterns": []string{}, "skipHidden": hidden, "respectNoMedia": false}
 	}
 	save := func(index int, roots []map[string]any, status int) {
 		t.Helper()
@@ -50,7 +50,7 @@ func TestRootImportDefaultsPersistWithoutChangingOtherDirectories(t *testing.T) 
 		{"id": "child", "name": "Recursive", "path": child, "importDefaults": options(true, true)},
 	}, 202)
 	view := read()
-	if len(view.Roots) != 2 || *view.Roots[0].ImportDefaults.Recursive || !*view.Roots[1].ImportDefaults.Recursive || *view.Roots[0].ImportDefaults.SkipHidden || !*view.Roots[1].ImportDefaults.SkipHidden || *view.Roots[0].ImportDefaults.RespectNoMedia {
+	if len(view.Roots) != 2 || *view.Roots[0].ImportDefaults.Recursive || !*view.Roots[1].ImportDefaults.Recursive || *view.Roots[0].ImportDefaults.SkipHidden || !*view.Roots[1].ImportDefaults.SkipHidden || *view.Roots[0].ImportDefaults.RespectNoMedia || *view.Roots[0].ImportDefaults.ImportArtwork || !*view.Roots[1].ImportDefaults.ImportArtwork {
 		t.Fatal("directory configuration was not independently projected", view.Roots)
 	}
 	if !view.ImportOptions.ImportDefaults.Recursive || !view.ImportOptions.ImportDefaults.RespectNoMedia {
@@ -90,7 +90,7 @@ func TestRootImportDefaultsPersistWithoutChangingOtherDirectories(t *testing.T) 
 	}
 	save(5, []map[string]any{{"id": "inherited", "name": "Inherited", "path": child}}, 202)
 	inherited := read().Roots[0].ImportDefaults
-	if !*inherited.Recursive || !*inherited.SkipHidden || !*inherited.RespectNoMedia {
+	if !*inherited.Recursive || !*inherited.SkipHidden || !*inherited.RespectNoMedia || !*inherited.ImportArtwork {
 		t.Fatal("new root without overrides did not inherit instance defaults")
 	}
 }

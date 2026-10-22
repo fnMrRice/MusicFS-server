@@ -5,7 +5,7 @@ allowedOrigins: ['https://localhost:8443']
 tlsCert: '/etc/musicfs/tls/server.crt'
 tlsKey: '/etc/musicfs/tls/server.key'
 dataRoot: '/var/lib/musicfs/data'
-mediaRoot: '/var/lib/musicfs/media'
+# 封面等媒体随部署 dataRoot 保存到其 media 子目录。
 cacheRoot: '/var/cache/musicfs'
 # SQLite 内置插件运行于 Server 主进程。
 storage:

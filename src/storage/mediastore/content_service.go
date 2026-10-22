@@ -116,7 +116,7 @@ func (s *ContentService) upload(ctx context.Context, owner string, metadata Cont
 	if err = metadata.Validate(); err != nil {
 		return ContentObject{}, err
 	}
-	request := UploadInput{Metadata: metadata, MIME: validated.MIME, Size: int64(len(validated.Bytes)), SHA256: validated.SHA256}
+	request := UploadInput{Metadata: metadata, MIME: validated.MIME, Size: int64(len(validated.Bytes)), SHA256: validated.SHA256, Width: validated.Width, Height: validated.Height}
 	p, existing, err := s.ContentRepository.PrepareContent(ctx, owner, request, key)
 	if err != nil {
 		return ContentObject{}, err

@@ -3,6 +3,13 @@
   "$id": "https://musicfs.invalid/contracts/http.schema.json",
   "title": "MusicFS HTTP v1 模型",
   "$defs": {
+    "RecordingCoverCandidate": {"type": "object", "additionalProperties": false, "required": ["objectId", "sourceTrackId", "providerInstanceId", "width", "height"], "properties": {"objectId": {"$ref": "#/$defs/ID"}, "sourceTrackId": {"$ref": "#/$defs/ID"}, "providerInstanceId": {"$ref": "#/$defs/InstanceID"}, "width": {"type": "integer", "minimum": 0, "maximum": 8192}, "height": {"type": "integer", "minimum": 0, "maximum": 8192}}, "description": "当前成员已选用且仍有效的封面；宽高来自服务端解码，0表示历史对象尺寸未知。"},
+    "RecordingCover": {"type": "object", "additionalProperties": false, "required": ["recordingId", "revision", "coverObjectId", "manualObjectId", "candidates"], "properties": {"recordingId": {"$ref": "#/$defs/ID"}, "revision": {"type": "integer", "minimum": 0}, "coverObjectId": {"anyOf": [{"$ref": "#/$defs/ID"}, {"type": "null"}]}, "manualObjectId": {"anyOf": [{"$ref": "#/$defs/ID"}, {"type": "null"}]}, "candidates": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/RecordingCoverCandidate"}}}},
+    "SelectRecordingCover": {"type": "object", "additionalProperties": false, "required": ["expectedRevision", "objectId"], "properties": {"expectedRevision": {"type": "integer", "minimum": 0, "maximum": 9223372036854775806}, "objectId": {"anyOf": [{"$ref": "#/$defs/ID"}, {"type": "null"}]}}},
+
+    "CatalogCategoryRef": {"type": "object", "additionalProperties": false, "required": ["categoryId", "name"], "properties": {"categoryId": {"$ref": "#/$defs/ID"}, "name": {"type": "string", "maxLength": 4096}}},
+    "CatalogCategory": {"type": "object", "additionalProperties": false, "required": ["categoryId", "kind", "name", "unknown", "providerInstanceId", "rootId", "parentId", "trackCount", "breadcrumbs"], "properties": {"categoryId": {"$ref": "#/$defs/ID"}, "kind": {"enum": ["artist", "album", "genre", "folder"]}, "name": {"type": "string", "maxLength": 4096}, "unknown": {"type": "boolean"}, "providerInstanceId": {"type": "string", "maxLength": 128}, "rootId": {"type": "string", "maxLength": 128}, "parentId": {"anyOf": [{"$ref": "#/$defs/ID"}, {"type": "null"}]}, "trackCount": {"type": "integer", "minimum": 0}, "breadcrumbs": {"type": "array", "items": {"$ref": "#/$defs/CatalogCategoryRef"}}}},
+
     "WorkPackageNode": {"type": "object", "additionalProperties": false, "required": ["nodeId", "parentId", "path", "name", "kind", "order", "mime", "sizeBytes", "sourceTrackId", "assetId", "attachmentKind", "track"], "properties": {"nodeId": {"type": "string", "minLength": 1, "maxLength": 4096}, "parentId": {"type": "string", "minLength": 0, "maxLength": 4096}, "path": {"type": "string", "minLength": 1, "maxLength": 4096}, "name": {"type": "string", "minLength": 1, "maxLength": 256}, "kind": {"enum": ["directory", "audio", "attachment"]}, "order": {"type": "integer", "minimum": 0, "maximum": 4999}, "mime": {"type": "string", "minLength": 0, "maxLength": 256}, "sizeBytes": {"type": "integer", "minimum": 0}, "sourceTrackId": {"type": "string", "minLength": 0, "maxLength": 128}, "assetId": {"type": "string", "minLength": 0, "maxLength": 128}, "attachmentKind": {"enum": ["", "image", "text", "download"]}, "track": {"anyOf": [{"$ref": "#/$defs/SourceTrack"}, {"type": "null"}]}}},
     "WorkPackage": {"type": "object", "additionalProperties": false, "required": ["packageId", "workId", "providerInstanceId", "rootId", "relativePath", "name", "kind", "revision", "importedAt", "nodes"], "properties": {"packageId": {"type": "string", "minLength": 0, "maxLength": 128}, "workId": {"type": "string", "minLength": 1, "maxLength": 128}, "providerInstanceId": {"$ref": "#/$defs/InstanceID"}, "rootId": {"type": "string", "minLength": 1, "maxLength": 128}, "relativePath": {"type": "string", "minLength": 1, "maxLength": 4096}, "name": {"type": "string", "minLength": 1, "maxLength": 256}, "kind": {"enum": ["directory", "cd_dump"]}, "revision": {"type": "integer", "minimum": 0}, "importedAt": {"$ref": "#/$defs/Timestamp"}, "nodes": {"type": "array", "items": {"$ref": "#/$defs/WorkPackageNode"}, "maxItems": 5000, "minItems": 1}}},
     "WorkPackages": {"type": "object", "additionalProperties": false, "required": ["items"], "properties": {"items": {"type": "array", "items": {"$ref": "#/$defs/WorkPackage"}, "maxItems": 64}}},
@@ -81,12 +88,12 @@
     "CatalogTextFacet": {"type": "object", "properties": {"value": {"type": "string", "maxLength": 4096}, "trackCount": {"type": "integer", "minimum": 0}}, "required": ["value", "trackCount"]},
     "CatalogFormat": {"type": "object", "properties": {"name": {"type": "string", "maxLength": 4096}, "trackCount": {"type": "integer", "minimum": 0}}, "required": ["name", "trackCount"]},
     "CatalogDirectory": {"type": "object", "properties": {"directoryId": {"$ref": "#/$defs/ID"}, "parentId": {"anyOf": [{"$ref": "#/$defs/ID"}, {"type": "null"}]}, "providerInstanceId": {"$ref": "#/$defs/InstanceID"}, "rootId": {"type": "string", "maxLength": 128}, "name": {"type": "string", "maxLength": 4096}, "trackCount": {"type": "integer", "minimum": 0}}, "required": ["directoryId", "parentId", "providerInstanceId", "rootId", "name", "trackCount"]},
-    "CatalogPage": {"type": "object", "properties": {"queryId": {"$ref": "#/$defs/ID"}, "query": {"$ref": "#/$defs/CatalogQuery"}, "catalogRevision": {"type": "string", "maxLength": 64}, "expiresAt": {"$ref": "#/$defs/Timestamp"}, "total": {"type": "integer", "minimum": 0, "maximum": 100000}, "items": {"type": "array", "items": {"oneOf": [{"$ref": "#/$defs/CatalogTrack"}, {"$ref": "#/$defs/CatalogAlbum"}, {"$ref": "#/$defs/CatalogArtist"}]}, "maxItems": 200}, "nextCursor": {"anyOf": [{"$ref": "#/$defs/ID"}, {"type": "null"}]}}, "required": ["queryId", "query", "catalogRevision", "expiresAt", "total", "items", "nextCursor"]},
+    "CatalogPage": {"type": "object", "properties": {"queryId": {"$ref": "#/$defs/ID"}, "query": {"$ref": "#/$defs/CatalogQuery"}, "catalogRevision": {"type": "string", "maxLength": 64}, "expiresAt": {"$ref": "#/$defs/Timestamp"}, "total": {"type": "integer", "minimum": 0, "maximum": 100000}, "items": {"type": "array", "items": {"oneOf": [{"$ref": "#/$defs/CatalogTrack"}, {"$ref": "#/$defs/CatalogAlbum"}, {"$ref": "#/$defs/CatalogArtist"}, {"$ref": "#/$defs/CatalogCategory"}]}, "maxItems": 200}, "nextCursor": {"anyOf": [{"$ref": "#/$defs/ID"}, {"type": "null"}]}}, "required": ["queryId", "query", "catalogRevision", "expiresAt", "total", "items", "nextCursor"]},
     "CatalogAlbum": {"type": "object", "properties": {"sourceAlbumId": {"$ref": "#/$defs/ID"}, "providerInstanceId": {"$ref": "#/$defs/InstanceID"}, "name": {"type": "string", "maxLength": 4096}, "revision": {"type": "integer", "minimum": 1}, "artists": {"type": "array", "items": {"type": "string", "maxLength": 4096}, "maxItems": 100000}, "trackCount": {"type": "integer", "minimum": 0}, "coverObjectId": {"anyOf": [{"$ref": "#/$defs/ID"}, {"type": "null"}]}}, "required": ["sourceAlbumId", "providerInstanceId", "name", "revision", "artists", "trackCount", "coverObjectId"]},
     "CatalogArtist": {"type": "object", "properties": {"sourceArtistId": {"$ref": "#/$defs/ID"}, "providerInstanceId": {"$ref": "#/$defs/InstanceID"}, "name": {"type": "string", "maxLength": 4096}, "identityKind": {"const": "localCredit"}, "trackCount": {"type": "integer", "minimum": 0}, "albumCount": {"type": "integer", "minimum": 0}, "avatarObjectId": {"anyOf": [{"$ref": "#/$defs/ID"}, {"type": "null"}]}}, "required": ["sourceArtistId", "providerInstanceId", "name", "identityKind", "trackCount", "albumCount", "avatarObjectId"]},
     "CatalogTrack": {"allOf": [{"$ref": "#/$defs/SourceTrack"}, {"type": "object", "properties": {"source": {"$ref": "#/$defs/PlaylistSourceRef"}, "rootId": {"type": "string", "maxLength": 128}, "directoryId": {"$ref": "#/$defs/ID"}, "favorite": {"type": "boolean"}}, "required": ["source", "rootId", "directoryId", "favorite"]}]},
     "CreateCatalogQuery": {"type": "object", "properties": {"query": {"$ref": "#/$defs/CatalogQuery"}, "limit": {"type": "integer", "minimum": 0, "maximum": 200}}, "required": ["query"], "additionalProperties": false},
-    "CatalogQuery": {"type": "object", "properties": {"type": {"enum": ["tracks", "albums", "artists"]}, "providerInstanceId": {"anyOf": [{"$ref": "#/$defs/InstanceID"}, {"const": ""}]}, "q": {"type": "string", "maxLength": 256}, "artistId": {"type": "string", "maxLength": 128}, "sourceAlbumId": {"type": "string", "maxLength": 128}, "rootId": {"type": "string", "maxLength": 128}, "directoryId": {"type": "string", "maxLength": 128}, "format": {"type": "string", "maxLength": 64}, "genres": {"type": "array", "items": {"type": "string", "maxLength": 256}, "maxItems": 32}, "formats": {"type": "array", "items": {"type": "string", "maxLength": 256}, "maxItems": 32}, "years": {"type": "array", "items": {"type": "integer", "minimum": 1, "maximum": 1000000}, "maxItems": 128}, "sampleRatesHz": {"type": "array", "items": {"type": "integer", "minimum": 1, "maximum": 1000000}, "maxItems": 128}, "availability": {"type": "array", "items": {"enum": ["available", "missing"]}, "maxItems": 32}, "unknownFields": {"type": "array", "items": {"enum": ["artist", "album", "genre", "year", "sampleRateHz", "sampleratehz", "bitrate", "format"]}, "maxItems": 32}, "favoriteOnly": {"type": "boolean"}, "availableOnly": {"type": "boolean"}, "minBitrateBps": {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]}, "maxBitrateBps": {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]}, "sort": {"enum": ["name", "title", "artist", "album", "duration", "bitrate"]}, "order": {"enum": ["asc", "desc"]}}, "required": [], "additionalProperties": false},
+    "CatalogQuery": {"type": "object", "properties": {"type": {"enum": ["tracks", "albums", "artists", "categories"]}, "providerInstanceId": {"anyOf": [{"$ref": "#/$defs/InstanceID"}, {"const": ""}]}, "q": {"type": "string", "maxLength": 256}, "artistId": {"type": "string", "maxLength": 128}, "sourceAlbumId": {"type": "string", "maxLength": 128}, "rootId": {"type": "string", "maxLength": 128}, "directoryId": {"type": "string", "maxLength": 128}, "format": {"type": "string", "maxLength": 64}, "genres": {"type": "array", "items": {"type": "string", "maxLength": 256}, "maxItems": 32}, "formats": {"type": "array", "items": {"type": "string", "maxLength": 256}, "maxItems": 32}, "years": {"type": "array", "items": {"type": "integer", "minimum": 1, "maximum": 1000000}, "maxItems": 128}, "sampleRatesHz": {"type": "array", "items": {"type": "integer", "minimum": 1, "maximum": 1000000}, "maxItems": 128}, "availability": {"type": "array", "items": {"enum": ["available", "missing"]}, "maxItems": 32}, "unknownFields": {"type": "array", "items": {"enum": ["artist", "album", "genre", "year", "sampleRateHz", "sampleratehz", "bitrate", "format"]}, "maxItems": 32}, "favoriteOnly": {"type": "boolean"}, "availableOnly": {"type": "boolean"}, "minBitrateBps": {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]}, "maxBitrateBps": {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]}, "sort": {"enum": ["name", "title", "artist", "album", "duration", "bitrate"]}, "order": {"enum": ["asc", "desc"]}, "categoryKind": {"enum": ["artist", "album", "genre", "folder"]}, "categoryId": {"type": "string", "maxLength": 128}, "parentId": {"type": "string", "maxLength": 128}}, "required": [], "additionalProperties": false, "allOf": [{"if": {"required": ["type"], "properties": {"type": {"const": "categories"}}}, "then": {"required": ["categoryKind"]}}, {"if": {"required": ["categoryId"]}, "then": {"required": ["categoryKind"]}}, {"if": {"required": ["categoryKind"]}, "then": {"properties": {"type": {"enum": ["tracks", "categories"]}}, "if": {"not": {"required": ["type"], "properties": {"type": {"const": "categories"}}}}, "then": {"required": ["categoryId"]}}}, {"if": {"required": ["parentId"]}, "then": {"required": ["type", "categoryKind"], "properties": {"type": {"const": "categories"}, "categoryKind": {"const": "folder"}}, "not": {"required": ["categoryId"]}}}]},
     "PlaybackStartedRequest": {"type": "object", "required": ["sourceTrackId", "playbackSessionId", "attemptId"], "properties": {"sourceTrackId": {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,128}$"}, "playbackSessionId": {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,128}$"}, "attemptId": {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,128}$"}}, "additionalProperties": false},
     "PersonalCollectionPage": {"type": "object", "required": ["items", "nextCursor", "revision"], "properties": {"items": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/PersonalCollectionEntry"}}, "nextCursor": {"type": ["string", "null"]}, "revision": {"type": "string", "pattern": "^[0-9]+/[0-9]+$"}}, "additionalProperties": false},
     "PersonalCollectionEntry": {"type": "object", "required": ["track", "recordedAt"], "properties": {"track": {"$ref": "#/$defs/SourceTrack"}, "recordedAt": {"$ref": "#/$defs/Timestamp"}}, "additionalProperties": false},
@@ -292,22 +299,7 @@
         "bindingId": {"anyOf": [{"type": "string", "pattern": "^[0-9a-f]{48}$"}, {"type": "null"}]}
       }
     },
-    "MetadataAutomationResult": {
-      "type": "object", "additionalProperties": false,
-      "required": ["triggerId", "scanJobId", "sourceTrackId", "assetId", "assetVersion", "reason", "state", "jobId", "failureCode", "actions"],
-      "properties": {
-        "triggerId": {"type": "string", "pattern": "^[0-9a-f]{48}$"},
-        "scanJobId": {"type": "string", "minLength": 1, "maxLength": 128},
-        "sourceTrackId": {"type": "string", "minLength": 1, "maxLength": 128},
-        "assetId": {"type": "string", "minLength": 1, "maxLength": 128},
-        "assetVersion": {"type": "string", "minLength": 1, "maxLength": 1024},
-        "reason": {"enum": ["importLyrics", "automatic"]},
-        "state": {"enum": ["queued", "preparing", "running", "completed", "skipped", "failed"]},
-        "jobId": {"anyOf": [{"type": "string", "minLength": 1, "maxLength": 128}, {"type": "null"}]},
-        "failureCode": {"anyOf": [{"type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,63}$"}, {"type": "null"}]},
-        "actions": {"type": "array", "maxItems": 66, "items": {"$ref": "#/$defs/MetadataAutomationAction"}}
-      }
-    },
+    "MetadataAutomationResult": {"type": "object", "additionalProperties": false, "required": ["triggerId", "scanJobId", "sourceTrackId", "assetId", "assetVersion", "reason", "state", "jobId", "failureCode", "actions"], "properties": {"triggerId": {"type": "string", "pattern": "^[0-9a-f]{48}$"}, "scanJobId": {"type": "string", "minLength": 1, "maxLength": 128}, "sourceTrackId": {"type": "string", "minLength": 1, "maxLength": 128}, "assetId": {"type": "string", "minLength": 1, "maxLength": 128}, "assetVersion": {"type": "string", "minLength": 1, "maxLength": 1024}, "reason": {"enum": ["importLyrics", "importArtwork", "automatic"]}, "state": {"enum": ["queued", "preparing", "running", "completed", "skipped", "failed"]}, "jobId": {"anyOf": [{"type": "string", "minLength": 1, "maxLength": 128}, {"type": "null"}]}, "failureCode": {"anyOf": [{"type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,63}$"}, {"type": "null"}]}, "actions": {"type": "array", "maxItems": 66, "items": {"$ref": "#/$defs/MetadataAutomationAction"}}}},
     "MetadataAutomationPage": {
       "type": "object", "additionalProperties": false, "required": ["items", "nextCursor"],
       "properties": {
@@ -460,127 +452,8 @@
       "maxProperties": 20,
       "description": "受限本地 JSON Schema；运行时另限制 32 KiB 与 8 层。禁止 $ref、脚本、HTML 执行和未知关键字。"
     },
-    "ImportOverrides": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "recursive": {
-          "type": "boolean"
-        },
-        "maxDepth": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 64,
-          "description": "开启递归时 0 表示不限深度，1—64 表示最多进入的子目录层数；关闭递归时只能为 0。"
-        },
-        "importLyrics": {
-          "type": "boolean"
-        },
-        "skipHidden": {"type": "boolean", "description": "跳过点开头条目和 Windows 隐藏文件、目录。"},
-        "respectNoMedia": {"type": "boolean", "description": "遵循 .nomedia 标记，跳过所在目录及子目录。"},
-        "excludePatterns": {
-          "type": "array",
-          "maxItems": 32,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 256
-          },
-          "description": "根相对 / 路径，*、? 和独立段 **；大小写敏感。匹配目录排除整支。运行时另验证UTF-8字节上限、禁止绝对/点路径、反斜线、字符类和否定。"
-        }
-      },
-      "if": {
-        "properties": {
-          "recursive": {
-            "const": true
-          }
-        },
-        "required": [
-          "recursive"
-        ]
-      },
-      "then": {
-        "properties": {
-          "maxDepth": {
-            "minimum": 0
-          }
-        }
-      },
-      "else": {
-        "if": {
-          "required": [
-            "recursive"
-          ]
-        },
-        "then": {
-          "properties": {
-            "maxDepth": {
-              "const": 0
-            }
-          }
-        }
-      },
-      "description": "部分覆盖；关闭且未给深度规范为 0；从关闭切换开启且未给深度恢复 0；开启递归时 0 表示不限深度，1—64 表示子目录层数。null 与未知字段拒绝。importLyrics=true 在成功扫描后独立补齐歌词；结果按来源和资产版本查询 metadata-results。"
-    },
-    "ImportOptions": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "recursive",
-        "maxDepth",
-        "importLyrics",
-        "excludePatterns"
-      ],
-      "properties": {
-        "recursive": {
-          "type": "boolean"
-        },
-        "maxDepth": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 64,
-          "description": "开启递归时 0 表示不限深度，1—64 表示最多进入的子目录层数；关闭递归时只能为 0。"
-        },
-        "importLyrics": {
-          "type": "boolean"
-        },
-        "skipHidden": {"type": "boolean", "description": "跳过点开头条目和 Windows 隐藏文件、目录。"},
-        "respectNoMedia": {"type": "boolean", "description": "遵循 .nomedia 标记，跳过所在目录及子目录。"},
-        "excludePatterns": {
-          "type": "array",
-          "maxItems": 32,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 256
-          },
-          "description": "根相对 / 路径，*、? 和独立段 **；大小写敏感。匹配目录排除整支。运行时另验证UTF-8字节上限、禁止绝对/点路径、反斜线、字符类和否定。"
-        }
-      },
-      "if": {
-        "properties": {
-          "recursive": {
-            "const": true
-          }
-        }
-      },
-      "then": {
-        "properties": {
-          "maxDepth": {
-            "minimum": 0
-          }
-        }
-      },
-      "else": {
-        "properties": {
-          "maxDepth": {
-            "const": 0
-          }
-        }
-      }
-    },
+    "ImportOverrides": {"type": "object", "additionalProperties": false, "properties": {"recursive": {"type": "boolean"}, "maxDepth": {"type": "integer", "minimum": 0, "maximum": 64, "description": "开启递归时 0 表示不限深度，1—64 表示最多进入的子目录层数；关闭递归时只能为 0。"}, "importLyrics": {"type": "boolean"}, "skipHidden": {"type": "boolean", "description": "跳过点开头条目和 Windows 隐藏文件、目录。"}, "respectNoMedia": {"type": "boolean", "description": "遵循 .nomedia 标记，跳过所在目录及子目录。"}, "excludePatterns": {"type": "array", "maxItems": 32, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 256}, "description": "根相对 / 路径，*、? 和独立段 **；大小写敏感。匹配目录排除整支。运行时另验证UTF-8字节上限、禁止绝对/点路径、反斜线、字符类和否定。"}, "importArtwork": {"type": "boolean", "description": "扫描成功后提取内嵌或同名旁置封面并保存媒体数据目录；只补缺失且未锁定的封面。Local Files 默认开启，可按目录或本次扫描关闭。"}}, "if": {"properties": {"recursive": {"const": true}}, "required": ["recursive"]}, "then": {"properties": {"maxDepth": {"minimum": 0}}}, "else": {"if": {"required": ["recursive"]}, "then": {"properties": {"maxDepth": {"const": 0}}}}, "description": "部分覆盖；关闭且未给深度规范为 0；从关闭切换开启且未给深度恢复 0；开启递归时 0 表示不限深度，1—64 表示子目录层数。null 与未知字段拒绝。importLyrics=true 在成功扫描后独立补齐歌词；结果按来源和资产版本查询 metadata-results。"},
+    "ImportOptions": {"type": "object", "additionalProperties": false, "required": ["recursive", "maxDepth", "importLyrics", "excludePatterns"], "properties": {"recursive": {"type": "boolean"}, "maxDepth": {"type": "integer", "minimum": 0, "maximum": 64, "description": "开启递归时 0 表示不限深度，1—64 表示最多进入的子目录层数；关闭递归时只能为 0。"}, "importLyrics": {"type": "boolean"}, "skipHidden": {"type": "boolean", "description": "跳过点开头条目和 Windows 隐藏文件、目录。"}, "respectNoMedia": {"type": "boolean", "description": "遵循 .nomedia 标记，跳过所在目录及子目录。"}, "excludePatterns": {"type": "array", "maxItems": 32, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 256}, "description": "根相对 / 路径，*、? 和独立段 **；大小写敏感。匹配目录排除整支。运行时另验证UTF-8字节上限、禁止绝对/点路径、反斜线、字符类和否定。"}, "importArtwork": {"type": "boolean", "description": "扫描成功后提取内嵌或同名旁置封面并保存媒体数据目录；只补缺失且未锁定的封面。Local Files 默认开启，可按目录或本次扫描关闭。"}}, "if": {"properties": {"recursive": {"const": true}}}, "then": {"properties": {"maxDepth": {"minimum": 0}}}, "else": {"properties": {"maxDepth": {"const": 0}}}},
     "ID": {"type": "string", "minLength": 1, "maxLength": 256},
     "NullableString": {"type": ["string", "null"]},
     "NullableCount": {"type": ["integer", "null"], "minimum": 0},
@@ -1100,7 +973,7 @@
         }
       ]
     },
-    "SourceTrack": {"type": "object", "required": ["sourceTrackId", "providerInstanceId", "displayName", "title", "artists", "durationMs", "codec", "container", "bitrateBps", "availability", "assetId", "asset"], "properties": {"sourceTrackId": {"$ref": "#/$defs/ID"}, "providerInstanceId": {"$ref": "#/$defs/InstanceID"}, "displayName": {"type": "string", "minLength": 1}, "title": {"$ref": "#/$defs/NullableString"}, "artists": {"type": "array", "items": {"type": "string"}}, "durationMs": {"$ref": "#/$defs/NullableCount"}, "codec": {"$ref": "#/$defs/NullableString"}, "container": {"$ref": "#/$defs/NullableString"}, "bitrateBps": {"$ref": "#/$defs/NullableBitrate"}, "availability": {"enum": ["available", "missing", "offline", "unknown"]}, "assetId": {"$ref": "#/$defs/ID"}, "asset": {"$ref": "#/$defs/SourceAsset"}, "album": {"anyOf": [{"type": "string", "maxLength": 4096}, {"type": "null"}]}, "genre": {"anyOf": [{"type": "string", "maxLength": 4096}, {"type": "null"}]}, "year": {"anyOf": [{"type": "integer", "minimum": 1000, "maximum": 9999}, {"type": "null"}]}, "sampleRateHz": {"anyOf": [{"type": "integer", "minimum": 1, "maximum": 1000000}, {"type": "null"}]}, "recordingId": {"anyOf": [{"$ref": "#/$defs/ID"}, {"type": "null"}]}, "versions": {"type": "array", "minItems": 1, "maxItems": 256, "items": {"$ref": "#/$defs/SourceTrack"}}, "manualSourceTrackId": {"anyOf": [{"$ref": "#/$defs/ID"}, {"type": "null"}], "description": "本人手动指定的默认来源；null表示自动。分组顶层sourceTrackId为实际默认。"}}},
+    "SourceTrack": {"type": "object", "required": ["sourceTrackId", "providerInstanceId", "displayName", "title", "artists", "durationMs", "codec", "container", "bitrateBps", "availability", "assetId", "asset"], "properties": {"sourceTrackId": {"$ref": "#/$defs/ID"}, "providerInstanceId": {"$ref": "#/$defs/InstanceID"}, "displayName": {"type": "string", "minLength": 1}, "title": {"$ref": "#/$defs/NullableString"}, "artists": {"type": "array", "items": {"type": "string"}}, "durationMs": {"$ref": "#/$defs/NullableCount"}, "codec": {"$ref": "#/$defs/NullableString"}, "container": {"$ref": "#/$defs/NullableString"}, "bitrateBps": {"$ref": "#/$defs/NullableBitrate"}, "availability": {"enum": ["available", "missing", "offline", "unknown"]}, "assetId": {"$ref": "#/$defs/ID"}, "asset": {"$ref": "#/$defs/SourceAsset"}, "album": {"anyOf": [{"type": "string", "maxLength": 4096}, {"type": "null"}]}, "genre": {"anyOf": [{"type": "string", "maxLength": 4096}, {"type": "null"}]}, "year": {"anyOf": [{"type": "integer", "minimum": 1000, "maximum": 9999}, {"type": "null"}]}, "sampleRateHz": {"anyOf": [{"type": "integer", "minimum": 1, "maximum": 1000000}, {"type": "null"}]}, "recordingId": {"anyOf": [{"$ref": "#/$defs/ID"}, {"type": "null"}]}, "versions": {"type": "array", "minItems": 1, "maxItems": 256, "items": {"$ref": "#/$defs/SourceTrack"}}, "coverObjectId": {"anyOf": [{"$ref": "#/$defs/ID"}, {"type": "null"}]}, "manualSourceTrackId": {"anyOf": [{"$ref": "#/$defs/ID"}, {"type": "null"}], "description": "本人手动指定的默认来源；null表示自动。分组顶层sourceTrackId为实际默认。"}}},
     "SourceTracks": {"type": "object", "required": ["items", "nextCursor", "libraryRevision"], "properties": {"items": {"type": "array", "items": {"$ref": "#/$defs/SourceTrack"}, "maxItems": 200}, "nextCursor": {"$ref": "#/$defs/NullableString"}, "libraryRevision": {"$ref": "#/$defs/ID"}, "matchingRevision": {"type": "integer", "minimum": 0}}},
     "Capabilities": {
       "type": "object", "additionalProperties": false, "required": ["htmlAudio", "formats"],
@@ -1177,7 +1050,7 @@
     "ContentTarget": {"type": "object", "required": ["sourceTrackId", "assetId", "assetVersion"], "properties": {"sourceTrackId": {"$ref": "#/$defs/ID"}, "assetId": {"$ref": "#/$defs/ID"}, "assetVersion": {"$ref": "#/$defs/ID"}}},
     "ContentOrigin": {"type": "object", "required": ["kind", "instanceId", "candidateId"], "properties": {"kind": {"enum": ["upload", "edit", "scraper", "import"]}, "instanceId": {"anyOf": [{"$ref": "#/$defs/HistoricalInstanceID"}, {"const": ""}]}, "candidateId": {"type": "string", "maxLength": 128}}},
     "ContentMetadata": {"type": "object", "required": ["target", "field", "language", "format", "origin"], "properties": {"target": {"$ref": "#/$defs/ContentTarget"}, "field": {"enum": ["lyrics", "artwork"]}, "language": {"type": "string", "maxLength": 64, "pattern": "^(?:[a-z]{2,8}(?:-[a-z0-9]{1,8})*)?$"}, "format": {"enum": ["text", "lrc", "png", "jpeg"]}, "origin": {"$ref": "#/$defs/ContentOrigin"}}, "allOf": [{"if": {"properties": {"field": {"const": "lyrics"}}}, "then": {"properties": {"language": {"minLength": 2}}}, "else": {"properties": {"language": {"const": ""}}}}], "description": "歌词语言省略或空输入统一输出und，其余语言小写；封面language为空。"},
-    "ContentObject": {"type": "object", "required": ["objectId", "kind", "mimeType", "sizeBytes", "sha256", "metadata", "state", "createdAt"], "properties": {"objectId": {"type": "string", "pattern": "^[0-9a-f]{48}$"}, "kind": {"enum": ["lyrics", "artwork"]}, "mimeType": {"enum": ["text/plain; charset=utf-8", "image/png", "image/jpeg"]}, "sizeBytes": {"type": "integer", "minimum": 1, "maximum": 8388608}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "metadata": {"$ref": "#/$defs/ContentMetadata"}, "state": {"enum": ["available", "unavailable"]}, "createdAt": {"$ref": "#/$defs/Timestamp"}}, "description": "上传结果为可授权读取的预览对象，不代表已被选用；正文独立存文件，响应不含相对路径。"},
+    "ContentObject": {"type": "object", "required": ["objectId", "kind", "mimeType", "sizeBytes", "sha256", "metadata", "state", "createdAt"], "properties": {"objectId": {"type": "string", "pattern": "^[0-9a-f]{48}$"}, "kind": {"enum": ["lyrics", "artwork"]}, "mimeType": {"enum": ["text/plain; charset=utf-8", "image/png", "image/jpeg"]}, "sizeBytes": {"type": "integer", "minimum": 1, "maximum": 8388608}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "metadata": {"$ref": "#/$defs/ContentMetadata"}, "state": {"enum": ["available", "unavailable"]}, "createdAt": {"$ref": "#/$defs/Timestamp"}, "width": {"type": "integer", "minimum": 1, "maximum": 8192, "description": "服务端验证图片正文后取得的像素尺寸；历史未知或非图片对象省略。"}, "height": {"type": "integer", "minimum": 1, "maximum": 8192, "description": "服务端验证图片正文后取得的像素尺寸；历史未知或非图片对象省略。"}}, "description": "上传结果为可授权读取的预览对象，不代表已被选用；正文独立存文件，响应不含相对路径。"},
     "MediaBinding": {"type": "object", "required": ["bindingId", "objectId", "target", "field", "language", "manualLocked", "current", "state", "createdAt"], "properties": {"bindingId": {"$ref": "#/$defs/ID"}, "objectId": {"$ref": "#/$defs/ID"}, "target": {"$ref": "#/$defs/ContentTarget"}, "field": {"enum": ["lyrics", "artwork"]}, "language": {"type": "string", "maxLength": 64, "pattern": "^(?:[a-z]{2,8}(?:-[a-z0-9]{1,8})*)?$"}, "manualLocked": {"type": "boolean"}, "current": {"type": "boolean"}, "state": {"enum": ["available", "unavailable", "stale"]}, "createdAt": {"$ref": "#/$defs/Timestamp"}}, "allOf": [{"if": {"properties": {"field": {"const": "lyrics"}}}, "then": {"properties": {"language": {"minLength": 2}}}, "else": {"properties": {"language": {"const": ""}}}}], "description": "歌词语言省略或空输入统一输出und，其余语言小写；封面language为空。"},
     "MediaSelection": {"type": "object", "required": ["target", "revision", "bindings"], "properties": {"target": {"$ref": "#/$defs/ContentTarget"}, "revision": {"type": "integer", "minimum": 0}, "bindings": {"type": "array", "items": {"$ref": "#/$defs/MediaBinding"}}}, "description": "修订按所有者/来源隔离，歌词空语言统一und、其余语言统一小写，封面语言为空。旧资产绑定保留锁且current=false；缺失对象可仍为current=true但state=unavailable。"},
     "SelectMediaRequest": {"type": "object", "required": ["objectId", "assetId", "assetVersion", "expectedRevision"], "properties": {"objectId": {"$ref": "#/$defs/ID"}, "assetId": {"$ref": "#/$defs/ID"}, "assetVersion": {"$ref": "#/$defs/ID"}, "expectedRevision": {"type": "integer", "minimum": 0}}, "additionalProperties": false},

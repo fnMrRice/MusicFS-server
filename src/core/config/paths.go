@@ -22,6 +22,9 @@ func resolvePaths(c *Config, base string) {
 	for _, field := range []*string{&c.DataRoot, &c.MediaRoot, &c.CacheRoot, &c.WebRoot, &c.TLSCert, &c.TLSKey, &c.Fingerprinting.FpcalcPath} {
 		resolve(field)
 	}
+	if c.MediaRoot == "" {
+		c.MediaRoot = filepath.Join(c.DataRoot, "media")
+	}
 	if c.Logging.Directory == "" {
 		c.Logging.Directory = filepath.Join(c.DataRoot, "logs")
 	} else {
@@ -61,6 +64,16 @@ func overlaps(a, b string) bool {
 		}
 	}
 	return false
+}
+
+// 媒体目录可位于部署数据根内，但不能与根本身相同或通过链接逃到根的上层。
+func mediaInsideData(data, media string) bool {
+	data, media = canonicalPath(data), canonicalPath(media)
+	if runtime.GOOS == "windows" {
+		data, media = strings.ToLower(data), strings.ToLower(media)
+	}
+	relative, err := filepath.Rel(data, media)
+	return err == nil && relative != "." && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }
 
 func canonicalPath(path string) string {

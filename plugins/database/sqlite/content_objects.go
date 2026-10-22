@@ -23,6 +23,9 @@ func validateContentInput(input mediastore.UploadInput) error {
 	if input.Metadata.Field == "artwork" {
 		limit, mime = content.MaxArtworkBytes, "image/"+input.Metadata.Format
 	}
+	if input.Width < 0 || input.Height < 0 || input.Width > 8192 || input.Height > 8192 || int64(input.Width)*int64(input.Height) > content.MaxImagePixels || (input.Width == 0) != (input.Height == 0) || input.Metadata.Field != "artwork" && (input.Width != 0 || input.Height != 0) {
+		return domain.Fail("INVALID_ARGUMENT", "Invalid validated media dimensions")
+	}
 	hash, err := hex.DecodeString(input.SHA256)
 	if input.Size < 1 || input.Size > limit || input.MIME != mime || err != nil || len(hash) != 32 || strings.ToLower(input.SHA256) != input.SHA256 {
 		return domain.Fail("INVALID_ARGUMENT", "Invalid validated media input")

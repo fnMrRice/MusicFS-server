@@ -34,10 +34,16 @@ func automaticService(t *testing.T, f *fixture, policy enrichment.AutomaticPolic
 }
 
 func rescanAutomatic(t *testing.T, f fixture, lyrics bool) jobs.Job {
+	options := testkit.ScanPlan("root").Options
+	options.ImportLyrics = lyrics
+	return rescanAutomaticOptions(t, f, options)
+}
+
+func rescanAutomaticOptions(t *testing.T, f fixture, options pluginproto.ImportOptions) jobs.Job {
 	t.Helper()
 	ctx := context.Background()
 	p := testkit.ScanPlan("root")
-	p.Options.ImportLyrics = lyrics
+	p.Options = options
 	if _, _, err := f.store.Enqueue(ctx, "admin", "local", p, domain.NewID()); err != nil {
 		t.Fatal(err)
 	}

@@ -19,6 +19,7 @@ type ImportOptions struct {
 	Recursive       bool     `json:"recursive" yaml:"recursive"`
 	MaxDepth        int      `json:"maxDepth" yaml:"maxDepth"`
 	ImportLyrics    bool     `json:"importLyrics" yaml:"importLyrics"`
+	ImportArtwork   bool     `json:"importArtwork,omitempty" yaml:"importArtwork,omitempty"`
 	ExcludePatterns []string `json:"excludePatterns" yaml:"excludePatterns"`
 	SkipHidden      bool     `json:"skipHidden,omitempty" yaml:"skipHidden,omitempty"`
 	RespectNoMedia  bool     `json:"respectNoMedia,omitempty" yaml:"respectNoMedia,omitempty"`

@@ -13,6 +13,7 @@ type ImportOverrides struct {
 	Recursive       *bool     `json:"recursive,omitempty" yaml:"recursive,omitempty"`
 	MaxDepth        *int      `json:"maxDepth,omitempty" yaml:"maxDepth,omitempty"`
 	ImportLyrics    *bool     `json:"importLyrics,omitempty" yaml:"importLyrics,omitempty"`
+	ImportArtwork   *bool     `json:"importArtwork,omitempty" yaml:"importArtwork,omitempty"`
 	ExcludePatterns *[]string `json:"excludePatterns,omitempty" yaml:"excludePatterns,omitempty"`
 	SkipHidden      *bool     `json:"skipHidden,omitempty" yaml:"skipHidden,omitempty"`
 	RespectNoMedia  *bool     `json:"respectNoMedia,omitempty" yaml:"respectNoMedia,omitempty"`
@@ -43,6 +44,10 @@ func (p ImportOverrides) Clone() *ImportOverrides {
 	if p.ImportLyrics != nil {
 		value := *p.ImportLyrics
 		result.ImportLyrics = &value
+	}
+	if p.ImportArtwork != nil {
+		value := *p.ImportArtwork
+		result.ImportArtwork = &value
 	}
 	return &result
 }
@@ -98,6 +103,9 @@ func MergeImportOptions(base ImportOptions, patch ImportOverrides) (ImportOption
 	}
 	if patch.ImportLyrics != nil {
 		result.ImportLyrics = *patch.ImportLyrics
+	}
+	if patch.ImportArtwork != nil {
+		result.ImportArtwork = *patch.ImportArtwork
 	}
 	if err := result.Validate(); err != nil {
 		return ImportOptions{}, err

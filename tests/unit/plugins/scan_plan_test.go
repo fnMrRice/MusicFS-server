@@ -35,6 +35,7 @@ func TestScanPlanCanonicalDigestBindsEveryInput(t *testing.T) {
 		func(p *pluginproto.ScanPlan) { p.Options.MaxDepth = 1 },
 		func(p *pluginproto.ScanPlan) { p.Options.MaxDepth = 0 },
 		func(p *pluginproto.ScanPlan) { p.Options.ImportLyrics = true },
+		func(p *pluginproto.ScanPlan) { p.Options.ImportArtwork = true },
 		func(p *pluginproto.ScanPlan) { p.Options = pluginproto.ImportOptions{} },
 	}
 	for i, change := range changes {

@@ -67,7 +67,7 @@ func (m *Manager) Configuration(id string) (Configuration, error) {
 
 func completeImportDefaults(options pluginproto.ImportOptions) *pluginproto.ImportOverrides {
 	return &pluginproto.ImportOverrides{Recursive: &options.Recursive, MaxDepth: &options.MaxDepth,
-		ImportLyrics: &options.ImportLyrics, ExcludePatterns: &options.ExcludePatterns,
+		ImportLyrics: &options.ImportLyrics, ImportArtwork: &options.ImportArtwork, ExcludePatterns: &options.ExcludePatterns,
 		SkipHidden: &options.SkipHidden, RespectNoMedia: &options.RespectNoMedia}
 }
 

@@ -3,6 +3,7 @@ package api_test
 import (
 	"bytes"
 	"encoding/json"
+	"net/url"
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/src/library"
@@ -101,6 +102,18 @@ func (f *packageCatalogFixture) assertMusicBrowsing(t *testing.T, musicIDs map[s
 			}
 		}
 	}
+	for _, kind := range []string{"artist", "album", "genre", "folder"} {
+		var page catalog.Page
+		path := "/library/categories?categoryKind=" + kind
+		f.call(t, "GET", path, nil, "", 200, "CatalogPage", &page)
+		if kind == "folder" {
+			root := requireMusicCategory(t, page, "Root", len(musicIDs))
+			f.call(t, "GET", path+"&parentId="+url.QueryEscape(root.ID), nil, "", 200, "CatalogPage", &page)
+			requireMusicCategory(t, page, "music-only", len(musicIDs))
+		} else {
+			requireMusicCategory(t, page, "music-only-"+kind, len(musicIDs))
+		}
+	}
 	for _, suffix := range []string{"", "?providerInstanceId=" + packageProvider} {
 		var facets catalog.Facets
 		f.call(t, "GET", "/library/facets"+suffix, nil, "", 200, "CatalogFacets", &facets)
@@ -120,6 +133,18 @@ func (f *packageCatalogFixture) assertMusicBrowsing(t *testing.T, musicIDs map[s
 			t.Fatal("work-only album leaked into source album browsing", page.Items)
 		}
 	}
+}
+
+func requireMusicCategory(t *testing.T, page catalog.Page, name string, count int) catalog.Category {
+	t.Helper()
+	if page.Total != 1 || len(page.Items) != 1 {
+		t.Fatal("work-only category leaked into browsing", page.Query.CategoryKind, page.Total)
+	}
+	var category catalog.Category
+	if err := json.Unmarshal(page.Items[0], &category); err != nil || category.Name != name || category.TrackCount != count {
+		t.Fatal("ordinary category has incorrect metadata or count", category, name, count, err)
+	}
+	return category
 }
 
 func (f *packageCatalogFixture) assertPackageSourcesRemainPlayable(t *testing.T, packages []workpackages.Package, tracks map[string]library.Track, albumIDs map[string]string) {

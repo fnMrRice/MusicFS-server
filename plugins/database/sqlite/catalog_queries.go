@@ -67,7 +67,7 @@ func (s *Store) CreateCatalogQuery(ctx context.Context, owner string, input cata
 	if err != nil {
 		return catalog.Page{}, err
 	}
-	items, err := catalogResults(owner, data, q)
+	items, err := catalogResults(ctx, owner, data, q)
 	if err != nil {
 		return catalog.Page{}, err
 	}
@@ -185,6 +185,9 @@ func readCatalogPage(ctx context.Context, tx *sql.Tx, owner, id, cursor string, 
 			return page, err
 		}
 		page.NextCursor = &next
+	}
+	if err = populateCatalogTrackCovers(ctx, tx, owner, &page); err != nil {
+		return page, err
 	}
 	return page, nil
 }

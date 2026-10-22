@@ -131,6 +131,9 @@ func (s *Store) ListGroupedTracks(ctx context.Context, owner, provider, cursor s
 			return page, err
 		}
 	}
+	if err = populatePageTrackCovers(ctx, tx, owner, &page); err != nil {
+		return page, err
+	}
 	return page, tx.Commit()
 }
 
