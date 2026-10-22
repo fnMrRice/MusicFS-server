@@ -63,9 +63,9 @@ DSP 的新输入输出协商允许声道布局变化，编码封装和采样率�
 
 | `audioChannels.outputLayout` | 实际输出 | 客户端要求 |
 | --- | --- | --- |
-| `stereo`（默认） | `mp3-128`：双声道、48 kHz、128 kbit/s MP3 | 支持 `audio/mpeg` |
-| `'5.1'` | `opus-5.1`：6 声道、48 kHz、256 kbit/s Opus/WebM | 支持 Opus/WebM |
-| `'7.1'` | `opus-7.1`：8 声道、48 kHz、384 kbit/s Opus/WebM | 支持 Opus/WebM |
+| `stereo`（默认） | 双声道、48 kHz MP3，选择最接近源码率的标准档位；未知时 `mp3-128` | 支持 `audio/mpeg` |
+| `'5.1'` | 6 声道、48 kHz Opus/WebM，目标码率按来源选择；未知时 `opus-5.1`（256 kbit/s） | 支持 Opus/WebM |
+| `'7.1'` | 8 声道、48 kHz Opus/WebM，目标码率按来源选择；未知时 `opus-7.1`（384 kbit/s） | 支持 Opus/WebM |
 
 默认立体声只在需要处理的播放中转换，兼容原流仍可直接交付。配置 5.1/7.1 会强制处理并要求内置音频实例、可用 libopus 编码器和 WebM 封装；依赖缺失时启动失败，不退回原流或双声道。浏览器格式探测只能确认解码可能性，不能证明操作系统、声卡或音箱最终输出了独立 6/8 声道；物理环绕声仍需对应设备验收。
 
@@ -77,7 +77,7 @@ DSP 的新输入输出协商允许声道布局变化，编码封装和采样率�
 
 可移植备份恢复会将声道输出重置为默认 `stereo`，并与原有策略一起停用音频实例、清除处理缓存；恢复后须重新确认工具与布局配置，避免在未配置音频实例时强制环绕声。
 
-FFmpeg Worker 升至 `0.5.0`，Host 精确校验发行版本。HTTP `outputProfile` 和 `effectiveProcessing` 报告实际输出与处理顺序；旧客户端可以忽略新增处理名称，但必须正确协商 MIME。Web 已探测 Opus/WebM；本次没有承诺所有浏览器与音响设备均能输出物理环绕声。
+FFmpeg Worker 当前为 `0.6.0`，Host 精确校验发行版本。HTTP `outputProfile` 和 `effectiveProcessing` 报告实际输出与处理顺序，码率身份规则见[音频处理](../playback/audio-processing.md)。客户端必须正确协商 MIME。Web 已探测 Opus/WebM；本次没有承诺所有浏览器与音响设备均能输出物理环绕声。
 
 外部 MFD1 DSP v1 保持无状态、固定双声道、零延迟、无追加尾音的原约束，多声道管线拒绝使用这些外部节点。内置新效果直接调用 Go 接口，不把其有状态、多声道能力冒充成 MFD1 v1 的扩展。原官方 gain 在多声道管线使用同一内置增益工厂。
 

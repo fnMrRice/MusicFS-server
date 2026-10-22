@@ -50,6 +50,9 @@ func originalCandidate(t library.Track) bool {
 	if t.MIME == "audio/wav" {
 		return t.Codec == nil || *t.Codec == "pcm_s16le"
 	}
+	if t.MIME == "audio/flac" {
+		return t.Codec != nil && *t.Codec == "flac" && t.Container != nil && *t.Container == "flac"
+	}
 	return t.MIME == "audio/mpeg" && t.Codec != nil && *t.Codec == "mp3" && t.Container != nil && *t.Container == "mp3"
 }
 func requestDigest(value any) string {

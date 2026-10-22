@@ -35,23 +35,38 @@ func TestOriginalWaveReportsMonoSampleRateWithoutProbe(t *testing.T) {
 	copy(data[36:], "data")
 	binary.LittleEndian.PutUint32(data[40:], uint32(len(data)-44))
 	profile := createOriginalMetadataPlayback(t, "mono.wav", data, nil, nil)
-	if profile.Channels != 1 || profile.SampleRate != 22050 || profile.Layout != "mono" {
+	if profile.Channels != 1 || profile.SampleRate != 22050 || profile.Layout != "mono" || profile.BitrateBps != 352800 {
 		t.Fatalf("mono WAV metadata was not preserved: %+v", profile)
 	}
 }
 
-func TestOriginalMP3ProbeFailureDoesNotInventChannels(t *testing.T) {
+func TestOriginalMP3AndNCMProbeFailureDoesNotInventMetadata(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(testkit.RepositoryRoot(), "tests/testdata/audio/vbr-untagged.mp3"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	profile := createOriginalMetadataPlayback(t, "unknown.mp3", data, nil, nil)
-	if profile.Channels != 0 || profile.SampleRate != 0 || profile.Layout != "" {
-		t.Fatalf("unavailable probe invented output metadata: %+v", profile)
+	decoder, err := ncmdecoder.NewProcessor(ncmdecoder.Config{Builtin: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, container := range []string{"mp3", "ncm"} {
+		t.Run(container, func(t *testing.T) {
+			payload := data
+			if container == "ncm" {
+				payload, err = testkit.BuildNCM(data, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			profile := createOriginalMetadataPlayback(t, "unknown."+container, payload, nil, decoder)
+			if profile.Channels != 0 || profile.SampleRate != 0 || profile.Layout != "" || profile.BitrateBps != 0 {
+				t.Fatalf("unavailable probe invented output metadata: %+v", profile)
+			}
+		})
 	}
 }
 
-func TestOriginalMP3AndNCMReportActualChannels(t *testing.T) {
+func TestOriginalMP3AndNCMReportActualMetadata(t *testing.T) {
 	ffmpeg, ffprobe := os.Getenv("MUSICFS_FFMPEG"), os.Getenv("MUSICFS_FFPROBE")
 	if ffmpeg == "" || ffprobe == "" {
 		t.Skip("set MUSICFS_FFMPEG and MUSICFS_FFPROBE for original stream metadata validation")
@@ -66,7 +81,7 @@ func TestOriginalMP3AndNCMReportActualChannels(t *testing.T) {
 	}
 	for _, channels := range []int{1, 2} {
 		path := filepath.Join(t.TempDir(), "source.mp3")
-		command := exec.CommandContext(t.Context(), ffmpeg, "-v", "error", "-i", filepath.Join(testkit.RepositoryRoot(), "tests/testdata/audio/markers.wav"), "-ac", fmt.Sprint(channels), "-ar", "44100", "-id3v2_version", "0", "-write_id3v1", "0", path)
+		command := exec.CommandContext(t.Context(), ffmpeg, "-v", "error", "-i", filepath.Join(testkit.RepositoryRoot(), "tests/testdata/audio/markers.wav"), "-ac", fmt.Sprint(channels), "-ar", "44100", "-b:a", "192k", "-id3v2_version", "0", "-write_id3v1", "0", path)
 		if output, err := command.CombinedOutput(); err != nil {
 			t.Fatalf("MP3 fixture encoding failed: %v %s", err, output)
 		}
@@ -88,7 +103,7 @@ func TestOriginalMP3AndNCMReportActualChannels(t *testing.T) {
 				if channels == 1 {
 					layout = "mono"
 				}
-				if profile.Channels != channels || profile.SampleRate != 44100 || profile.Layout != layout || profile.Codec == nil || *profile.Codec != "mp3" {
+				if profile.Channels != channels || profile.SampleRate != 44100 || profile.Layout != layout || profile.Codec == nil || *profile.Codec != "mp3" || profile.BitrateBps != 192000 {
 					t.Fatalf("original stream metadata mismatch: %+v", profile)
 				}
 			})
@@ -97,6 +112,30 @@ func TestOriginalMP3AndNCMReportActualChannels(t *testing.T) {
 }
 
 func createOriginalMetadataPlayback(t *testing.T, name string, payload []byte, processor *audioffmpeg.Processor, decoder *ncmdecoder.Processor) playback.OutputProfile {
+	t.Helper()
+	f := metadataPlaybackFixture(t, name, payload, processor, decoder)
+	description, err := f.player.Create(t.Context(), f.who, f.request, "original-metadata-create")
+	if err != nil || description.DeliveryMode != "proxy" {
+		t.Fatalf("metadata probing changed original playback: %+v %v", description, err)
+	}
+	raw, err := json.Marshal(description)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testkit.ValidateHTTP(t, "Playback", raw)
+	stream, err := f.player.OpenStream(t.Context(), f.who, description.SessionID, description.AttemptID, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stream.Close()
+	actual, err := io.ReadAll(stream.File)
+	if err != nil || len(actual) == 0 || filepath.Ext(name) != ".ncm" && !bytes.Equal(actual, payload) {
+		t.Fatal("metadata probing changed original bytes", err)
+	}
+	return description.OutputProfile
+}
+
+func metadataPlaybackFixture(t *testing.T, name string, payload []byte, processor *audioffmpeg.Processor, decoder *ncmdecoder.Processor) recoveryFixture {
 	t.Helper()
 	old, repo, who, request, oldPath := playbackService(t)
 	old.Close()
@@ -126,8 +165,9 @@ func createOriginalMetadataPlayback(t *testing.T, name string, payload []byte, p
 	if err != nil {
 		t.Fatal(err)
 	}
+	declaredBitrate := int64(9999999)
 	observed := library.Observation{Observation: pluginproto.Observation{ExternalID: "metadata", RootID: "root", RelativePath: name, ObservedVersion: entry.ObservedVersion,
-		DisplayName: name, MIME: entry.MIME, SizeBytes: entry.SizeBytes, Codec: &codec}, Container: &container, Artists: []string{}}
+		DisplayName: name, MIME: entry.MIME, SizeBytes: entry.SizeBytes, Codec: &codec, BitrateBps: &declaredBitrate}, Container: &container, Artists: []string{}}
 	if err := repo.Publish(t.Context(), job, testkit.ScanPublication(job, []library.Observation{observed})); err != nil {
 		t.Fatal(err)
 	}
@@ -148,28 +188,11 @@ func createOriginalMetadataPlayback(t *testing.T, name string, payload []byte, p
 		t.Fatal("metadata source not listed")
 	}
 	request.Preferences.DSPExecution = "client"
+	request.Capabilities.Formats = append(request.Capabilities.Formats, playback.Format{MIME: "audio/flac", CanPlay: "probably"})
 	player, err := playback.New(t.Context(), repo.Store, repo.library, processor, playback.Config{NCMDecoder: decoder, CacheRoot: t.TempDir(), MaxSessions: 8, MaxCacheBytes: 16 << 20})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer player.Close()
-	description, err := player.Create(t.Context(), who, request, "original-metadata-create")
-	if err != nil || description.DeliveryMode != "proxy" {
-		t.Fatalf("metadata probing changed original playback: %+v %v", description, err)
-	}
-	raw, err := json.Marshal(description)
-	if err != nil {
-		t.Fatal(err)
-	}
-	testkit.ValidateHTTP(t, "Playback", raw)
-	stream, err := player.OpenStream(t.Context(), who, description.SessionID, description.AttemptID, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer stream.Close()
-	actual, err := io.ReadAll(stream.File)
-	if err != nil || len(actual) == 0 || container != "ncm" && !bytes.Equal(actual, payload) {
-		t.Fatal("metadata probing changed original bytes", err)
-	}
-	return description.OutputProfile
+	t.Cleanup(player.Close)
+	return recoveryFixture{player: player, repo: repo, who: who, request: request, path: filepath.Join(root, name)}
 }

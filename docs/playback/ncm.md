@@ -26,9 +26,9 @@
 
 使用 `configVersion: 1` 的 YAML，[正式示例](../../configs/server.example.yaml)已包含该插件，不要重复添加相同 ID；旧 JSON 配置不兼容。只有显式 `execution: process` 才需要 executable、角色参数和对应程序摘要，旧文件字段在内置模式不会被执行。插件与实例两层都启用才生效；设任一层 `enabled: false` 并重启即可停用 NCM，其余格式仍可使用。配置读写与应用边界见[配置说明](../operations/configuration.md)。
 
-配置后重启 Server，对音乐目录重新扫描。列表容器显示 `ncm`，codec 显示内部音频格式。点击播放无需额外选项：内部 MP3 可交付固定解密表示并提供 Range；内部 FLAC 按当前播放策略转为 MP3。勾选服务端处理时解密后照常应用 Go DSP。
+配置后重启 Server，对音乐目录重新扫描。列表容器显示 `ncm`，codec 显示内部音频格式。点击播放无需额外选项：内部 MP3 可交付固定解密表示并提供 Range；内部 FLAC 在客户端声明支持 `audio/flac` 且无处理要求时也直接交付 FLAC 原字节并提供 Range，不支持时转为兼容输出。勾选服务端处理时解密后照常应用 Go DSP。
 
-需要 FLAC 转码和准确的媒体参数时，启用 `musicfs.plugin.decoder.ffmpeg` 插件及其音频实例，在实例 `config` 中配置 `ffmpegPath`、`ffprobePath`。仅有 NCM Worker 时可读取 MP3，未探测到的时长/码率保持未知。损坏或不支持的 NCM 返回明确错误，不作为一轮扫描成功空库。
+需要音频转码和探测码率等媒体参数时，启用 `musicfs.plugin.decoder.ffmpeg` 插件及其音频实例，在实例 `config` 中配置 `ffmpegPath`、`ffprobePath`。仅有 NCM Worker 时可直接交付客户端支持的 MP3/FLAC；FLAC 的声道、采样率与已知时长可从结构校验获得，未探测到的码率保持未知。损坏或不支持的 NCM 返回明确错误，不作为一轮扫描成功空库。
 
 ## 3. 数据与接口
 

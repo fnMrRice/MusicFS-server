@@ -7,6 +7,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	audioffmpeg "github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 )
 
@@ -31,7 +32,8 @@ func (p Profile) Validate() error {
 
 // ValidOutputProfile 仅接受已经定义固定声道布局及编码参数的输出身份。
 func ValidOutputProfile(profile string) bool {
-	return profile == "mp3-128" || profile == "opus-5.1" || profile == "opus-7.1"
+	_, valid := audioffmpeg.ProfileByID(profile)
+	return valid
 }
 
 // ValidProcessingRevision accepts the legacy gain pipeline or an immutable DSP

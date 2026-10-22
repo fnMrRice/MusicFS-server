@@ -48,11 +48,12 @@ type CandidatePage struct {
 }
 
 type Recording struct {
-	ID             string    `json:"recordingId"`
-	Revision       int64     `json:"revision"`
-	SourceTrackIDs []string  `json:"sourceTrackIds"`
-	CreatedAt      time.Time `json:"createdAt"`
-	UpdatedAt      time.Time `json:"updatedAt"`
+	ID                  string    `json:"recordingId"`
+	ManualSourceTrackID *string   `json:"manualSourceTrackId"`
+	Revision            int64     `json:"revision"`
+	SourceTrackIDs      []string  `json:"sourceTrackIds"`
+	CreatedAt           time.Time `json:"createdAt"`
+	UpdatedAt           time.Time `json:"updatedAt"`
 }
 
 type Link struct {
@@ -71,6 +72,13 @@ type LinkRequest struct {
 type UnlinkRequest struct {
 	ExpectedRevision int64  `json:"expectedRevision"`
 	SourceTrackID    string `json:"sourceTrackId"`
+}
+
+// DefaultSourceRequest 使用空来源取消手动默认，恢复按质量自动选择。
+type DefaultSourceRequest struct {
+	ExpectedRevision int64   `json:"expectedRevision"`
+	RecordingID      string  `json:"recordingId"`
+	SourceTrackID    *string `json:"sourceTrackId"`
 }
 
 type SplitRequest struct {

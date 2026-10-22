@@ -71,16 +71,6 @@ func (b *playlistBuilder) build(id string, depth int) (playlists.AggregateSnapsh
 	if err != nil {
 		return empty, err
 	}
-	if p.SnapshotRevision > 0 {
-		prior, e := readPersonalSnapshot(b.ctx, b.tx, b.owner, id, p.SnapshotRevision)
-		if e != nil {
-			return empty, e
-		}
-		if prior.RuleRevision == p.RuleRevision && prior.HideRevision == p.HideRevision && prior.MatchingRevision == b.matching && reflect.DeepEqual(prior.Dependencies, deps) {
-			b.cache[id] = prior
-			return prior, nil
-		}
-	}
 	confirmation, err := b.applyHidden(p.ID, contributions)
 	if err != nil {
 		return empty, err
@@ -110,6 +100,23 @@ func (b *playlistBuilder) build(id string, depth int) (playlists.AggregateSnapsh
 		}
 		row.Hidden = row.Hidden && provenance.Hidden
 		row.Provenance = append(row.Provenance, provenance)
+	}
+	for i := range rows {
+		if err = selectPlaylistVersion(b.ctx, b.tx, b.owner, &rows[i]); err != nil {
+			return empty, err
+		}
+	}
+	// 扫描更新码率或大小不推进人工修订；先重算来源，再决定是否复用旧快照。
+	if p.SnapshotRevision > 0 {
+		prior, e := readPersonalSnapshot(b.ctx, b.tx, b.owner, id, p.SnapshotRevision)
+		if e != nil {
+			return empty, e
+		}
+		if prior.RuleRevision == p.RuleRevision && prior.HideRevision == p.HideRevision && prior.MatchingRevision == b.matching &&
+			reflect.DeepEqual(prior.Dependencies, deps) && reflect.DeepEqual(prior.Entries, rows) {
+			b.cache[id] = prior
+			return prior, nil
+		}
 	}
 	snapshot := playlists.AggregateSnapshot{PlaylistID: id, Revision: p.SnapshotRevision + 1, RuleRevision: p.RuleRevision, HideRevision: p.HideRevision, MatchingRevision: b.matching, Dependencies: deps, Entries: rows, NeedsConfirmation: uniquePlaylistStrings(confirmation), CreatedAt: time.Now().UTC()}
 	raw, err := json.Marshal(snapshot)

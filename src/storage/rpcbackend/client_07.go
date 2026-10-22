@@ -15,6 +15,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
+func (c *Client) SetDefaultSource(a0 context.Context, a1 string, a2 matching.DefaultSourceRequest, a3 string) (r0 matching.Mutation, err error) {
+	err = c.Invoke(a0, "SetDefaultSource", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) SetExclusion(a0 context.Context, a1 string, a2 matching.ExclusionRequest, a3 string) (r0 matching.Mutation, err error) {
 	err = c.Invoke(a0, "SetExclusion", []any{a1, a2, a3}, []any{&r0})
 	return r0, err

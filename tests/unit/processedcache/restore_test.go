@@ -79,7 +79,7 @@ func TestInputReservationsAndOutputShareOneBudget(t *testing.T) {
 }
 
 func TestSurroundCacheRestoresItsWebMFileAndProfile(t *testing.T) {
-	for _, profile := range []string{"opus-5.1", "opus-7.1"} {
+	for _, profile := range []string{"opus-5.1", "opus-7.1", "opus-5.1-192000", "opus-7.1-2048000"} {
 		t.Run(profile, func(t *testing.T) {
 			manager, _, repo, root, _ := setup(t, 1024)
 			current := identity()

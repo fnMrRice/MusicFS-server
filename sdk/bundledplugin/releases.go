@@ -5,7 +5,7 @@ package bundledplugin
 
 const (
 	LocalFilesVersion   = "0.3.0"
-	FFmpegVersion       = "0.5.0"
+	FFmpegVersion       = "0.6.0"
 	NCMVersion          = "0.1.0"
 	LocalScraperVersion = "0.1.0"
 	NetEaseVersion      = "0.1.0"

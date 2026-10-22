@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -75,7 +76,7 @@ func New(ctx context.Context, repo Repository, budget *Budget, c Config) (*Manag
 func (m *Manager) now() time.Time { return m.config.Now().UTC() }
 func (m *Manager) path(id, profile string) string {
 	extension := ".mp3"
-	if profile == "opus-5.1" || profile == "opus-7.1" {
+	if strings.HasPrefix(profile, "opus-") {
 		extension = ".webm"
 	}
 	return filepath.Join(m.config.Root, id+extension)

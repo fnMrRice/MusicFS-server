@@ -14,6 +14,7 @@ func inspectWave(path string, track *library.Track, profile *audioffmpeg.Profile
 	track.Codec, track.Container = &info.Codec, &info.Container
 	track.DurationMs, track.BitrateBps = &info.DurationMs, &info.BitrateBps
 	profile.Channels, profile.SampleRate = info.Channels, info.SampleRate
+	profile.BitrateBps = int(info.BitrateBps)
 	profile.Layout = "stereo"
 	if info.Channels == 1 {
 		profile.Layout = "mono"

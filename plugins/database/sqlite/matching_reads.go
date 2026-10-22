@@ -14,7 +14,9 @@ import (
 func readRecording(ctx context.Context, tx *sql.Tx, owner, id string) (matching.Recording, error) {
 	r := matching.Recording{SourceTrackIDs: []string{}}
 	var created, updated string
-	err := tx.QueryRowContext(ctx, "SELECT id,created_at,updated_at FROM recordings WHERE owner=? AND id=?", owner, id).Scan(&r.ID, &created, &updated)
+	err := tx.QueryRowContext(ctx, `SELECT r.id,r.created_at,r.updated_at,d.source_id FROM recordings r
+ LEFT JOIN recording_default_sources d ON d.owner=r.owner AND d.recording_id=r.id
+ WHERE r.owner=? AND r.id=?`, owner, id).Scan(&r.ID, &created, &updated, &r.ManualSourceTrackID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return r, domain.Fail("NOT_FOUND", "Recording not found")
 	}

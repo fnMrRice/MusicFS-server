@@ -41,15 +41,16 @@ type Config struct {
 	DisableEffects                                             bool
 }
 type Processor struct {
-	parent        *Processor
-	gate          atomic.Pointer[lifecycleBinding]
-	version       atomic.Pointer[string]
-	dspVersions   map[string]string
-	config        Config
-	Capabilities  Capabilities
-	slots         chan struct{}
-	normalizeSlot chan struct{}
-	identity      ProcessingIdentity
+	parent          *Processor
+	gate            atomic.Pointer[lifecycleBinding]
+	version         atomic.Pointer[string]
+	dspVersions     map[string]string
+	config          Config
+	Capabilities    Capabilities
+	slots           chan struct{}
+	normalizeSlot   chan struct{}
+	identity        ProcessingIdentity
+	selectedProfile string
 }
 
 func NewProcessor(ctx context.Context, cfg Config) (*Processor, error) {

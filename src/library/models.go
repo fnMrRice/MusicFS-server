@@ -9,31 +9,32 @@ import (
 )
 
 type Track struct {
-	ID           string                `json:"sourceTrackId"`
-	ProviderID   string                `json:"providerInstanceId"`
-	DisplayName  string                `json:"displayName"`
-	Title        *string               `json:"title"`
-	Artists      []string              `json:"artists"`
-	Album        *string               `json:"album"`
-	Genre        *string               `json:"genre"`
-	Year         *int64                `json:"year"`
-	SampleRateHz *int64                `json:"sampleRateHz"`
-	DurationMs   *int64                `json:"durationMs"`
-	Codec        *string               `json:"codec"`
-	Container    *string               `json:"container"`
-	BitrateBps   *int64                `json:"bitrateBps"`
-	Availability string                `json:"availability"`
-	AssetID      string                `json:"assetId"`
-	Asset        *identification.Asset `json:"asset"`
-	RecordingID  *string               `json:"recordingId"`
-	Versions     []Track               `json:"versions,omitempty"`
-	Owner        string                `json:"-"`
-	ExternalID   string                `json:"-"`
-	RootID       string                `json:"-"`
-	Path         string                `json:"-"`
-	Version      string                `json:"-"`
-	MIME         string                `json:"-"`
-	Size         int64                 `json:"-"`
+	ID                  string                `json:"sourceTrackId"`
+	ProviderID          string                `json:"providerInstanceId"`
+	DisplayName         string                `json:"displayName"`
+	Title               *string               `json:"title"`
+	Artists             []string              `json:"artists"`
+	Album               *string               `json:"album"`
+	Genre               *string               `json:"genre"`
+	Year                *int64                `json:"year"`
+	SampleRateHz        *int64                `json:"sampleRateHz"`
+	DurationMs          *int64                `json:"durationMs"`
+	Codec               *string               `json:"codec"`
+	Container           *string               `json:"container"`
+	BitrateBps          *int64                `json:"bitrateBps"`
+	Availability        string                `json:"availability"`
+	AssetID             string                `json:"assetId"`
+	Asset               *identification.Asset `json:"asset"`
+	RecordingID         *string               `json:"recordingId"`
+	ManualSourceTrackID *string               `json:"manualSourceTrackId"`
+	Versions            []Track               `json:"versions,omitempty"`
+	Owner               string                `json:"-"`
+	ExternalID          string                `json:"-"`
+	RootID              string                `json:"-"`
+	Path                string                `json:"-"`
+	Version             string                `json:"-"`
+	MIME                string                `json:"-"`
+	Size                int64                 `json:"-"`
 }
 type Provider struct {
 	ID            string                      `json:"id"`

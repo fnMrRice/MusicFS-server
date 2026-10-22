@@ -135,17 +135,21 @@ func (s *Store) ListGroupedTracks(ctx context.Context, owner, provider, cursor s
 }
 
 func groupedLibraryItems(ctx context.Context, tx *sql.Tx, owner, provider string) ([]library.Track, error) {
-	rows, err := tx.QueryContext(ctx, ordinaryMusicSources+`SELECT t.document,COALESCE(l.recording_id,'') FROM tracks t
- LEFT JOIN recording_source_links l ON l.owner=t.owner AND l.source_id=t.id WHERE t.owner=? AND `+ordinaryMusicTrack+` ORDER BY t.id`, owner, owner)
+	rows, err := tx.QueryContext(ctx, ordinaryMusicSources+`SELECT t.document,COALESCE(l.recording_id,''),d.source_id FROM tracks t
+ LEFT JOIN recording_source_links l ON l.owner=t.owner AND l.source_id=t.id
+ LEFT JOIN recording_default_sources d ON d.owner=l.owner AND d.recording_id=l.recording_id
+ WHERE t.owner=? AND `+ordinaryMusicTrack+` ORDER BY t.id`, owner, owner)
 	if err != nil {
 		return nil, err
 	}
 	groups := map[string][]library.Track{}
+	manual := map[string]*string{}
 	count, bytes := 0, 0
 	for rows.Next() {
 		var raw []byte
 		var recording string
-		if err = rows.Scan(&raw, &recording); err != nil {
+		var preferred *string
+		if err = rows.Scan(&raw, &recording, &preferred); err != nil {
 			rows.Close()
 			return nil, err
 		}
@@ -160,13 +164,14 @@ func groupedLibraryItems(ctx context.Context, tx *sql.Tx, owner, provider string
 			rows.Close()
 			return nil, err
 		}
-		track.RecordingID, track.Versions = nil, nil
+		track.RecordingID, track.Versions, track.ManualSourceTrackID = nil, nil, nil
 		key := "source:" + track.ID
 		if recording != "" {
 			track.RecordingID = &recording
 			key = "recording:" + recording
 		}
 		groups[key] = append(groups[key], track)
+		manual[key] = preferred
 		if len(groups[key]) > matching.MaxSources {
 			rows.Close()
 			return nil, domain.Fail("RATE_LIMITED", "Recording member limit exceeded")
@@ -178,7 +183,7 @@ func groupedLibraryItems(ctx context.Context, tx *sql.Tx, owner, provider string
 		return nil, err
 	}
 	items := make([]library.Track, 0, len(groups))
-	for _, members := range groups {
+	for key, members := range groups {
 		visible := provider == ""
 		for _, member := range members {
 			visible = visible || member.ProviderID == provider
@@ -186,13 +191,17 @@ func groupedLibraryItems(ctx context.Context, tx *sql.Tx, owner, provider string
 		if !visible {
 			continue
 		}
-		sort.Slice(members, func(i, j int) bool {
-			if (members[i].Availability == "available") != (members[j].Availability == "available") {
-				return members[i].Availability == "available"
-			}
-			return groupedTrackLess(members[i], members[j])
-		})
+		sort.Slice(members, func(i, j int) bool { return preferredVersionLess(members[i], members[j]) })
 		representative := members[0]
+		if preferred := manual[key]; preferred != nil {
+			for _, member := range members {
+				if member.ID == *preferred {
+					representative = member
+					representative.ManualSourceTrackID = preferred
+					break
+				}
+			}
+		}
 		representative.Versions = members
 		items = append(items, representative)
 	}
@@ -205,4 +214,30 @@ func groupedTrackLess(left, right library.Track) bool {
 		return left.DisplayName < right.DisplayName
 	}
 	return left.ID < right.ID
+}
+
+// preferredVersionLess 先选择可用来源，再按已知码率、原文件大小和稳定名称排序。
+func preferredVersionLess(left, right library.Track) bool {
+	if (left.Availability == "available") != (right.Availability == "available") {
+		return left.Availability == "available"
+	}
+	bitrate := func(t library.Track) int64 {
+		if t.BitrateBps != nil && *t.BitrateBps > 0 {
+			return *t.BitrateBps
+		}
+		return 0
+	}
+	if a, b := bitrate(left), bitrate(right); a != b {
+		return a > b
+	}
+	size := func(t library.Track) int64 {
+		if t.Asset != nil && t.Asset.FileSizeBytes != nil && *t.Asset.FileSizeBytes > 0 {
+			return *t.Asset.FileSizeBytes
+		}
+		return 0
+	}
+	if a, b := size(left), size(right); a != b {
+		return a > b
+	}
+	return groupedTrackLess(left, right)
 }

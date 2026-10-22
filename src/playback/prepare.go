@@ -75,6 +75,11 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 	if t.Size <= 0 {
 		return nil, domain.Fail("UNSUPPORTED", "Source contains no audio data")
 	}
+	// 扫描元数据已绑定资产版本；NCM 为解封后的音频码率，不能改用外层大小或中间 PCM 码率。
+	var sourceBitrate int64
+	if t.BitrateBps != nil {
+		sourceBitrate = *t.BitrateBps
+	}
 	lease, err := s.library.HoldReadLifetime(ctx, s.ctx, owner, t.ProviderID)
 	if err != nil {
 		return nil, err
@@ -122,6 +127,16 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 	}
 	p.reserved = size
 	processed := p.decodeOutput != "native" || s.config.RequireDSP && r.Preferences.DSPExecution != "client" || r.Preferences.ForceProcessing || p.gain != 0 || p.processor.HasDSP() || p.processor.RequiresChannelConversion() || !originalCandidate(t) || !supports(r.Capabilities, t.MIME)
+	// 原流会话也保留后续跨源恢复所需的码率视图，但不因缺少编码器阻止原流播放。
+	// 跨源恢复沿用活动会话编码身份，新会话才按当前来源选择码率。
+	if len(fixed) == 0 && p.processor != nil {
+		selected, selectErr := p.processor.WithSourceBitrate(sourceBitrate)
+		if selectErr == nil {
+			p.processor = selected
+		} else if processed {
+			return nil, domain.Fail("UNSUPPORTED", "No compatible audio processing profile is available")
+		}
+	}
 	if processed {
 		p.profile, err = p.processor.OutputProfile()
 		if err != nil || !supportsOutputProfile(r.Capabilities, p.profile) {
@@ -200,7 +215,7 @@ func (r preparationReader) Read(p []byte) (int, error) {
 func (p *preparedInput) describe(id string, gain float64, expiry time.Time) Description {
 	t := p.track
 	d := Description{SessionID: id, AssetID: t.AssetID, DeliveryMode: "proxy", OutputProfile: OutputProfile{MIME: t.MIME, Codec: t.Codec, Container: t.Container, Transport: "htmlAudio",
-		SampleRate: p.profile.SampleRate, Channels: p.profile.Channels, Layout: p.profile.Layout}, ExpiresAt: expiry, SeekMode: "byteRange", EffectiveProcessing: []Processing{}, ResumeDecision: "continue"}
+		SampleRate: p.profile.SampleRate, Channels: p.profile.Channels, Layout: p.profile.Layout, BitrateBps: p.profile.BitrateBps}, ExpiresAt: expiry, SeekMode: "byteRange", EffectiveProcessing: []Processing{}, ResumeDecision: "continue"}
 	d.DSPExecution = p.dspExecution
 	if p.decrypted {
 		d.EffectiveProcessing = append(d.EffectiveProcessing, Processing{Type: "ncmDecrypt", Version: "1", Execution: "server"})

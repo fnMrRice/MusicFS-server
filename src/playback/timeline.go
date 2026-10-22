@@ -85,6 +85,7 @@ func recoveryProfile(processor *audioffmpeg.Processor, outputs ...string) (timel
 }
 func (s *Service) AddTimeline(ctx context.Context, owner string, r timeline.Request, key string) (timeline.Evidence, error) {
 	profile, err := s.RecoveryProfileForUser(ctx, owner)
+	profile = matchRecoveryBitrate(profile, r.Profile.OutputProfile)
 	processor, _ := s.audioSnapshot()
 	if !s.config.DisableEffects && !processor.EffectsDisabled() {
 		profile.GainDB = r.Profile.GainDB
@@ -92,6 +93,7 @@ func (s *Service) AddTimeline(ctx context.Context, owner string, r timeline.Requ
 	if err != nil || r.Profile != profile {
 		// 客户端模式的证据必须绑定无效果身份与零服务端增益。
 		clientProfile, clientErr := s.RecoveryProfileForUser(ctx, owner, "client")
+		clientProfile = matchRecoveryBitrate(clientProfile, r.Profile.OutputProfile)
 		if clientErr != nil || r.Profile != clientProfile {
 			if err != nil {
 				return timeline.Evidence{}, err
@@ -104,6 +106,16 @@ func (s *Service) AddTimeline(ctx context.Context, owner string, r timeline.Requ
 		return timeline.Evidence{}, err
 	}
 	return repo.CreateTimeline(ctx, owner, r, key)
+}
+
+// 人工对齐证据可绑定会话所选码率，仍须匹配当前部署编码、布局和处理身份。
+func matchRecoveryBitrate(expected timeline.Profile, requested string) timeline.Profile {
+	base, baseOK := audioffmpeg.ProfileByID(expected.OutputProfile)
+	selected, selectedOK := audioffmpeg.ProfileByID(requested)
+	if baseOK && selectedOK && selected.Codec == base.Codec && selected.Layout == base.Layout {
+		expected.OutputProfile = requested
+	}
+	return expected
 }
 func (s *Service) Timeline(ctx context.Context, owner, id string) (timeline.Evidence, error) {
 	repo, err := s.timelineRepo()

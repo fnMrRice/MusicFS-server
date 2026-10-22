@@ -70,7 +70,7 @@ func (p *preparedInput) prepareInput(ctx context.Context, task string, input *so
 		}
 		return nil, 0, false, noop, domain.Fail(code, "Audio source could not be decoded")
 	}
-	if wrapped || p.decodeOutput != "native" {
+	if wrapped || p.decodeOutput != "native" || decoded.Format == "flac" {
 		format := decoded.Format
 		track.Container = &format
 		track.Codec = &format

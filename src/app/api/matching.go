@@ -18,6 +18,7 @@ type matchingAPI interface {
 	Recording(context.Context, string, string) (matching.Recording, error)
 	GetLink(context.Context, string, string) (matching.Link, error)
 	ManualLink(context.Context, string, matching.LinkRequest, string) (matching.Mutation, error)
+	SetDefaultSource(context.Context, string, matching.DefaultSourceRequest, string) (matching.Mutation, error)
 	BulkMerge(context.Context, string, matching.BulkMergeRequest, string) (matching.BulkMergeResult, error)
 	Unlink(context.Context, string, matching.UnlinkRequest, string) (matching.Mutation, error)
 	Split(context.Context, string, matching.SplitRequest, string) (matching.Mutation, error)
@@ -115,6 +116,7 @@ func (s *Server) RegisterMatching(service matchingAPI) {
 		return WriteJSON(w, http.StatusOK, page)
 	})
 	s.registerMatchingMutations(service)
+	s.registerMatchingDefaultSource(service)
 	s.registerMatchingBulkMerge(service)
 }
 

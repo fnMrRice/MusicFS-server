@@ -35,7 +35,7 @@ Content-Type: application/json
 
 ## 人工确认与撤销
 
-先读取 `GET /matching/revision` 的本人全局修订；初始为0。每个新的人工决定使用新的 `Idempotency-Key`，并把最新修订填入必需的非负整数 `expectedRevision`。并发操作使修订变化时返回 `CONFLICT`；重新读取当前状态后由用户判断，不自动覆盖另一项决定。以下四个接口均返回 `Mutation`：新修订、操作 ID、可空的录音 ID 和逐项审计。
+先读取 `GET /matching/revision` 的本人全局修订；初始为0。每个新的人工决定使用新的 `Idempotency-Key`，并把最新修订填入必需的非负整数 `expectedRevision`。并发操作使修订变化时返回 `CONFLICT`；重新读取当前状态后由用户判断，不自动覆盖另一项决定。以下五个接口均返回 `Mutation`：新修订、操作 ID、可空的录音 ID 和逐项审计。
 
 | 操作 | POST 路径 | 请求字段 |
 | --- | --- | --- |
@@ -43,6 +43,11 @@ Content-Type: application/json
 | 解除 | `/matching/unlinks` | `expectedRevision`、`sourceTrackId` |
 | 拆分 | `/matching/splits` | `expectedRevision`、`recordingId`、该录音成员的非空真子集 `sourceTrackIds` |
 | 排除/撤销排除 | `/matching/exclusions` | `expectedRevision`、`leftSourceTrackId`、`rightSourceTrackId`、必需布尔值 `excluded` |
+| 指定/取消默认版本 | `/matching/default-source` | `expectedRevision`、`recordingId`、必需的 `sourceTrackId`；null 恢复自动选择 |
+
+分组曲目默认使用可用来源中码率最高的版本；码率相同时选择 `asset.fileSizeBytes` 较大的原文件。未知码率排在已知正码率之后；全部条件相同按名称和来源 ID 稳定排序。`versions` 使用同样顺序，分组顶层 `sourceTrackId` 是实际默认版本。`manualSourceTrackId` 为 null 时采用自动规则；手动指定后优先该成员，即使其暂时不可用也保留选择并显示不可用。取消指定立即恢复自动规则。来源解除关联、拆分或移动到其他录音时，原录音中对应的默认偏好清除，新录音不自动继承；偏好不影响其他用户、明确指定来源的歌单条目或正在播放的会话。
+
+默认版本修改复用本人匹配修订、幂等键与审计，审计操作名为 `defaultSource`，`sourceTrackId=null` 表示取消指定。旧分组分页快照保持原来的完整成员与默认选择，新查询反映最新修订。
 
 例如，首次人工确认两项来源属于同一录音：
 

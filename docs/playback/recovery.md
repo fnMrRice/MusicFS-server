@@ -20,7 +20,7 @@
 
 `range.startMs <= 原来源位置 < range.endMs`；区间和映射后的终点必须分别处于两端已知时长内，并在已验证处理工具的 24 小时定位上限内。当前只支持固定偏移，不支持速度变化、非线性映射或自动反向推导。需要反方向时创建独立证据。
 
-证据绑定本人两端 `sourceTrackId/assetId/version`、共同的 `recordingId`、覆盖区间、偏移和完整处理配置。当前输出为 `mp3-128`，链修订为默认 `gain-v1` 或 `dsp-v1:<SHA256>`；配置还包含工具摘要与明确的 `gainDb`。应读取当前 recovery-profile，不能硬编码旧链身份。工具、链、增益、资产或 Recording 变化后，旧证据不能用于自动继续；撤销保留历史。
+证据绑定本人两端 `sourceTrackId/assetId/version`、共同的 `recordingId`、覆盖区间、偏移和完整处理配置。当前输出为含目标码率的 MP3 或 Opus/WebM profile，链修订为默认 `gain-v1` 或 `dsp-v1:<SHA256>`；配置还包含工具摘要与明确的 `gainDb`。应读取当前 recovery-profile，并将 `outputProfile` 替换为待恢复会话的实际输出 ID，不能硬编码码率或旧链身份；只允许当前编码与布局支持的合法码率。活动会话的跨源恢复保留所选码率，不按目标来源重新选择。工具、链、增益、资产或 Recording 变化后，旧证据不能用于自动继续；撤销保留历史。
 
 ## API
 
