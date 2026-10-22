@@ -210,7 +210,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	handler.RegisterFingerprinting(fingerprints)
 	handler.RegisterMedia(content)
 	handler.RegisterAlbums(albums.New(store, content, lib))
-	if err := configureWorks(handler, store); err != nil {
+	if err := configureWorks(handler, store, lib); err != nil {
 		cleanup()
 		return nil, nil, err
 	}

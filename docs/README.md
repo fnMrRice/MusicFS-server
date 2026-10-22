@@ -52,6 +52,7 @@
 | [自动重复识别](library/duplicate-detection.md) | 插件候选、后台识别、进度与人工确认 |
 | [来源专辑](library/albums.md) | 显式成员、发行关联和专辑封面 |
 | [内容类型与作品资料](library/works.md) | 音乐／ASMR插件声明、作品建档与编辑、资料检索及实现边界 |
+| [本地作品包](library/work-packages.md) | 授权目录预览与导入、多层目录、音轨关联、附件及重导入 |
 | [个人数据](library/personal-library.md) | 资料、收藏与最近播放 |
 | [个人与聚合歌单](library/playlists.md) | 本地编辑、出处、隐藏与重建 |
 | [来源歌单列表](library/source-playlists.md) | 插件当前账号可见的歌单 |

@@ -8,6 +8,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/candidates"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
@@ -16,6 +17,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) Release(a0 context.Context, a1 string, a2 string) (r0 albums.Release, err error) {
+	err = c.Invoke(a0, "Release", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) Releases(a0 context.Context, a1 string, a2 string, a3 int) (r0 []albums.Release, err error) {
 	err = c.Invoke(a0, "Releases", []any{a1, a2, a3}, []any{&r0})
@@ -45,6 +51,11 @@ func (c *Client) RemoteSource(a0 context.Context, a1 string, a2 string) (r0 play
 func (c *Client) RemoteSyncJob(a0 context.Context, a1 string, a2 string) (r0 playlists.SyncJob, err error) {
 	err = c.Invoke(a0, "RemoteSyncJob", []any{a1, a2}, []any{&r0})
 	return r0, err
+}
+
+func (c *Client) ReplayWorkPackage(a0 context.Context, a1 string, a2 string, a3 string, a4 string) (r0 workpackages.Package, r1 bool, err error) {
+	err = c.Invoke(a0, "ReplayWorkPackage", []any{a1, a2, a3, a4}, []any{&r0, &r1})
+	return r0, r1, err
 }
 
 func (c *Client) ReplayWriteback(a0 context.Context, a1 string, a2 writebackhost.Request, a3 string) (r0 writebackhost.Job, r1 bool, err error) {
@@ -124,15 +135,5 @@ func (c *Client) SelectCover(a0 context.Context, a1 string, a2 albums.SelectCove
 
 func (c *Client) SetConfigOperationStatus(a0 context.Context, a1 string, a2 string) (err error) {
 	err = c.Invoke(a0, "SetConfigOperationStatus", []any{a1, a2}, []any{})
-	return err
-}
-
-func (c *Client) SetExclusion(a0 context.Context, a1 string, a2 matching.ExclusionRequest, a3 string) (r0 matching.Mutation, err error) {
-	err = c.Invoke(a0, "SetExclusion", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SetPublicationStage(a0 context.Context, a1 string, a2 string, a3 string, a4 string) (err error) {
-	err = c.Invoke(a0, "SetPublicationStage", []any{a1, a2, a3, a4}, []any{})
 	return err
 }

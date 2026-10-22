@@ -36,6 +36,12 @@ Manifest 的 `configuration` 为插件提供的导入选项声明；不支持导
 
 `provider.scan` 携带 scope（rootId/rootIdentity/recursive/maxDepth）、planDigest 和 Host 生成的单页 grantId。Worker 调用 `host.entries` 必须携带该 grantId；授权绑定任务、代次、范围和游标，不能跨任务、根或选项重用。返回页包含 scanId/generation/page/planDigest，末页 complete 还须结合 issues 和根身份决定是否可以发布完整请求范围。recursive=true 且 maxDepth=0 表示不限深度，不能映射为64；recursive=false/maxDepth=0 只覆盖根本层，正数深度1—64保持既有语义。Host目录遍历、目录监听和数据库缺失对账使用同一范围规则；范围外曲目不能被标记缺失。Entry 的 fileIdentity 为原始身份，linkCount 为实际硬链接数，不能按本轮枚举数量改写身份。持久来源身份由 Host 命名空间状态维护。`provider.resolve` 返回受限资源引用，rootId/relativePath 只在受信任控制面使用，浏览器看不到它们；Host 实际打开时仍需验证根、版本和授权。
 
+本地作品包使用 `provider.observePackage` 精确观察接口，请求为 `PackageObserveRequest{entries: Entry[]}`，结果为 `PackageObserveResult{items: Observation[]}`。它仅适用于已握手的 Local Files 实例，宿主核对当前所有者、实例读租约、授权根、根身份和配置修订后，将完整包快照中经音频插件实际内容检测的音频条目发送给插件。每批 1—200 项，请求参数 JSON 最多 349525 字节；宿主按编码字节预算拆批，为返回名称和 JSON-RPC 信封保留空间。结果必须等长、同序，逐项匹配根、相对路径、版本、大小和 MIME；`sourceRef` 必须等于当前 `externalId`，批次和整包均不能出现重复身份。插件沿用常规扫描的文件身份、硬链接规则及 `track-{externalId}` 状态，后续仍通过现有 `provider.resolve` 播放。
+
+作品包枚举由宿主完成，插件不得扩展请求、调用目录扫描补充条目、凭相对路径读文件或发布数据库记录。宿主在调用前后复核条目并重新比较整个包快照，必要的音轨元数据探测使用宿主受权读句柄。包仅代表选定目录，观察结果没有 `complete` 或扫描覆盖凭据，**不能调用完整扫描 Publish，也不能将包外曲目标记为缺失**；持久化必须使用作品包的精确新增或更新事务。普通扫描依旧使用 `provider.scan` 及其独立范围凭据。
+
+宿主对包读取实行 30 秒期限、5000 个枚举节点（含遍历中遇到的排除项）、32 层深度、累计 2 MiB 相对路径字节和单路径 4096 字节上限，超限或读取不完整直接失败。目录选择一次最多返回 1000 个子目录，并限制检查条目数量；不截断结果。包保留全部有效目录树，忽略常规扫描 `recursive/maxDepth` 裁剪，但遵守当前根的隐藏项、`.nomedia` 和排除规则。拒绝绝对路径、盘符、反斜杠、父目录、非规范路径、链接祖先及遇到的链接条目；文件使用版本引用，根与包内每个目录身份纳入快照。附件正文不进入控制协议，受权稳定读取绑定实例租约，取消实例操作会关闭读取保护。当前仅 PNG/JPEG/GIF 可归为图片预览，普通文本归为文本，其余文件（含 WebP）仅供下载。
+
 观测字段中必需但可为 `null` 的 `bitrateMode` 与 `providerSha512`：模式仅接受 `cbr/vbr/unknown`，摘要必须是 128 个小写十六进制字符。`bitrateBps` 仅接受正整数或 `null`，质量档位不能作为数值。Provider 的摘要与码率属于申报证据，不能自行声明 `verified` 或选择 `bitrateOrigin`；Host 单独记录其实际探测来源，并将证据绑定到当前资产、版本、扫描代次和算法配置。未知值须显式发送 `null`。
 
 `track.details` 能力使用 `provider.trackDetails`，请求为 `ResolveRequest`，结果为插件提供的 `TrackDetails` 有序纯文本分组。在线版本使用 `provider.online.trackDetails` 与 `OnlineReference`。宿主只在曲目所有者和来源实例权限校验后调用；本地详情额外校验当前文件版本。此详情接口允许用户查看自己来源内的相对路径和根标识，仍不暴露服务器绝对路径。结构、上限与错误语义见[来源曲目详情](../../../library/source-track-details.md)。

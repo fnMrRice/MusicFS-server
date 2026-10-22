@@ -22,6 +22,8 @@
 
 作品资料入口为 `app/api/works.go`，通过 `app/bootstrap/works.go` 注入内容插件；`library/works` 定义资料合同，`library/contenttypes` 保存不可变声明。具体 SQLite 实现位于 `plugins/database/sqlite/works_*.go`。
 
+作品包入口为 `app/api/work_packages.go`，`library/workpackages` 管预览、确认和附件授权，`library/package_sources.go` 与 `package_observations.go` 连接受限文件访问及 Local Files 精确观察。SQLite `work_packages_*.go` 原子保存目录树、音轨与幂等结果；流程见[本地作品包](../docs/library/work-packages.md)。
+
 ### core：服务基础
 
 - `auth`：MusicFS 登录、会话和请求安全校验。

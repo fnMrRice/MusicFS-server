@@ -746,6 +746,20 @@
         }
       }
     },
+    "PackageObserveEntry": {
+      "allOf": [{"$ref": "#/$defs/Entry"}], "unevaluatedProperties": false,
+      "properties": {"relativePath": {"maxLength": 4096, "not": {"const": "."}, "pattern": "^[^\\\\:]*$"}}
+    },
+    "PackageObserveRequest": {
+      "type": "object", "additionalProperties": false, "required": ["entries"],
+      "description": "宿主已授权并复核的精确音频批次；最多 200 项，编码后的请求参数还须不超过 349525 字节。不得用于完整扫描发布。",
+      "properties": {"entries": {"type": "array", "minItems": 1, "maxItems": 200, "items": {"$ref": "#/$defs/PackageObserveEntry"}}}
+    },
+    "PackageObserveResult": {
+      "type": "object", "additionalProperties": false, "required": ["items"],
+      "description": "返回项数量、顺序和源字段必须逐项匹配请求，复用 Local Files 常规扫描身份。",
+      "properties": {"items": {"type": "array", "minItems": 1, "maxItems": 200, "items": {"$ref": "#/$defs/Observation"}}}
+    },
     "ResolveRequest": {
       "type": "object", "additionalProperties": false, "required": ["externalId", "expectedVersion"],
       "properties": {"externalId": {"$ref": "#/$defs/ID"}, "expectedVersion": {"$ref": "#/$defs/ID"}}
@@ -996,6 +1010,7 @@
       },
       "oneOf": [
         {"properties":{"method":{"const":"plugin.displayCount"},"params":{"$ref":"#/$defs/DisplayCountRequest"}}},
+        {"properties":{"method":{"const":"provider.observePackage"},"params":{"$ref":"#/$defs/PackageObserveRequest"}}},
         {
           "properties": {
             "method": {
@@ -1167,6 +1182,7 @@
             {
               "$ref": "#/$defs/ScanPage"
             },
+            {"$ref": "#/$defs/PackageObserveResult"},
             {
               "$ref": "#/$defs/Resource"
             },

@@ -31,7 +31,7 @@ func TestWebPolicyAllowsLoginQRImagesAndPlatformAvatars(t *testing.T) {
 					directives[fields[0]] = fields[1:]
 				}
 			}
-			if !slices.Equal(directives["img-src"], []string{"'self'", "data:", "https://p1.music.126.net", "https://p2.music.126.net", "https://p3.music.126.net", "https://p4.music.126.net"}) {
+			if !slices.Equal(directives["img-src"], []string{"'self'", "data:", "blob:", "https://p1.music.126.net", "https://p2.music.126.net", "https://p3.music.126.net", "https://p4.music.126.net"}) {
 				t.Fatal("Web policy must allow same-origin images, inline QR images and verified platform avatar hosts")
 			}
 			if !slices.Equal(directives["default-src"], []string{"'self'"}) || !slices.Equal(directives["object-src"], []string{"'none'"}) {

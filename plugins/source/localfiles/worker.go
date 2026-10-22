@@ -51,6 +51,12 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 		return nil, fmt.Errorf("PROTOCOL_MISMATCH: handshake required")
 	}
 	switch method {
+	case "provider.observePackage":
+		var request pluginproto.PackageObserveRequest
+		if err := pluginproto.DecodeOnline(raw, &request); err != nil {
+			return nil, err
+		}
+		return w.observePackage(ctx, request)
 	case "plugin.displayCount":
 		return w.displayCount(raw)
 	case "provider.scan":

@@ -2,9 +2,7 @@ package localfiles
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -29,25 +27,8 @@ func (w *worker) scan(ctx context.Context, r pluginproto.ScanRequest) (pluginpro
 		if err := ctx.Err(); err != nil {
 			return pluginproto.ScanPage{}, err
 		}
-		externalID, err := w.identity(ctx, entry)
+		observation, err := w.observeEntry(ctx, entry)
 		if err != nil {
-			return pluginproto.ScanPage{}, err
-		}
-		observation := pluginproto.Observation{ExternalID: externalID}
-		observation.RootID = entry.RootID
-		observation.RelativePath = entry.RelativePath
-		observation.DisplayName = filepath.Base(entry.RelativePath)
-		observation.SourceRef = observation.ExternalID
-		observation.ObservedVersion = entry.ObservedVersion
-		observation.SizeBytes = entry.SizeBytes
-		observation.MIME = entry.MIME
-		observation.DurationMs = entry.DurationMs
-		value, _ := json.Marshal(observation)
-		var lookup pluginproto.StateValue
-		if err := w.peer.Call(ctx, "host.state.get", pluginproto.StateRequest{Key: "track-" + observation.ExternalID}, &lookup); err != nil {
-			return pluginproto.ScanPage{}, err
-		}
-		if err := w.peer.Call(ctx, "host.state.compareAndSet", pluginproto.StateRequest{Key: "track-" + observation.ExternalID, Revision: lookup.Revision, Value: value}, nil); err != nil {
 			return pluginproto.ScanPage{}, err
 		}
 		page.Items = append(page.Items, observation)
