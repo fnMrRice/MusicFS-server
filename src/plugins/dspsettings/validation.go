@@ -43,6 +43,9 @@ func validate(ctx context.Context, cfg Config, options Options) (Preview, error)
 	if err := validateShape(options); err != nil {
 		return Preview{}, err
 	}
+	if cfg.DisableEffects && len(options.Chain) != 0 {
+		return Preview{}, domain.Fail("UNSUPPORTED", "Server audio effects are disabled")
+	}
 	if err := dspchain.Validate(options.Chain, cfg.Plugins); err != nil {
 		return Preview{}, domain.Fail("INVALID_ARGUMENT", err.Error())
 	}

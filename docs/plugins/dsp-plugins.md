@@ -1,8 +1,10 @@
 # Server DSP 插件
 
+服务端听感效果目前默认禁用，`audioDSP.enabled=false`；保留实现和历史配置，播放只执行必要解密、编解码与声道转换。Web 音效在浏览器实时执行，执行归属与防重复规则见 [Web 本地 DSP](../playback/local-dsp.md)。以下效果链配置仅在部署显式启用且会话使用 `dspExecution=server` 时执行。
+
 官方内置 DSP 已提供增益、参数均衡器、压缩器、混响和可排序声道转换，支持 mono、stereo、5.1、7.1 PCM 的逐节点输入输出协商。播放入口先自动适配所选布局，链末须匹配编码输出；节点可声明输出不能继续 DSP，此时禁止追加后继。内置有状态效果通过从曲首重建历史支持定位，保持帧数、零算法延迟且不追加曲尾。显式登记的第三方外部 DSP v1 仍仅支持无状态双声道节点。参数与格式见[常见 DSP 与声道转换](dsp-effects.md)，页面、个人覆盖和全局默认见[DSP 配置](dsp-settings.md)。当前运行验证范围为 Windows；其他平台和任意第三方算法需分别验证。
 
-官方音频 Worker 实现版本为 `0.4.0`。Host 握手要求该精确版本，旧 `0.1.0`、`0.2.0`、`0.3.0` 在音频请求前被拒绝，避免遗漏 DSP、声道转换或状态重建。内置音频实现随 Server 升级；显式外部进程模式需要配套升级 `musicfs-plugins`（或独立入口）并更新固定摘要。控制协议仍为 1.0，独立 MFD1 DSP 帧协议仍为 v1；内置有状态、多声道效果不使用该帧协议。
+官方音频 Worker 实现版本为 `0.5.0`。Host 握手要求该精确版本，旧 `0.1.0`、`0.2.0`、`0.3.0`、`0.4.0` 在音频请求前被拒绝，避免遗漏 DSP、声道转换或状态重建。内置音频实现随 Server 升级；显式外部进程模式需要配套升级 `musicfs-plugins`（或独立入口）并更新固定摘要。控制协议仍为 1.0，独立 MFD1 DSP 帧协议仍为 v1；内置有状态、多声道效果不使用该帧协议。
 
 内置和外部 DSP 的 ready 响应都必须提供 `pluginVersion`，使用最多 128 字符的有效 SemVer，缺失、空白或无效值均被宿主拒绝；Worker 的 `Serve` 入口也在初始化节点前校验版本。该发行号与整数 `protocolVersion`、`nodeVersion` 分离。官方 gain 使用 [sdk/bundledplugin/releases.go](../../sdk/bundledplugin/releases.go) 中的 `GainVersion`，当前为 `0.1.0`。内置 DSP 版本随 Server 构建升级；显式外部节点须同步升级程序及固定摘要。旧节点即使帧协议仍为 v1，也会因缺少发行版本被拒绝。
 
@@ -12,6 +14,7 @@ Server 的 `audioDSP` 与 `audioChannels` 是部署配置，修改后重启生�
 
 ```yaml
 audioDSP:
+  enabled: true
   chain:
     - name: gain
       version: 1
@@ -30,6 +33,7 @@ audioDSP:
 
 | 字段 | 约束 |
 | --- | --- |
+| `enabled` | 默认 false；禁用部署、个人、全局听感效果与会话 gain，保留必要声道转换 |
 | `chain` | 最多 15 个节点，加上用户 gain 后总计最多 16 个 |
 | 节点 `name` | 已注册名称；匹配 `[a-z][a-z0-9_.-]{0,63}` |
 | 节点 `version` | 必填整数，当前仅接受 `1` |
@@ -43,9 +47,9 @@ audioDSP:
 
 Web 提供 DSP 配置页面，内置节点与已经部署注册的外部节点可按服务端声明编辑；外部程序仍仅由部署文件注册，没有 DSP 商店、上传安装或自动发现。个人和全局设置保存后在下一次播放生效，所有选中节点均必需，运行失败会中止处理，不自动旁路。非空部署链要求音频实例启用；若启动时处理器或必需 DSP 不可用，Server 拒绝启动。内置 DSP 还要求音频插件使用内置执行；显式外部 FFmpeg 插件配内置 DSP 时返回 `builtin DSP requires builtin audio execution`，不会把官方 gain 放到插件子进程。执行权限与工具设置还须满足[配置说明](../operations/configuration.md)。
 
-插件列表固定展示官方 `musicfs.dsp.gain`，`stateMutable=false`、`instances=[]`，不通过普通实例启停或配置接口修改。其 `dsp.configured` 表示已注册官方 gain 或在启动链中使用内建/官方 gain；`chainState` 为 `not_configured`（未配置）、`not_in_chain`（已注册但未加入链）、`in_chain`（已加入启动链）。`nodes` 汇总内建 `gain` 与官方 `musicfs.dsp.gain`，保留实际 `mode=builtin/process`（官方 gain 为 builtin）、完整原链从 1 开始的位置、节点协议版本及数值参数。重复节点保序，其他节点造成的位置间隔不会被重排；用户偏好增益及 `bypass` 不另列插件。
+插件列表固定展示官方 `musicfs.dsp.gain`，`stateMutable=false`、`instances=[]`，不通过普通实例启停或配置接口修改。其 `dsp.configured` 表示已注册官方 gain 或在启动链中使用内建/官方 gain；`chainState` 为 `disabled`（部署停用音效）、`not_configured`（未配置）、`not_in_chain`（已注册但未加入链）、`in_chain`（已加入启动链）。`nodes` 汇总内建 `gain` 与官方 `musicfs.dsp.gain`，保留实际 `mode=builtin/process`（官方 gain 为 builtin）、完整原链从 1 开始的位置、节点协议版本及数值参数。重复节点保序，其他节点造成的位置间隔不会被重排；用户偏好增益及 `bypass` 不另列插件。
 
-这些字段描述本次启动配置，不表示当前正在播放或有 DSP 进程运行。`configuredEnabled` 对此行仅表示已加入配置链。发行版本默认来自官方共享声明；音频处理器现有初始化握手已验证官方 gain 时优先显示该发行版本，读取列表不会启动额外进程。任意第三方 DSP 尚无静态发行声明，当前不为其生成独立管理插件条目，也不冒用官方 gain 的版本；本展示不等同于完整第三方 DSP 目录。投影不含程序路径、启动参数、摘要或凭据，配置修改仍须编辑部署文件并重启 Server。
+这些字段描述本次启动配置，不表示当前正在播放或有 DSP 进程运行。`configuredEnabled` 对此行表示部署已启用音效且已加入配置链。发行版本默认来自官方共享声明；音频处理器现有初始化握手已验证官方 gain 时优先显示该发行版本，读取列表不会启动额外进程。任意第三方 DSP 尚无静态发行声明，当前不为其生成独立管理插件条目，也不冒用官方 gain 的版本；本展示不等同于完整第三方 DSP 目录。投影不含程序路径、启动参数、摘要或凭据，配置修改仍须编辑部署文件并重启 Server。
 
 均衡器、压缩器和混响同样有独立的只读管理条目，分别汇总短名和正式别名的节点位置、版本与参数；发行号来自内置实现声明。声道转换插件在内置算法目录中展示支持布局，实际输出布局以播放描述为准。详情见[常见 DSP 与声道转换](dsp-effects.md)。
 

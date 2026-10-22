@@ -22,7 +22,7 @@ func TestOldAudioWorkerHelper(t *testing.T) {
 	if !slices.Contains(os.Args, "--old-audio-worker") && !slices.Contains(os.Args, "--current-audio-worker") {
 		return
 	}
-	version := "0.3.0"
+	version := "0.4.0"
 	if slices.Contains(os.Args, "--current-audio-worker") {
 		version = audioPluginVersion
 	}
@@ -94,8 +94,8 @@ func TestAudioVersionAvailableOnlyAfterVerifiedHandshake(t *testing.T) {
 }
 
 func TestOldAudioWorkerRejectedBeforeProcessing(t *testing.T) {
-	if audioPluginVersion != "0.4.0" {
-		t.Fatal("codec output selection requires implementation version 0.4.0")
+	if audioPluginVersion != "0.5.0" {
+		t.Fatal("effect execution isolation requires implementation version 0.5.0")
 	}
 	path, err := os.Executable()
 	if err != nil {

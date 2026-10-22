@@ -11,6 +11,10 @@ cacheRoot: '/var/cache/musicfs'
 storage:
   backend: sqlite
 webRoot: ''
+audioDSP:
+  enabled: false
+  chain: []
+  plugins: []
 # 官方插件从编译内目录发现，实例与账号状态保持隔离。
 plugins:
   - pluginId: 'musicfs.plugin.source.localfiles'

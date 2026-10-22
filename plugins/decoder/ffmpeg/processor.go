@@ -38,6 +38,7 @@ type Config struct {
 	DSPPlugins                                                 []dspworker.Config
 	OutputLayout                                               string
 	BufferFrames                                               int
+	DisableEffects                                             bool
 }
 type Processor struct {
 	parent        *Processor
@@ -52,6 +53,9 @@ type Processor struct {
 }
 
 func NewProcessor(ctx context.Context, cfg Config) (*Processor, error) {
+	if cfg.DisableEffects {
+		cfg.DSPChain, cfg.DSPPlugins = nil, nil
+	}
 	if _, err := bufferFrames(cfg.BufferFrames); err != nil {
 		return nil, err
 	}
@@ -91,7 +95,12 @@ func NewProcessor(ctx context.Context, cfg Config) (*Processor, error) {
 	if err != nil || format.Layout == "mono" {
 		return nil, fmt.Errorf("UNSUPPORTED: output layout must be stereo, 5.1 or 7.1")
 	}
-	chain, err := buildDSPFormatVersions(ctx, 0, cfg.DSPChain, cfg.DSPPlugins, format, dspVersions)
+	var chain *audio.Chain
+	if cfg.DisableEffects {
+		chain, err = buildRequestedDSP(ctx, StartRequest{DisableEffects: true}, format)
+	} else {
+		chain, err = buildDSPFormatVersions(ctx, 0, cfg.DSPChain, cfg.DSPPlugins, format, dspVersions)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +161,7 @@ func (p *Processor) Process(ctx context.Context, plan Plan, input io.ReadSeeker,
 		return fmt.Errorf("RATE_LIMITED: audio processing is busy")
 	}
 	return p.run(ctx, plan.TaskID, readerAt, size, output, func(peer *pluginproto.Peer, inputURL, outputURL string) error {
-		request := StartRequest{Plan: plan, FFmpegPath: p.config.FFmpegPath, FFmpegSHA256: p.Capabilities.FFmpegSHA256, InputURL: inputURL, OutputURL: outputURL, DSPChain: p.config.DSPChain, DSPPlugins: p.config.DSPPlugins, BufferFrames: p.config.BufferFrames}
+		request := StartRequest{Plan: plan, FFmpegPath: p.config.FFmpegPath, FFmpegSHA256: p.Capabilities.FFmpegSHA256, InputURL: inputURL, OutputURL: outputURL, DSPChain: p.config.DSPChain, DSPPlugins: p.config.DSPPlugins, BufferFrames: p.config.BufferFrames, DisableEffects: p.config.DisableEffects}
 		if err := peer.Call(ctx, "audio.prepare", request, nil); err != nil {
 			return err
 		}

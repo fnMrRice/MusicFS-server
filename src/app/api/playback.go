@@ -110,6 +110,9 @@ func decodeCreate(w http.ResponseWriter, r *http.Request) (playback.CreateReques
 		return request, domain.Fail("INVALID_ARGUMENT", "sourceTrackId, capabilities, and preferences are required")
 	}
 	request.SourceTrackID, request.Preferences = wire.SourceTrackID, *wire.Preferences
+	if execution := request.Preferences.DSPExecution; execution != "" && execution != "server" && execution != "client" {
+		return request, domain.Fail("INVALID_ARGUMENT", "DSP execution must be server or client")
+	}
 	request.Capabilities.HTMLAudio = true
 	request.Capabilities.Formats = []playback.Format{}
 	if len(*wire.Capabilities.Formats) > 32 {

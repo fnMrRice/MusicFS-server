@@ -20,8 +20,9 @@
     "audioChannels": {"type":"object","additionalProperties":false,"properties":{"outputLayout":{"enum":["stereo","5.1","7.1"],"default":"stereo"}},"description":"声道转换插件的输出布局；环绕声输出要求内置音频处理器与 Opus/WebM，配置重启生效。"},
     "audioDSP": {
       "type": "object", "additionalProperties": false,
-      "description": "用户增益之后按顺序执行的必需 DSP；非空链要求已启用的 FFmpeg 实例。配置重启生效。",
+      "description": "服务端音效默认禁用；启用后按用户增益和配置顺序处理，非空链要求已启用的 FFmpeg 实例。声道转换独立配置，重启生效。",
       "properties": {
+        "enabled": {"type": "boolean", "default": false},
         "chain": {"type": "array", "maxItems": 15, "items": {"$ref": "#/$defs/DSPNode"}},
         "plugins": {"type": "array", "maxItems": 16, "items": {"$ref": "#/$defs/DSPPlugin"}}
       }

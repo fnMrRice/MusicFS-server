@@ -82,6 +82,9 @@ func (p *Processor) ValidateSettings(ctx context.Context, options dspsettings.Op
 	if p == nil {
 		return fmt.Errorf("UNSUPPORTED: audio processor is unavailable")
 	}
+	if p.config.DisableEffects && len(options.Chain) != 0 {
+		return fmt.Errorf("UNSUPPORTED: server audio effects are disabled")
+	}
 	if options.BufferFrames == 0 {
 		return fmt.Errorf("INVALID_ARGUMENT: DSP buffer frames must be specified")
 	}

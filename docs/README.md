@@ -71,6 +71,7 @@
 | 文档 | 内容 |
 | --- | --- |
 | [音频处理](playback/audio-processing.md) | 原流、处理链、输出表示和定位 |
+| [本地音效执行边界](playback/local-dsp.md) | 浏览器音效归属与服务端处理协商 |
 | [NCM](playback/ncm.md) | 本地解密 Worker、独立表示及资源限制 |
 | [处理缓存](playback/processed-cache.md) | 完整发布、私有复用、配额与回收 |
 | [播放恢复](playback/recovery.md) | 恢复预算、独立时间证据和重播提示 |

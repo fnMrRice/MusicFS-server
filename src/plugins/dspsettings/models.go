@@ -27,6 +27,7 @@ type Config struct {
 	Defaults          Options
 	Plugins           []dspworker.Config
 	Available         bool
+	DisableEffects    bool
 	UnavailableReason string
 	OutputLayouts     []string
 	Validate          func(context.Context, Options) error

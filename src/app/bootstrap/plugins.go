@@ -90,7 +90,7 @@ func configurePlugins(ctx context.Context, c config.Config, log *slog.Logger) ([
 				runtimes = append(runtimes, r)
 			case "musicfs.plugin.decoder.ffmpeg":
 				if enabled {
-					processor, err = audioffmpeg.NewProcessor(ctx, audioffmpeg.Config{Builtin: plugin.InProcess(), InstanceID: instance.InstanceID, FFmpegPath: instance.Config.FFmpegPath, FFprobePath: instance.Config.FFprobePath, WorkerPath: plugin.Executable, WorkerArgs: plugin.Args, WorkerSHA256: pluginChecksum(plugin), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing, DSPChain: c.AudioDSP.Chain, DSPPlugins: c.AudioDSP.Plugins, OutputLayout: c.AudioChannels.OutputLayout})
+					processor, err = audioffmpeg.NewProcessor(ctx, audioffmpeg.Config{Builtin: plugin.InProcess(), InstanceID: instance.InstanceID, FFmpegPath: instance.Config.FFmpegPath, FFprobePath: instance.Config.FFprobePath, WorkerPath: plugin.Executable, WorkerArgs: plugin.Args, WorkerSHA256: pluginChecksum(plugin), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing, DSPChain: c.AudioDSP.Chain, DSPPlugins: c.AudioDSP.Plugins, OutputLayout: c.AudioChannels.OutputLayout, DisableEffects: !c.AudioDSP.Enabled})
 					if err == nil {
 						ffprobe = instance.Config.FFprobePath
 					}

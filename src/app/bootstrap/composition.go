@@ -133,7 +133,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 		closeMedia()
 		store.Close()
 	}
-	if (len(c.AudioDSP.Chain) > 0 || c.AudioChannels.RequiresProcessing()) && processor == nil {
+	if (c.AudioDSP.Enabled && len(c.AudioDSP.Chain) > 0 || c.AudioChannels.RequiresProcessing()) && processor == nil {
 		cleanup()
 		return nil, nil, fmt.Errorf("Configured DSP pipeline is unavailable")
 	}
@@ -224,7 +224,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	handler.RegisterPluginSettings(settings.New(store, settingsProviders...))
 	beforeMatching := cleanup
 	cleanup = func() { matchingAutomation.Close(); beforeMatching() }
-	player, err := playback.New(ctx, store, lib, processor, playback.Config{CacheRoot: c.CacheRoot, MaxSessions: c.MaxSessions, MaxCacheBytes: c.MaxCacheBytes, NCMDecoder: decoder, RequireDSP: len(c.AudioDSP.Chain) > 0 || c.AudioChannels.RequiresProcessing()})
+	player, err := playback.New(ctx, store, lib, processor, playback.Config{CacheRoot: c.CacheRoot, MaxSessions: c.MaxSessions, MaxCacheBytes: c.MaxCacheBytes, NCMDecoder: decoder, RequireDSP: c.AudioDSP.Enabled && len(c.AudioDSP.Chain) > 0 || c.AudioChannels.RequiresProcessing(), DisableEffects: !c.AudioDSP.Enabled})
 	if err != nil {
 		cleanup()
 		return nil, nil, err

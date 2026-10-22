@@ -36,6 +36,8 @@ type preparedInput struct {
 	decoder              *ncmdecoder.Processor
 	processing, decoding *plugincontrol.Lease
 	decodeOutput         string
+	dspExecution         string
+	gain                 float64
 }
 
 func (p *preparedInput) discard() {
@@ -77,16 +79,19 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 	if err != nil {
 		return nil, err
 	}
-	p := &preparedInput{service: s, track: t, lease: lease, decodeOutput: "native"}
+	p := &preparedInput{service: s, track: t, lease: lease, decodeOutput: "native", dspExecution: r.Preferences.DSPExecution, gain: r.Preferences.GainDB}
 	p.processor, p.decoder = s.audioSnapshot()
 	if len(fixed) > 0 {
 		p.processor = fixed[0]
 	} else {
-		p.processor, err = s.processorForUser(ctx, owner, p.processor)
+		p.processor, err = s.processorForUser(ctx, owner, p.processor, r.Preferences.DSPExecution == "client")
 		if err != nil {
 			p.discard()
 			return nil, err
 		}
+	}
+	if r.Preferences.DSPExecution == "client" || s.config.DisableEffects || p.processor.EffectsDisabled() {
+		p.gain = 0
 	}
 	ctx, cancelPreparation := context.WithCancel(lease.WithContext(ctx))
 	unlink := context.AfterFunc(lease.Context(), cancelPreparation)
@@ -116,7 +121,7 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 		return nil, domain.Fail("RATE_LIMITED", "Representation exceeds the cache budget")
 	}
 	p.reserved = size
-	processed := p.decodeOutput != "native" || s.config.RequireDSP || r.Preferences.ForceProcessing || r.Preferences.GainDB != 0 || p.processor.HasDSP() || p.processor.RequiresChannelConversion() || !originalCandidate(t) || !supports(r.Capabilities, t.MIME)
+	processed := p.decodeOutput != "native" || s.config.RequireDSP && r.Preferences.DSPExecution != "client" || r.Preferences.ForceProcessing || p.gain != 0 || p.processor.HasDSP() || p.processor.RequiresChannelConversion() || !originalCandidate(t) || !supports(r.Capabilities, t.MIME)
 	if processed {
 		p.profile, err = p.processor.OutputProfile()
 		if err != nil || !supportsOutputProfile(r.Capabilities, p.profile) {
@@ -195,6 +200,7 @@ func (r preparationReader) Read(p []byte) (int, error) {
 func (p *preparedInput) describe(id string, gain float64, expiry time.Time) Description {
 	t := p.track
 	d := Description{SessionID: id, AssetID: t.AssetID, DeliveryMode: "proxy", OutputProfile: OutputProfile{MIME: t.MIME, Codec: t.Codec, Container: t.Container, Transport: "htmlAudio"}, ExpiresAt: expiry, SeekMode: "byteRange", EffectiveProcessing: []Processing{}, ResumeDecision: "continue"}
+	d.DSPExecution = p.dspExecution
 	if p.decrypted {
 		d.EffectiveProcessing = append(d.EffectiveProcessing, Processing{Type: "ncmDecrypt", Version: "1", Execution: "server"})
 	}
@@ -212,8 +218,10 @@ func (p *preparedInput) describe(id string, gain float64, expiry time.Time) Desc
 			d.SeekableRange.EndMs = min(d.SeekableRange.EndMs, timeline.MaxPositionMs)
 		}
 		d.EffectiveProcessing = append(d.EffectiveProcessing,
-			Processing{Type: "channelMix", Version: bundledplugin.ChannelMixVersion, Execution: "server", Parameters: map[string]float64{"outputChannels": float64(profile.Channels)}},
-			Processing{Type: "gain", GainDB: gain, Version: "1", Execution: "server"})
+			Processing{Type: "channelMix", Version: bundledplugin.ChannelMixVersion, Execution: "server", Parameters: map[string]float64{"outputChannels": float64(profile.Channels)}})
+		if !p.processor.EffectsDisabled() {
+			d.EffectiveProcessing = append(d.EffectiveProcessing, Processing{Type: "gain", GainDB: gain, Version: "1", Execution: "server"})
+		}
 		for _, node := range p.processor.DSPChain() {
 			step := Processing{Type: node.Name, Version: strconv.Itoa(node.Version), Execution: "server", Parameters: node.Params}
 			if node.Name == "gain" {

@@ -29,7 +29,14 @@ func (s *Service) RecoveryProfile() (timeline.Profile, error) {
 }
 
 // RecoveryProfileForUser 与新会话读取相同的插件偏好，避免跨量化格式复用对齐证据。
-func (s *Service) RecoveryProfileForUser(ctx context.Context, owner string) (timeline.Profile, error) {
+func (s *Service) RecoveryProfileForUser(ctx context.Context, owner string, executions ...string) (timeline.Profile, error) {
+	execution := "server"
+	if len(executions) > 0 && executions[0] != "" {
+		execution = executions[0]
+	}
+	if execution != "server" && execution != "client" {
+		return timeline.Profile{}, domain.Fail("INVALID_ARGUMENT", "DSP execution must be server or client")
+	}
 	output, err := codecsettings.DecodeOutput(ctx, s.repo, owner)
 	if err != nil {
 		return timeline.Profile{}, err
@@ -37,7 +44,7 @@ func (s *Service) RecoveryProfileForUser(ctx context.Context, owner string) (tim
 	s.mu.Lock()
 	processor := s.processor
 	s.mu.Unlock()
-	processor, err = s.processorForUser(ctx, owner, processor)
+	processor, err = s.processorForUser(ctx, owner, processor, execution == "client")
 	if err != nil {
 		return timeline.Profile{}, err
 	}
@@ -78,12 +85,19 @@ func recoveryProfile(processor *audioffmpeg.Processor, outputs ...string) (timel
 }
 func (s *Service) AddTimeline(ctx context.Context, owner string, r timeline.Request, key string) (timeline.Evidence, error) {
 	profile, err := s.RecoveryProfileForUser(ctx, owner)
-	if err != nil {
-		return timeline.Evidence{}, err
+	processor, _ := s.audioSnapshot()
+	if !s.config.DisableEffects && !processor.EffectsDisabled() {
+		profile.GainDB = r.Profile.GainDB
 	}
-	profile.GainDB = r.Profile.GainDB
-	if r.Profile != profile {
-		return timeline.Evidence{}, domain.Fail("INVALID_ARGUMENT", "Timeline profile differs from the current processing configuration")
+	if err != nil || r.Profile != profile {
+		// 客户端模式的证据必须绑定无效果身份与零服务端增益。
+		clientProfile, clientErr := s.RecoveryProfileForUser(ctx, owner, "client")
+		if clientErr != nil || r.Profile != clientProfile {
+			if err != nil {
+				return timeline.Evidence{}, err
+			}
+			return timeline.Evidence{}, domain.Fail("INVALID_ARGUMENT", "Timeline profile differs from the current processing configuration")
+		}
 	}
 	repo, err := s.timelineRepo()
 	if err != nil {

@@ -45,7 +45,7 @@ func TestInfrastructureIsListedWithoutOptionalInstances(t *testing.T) {
 		t.Fatalf("invalid required storage declaration: %+v", storage)
 	}
 	gain := managedItem(t, manager, "musicfs.dsp.gain")
-	if gain.StateMutable || gain.ConfiguredEnabled || gain.DSP.Configured || gain.DSP.ChainState != "not_configured" || gain.Version != bundledplugin.GainVersion || len(gain.Instances) != 0 {
+	if gain.StateMutable || gain.ConfiguredEnabled || gain.DSP.Configured || gain.DSP.ChainState != "disabled" || gain.Version != bundledplugin.GainVersion || len(gain.Instances) != 0 {
 		t.Fatalf("invalid unconfigured DSP declaration: %+v", gain)
 	}
 	for _, item := range []plugincontrol.Plugin{storage, gain} {
@@ -62,7 +62,7 @@ func TestInfrastructureIsListedWithoutOptionalInstances(t *testing.T) {
 
 func TestDSPConfigurationProjectionKeepsChainPositionsAndExecutionModes(t *testing.T) {
 	registered := dspworker.Config{Name: "musicfs.dsp.gain", Executable: "private-dsp-path", SHA256: "private-dsp-sha", Args: []string{"private-dsp-argument"}}
-	cfg := config.Config{AudioDSP: config.AudioDSPConfig{Plugins: []dspworker.Config{registered}}}
+	cfg := config.Config{AudioDSP: config.AudioDSPConfig{Enabled: true, Plugins: []dspworker.Config{registered}}}
 	manager, err := plugincontrol.New(t.Context(), cfg, nil, nil)
 	if err != nil {
 		t.Fatal(err)

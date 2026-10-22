@@ -13,6 +13,7 @@ type Capabilities struct {
 type Preferences struct {
 	ForceProcessing bool    `json:"forceProcessing"`
 	GainDB          float64 `json:"gainDb"`
+	DSPExecution    string  `json:"dspExecution"`
 }
 type CreateRequest struct {
 	SourceTrackID string       `json:"sourceTrackId"`
@@ -42,6 +43,7 @@ type Processing struct {
 	Parameters map[string]float64 `json:"parameters,omitempty"`
 }
 type Description struct {
+	DSPExecution        string        `json:"dspExecution"`
 	SessionID           string        `json:"sessionId"`
 	AttemptID           string        `json:"attemptId"`
 	AssetID             string        `json:"assetId"`

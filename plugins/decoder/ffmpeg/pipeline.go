@@ -26,14 +26,15 @@ type Plan struct {
 	DecodeOutput string  `json:"decodeOutput,omitempty"`
 }
 type StartRequest struct {
-	Plan         Plan               `json:"plan"`
-	FFmpegPath   string             `json:"ffmpegPath"`
-	FFmpegSHA256 string             `json:"ffmpegSHA256"`
-	InputURL     string             `json:"inputUrl"`
-	OutputURL    string             `json:"outputUrl"`
-	DSPChain     []audio.NodeSpec   `json:"dspChain,omitempty"`
-	DSPPlugins   []dspworker.Config `json:"dspPlugins,omitempty"`
-	BufferFrames int                `json:"bufferFrames,omitempty"`
+	Plan           Plan               `json:"plan"`
+	FFmpegPath     string             `json:"ffmpegPath"`
+	FFmpegSHA256   string             `json:"ffmpegSHA256"`
+	InputURL       string             `json:"inputUrl"`
+	OutputURL      string             `json:"outputUrl"`
+	DSPChain       []audio.NodeSpec   `json:"dspChain,omitempty"`
+	DSPPlugins     []dspworker.Config `json:"dspPlugins,omitempty"`
+	BufferFrames   int                `json:"bufferFrames,omitempty"`
+	DisableEffects bool               `json:"disableEffects,omitempty"`
 }
 
 const inputFormats = "wav,mp3,flac,aiff,ogg,mov,matroska,webm,aac"
@@ -75,7 +76,7 @@ func Pipeline(ctx context.Context, r StartRequest, output io.Writer) (pipelineEr
 	if err != nil || hash != r.FFmpegSHA256 {
 		return fmt.Errorf("ACCESS_DENIED: audio executable changed")
 	}
-	node, err := buildDSPFormat(ctx, r.Plan.GainDB, r.DSPChain, r.DSPPlugins, format)
+	node, err := buildRequestedDSP(ctx, r, format)
 	if err != nil {
 		return err
 	}

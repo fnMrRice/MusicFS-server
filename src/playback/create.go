@@ -78,6 +78,12 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 	if r.SourceTrackID == "" || !r.Capabilities.HTMLAudio || len(r.Capabilities.Formats) > 32 || math.IsNaN(r.Preferences.GainDB) || r.Preferences.GainDB < -60 || r.Preferences.GainDB > 0 {
 		return Description{}, domain.Fail("INVALID_ARGUMENT", "Invalid playback capabilities or preferences")
 	}
+	if r.Preferences.DSPExecution == "" {
+		r.Preferences.DSPExecution = "server"
+	}
+	if r.Preferences.DSPExecution != "server" && r.Preferences.DSPExecution != "client" {
+		return Description{}, domain.Fail("INVALID_ARGUMENT", "DSP execution must be server or client")
+	}
 	select {
 	case s.creation <- struct{}{}:
 		defer func() { <-s.creation }()
@@ -166,7 +172,7 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 	}
 	capabilities := r.Capabilities
 	capabilities.Formats = append([]Format(nil), r.Capabilities.Formats...)
-	a := &session{owner: who.ID, user: who.User.ID, path: prepared.path, etag: prepared.etag, size: prepared.size, track: prepared.track, gain: r.Preferences.GainDB, capabilities: capabilities, lastAccess: time.Now(), sourceLease: prepared.lease}
+	a := &session{owner: who.ID, user: who.User.ID, path: prepared.path, etag: prepared.etag, size: prepared.size, track: prepared.track, gain: prepared.gain, capabilities: capabilities, lastAccess: time.Now(), sourceLease: prepared.lease}
 	s.installPluginLeases(a, prepared)
 	expiry := time.Now().UTC().Add(30 * time.Minute)
 	if who.ExpiresAt.Before(expiry) {

@@ -49,6 +49,7 @@ func TestExternalStorageAndDSPServerRestartAndPortableRestore(t *testing.T) {
 	const instance = "b1548e96-3081-5c9c-8376-bf290e369d51"
 	cfg.Storage = config.StorageConfig{Execution: "process", Backend: "plugin", Executable: storageWorker, SHA256: hashFile(storageWorker)}
 	cfg.AudioDSP = config.AudioDSPConfig{
+		Enabled: true,
 		Chain:   []audio.NodeSpec{{Name: "musicfs.dsp.gain", Version: 1, Params: map[string]float64{"gainDB": -6}}},
 		Plugins: []dspworker.Config{{Name: "musicfs.dsp.gain", Executable: gainWorker, SHA256: hashFile(gainWorker), TimeoutMs: 5000}},
 	}

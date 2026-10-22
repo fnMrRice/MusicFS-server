@@ -38,7 +38,7 @@ Local Files 扫描纳入 `.ncm`，根据 `CTENFDAM` 文件头识别容器。解�
 
 播放创建时将解密内容写入已有私有磁盘快照，受缓存预算限制；快照发布前重新校验原始文件版本。SourceAsset 仍指原始 NCM，解密表示使用自己的长度、ETag、representationId 和 attempt URL。其 Range 不引用加密原文件的字节偏移。
 
-HTTP 播放描述的 `effectiveProcessing` 增加 `{ "type": "ncmDecrypt", "gainDb": 0, "execution": "server", "version": "1" }`。其中 `gainDb: 0` 是既有模型的字段值，纯解密不执行增益 DSP；进入后续音频管线时另追加 `gain`，即使增益为 0。既有 Web 可忽略不认识的处理类型，无需新增端点或更改必填字段。纯解密交付为 `proxy/byteRange`；解密后转码为 `processed`，已知时长时支持 `timeRestart`，未知时长时为 `none`。插件 wire 字段见[协议说明](../contracts/plugins/v1/README.md)。
+HTTP 播放描述的 `effectiveProcessing` 增加 `{ "type": "ncmDecrypt", "gainDb": 0, "execution": "server", "version": "1" }`。其中 `gainDb: 0` 是既有模型的字段值，纯解密不执行增益 DSP；仅在服务端音效启用且会话归属为 server 时追加 `gain`；client 或部署禁用时不执行任何增益。既有 Web 可忽略不认识的处理类型，无需新增端点或更改必填字段。纯解密交付为 `proxy/byteRange`；解密后转码为 `processed`，已知时长时支持 `timeRestart`，未知时长时为 `none`。插件 wire 字段见[协议说明](../contracts/plugins/v1/README.md)。
 
 每个解密任务拥有独立执行上下文和控制流，默认并发上限 2，启动及打开共限 5 秒，任务最长 2 分钟。显式外部模式才为任务创建进程。Range 通道每段最多 64 KiB，验证精确长度、范围和 loopback 地址；禁止代理、重定向和压缩响应。播放快照拷贝完成后关闭执行上下文，后续播放使用该私有表示，不依赖解密执行器持续存活。
 

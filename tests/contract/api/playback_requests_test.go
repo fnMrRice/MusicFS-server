@@ -17,6 +17,7 @@ func TestPlaybackRejectsMissingAndUnexpectedControlFields(t *testing.T) {
 		path string
 		body string
 	}{
+		{"/api/v1/playback/sessions", `{"sourceTrackId":"track","capabilities":{"htmlAudio":true,"formats":[]},"preferences":{"dspExecution":"both"}}`},
 		{"/api/v1/playback/sessions", `{"sourceTrackId":"track","capabilities":{"htmlAudio":true,"formats":[]}}`},
 		{"/api/v1/playback/sessions", `{"sourceTrackId":"track","preferences":{}}`},
 		{"/api/v1/playback/sessions", `{"sourceTrackId":"track","capabilities":{"htmlAudio":true},"preferences":{}}`},

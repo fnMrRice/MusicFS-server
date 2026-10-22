@@ -1,6 +1,6 @@
 # 常见 DSP 与声道转换
 
-内置均衡器、压缩器、混响及声道转换随 Server 构建交付，在主进程运行。Web「设置 → DSP 配置」支持增删效果、调整顺序、参数、声道布局与处理缓冲区；管理员还可编辑全局默认。保存后对下一次播放生效，当前歌曲、跳转与恢复保持创建时的设置。部署 YAML 仍需重启后生效。协议与旧外部节点限制见 [DSP 插件](dsp-plugins.md)，设置接口与继承规则见 [DSP 配置](dsp-settings.md)。
+内置均衡器、压缩器、混响及声道转换随 Server 构建交付。服务端听感效果默认停用，Web 通过本地 DSP 实时调整参数；必要声道转换仍在 Server 执行。以下描述保留的服务端算法，须显式设 `audioDSP.enabled=true` 才会对服务端 DSP 会话启用；已有会话、跳转与恢复固定创建时设置。部署 YAML 需重启生效。执行边界见 [本地 DSP](../playback/local-dsp.md)，协议见 [DSP 插件](dsp-plugins.md)，接口见 [DSP 配置](dsp-settings.md)。
 
 ## 配置示例
 
@@ -10,6 +10,7 @@
 audioChannels:
   outputLayout: stereo # 可选 stereo、'5.1'、'7.1'
 audioDSP:
+  enabled: true
   chain:
     - name: gain
       version: 1
@@ -76,7 +77,7 @@ DSP 的新输入输出协商允许声道布局变化，编码封装和采样率�
 
 可移植备份恢复会将声道输出重置为默认 `stereo`，并与原有策略一起停用音频实例、清除处理缓存；恢复后须重新确认工具与布局配置，避免在未配置音频实例时强制环绕声。
 
-FFmpeg Worker 升至 `0.4.0`，Host 精确校验发行版本。HTTP `outputProfile` 和 `effectiveProcessing` 报告实际输出与处理顺序；旧客户端可以忽略新增处理名称，但必须正确协商 MIME。Web 已探测 Opus/WebM；本次没有承诺所有浏览器与音响设备均能输出物理环绕声。
+FFmpeg Worker 升至 `0.5.0`，Host 精确校验发行版本。HTTP `outputProfile` 和 `effectiveProcessing` 报告实际输出与处理顺序；旧客户端可以忽略新增处理名称，但必须正确协商 MIME。Web 已探测 Opus/WebM；本次没有承诺所有浏览器与音响设备均能输出物理环绕声。
 
 外部 MFD1 DSP v1 保持无状态、固定双声道、零延迟、无追加尾音的原约束，多声道管线拒绝使用这些外部节点。内置新效果直接调用 Go 接口，不把其有状态、多声道能力冒充成 MFD1 v1 的扩展。原官方 gain 在多声道管线使用同一内置增益工厂。
 

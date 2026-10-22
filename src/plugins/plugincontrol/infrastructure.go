@@ -122,6 +122,9 @@ func (m *Manager) gainPluginLocked() Plugin {
 	if len(status.Nodes) != 0 {
 		status.ChainState = "in_chain"
 	}
+	if !m.desired.AudioDSP.Enabled {
+		status.ChainState = "disabled"
+	}
 	version := bundledplugin.GainVersion
 	for _, runtime := range m.runtimes {
 		if runtime.hooks.DSPVersion != nil {
@@ -132,5 +135,5 @@ func (m *Manager) gainPluginLocked() Plugin {
 		}
 	}
 	return Plugin{PluginID: "musicfs.dsp.gain", Plugin: pluginconfig.Identity("musicfs.dsp.gain"), Version: version,
-		ConfiguredEnabled: len(status.Nodes) != 0, DSP: status, Instances: []Instance{}}
+		ConfiguredEnabled: m.desired.AudioDSP.Enabled && len(status.Nodes) != 0, DSP: status, Instances: []Instance{}}
 }

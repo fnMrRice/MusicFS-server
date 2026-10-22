@@ -25,6 +25,7 @@ type StorageConfig struct {
 
 // AudioDSPConfig is pinned at startup; active playback retains its processor.
 type AudioDSPConfig struct {
+	Enabled bool               `yaml:"enabled,omitempty" json:"enabled"`
 	Chain   []audio.NodeSpec   `yaml:"chain,omitempty" json:"chain,omitempty"`
 	Plugins []dspworker.Config `yaml:"plugins,omitempty" json:"-"`
 }
@@ -102,6 +103,7 @@ func storageShape() fieldShape {
 func audioDSPShape() fieldShape {
 	number := fieldShape{tag: "number"}
 	return mappingShape(map[string]fieldShape{
+		"enabled": boolShape,
 		"chain": sequenceShape(mappingShape(map[string]fieldShape{
 			"name": stringShape, "version": intShape, "params": {tag: "!!map", values: &number},
 		}, "name", "version")),

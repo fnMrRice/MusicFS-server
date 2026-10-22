@@ -190,6 +190,9 @@ func (s *Service) update(ctx context.Context, owner, id, scope string, cfg Confi
 	selected := cfg.Defaults
 	if request.Settings != nil {
 		selected = *request.Settings
+	} else if cfg.DisableEffects {
+		// 继承旧全局配置时只校验仍会执行的输出布局，不重新激活历史效果。
+		selected.Chain = []audio.NodeSpec{}
 	}
 	if _, err := validate(ctx, cfg, selected); err != nil {
 		return Page{}, err

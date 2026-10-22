@@ -8,6 +8,9 @@ import (
 )
 
 func catalog(cfg Config) []builtin.Descriptor {
+	if cfg.DisableEffects {
+		return []builtin.Descriptor{}
+	}
 	items := builtin.Catalog()
 	known := map[string]bool{}
 	for _, item := range items {

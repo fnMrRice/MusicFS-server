@@ -16,7 +16,7 @@ import (
 func TestExtensionConfigurationAndEditorSchema(t *testing.T) {
 	digest := strings.Repeat("a", 64)
 	external := "storage: {backend: plugin, executable: './storage-worker', sha256: '" + digest + "'}\n"
-	dsp := "audioDSP:\n  chain: [{name: gain, version: 1, params: {gainDB: -3.5}}]\n"
+	dsp := "audioDSP:\n  enabled: true\n  chain: [{name: gain, version: 1, params: {gainDB: -3.5}}]\n"
 	for name, tc := range map[string]struct {
 		raw string
 		ok  bool

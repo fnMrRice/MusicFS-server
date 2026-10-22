@@ -30,11 +30,12 @@ type Repository interface {
 	CommitPlayback(context.Context, string, string, string, []byte, time.Time, string, string, string) error
 }
 type Config struct {
-	NCMDecoder    *ncmdecoder.Processor
-	CacheRoot     string
-	MaxSessions   int
-	MaxCacheBytes int64
-	RequireDSP    bool
+	NCMDecoder     *ncmdecoder.Processor
+	CacheRoot      string
+	MaxSessions    int
+	MaxCacheBytes  int64
+	RequireDSP     bool
+	DisableEffects bool
 }
 type session struct {
 	description             Description

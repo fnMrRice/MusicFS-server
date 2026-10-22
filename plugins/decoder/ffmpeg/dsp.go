@@ -115,6 +115,7 @@ func dspRevision(cfg Config, workerSHA string) string {
 		}
 	}
 	data, _ := json.Marshal(struct {
+		DisableEffects    bool               `json:"disableEffects"`
 		ProtocolVersion   int                `json:"protocolVersion"`
 		WorkerSHA         string             `json:"workerSHA256"`
 		WorkerVersion     string             `json:"workerVersion"`
@@ -124,7 +125,7 @@ func dspRevision(cfg Config, workerSHA string) string {
 		BuiltinVersions   map[string]string  `json:"builtinVersions"`
 		Chain             []audio.NodeSpec   `json:"chain"`
 		Plugins           []dspworker.Config `json:"plugins"`
-	}{dspworker.ProtocolVersion, workerSHA, audioPluginVersion, bundledplugin.ChannelMixVersion, layout, effectiveBufferFrames(cfg.BufferFrames), versions, chain, cfg.DSPPlugins})
+	}{cfg.DisableEffects, dspworker.ProtocolVersion, workerSHA, audioPluginVersion, bundledplugin.ChannelMixVersion, layout, effectiveBufferFrames(cfg.BufferFrames), versions, chain, cfg.DSPPlugins})
 	hash := sha256.Sum256(data)
 	return "dsp-v1:" + hex.EncodeToString(hash[:])
 }

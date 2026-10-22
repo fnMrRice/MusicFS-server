@@ -34,7 +34,7 @@ func TestYAMLSurroundDSPPlaybackAndRestart(t *testing.T) {
 	}
 	cfg, base := yamlServiceConfig(t)
 	cfg.AudioChannels = config.AudioChannelsConfig{OutputLayout: "5.1"}
-	cfg.AudioDSP = config.AudioDSPConfig{Chain: []audio.NodeSpec{
+	cfg.AudioDSP = config.AudioDSPConfig{Enabled: true, Chain: []audio.NodeSpec{
 		{Name: "equalizer", Version: 1, Params: map[string]float64{"frequencyHz": 440, "gainDB": -6, "q": 1}},
 		{Name: "compressor", Version: 1, Params: map[string]float64{"thresholdDB": -24, "ratio": 4}},
 		{Name: "reverb", Version: 1, Params: map[string]float64{"wet": 0.2}},

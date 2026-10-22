@@ -23,7 +23,7 @@ func TestBuiltinDSPInventoryIsReadOnlyWithoutInstances(t *testing.T) {
 	for _, name := range []string{"equalizer", "compressor", "reverb"} {
 		id := "musicfs.dsp." + name
 		item := managedItem(t, manager, id)
-		if item.StateMutable || item.SupportsMultipleInstances || item.ConfiguredEnabled || item.DSP == nil || item.DSP.Configured || item.DSP.ChainState != "not_configured" || item.Instances == nil || len(item.Instances) != 0 || item.Execution != "builtin" || item.Version != bundledplugin.Version(id) {
+		if item.StateMutable || item.SupportsMultipleInstances || item.ConfiguredEnabled || item.DSP == nil || item.DSP.Configured || item.DSP.ChainState != "disabled" || item.Instances == nil || len(item.Instances) != 0 || item.Execution != "builtin" || item.Version != bundledplugin.Version(id) {
 			t.Fatalf("invalid builtin DSP declaration: %+v", item)
 		}
 		if item.Plugin.Validate(id) != nil || item.Plugin.LocalizedNames["zh-Hans"] == "" || item.Plugin.LocalizedNames["zh-Hant"] == "" || !reflect.DeepEqual(item.Plugin.Features, []string{"audio-dsp"}) {
@@ -53,7 +53,7 @@ func TestBuiltinDSPProjectionKeepsAliasesPositionsAndParameterIsolation(t *testi
 		chain = append(chain, audio.NodeSpec{Name: name, Version: 1, Params: map[string]float64{"testValue": 0.5}},
 			audio.NodeSpec{Name: "bypass", Version: 1}, audio.NodeSpec{Name: "musicfs.dsp." + name, Version: 1})
 	}
-	manager, err := plugincontrol.New(t.Context(), config.Config{AudioDSP: config.AudioDSPConfig{Chain: chain}}, nil, nil)
+	manager, err := plugincontrol.New(t.Context(), config.Config{AudioDSP: config.AudioDSPConfig{Enabled: true, Chain: chain}}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

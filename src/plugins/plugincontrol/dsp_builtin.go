@@ -35,8 +35,11 @@ func (m *Manager) builtinDSPPluginsLocked() []Plugin {
 		if status.Configured {
 			status.ChainState = "in_chain"
 		}
+		if !m.desired.AudioDSP.Enabled {
+			status.ChainState = "disabled"
+		}
 		result = append(result, Plugin{PluginID: id, Plugin: pluginconfig.Identity(id), Version: bundledplugin.Version(id), Execution: "builtin",
-			ConfiguredEnabled: status.Configured, DSP: status, Instances: []Instance{}})
+			ConfiguredEnabled: m.desired.AudioDSP.Enabled && status.Configured, DSP: status, Instances: []Instance{}})
 	}
 	return result
 }

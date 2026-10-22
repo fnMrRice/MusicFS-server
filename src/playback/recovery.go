@@ -117,7 +117,7 @@ func (s *Service) RecoverSource(ctx context.Context, who auth.Session, id string
 		if err != nil {
 			return empty, err
 		}
-		prepared, err = s.prepare(ctx, who.User.ID, domain.NewID(), CreateRequest{SourceTrackID: r.TargetSourceTrackID, Capabilities: capabilities, Preferences: Preferences{ForceProcessing: true, GainDB: gain}}, a.processor)
+		prepared, err = s.prepare(ctx, who.User.ID, domain.NewID(), CreateRequest{SourceTrackID: r.TargetSourceTrackID, Capabilities: capabilities, Preferences: Preferences{ForceProcessing: true, GainDB: gain, DSPExecution: a.description.DSPExecution}}, a.processor)
 		if err != nil {
 			return empty, err
 		}

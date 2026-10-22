@@ -35,7 +35,7 @@ func TestBundledPluginsAutostartPendingAndPersistedDisable(t *testing.T) {
 					continue
 				}
 				if p.DSP != nil {
-					valid = valid && !p.StateMutable && p.DSP.ChainState == "not_configured" && len(p.Instances) == 0
+					valid = valid && !p.StateMutable && !p.ConfiguredEnabled && p.DSP.ChainState == "disabled" && len(p.Instances) == 0
 					continue
 				}
 				want := "ready"

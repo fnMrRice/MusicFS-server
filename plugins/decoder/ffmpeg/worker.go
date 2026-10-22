@@ -93,15 +93,17 @@ func (w *audioWorker) handle(ctx context.Context, method string, raw json.RawMes
 	if err := validateLoopback(r.OutputURL); err != nil {
 		return nil, err
 	}
-	if err := ValidateDSP(r.DSPChain, r.DSPPlugins); err != nil {
-		return nil, err
+	if !r.DisableEffects {
+		if err := ValidateDSP(r.DSPChain, r.DSPPlugins); err != nil {
+			return nil, err
+		}
 	}
 	if method == "audio.prepare" {
 		format, err := audio.FormatForLayout(profile.Layout)
 		if err != nil {
 			return nil, err
 		}
-		node, err := buildDSPFormat(ctx, r.Plan.GainDB, r.DSPChain, r.DSPPlugins, format)
+		node, err := buildRequestedDSP(ctx, r, format)
 		if err != nil {
 			return nil, err
 		}

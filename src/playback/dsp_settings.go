@@ -10,10 +10,18 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/plugins/dspsettings"
 )
 
-func (s *Service) processorForUser(ctx context.Context, owner string, processor *audioffmpeg.Processor) (*audioffmpeg.Processor, error) {
+func (s *Service) processorForUser(ctx context.Context, owner string, processor *audioffmpeg.Processor, client ...bool) (*audioffmpeg.Processor, error) {
+	withoutEffects := s.config.DisableEffects || processor.EffectsDisabled() || len(client) > 0 && client[0]
+	if withoutEffects {
+		processor = processor.WithoutEffects()
+	}
 	options, err := dspsettings.Load(ctx, s.repo, owner)
 	if err != nil || options == nil {
 		return processor, err
+	}
+	if withoutEffects {
+		// 保留个人或全局输出布局，旧效果参数不参与服务端处理。
+		options.Chain = nil
 	}
 	if processor == nil {
 		// 空立体声链不要求处理；是否必须转码仍由播放能力、用户增益和部署策略决定。
@@ -29,7 +37,8 @@ func (s *Service) processorForUser(ctx context.Context, owner string, processor 
 func (s *Service) DSPSettingsConfig() dspsettings.Config {
 	processor, _ := s.audioSnapshot()
 	return dspsettings.Config{Defaults: processor.Defaults(), Plugins: processor.DSPPlugins(), Available: processor != nil,
-		OutputLayouts: processor.AvailableOutputLayouts(), Validate: processor.ValidateSettings}
+		DisableEffects: s.config.DisableEffects || processor.EffectsDisabled(),
+		OutputLayouts:  processor.AvailableOutputLayouts(), Validate: processor.ValidateSettings}
 }
 
 func (s *Service) recoveryProfileForSession(ctx context.Context, owner string, a *session) (timeline.Profile, error) {

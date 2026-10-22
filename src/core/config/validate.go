@@ -27,7 +27,7 @@ func (c Config) Validate() error {
 	if err := c.AudioChannels.Validate(); err != nil {
 		return err
 	}
-	if len(c.AudioDSP.Chain) > 0 || c.AudioChannels.RequiresProcessing() {
+	if c.AudioDSP.Enabled && len(c.AudioDSP.Chain) > 0 || c.AudioChannels.RequiresProcessing() {
 		ready := false
 		for _, plugin := range c.Plugins {
 			if plugin.PluginID == "musicfs.plugin.decoder.ffmpeg" {
