@@ -10,7 +10,7 @@
 | `musicfs.plugin.source.netease` | 网易云音乐 | 是 |
 | `musicfs.plugin.source.qqmusic` | QQ 音乐 | 是 |
 | `musicfs.plugin.source.applemusic` | Apple Music | 是 |
-| `musicfs.plugin.decoder.ffmpeg` | FFmpeg 音频处理 | 否 |
+| `musicfs.plugin.decoder.ffmpeg` | FFmpeg 音频编解码 | 否 |
 | `musicfs.plugin.decoder.ncm` | NCM 解密 | 否 |
 | `musicfs.scraper.local` | 本地元数据提取 | 是 |
 
@@ -55,6 +55,8 @@
 默认名和每项译名必须为合法 UTF-8、1—128 个 Unicode 字符，不含控制字符或首尾空白。`localizedNames` 必须为非 null 对象，最多 64 项；语言标签最长 63 字符，使用 `^[A-Za-z]{1,8}(-[A-Za-z0-9]{1,8})*$` 限定形式并由语言标签解析器继续校验，不接受仅大小写不同的重复键。Schema 限定结构与长度；身份一致性、空白、重复语言标签及完整标签合法性由运行时继续检查。
 
 `features` 必须为非 null 数组，最多 32 项、不可重复，每项 1—64 字符并匹配 `^[a-z][a-z0-9]*([.-][a-z0-9]+)*$`。当前在线 Provider 和 Local Files 都必须包含 `music-source`，不因此推断它们支持登录、扫描或列歌单。设置页将来源配置和在线账号操作合并到同一个“音乐来源”区域。
+
+NCM 与 FFmpeg 声明 `audio-codec`，在插件列表归入“音频编解码”；声道转换与其他 DSP 声明 `audio-dsp`，归入“DSP”。分类由声明决定，不根据插件 ID 前缀推断。声道转换继续保留稳定 ID `musicfs.plugin.decoder.channelmix`，已有配置、日志关联和处理身份不因源码归类改变；其实现位于 `plugins/dsp/channelmix`。Web 继续识别旧版本插件声明的 `audio-processing`、`audio-decryption` 与 `decode` 分类。
 
 显示名只作为文本渲染，不作为 HTML、链接、请求路径、账号身份或配置值。Web 规范化语言标签后，依次匹配当前标签、同语言的书写体系、主语言、同语言且同书写体系的地区译名，均不匹配时使用插件默认名；例如繁体中文优先 `zh-TW`，再找 `zh-Hant`。插件名称不再送入产品自身的翻译字典；名称改变只影响显示，不改请求中的实例 ID。
 

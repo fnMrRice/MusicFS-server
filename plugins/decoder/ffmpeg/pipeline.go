@@ -18,11 +18,12 @@ import (
 )
 
 type Plan struct {
-	TaskID     string  `json:"taskId"`
-	AssetID    string  `json:"assetId"`
-	Profile    string  `json:"profile"`
-	GainDB     float64 `json:"gainDB"`
-	PositionMs int64   `json:"positionMs"`
+	TaskID       string  `json:"taskId"`
+	AssetID      string  `json:"assetId"`
+	Profile      string  `json:"profile"`
+	GainDB       float64 `json:"gainDB"`
+	PositionMs   int64   `json:"positionMs"`
+	DecodeOutput string  `json:"decodeOutput,omitempty"`
 }
 type StartRequest struct {
 	Plan         Plan               `json:"plan"`
@@ -54,6 +55,10 @@ func Pipeline(ctx context.Context, r StartRequest, output io.Writer) (pipelineEr
 	if !supported || r.Plan.PositionMs < 0 || r.Plan.PositionMs > 24*60*60*1000 {
 		return fmt.Errorf("UNSUPPORTED: invalid audio plan")
 	}
+	decodeOutput, err := DecodeOutput(r.Plan.DecodeOutput)
+	if err != nil {
+		return err
+	}
 	format, err := audio.FormatForLayout(profile.Layout)
 	if err != nil {
 		return err
@@ -82,7 +87,7 @@ func Pipeline(ctx context.Context, r StartRequest, output io.Writer) (pipelineEr
 	}
 	// 有状态链从曲首重建历史；仅在 DSP 处理之后丢弃目标位置之前的帧。
 	// WAV 扩展头携带原声道掩码，避免先下混后再上混丢失声道内容。
-	decodeArgs = append(decodeArgs, "-map", "0:a:0", "-vn", "-ar", "48000", "-f", "wav", "-acodec", "pcm_f32le", "pipe:1")
+	decodeArgs = append(decodeArgs, "-map", "0:a:0", "-vn", "-ar", "48000", "-f", "wav", "-acodec", decodeOutput, "pipe:1")
 	decoder := exec.CommandContext(ctx, r.FFmpegPath, decodeArgs...)
 	encoder := exec.CommandContext(ctx, r.FFmpegPath, encoderArguments(profile)...)
 	decodeLog := logging.PluginStderr("musicfs.plugin.decoder.ffmpeg", "")
@@ -116,7 +121,7 @@ func Pipeline(ctx context.Context, r StartRequest, output io.Writer) (pipelineEr
 		}
 		return fmt.Errorf("TEMPORARY_FAILURE: decoder failed to start")
 	}
-	converted, err := convertedWAVReader(decoded, format)
+	converted, err := convertedWAVReaderOutput(decoded, format, decodeOutput)
 	if err == nil {
 		err = transferPCMFormatWindow(ctx, converted, encodeInput, node, format, window)
 	}

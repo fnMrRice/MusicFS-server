@@ -64,6 +64,7 @@ func (p *preparedInput) checkLeases() error {
 
 func (s *Service) installPluginLeases(a *session, p *preparedInput) {
 	a.processor, a.processing, a.decoding = p.processor, p.processing, p.decoding
+	a.decodeOutput = p.decodeOutput
 	a.ctx, a.cancel = context.WithCancel(s.ctx)
 	if p.lease != nil {
 		a.ctx = p.lease.WithContext(a.ctx)

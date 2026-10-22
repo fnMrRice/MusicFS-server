@@ -14,17 +14,18 @@ import (
 )
 
 type Stream struct {
-	Description Description
-	File        *os.File
-	ETag        string
-	Size        int64
-	Context     context.Context
-	Cancel      context.CancelFunc
-	release     func()
-	once        sync.Once
-	processor   *audioffmpeg.Processor
-	gain        float64
-	process     func(io.Writer) error
+	Description  Description
+	File         *os.File
+	ETag         string
+	Size         int64
+	Context      context.Context
+	Cancel       context.CancelFunc
+	release      func()
+	once         sync.Once
+	processor    *audioffmpeg.Processor
+	gain         float64
+	decodeOutput string
+	process      func(io.Writer) error
 }
 
 func (s *Stream) Close() { s.once.Do(func() { s.Cancel(); s.File.Close(); s.release() }) }
@@ -44,7 +45,7 @@ func (s *Stream) Process(output io.Writer) (err error) {
 	return s.processDirect(output)
 }
 func (s *Stream) processDirect(output io.Writer) error {
-	return s.processor.Process(s.Context, audioffmpeg.Plan{TaskID: s.Description.AttemptID, AssetID: s.Description.AssetID, Profile: s.Description.OutputProfile.ID, GainDB: s.gain, PositionMs: s.Description.PositionOriginMs}, s.File, s.Size, output)
+	return s.processor.Process(s.Context, audioffmpeg.Plan{TaskID: s.Description.AttemptID, AssetID: s.Description.AssetID, Profile: s.Description.OutputProfile.ID, GainDB: s.gain, PositionMs: s.Description.PositionOriginMs, DecodeOutput: decodePlanOutput(s.decodeOutput)}, s.File, s.Size, output)
 }
 func (s *Service) OpenStream(ctx context.Context, who auth.Session, id, attempt string, head bool) (result *Stream, resultErr error) {
 	consumers := 0
@@ -84,6 +85,7 @@ func (s *Service) OpenStream(ctx context.Context, who auth.Session, id, attempt 
 	a.lastAccess = time.Now()
 	consumers = a.active
 	stream := &Stream{Description: a.description, File: f, Size: a.size, ETag: a.etag, Context: streamCtx, processor: a.processor, gain: a.gain}
+	stream.decodeOutput = a.decodeOutput
 	if s.cache != nil && a.description.DeliveryMode == "processed" {
 		scope := s.cacheScope(a)
 		stream.process = func(output io.Writer) error { return s.processCached(stream, scope, output) }

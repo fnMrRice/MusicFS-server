@@ -24,6 +24,9 @@ func TestOfficialManifestInstancePolicy(t *testing.T) {
 				SupportsMultipleInstances: multiple, PluginVersion: "1.0.0", ProtocolVersion: pluginproto.ProtocolVersion,
 				Roles: []string{role}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems,
 			}
+			if role == "audio" && (len(manifest.Plugin.Features) != 1 || manifest.Plugin.Features[0] != "audio-codec") {
+				t.Fatal("official audio plugin is not classified as an audio codec", manifest.Plugin)
+			}
 			if err := pluginconfig.ValidateManifest(manifest, role); err != nil {
 				t.Fatal(err)
 			}

@@ -87,7 +87,7 @@ func (s *Service) collect(ctx context.Context, w enrichment.Work, out *enrichmen
 		return domain.Fail("RESOURCE_CHANGED", "Metadata source changed while queued")
 	}
 	input.Target = w.Target
-	if err = input.DecodeNCM(ctx, s.decoder()); err != nil {
+	if err = input.DecodeAudio(ctx, s.decoder()); err != nil {
 		return err
 	}
 	trace.source(input)

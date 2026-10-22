@@ -6,6 +6,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/audioformat"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
@@ -28,6 +29,7 @@ type StableReader struct {
 	failure    error
 	done       chan struct{}
 	stop       func() bool
+	formats    *audioformat.Registry
 }
 
 // Stable refuses filesystems or platforms that cannot guarantee a stable read.
@@ -45,7 +47,7 @@ func (h *Handle) Stable(ctx context.Context) (*StableReader, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &StableReader{protection: p, entry: h.Entry, root: h.rootID, path: h.path, checkPath: h.checkPath, done: make(chan struct{})}
+	s := &StableReader{protection: p, entry: h.Entry, root: h.rootID, path: h.path, checkPath: h.checkPath, formats: h.formats, done: make(chan struct{})}
 	if err := s.Validate(); err != nil {
 		s.Close()
 		return nil, err
@@ -122,7 +124,7 @@ func (s *StableReader) validateLocked() error {
 	if err := s.activeLocked(); err != nil {
 		return err
 	}
-	entry, err := describe(s.protection.file, s.root, s.path)
+	entry, err := describe(s.protection.file, s.root, s.path, s.formats)
 	if err != nil || entry.ObservedVersion != s.entry.ObservedVersion {
 		return fmt.Errorf("RESOURCE_CHANGED: protected source version changed")
 	}

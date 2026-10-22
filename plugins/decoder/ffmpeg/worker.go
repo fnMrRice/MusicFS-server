@@ -45,7 +45,7 @@ func (w *audioWorker) handle(ctx context.Context, method string, raw json.RawMes
 		w.capabilities = b.Capabilities
 		w.instanceID, w.nonce = b.InstanceID, b.Nonce
 		w.taskID = b.TaskID
-		capabilities := []string{"audio.decode", "audio.dsp", "audio.dsp.builtin", "audio.encode", "audio.mux"}
+		capabilities := []string{"audio.decode", "audio.transcode", "audio.dsp", "audio.dsp.builtin", "audio.encode", "audio.mux"}
 		if b.Capabilities.Normalization {
 			capabilities = append(capabilities, "audio.normalize")
 		}
@@ -66,6 +66,9 @@ func (w *audioWorker) handle(ctx context.Context, method string, raw json.RawMes
 	if method == "audio.normalize" {
 		return w.normalize(ctx, raw)
 	}
+	if method == "audio.decode" || method == "audio.transcode" {
+		return w.codec(ctx, method[len("audio."):], raw)
+	}
 	if method != "audio.prepare" && method != "audio.start" {
 		return nil, pluginproto.Failure("UNSUPPORTED", "unknown audio method")
 	}
@@ -76,6 +79,10 @@ func (w *audioWorker) handle(ctx context.Context, method string, raw json.RawMes
 	profile, supported := ProfileByID(r.Plan.Profile)
 	if !supported || r.Plan.PositionMs < 0 || r.Plan.PositionMs > 24*60*60*1000 || r.Plan.TaskID != taskID || r.Plan.AssetID == "" {
 		return nil, fmt.Errorf("UNSUPPORTED: invalid audio plan")
+	}
+	decodeOutput, err := DecodeOutput(r.Plan.DecodeOutput)
+	if err != nil || !supportsDecodeOutput(capabilities, decodeOutput) {
+		return nil, fmt.Errorf("UNSUPPORTED: decoder output format is unavailable")
 	}
 	if err := validateLoopback(r.InputURL); err != nil {
 		return nil, err

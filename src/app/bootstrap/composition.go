@@ -29,6 +29,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/hashworker"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/codecsettings"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
@@ -218,7 +219,8 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	matchingService := matching.New(store, fingerprintDetails, standard.Plugin{})
 	handler.RegisterMatching(matchingService)
 	matchingAutomation := matching.NewAutomation(store, store, matchingService, standard.Detector())
-	handler.RegisterPluginSettings(settings.New(store, matchingAutomation.Provider()))
+	settingsProviders := append(codecsettings.Providers(), matchingAutomation.Provider())
+	handler.RegisterPluginSettings(settings.New(store, settingsProviders...))
 	beforeMatching := cleanup
 	cleanup = func() { matchingAutomation.Close(); beforeMatching() }
 	player, err := playback.New(ctx, store, lib, processor, playback.Config{CacheRoot: c.CacheRoot, MaxSessions: c.MaxSessions, MaxCacheBytes: c.MaxCacheBytes, NCMDecoder: decoder, RequireDSP: len(c.AudioDSP.Chain) > 0 || c.AudioChannels.RequiresProcessing()})

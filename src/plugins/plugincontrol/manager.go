@@ -173,6 +173,7 @@ func (m *Manager) Snapshot() Snapshot {
 	}
 	for _, p := range m.desired.Plugins {
 		v := Plugin{PluginID: p.PluginID, Plugin: pluginconfig.Identity(p.PluginID), Version: bundledplugin.Version(p.PluginID), SupportsMultipleInstances: pluginconfig.SupportsMultipleInstances(p.PluginID), ConfiguredEnabled: p.Enabled, StateMutable: true, Instances: []Instance{}}
+		v.SettingsAvailable = p.PluginID == "musicfs.plugin.decoder.ffmpeg" || p.PluginID == "musicfs.plugin.decoder.ncm"
 		v.Execution = "process"
 		if p.InProcess() {
 			v.Execution = "builtin"

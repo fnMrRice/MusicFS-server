@@ -54,6 +54,7 @@ type session struct {
 	sourceLease             *library.ReadLease
 	cachePin                *processedcache.Pin
 	processor               *audioffmpeg.Processor
+	decodeOutput            string
 	processing, decoding    *plugincontrol.Lease
 	unlinkPlugins           []func() bool
 }

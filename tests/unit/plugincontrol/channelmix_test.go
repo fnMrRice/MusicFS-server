@@ -17,6 +17,9 @@ func TestChannelConversionIsAnImmutableBuiltinAlgorithm(t *testing.T) {
 	defer manager.Close()
 	id := "musicfs.plugin.decoder.channelmix"
 	item := managedItem(t, manager, id)
+	if item.Plugin == nil || !reflect.DeepEqual(item.Plugin.Features, []string{"audio-dsp"}) {
+		t.Fatal("channel converter is not classified as DSP", item.Plugin)
+	}
 	if item.StateMutable || item.SupportsMultipleInstances || item.Execution != "builtin" || item.Version != bundledplugin.ChannelMixVersion || item.Builtin == nil || !item.Builtin.Configured || !item.ConfiguredEnabled || item.Instances == nil || len(item.Instances) != 0 {
 		t.Fatal("invalid channel converter declaration", item)
 	}

@@ -17,13 +17,15 @@ import (
 )
 
 type Capabilities struct {
-	Version       string       `json:"version"`
-	Build         string       `json:"build"`
-	FFmpegSHA256  string       `json:"ffmpegSHA256"`
-	FFprobeSHA256 string       `json:"ffprobeSHA256"`
-	Profiles      []Profile    `json:"profiles"`
-	PCM           audio.Format `json:"pcm"`
-	Normalization bool         `json:"normalization"`
+	Version          string       `json:"version"`
+	Build            string       `json:"build"`
+	FFmpegSHA256     string       `json:"ffmpegSHA256"`
+	FFprobeSHA256    string       `json:"ffprobeSHA256"`
+	Profiles         []Profile    `json:"profiles"`
+	PCM              audio.Format `json:"pcm"`
+	Normalization    bool         `json:"normalization"`
+	DecodeOutputs    []string     `json:"decodeOutputs,omitempty"`
+	TranscodeFormats []string     `json:"transcodeFormats,omitempty"`
 }
 type Profile struct {
 	ID         string `json:"id"`
@@ -139,6 +141,18 @@ func Probe(ctx context.Context, ffmpeg, ffprobe string) (Capabilities, error) {
 		return c, err
 	}
 	c.PCM = audio.Canonical
+	c.DecodeOutputs = []string{DecodeFloat32}
+	c.TranscodeFormats = []string{"mp3"}
+	if strings.Contains(encoders, "pcm_s16le") {
+		c.DecodeOutputs = append(c.DecodeOutputs, DecodeSigned16)
+		c.TranscodeFormats = append(c.TranscodeFormats, "wav")
+	}
+	if strings.Contains(encoders, "flac") && strings.Contains(muxers, " flac ") {
+		c.TranscodeFormats = append(c.TranscodeFormats, "flac")
+	}
+	if strings.Contains(encoders, "libopus") && strings.Contains(muxers, " webm ") {
+		c.TranscodeFormats = append(c.TranscodeFormats, "opus")
+	}
 	c.Normalization = strings.Contains(encoders, "pcm_s16le") && strings.Contains(muxers, " s16le ")
 	return c, nil
 }

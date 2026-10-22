@@ -5,16 +5,15 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
-	"path/filepath"
 	"slices"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
 	"github.com/fnMrRice/MusicFS-server/plugins/scraper/local"
+	"github.com/fnMrRice/MusicFS-server/sdk/audioformat"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audiocodecs"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 )
 
@@ -34,7 +33,7 @@ type ScrapeInput struct {
 	ctx          context.Context
 	cancel       context.CancelFunc
 	guards       []*sourceaccess.StableReader
-	decoded      *ncmdecoder.Decoded
+	decoded      *audioformat.Decoded
 	decodeCancel context.CancelFunc
 	mu           sync.Mutex
 	closed       bool
@@ -92,9 +91,11 @@ func (s *Service) OpenScrape(ctx context.Context, owner, task, trackID string, f
 		return nil, err
 	}
 	h.Inputs = append(h.Inputs, scraperlocal.Input{Resource: enrichment.Resource{ResourceRef: ref, Version: t.Version, Kind: "audio", SizeBytes: t.Size, Match: "embedded"}, Reader: guard, Validate: h.Validate})
-	var header [8]byte
-	n, _ := guard.ReadAt(header[:], 0)
-	h.Encrypted = n == 8 && string(header[:]) == "CTENFDAM" || t.MIME == "audio/x-ncm" || strings.EqualFold(filepath.Ext(t.Path), ".ncm")
+	match, matched, err := audiocodecs.Detect(guard, t.Size)
+	if err != nil {
+		return nil, err
+	}
+	h.Encrypted = matched && match.RequiresDecode
 	scope := sourceaccess.Scope{UserID: owner, InstanceID: t.ProviderID, TaskID: task, AssetID: t.AssetID}
 	runtime, ok := s.Runtime(t.ProviderID)
 	if !ok || runtime.Worker == nil {

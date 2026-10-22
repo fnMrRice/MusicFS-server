@@ -20,7 +20,11 @@ type channelReader struct {
 
 // convertedWAVReader 保留源 WAV 布局，交给独立转换插件后输出目标交错 PCM。
 func convertedWAVReader(input io.Reader, target audio.Format) (io.Reader, error) {
-	source, pcm, err := readDecodedWAV(input)
+	return convertedWAVReaderOutput(input, target, DecodeFloat32)
+}
+
+func convertedWAVReaderOutput(input io.Reader, target audio.Format, output string) (io.Reader, error) {
+	source, pcm, err := readDecodedWAVOutput(input, output)
 	if err != nil {
 		return nil, err
 	}

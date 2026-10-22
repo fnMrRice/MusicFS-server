@@ -46,13 +46,13 @@ EQ 公式依据 [W3C Audio EQ Cookbook](https://www.w3.org/TR/2021/NOTE-audio-eq
 
 ## 声道转换的位置与边界
 
-`musicfs.plugin.decoder.channelmix` 是独立的内置声道转换插件，转换规则与效果节点分离。实际管线为：
+`musicfs.plugin.decoder.channelmix` 是独立的内置声道转换插件，在插件列表归入 DSP，源码位于 `plugins/dsp/channelmix`；保留原 ID 以兼容已有配置和处理身份。转换规则与效果节点分离。实际管线为：
 
 **解码并重采样到 48 kHz → 保留源布局的 PCM → 声道转换 → 用户增益 → 配置 DSP 链 → 编码封装。**
 
 对应 [PlantUML 管线图](../../../docs/diagrams/server-audio-channels.puml) 保留可编辑源码。
 
-转换放在 DSP 前，使所有效果按同一最终布局处理。5.1/7.1 输入不会先压为双声道再扩回环绕声。后续如果引入只支持立体声的第三方效果，需要显式协商转换位置与信息损失，不能自动在两侧插入隐式下混/上混。
+声道转换放在效果链前，使所有效果按同一最终布局处理。5.1/7.1 输入不会先压为双声道再扩回环绕声。后续如果引入只支持立体声的第三方效果，需要显式协商转换位置与信息损失，不能自动在两侧插入隐式下混/上混。
 
 同一个插件负责下混与声道扩展，无需为 5.1、7.1 再建插件。输入接受 mono、stereo、5.1、5.1(side)、7.1；从 WAVE 格式与声道掩码识别布局，不凭 6/8 个声道猜位置。未支持或不明确的多声道布局明确失败。下混使用中心/环绕权重与按行归一化，LFE 不混入立体声；同布局保留各声道；扩展布局保持已有声道，空位补静音，单声道转立体声复制到左右。立体声扩为环绕布局不等于产生独立录制的真实环绕声。
 
@@ -74,7 +74,7 @@ EQ 公式依据 [W3C Audio EQ Cookbook](https://www.w3.org/TR/2021/NOTE-audio-eq
 
 可移植备份恢复会将声道输出重置为默认 `stereo`，并与原有策略一起停用音频实例、清除处理缓存；恢复后须重新确认工具与布局配置，避免在未配置音频实例时强制环绕声。
 
-FFmpeg Worker 升至 `0.3.0`，Host 精确校验发行版本。HTTP `outputProfile` 和 `effectiveProcessing` 报告实际输出与处理顺序；旧客户端可以忽略新增处理名称，但必须正确协商 MIME。Web 已探测 Opus/WebM；本次没有承诺所有浏览器与音响设备均能输出物理环绕声。
+FFmpeg Worker 升至 `0.4.0`，Host 精确校验发行版本。HTTP `outputProfile` 和 `effectiveProcessing` 报告实际输出与处理顺序；旧客户端可以忽略新增处理名称，但必须正确协商 MIME。Web 已探测 Opus/WebM；本次没有承诺所有浏览器与音响设备均能输出物理环绕声。
 
 外部 MFD1 DSP v1 保持无状态、固定双声道、零延迟、无追加尾音的原约束，多声道管线拒绝使用这些外部节点。内置新效果直接调用 Go 接口，不把其有状态、多声道能力冒充成 MFD1 v1 的扩展。原官方 gain 在多声道管线使用同一内置增益工厂。
 
@@ -87,4 +87,4 @@ FFmpeg Worker 升至 `0.3.0`，Host 精确校验发行版本。HTTP `outputProfi
 - MP3 的有状态定位与完整处理后裁切参考逐字节相同；Opus/WebM 比较解码后的 PCM，逐样本一致，不要求封装随机标识相同。
 - HTTP 协商、描述、缓存读取与重启恢复、seek、跨源证据恢复及布局变化后的隔离；实际 YAML 配置启动与重启后的六声道播放。
 
-对应测试入口为 `plugins/dsp/effects`、`plugins/decoder/channelmix`、`plugins/decoder/ffmpeg`、`tests/integration/playback/channel_profiles_test.go` 和 `tests/e2e/yaml_surround_test.go`。真实音频测试须设置 `MUSICFS_FFMPEG`、`MUSICFS_FFPROBE`，未设置时的跳过不计验证。其他操作系统、所有浏览器和物理环绕声设备仍需分别验收。
+对应测试入口为 `plugins/dsp/effects`、`plugins/dsp/channelmix`、`plugins/decoder/ffmpeg`、`tests/integration/playback/channel_profiles_test.go` 和 `tests/e2e/yaml_surround_test.go`。真实音频测试须设置 `MUSICFS_FFMPEG`、`MUSICFS_FFPROBE`，未设置时的跳过不计验证。其他操作系统、所有浏览器和物理环绕声设备仍需分别验收。

@@ -11,7 +11,7 @@ import (
 
 func (s *Server) registerTimeline(service *playback.Service) {
 	s.Handle("GET /api/v1/playback/recovery-profile", true, false, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
-		profile, err := service.RecoveryProfile()
+		profile, err := service.RecoveryProfileForUser(r.Context(), a.User.ID)
 		if err != nil {
 			return err
 		}

@@ -13,6 +13,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/fingerprint"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audiocodecs"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
@@ -93,22 +94,18 @@ func (s *Service) extractAndPublish(ctx context.Context, j identification.Finger
 	}
 	var input io.ReaderAt = in
 	size := j.FileSizeBytes
-	var header [8]byte
-	n, readErr := in.ReadAt(header[:], 0)
-	if readErr != nil && !errors.Is(readErr, io.EOF) {
-		return readErr
+	match, matched, err := audiocodecs.Detect(in, size)
+	if err != nil {
+		return err
 	}
-	if n == len(header) && string(header[:]) == "CTENFDAM" {
+	if matched && match.RequiresDecode {
 		slog.DebugContext(ctx, "Fingerprint input decoding started", "jobId", j.ID)
-		if decoder == nil {
-			return domain.Fail("UNSUPPORTED", "NCM decryption plugin is unavailable")
-		}
-		decoded, err := decoder.Open(ctx, j.ID, j.AssetID, in, size)
+		decoded, err := audiocodecs.OpenNative(ctx, decoder, j.ID, j.AssetID, in, size)
 		if err != nil {
 			return err
 		}
 		defer decoded.Close()
-		input, size = decoded, decoded.Size()
+		input, size = decoded.Reader, decoded.Size
 	}
 	slog.DebugContext(ctx, "Fingerprint extraction started", "jobId", j.ID, "inputBytes", size)
 	detail, err := extractor.Extract(ctx, fingerprint.Request{TaskID: j.ID, AssetID: j.AssetID, StartMs: j.StartMs, DurationMs: j.DurationMs}, input, size)

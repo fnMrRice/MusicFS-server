@@ -64,7 +64,7 @@ func (s *Service) RecoverSource(ctx context.Context, who auth.Session, id string
 	unlink := context.AfterFunc(a.ctx, cancel)
 	s.preparing[who.ID] = cancel
 	from, capabilities, gain := target(a.track), a.capabilities, a.gain
-	fromProfile, fromProfileErr := recoveryProfile(a.processor)
+	fromProfile, fromProfileErr := recoveryProfile(a.processor, a.decodeOutput)
 	fromProfile.GainDB = gain
 	s.mu.Unlock()
 	defer func() { unlink(); cancel(); s.mu.Lock(); delete(s.preparing, who.ID); s.mu.Unlock() }()
@@ -85,7 +85,7 @@ func (s *Service) RecoverSource(ctx context.Context, who auth.Session, id string
 		return empty, domain.Fail("RESOURCE_CHANGED", "Recovery source changed")
 	}
 	handle.Close()
-	profile, profileErr := s.RecoveryProfile()
+	profile, profileErr := s.RecoveryProfileForUser(ctx, who.User.ID)
 	profile.GainDB = gain
 	check := timeline.Check{From: from, To: target(t), PositionMs: r.PositionMs, Profile: profile}
 	if r.EvidenceID != nil {
@@ -128,7 +128,7 @@ func (s *Service) RecoverSource(ctx context.Context, who auth.Session, id string
 		if target(prepared.track) != check.To || prepared.track.DurationMs == nil || position >= *prepared.track.DurationMs {
 			return empty, domain.Fail("RESOURCE_CHANGED", "Recovery target changed during preparation")
 		}
-		preparedProfile, preparedProfileErr := recoveryProfile(prepared.processor)
+		preparedProfile, preparedProfileErr := recoveryProfile(prepared.processor, prepared.decodeOutput)
 		preparedProfile.GainDB = gain
 		if preparedProfileErr != nil || preparedProfile != profile {
 			return empty, domain.Fail("RESOURCE_CHANGED", "Recovery processor changed during preparation")

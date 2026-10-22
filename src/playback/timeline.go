@@ -9,6 +9,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/codecsettings"
 )
 
 func target(t library.Track) timeline.Target {
@@ -27,8 +28,31 @@ func (s *Service) RecoveryProfile() (timeline.Profile, error) {
 	return recoveryProfile(s.processor)
 }
 
-func recoveryProfile(processor *audioffmpeg.Processor) (timeline.Profile, error) {
+// RecoveryProfileForUser 与新会话读取相同的插件偏好，避免跨量化格式复用对齐证据。
+func (s *Service) RecoveryProfileForUser(ctx context.Context, owner string) (timeline.Profile, error) {
+	output, err := codecsettings.DecodeOutput(ctx, s.repo, owner)
+	if err != nil {
+		return timeline.Profile{}, err
+	}
+	s.mu.Lock()
+	processor := s.processor
+	s.mu.Unlock()
+	return recoveryProfile(processor, output)
+}
+
+func decodePlanOutput(output string) string {
+	if output == "native" {
+		return ""
+	}
+	return output
+}
+
+func recoveryProfile(processor *audioffmpeg.Processor, outputs ...string) (timeline.Profile, error) {
 	p := timeline.Profile{ProcessingRevision: "gain-v1"}
+	decodeOutput := ""
+	if len(outputs) > 0 {
+		decodeOutput = decodePlanOutput(outputs[0])
+	}
 	output, err := processor.OutputProfile()
 	if err != nil {
 		return p, domain.Fail("UNSUPPORTED", "A verified recovery processing profile is unavailable")
@@ -36,7 +60,10 @@ func recoveryProfile(processor *audioffmpeg.Processor) (timeline.Profile, error)
 	p.OutputProfile = output.ID
 	if processor != nil {
 		p.DecoderSHA256 = processor.Capabilities.FFmpegSHA256
-		if revision := processor.ProcessingIdentity().PipelineRevision; revision != "" {
+		if err := processor.SupportsDecodeOutput(decodeOutput); err != nil {
+			return p, domain.Fail("UNSUPPORTED", "A verified decoder output format is unavailable")
+		}
+		if revision := processor.ProcessingIdentityForDecodeOutput(decodeOutput).PipelineRevision; revision != "" {
 			p.ProcessingRevision = revision
 		}
 	}
@@ -46,7 +73,7 @@ func recoveryProfile(processor *audioffmpeg.Processor) (timeline.Profile, error)
 	return p, nil
 }
 func (s *Service) AddTimeline(ctx context.Context, owner string, r timeline.Request, key string) (timeline.Evidence, error) {
-	profile, err := s.RecoveryProfile()
+	profile, err := s.RecoveryProfileForUser(ctx, owner)
 	if err != nil {
 		return timeline.Evidence{}, err
 	}

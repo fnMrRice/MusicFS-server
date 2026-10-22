@@ -86,7 +86,7 @@ func configureAudioManagement(c config.Config, manager *plugincontrol.Manager, p
 					if !isAudio {
 						return []string{"audio.decrypt"}
 					}
-					caps := []string{"audio.decode", "audio.dsp", "audio.encode", "audio.mux"}
+					caps := []string{"audio.decode", "audio.transcode", "audio.dsp", "audio.encode", "audio.mux"}
 					if currentAudio != nil && currentAudio.Capabilities.Normalization {
 						caps = append(caps, "audio.normalize")
 					}

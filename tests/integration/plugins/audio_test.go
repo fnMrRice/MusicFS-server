@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
+	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 )
 
 func audioTools(t *testing.T) (string, string) {
@@ -137,7 +138,7 @@ func TestActualAudioWorkerGainSeekAndMetadata(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if p.PluginVersion() != "0.2.0" {
+		if p.PluginVersion() != bundledplugin.FFmpegVersion {
 			t.Fatal("verified audio worker version was not retained", p.PluginVersion())
 		}
 	}

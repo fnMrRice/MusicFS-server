@@ -2,8 +2,8 @@ package pluginconfig
 
 import "github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 
-// Identity owns the official plugin display declarations. Workers and hosts
-// share these defaults; a verified worker may supply updated display names.
+// Identity 提供官方插件的默认显示声明；宿主和 Worker 共用这些默认值，
+// 已验证的 Worker 可以提供更新后的显示名称。
 func Identity(pluginID string) *pluginproto.PluginIdentity {
 	identity := &pluginproto.PluginIdentity{ID: pluginID, LocalizedNames: map[string]string{}, Features: []string{}}
 	switch pluginID {
@@ -39,17 +39,17 @@ func Identity(pluginID string) *pluginproto.PluginIdentity {
 		identity.Name = "Apple Music"
 		identity.Features = []string{"music-source"}
 	case "musicfs.plugin.decoder.ffmpeg":
-		identity.Name = "FFmpeg Audio Processing"
-		identity.LocalizedNames = map[string]string{"zh": "FFmpeg 音频处理", "zh-Hans": "FFmpeg 音频处理", "zh-Hant": "FFmpeg 音訊處理"}
-		identity.Features = []string{"audio-processing"}
+		identity.Name = "FFmpeg Audio Codec"
+		identity.LocalizedNames = map[string]string{"zh": "FFmpeg 音频编解码", "zh-Hans": "FFmpeg 音频编解码", "zh-Hant": "FFmpeg 音訊編解碼"}
+		identity.Features = []string{"audio-codec"}
 	case "musicfs.plugin.decoder.channelmix":
 		identity.Name = "Audio Channel Conversion"
 		identity.LocalizedNames = map[string]string{"zh": "音频声道转换", "zh-Hans": "音频声道转换", "zh-Hant": "音訊聲道轉換"}
-		identity.Features = []string{"audio-processing"}
+		identity.Features = []string{"audio-dsp"}
 	case "musicfs.plugin.decoder.ncm":
 		identity.Name = "NCM Decryption"
 		identity.LocalizedNames = map[string]string{"zh": "NCM 解密", "zh-Hans": "NCM 解密", "zh-Hant": "NCM 解密"}
-		identity.Features = []string{"audio-decryption"}
+		identity.Features = []string{"audio-codec"}
 	case "musicfs.scraper.local":
 		identity.Name = "Local Metadata Extraction"
 		identity.LocalizedNames = map[string]string{"zh": "本地元数据提取", "zh-Hans": "本地元数据提取", "zh-Hant": "本機中繼資料擷取"}

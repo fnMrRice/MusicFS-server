@@ -5,6 +5,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audiocodecs"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"io"
 	"sync"
@@ -71,13 +72,15 @@ func (p *managedProbe) writeProbe(ctx context.Context, input io.ReadSeeker, size
 	return runtime.probe(ctx, input, size)
 }
 func (runtime probeRuntime) probe(ctx context.Context, input io.ReadSeeker, size int64) (library.Observation, error) {
-	encrypted := false
+	wrapped := false
 	if reader, ok := input.(io.ReaderAt); ok {
-		var header [8]byte
-		n, _ := reader.ReadAt(header[:], 0)
-		encrypted = n == 8 && string(header[:]) == "CTENFDAM"
+		match, matched, err := audiocodecs.Detect(reader, size)
+		if err != nil {
+			return library.Observation{}, err
+		}
+		wrapped = matched && match.RequiresDecode
 	}
-	ctx, release, err := runtime.admit(ctx, encrypted)
+	ctx, release, err := runtime.admit(ctx, wrapped)
 	if err != nil {
 		return library.Observation{}, err
 	}

@@ -10,7 +10,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/audioformat"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audiocodecs"
 )
 
 type RootConfig struct {
@@ -26,13 +28,19 @@ type grant struct {
 	expires               time.Time
 }
 type Access struct {
-	roots  map[string]RootConfig
-	mu     sync.Mutex
-	grants map[string]grant
+	roots   map[string]RootConfig
+	mu      sync.Mutex
+	grants  map[string]grant
+	formats *audioformat.Registry
 }
 
 func New(roots []RootConfig) (*Access, error) {
-	a := &Access{roots: make(map[string]RootConfig), grants: make(map[string]grant)}
+	return NewWithFormats(roots, audiocodecs.DefaultRegistry())
+}
+
+// NewWithFormats 为当前来源注入插件识别注册表，避免扫描器固定支持的格式。
+func NewWithFormats(roots []RootConfig, formats *audioformat.Registry) (*Access, error) {
+	a := &Access{roots: make(map[string]RootConfig), grants: make(map[string]grant), formats: formats}
 	for _, cfg := range roots {
 		if cfg.ID == "" || !filepath.IsAbs(cfg.Path) {
 			return nil, fmt.Errorf("ACCESS_DENIED: root must have an ID and absolute path")
@@ -108,8 +116,8 @@ func (a *Access) open(rootID, path, version string) (*Handle, error) {
 	if err != nil {
 		return nil, fmt.Errorf("NOT_FOUND: source is unavailable")
 	}
-	h := &Handle{File: f, rootID: rootID, path: path}
-	entry, err := describe(f, rootID, path)
+	h := &Handle{File: f, rootID: rootID, path: path, formats: a.formats}
+	entry, err := describe(f, rootID, path, a.formats)
 	if err != nil {
 		f.Close()
 		return nil, err
@@ -201,6 +209,7 @@ type Handle struct {
 	rootID, path string
 	stop         func() bool
 	checkPath    func() error
+	formats      *audioformat.Registry
 }
 
 func (h *Handle) Close() error {
@@ -225,7 +234,7 @@ func (h *Handle) Stat() (os.FileInfo, error) {
 func (h *Handle) Validate() error {
 	h.metadataMu.Lock()
 	defer h.metadataMu.Unlock()
-	entry, err := describe(h.File, h.rootID, h.path)
+	entry, err := describe(h.File, h.rootID, h.path, h.formats)
 	if err != nil {
 		return err
 	}

@@ -35,6 +35,7 @@ type preparedInput struct {
 	profile              audioffmpeg.Profile
 	decoder              *ncmdecoder.Processor
 	processing, decoding *plugincontrol.Lease
+	decodeOutput         string
 }
 
 func (p *preparedInput) discard() {
@@ -76,7 +77,7 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 	if err != nil {
 		return nil, err
 	}
-	p := &preparedInput{service: s, track: t, lease: lease}
+	p := &preparedInput{service: s, track: t, lease: lease, decodeOutput: "native"}
 	p.processor, p.decoder = s.audioSnapshot()
 	ctx, cancelPreparation := context.WithCancel(lease.WithContext(ctx))
 	unlink := context.AfterFunc(lease.Context(), cancelPreparation)
@@ -106,15 +107,17 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 		return nil, domain.Fail("RATE_LIMITED", "Representation exceeds the cache budget")
 	}
 	p.reserved = size
-	processed := s.config.RequireDSP || r.Preferences.ForceProcessing || r.Preferences.GainDB != 0 || p.processor.HasDSP() || p.processor.RequiresChannelConversion() || !originalCandidate(t) || !supports(r.Capabilities, t.MIME)
+	processed := p.decodeOutput != "native" || s.config.RequireDSP || r.Preferences.ForceProcessing || r.Preferences.GainDB != 0 || p.processor.HasDSP() || p.processor.RequiresChannelConversion() || !originalCandidate(t) || !supports(r.Capabilities, t.MIME)
 	if processed {
 		p.profile, err = p.processor.OutputProfile()
 		if err != nil || !supportsOutputProfile(r.Capabilities, p.profile) {
 			return nil, domain.Fail("UNSUPPORTED", "No compatible audio processing profile is available")
 		}
-		ctx, err = p.processingLease(ctx)
-		if err != nil {
-			return nil, err
+		if p.processing == nil {
+			ctx, err = p.processingLease(ctx)
+			if err != nil {
+				return nil, err
+			}
 		}
 		if p.processing != nil {
 			stop := context.AfterFunc(p.processing.Context(), cancelPreparation)

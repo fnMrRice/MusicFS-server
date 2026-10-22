@@ -2,37 +2,65 @@ package playback
 
 import (
 	"context"
+	"errors"
 	"io"
-	"path/filepath"
-	"strings"
 
+	audioffmpeg "github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
+	"github.com/fnMrRice/MusicFS-server/sdk/audioformat"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audiocodecs"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/codecsettings"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 )
 
-// prepareInput keeps the source asset identity while selecting a separate output representation.
+// prepareInput 保留源资产身份，使用插件解码链生成独立播放表示。
 func (p *preparedInput) prepareInput(ctx context.Context, task string, input *sourceaccess.Handle, track *library.Track) (io.Reader, int64, bool, func(), error) {
 	noop := func() {}
 	if err := ctx.Err(); err != nil {
 		return nil, 0, false, noop, err
 	}
-	var header [8]byte
-	n, _ := input.ReadAt(header[:], 0)
-	encrypted := n == len(header) && string(header[:]) == "CTENFDAM"
-	if !encrypted && track.MIME != "audio/x-ncm" && !strings.EqualFold(filepath.Ext(track.Path), ".ncm") {
-		return input, track.Size, false, noop, nil
-	}
-	if p.decoder == nil {
-		return nil, 0, false, noop, domain.Fail("UNSUPPORTED", "NCM decryption plugin is unavailable")
-	}
-	ctx, err := p.decoderLease(ctx)
+	match, matched, err := audiocodecs.Detect(input, track.Size)
 	if err != nil {
 		return nil, 0, false, noop, err
 	}
-	decoded, err := p.decoder.Open(ctx, task, track.AssetID, input, track.Size)
+	p.decodeOutput, err = codecsettings.DecodeOutput(ctx, p.service.repo, track.Owner)
 	if err != nil {
+		return nil, 0, false, noop, err
+	}
+	wrapped := matched && match.RequiresDecode
+	if wrapped {
+		ctx, err = p.decoderLease(ctx)
+		if err != nil {
+			return nil, 0, false, noop, err
+		}
+	}
+	limit, release := track.Size, noop
+	if p.decodeOutput != "native" {
+		ctx, err = p.processingLease(ctx)
+		if err != nil {
+			return nil, 0, false, noop, err
+		}
+		// 解码临时文件与播放副本同时计费，最多占用一半总配额以留出复制空间。
+		limit = min(audioffmpeg.DefaultDecodeOutputBytes, p.service.budget.Limit()/2)
+		if p.service.cache != nil {
+			p.service.cache.MakeRoom(ctx, limit)
+		}
+		if limit < 1 || !p.service.budget.TryAcquire(limit) {
+			return nil, 0, false, noop, domain.Fail("RATE_LIMITED", "Decoder output exceeds the cache budget")
+		}
+		release = func() { p.service.budget.Release(limit) }
+	}
+	decoded, err := audiocodecs.Decode(ctx, p.processor, p.decoder, audioformat.Request{
+		TaskID: task, AssetID: track.AssetID, OutputFormat: p.decodeOutput, MaxOutputBytes: limit,
+	}, audioformat.Input{Reader: input, Size: track.Size})
+	if err != nil {
+		if !errors.Is(err, audioformat.ErrCleanup) {
+			release()
+		} else {
+			logPlaybackFailure(ctx, "Decoder output cleanup failed; cache reservation retained", err, "sessionId", task)
+		}
 		if canceled := ctx.Err(); canceled != nil {
 			return nil, 0, false, noop, canceled
 		}
@@ -40,18 +68,21 @@ func (p *preparedInput) prepareInput(ctx context.Context, task string, input *so
 		if code != "RATE_LIMITED" && code != "ACCESS_DENIED" && code != "PLUGIN_DISABLED" {
 			code = "UNSUPPORTED"
 		}
-		return nil, 0, false, noop, domain.Fail(code, "NCM source could not be decrypted")
+		return nil, 0, false, noop, domain.Fail(code, "Audio source could not be decoded")
 	}
-	format := decoded.Metadata().Format
-	if decoded.Size() <= 0 || decoded.Size() > track.Size || (format != "mp3" && format != "flac") {
-		decoded.Close()
-		return nil, 0, false, noop, domain.Fail("UNSUPPORTED", "NCM plugin returned an invalid representation")
+	if wrapped || p.decodeOutput != "native" {
+		format := decoded.Format
+		track.Container = &format
+		track.Codec = &format
 	}
-	track.Container = &format
-	track.Codec = &format
-	track.MIME = "audio/mpeg"
-	if format == "flac" {
-		track.MIME = "audio/flac"
-	}
-	return io.NewSectionReader(decoded, 0, decoded.Size()), decoded.Size(), true, func() { decoded.Close() }, nil
+	track.MIME = decoded.MIME
+	return io.NewSectionReader(decoded.Reader, 0, decoded.Size), decoded.Size, wrapped, func() {
+		if err := decoded.Close(); err != nil {
+			if err = decoded.Close(); err != nil {
+				logPlaybackFailure(ctx, "Decoder output cleanup failed; cache reservation retained", err, "sessionId", task)
+				return
+			}
+		}
+		release()
+	}, nil
 }

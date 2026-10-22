@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/channelmix"
+	"github.com/fnMrRice/MusicFS-server/plugins/dsp/channelmix"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 )

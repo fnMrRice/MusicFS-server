@@ -120,6 +120,9 @@ func (p *Processor) Process(ctx context.Context, plan Plan, input io.ReadSeeker,
 	if profileErr != nil || profile.ID != plan.Profile {
 		return fmt.Errorf("UNSUPPORTED: audio plan differs from configured output")
 	}
+	if err := p.SupportsDecodeOutput(plan.DecodeOutput); err != nil {
+		return err
+	}
 	if plan.TaskID == "" || plan.AssetID == "" || size <= 0 {
 		return fmt.Errorf("ACCESS_DENIED: invalid task input")
 	}

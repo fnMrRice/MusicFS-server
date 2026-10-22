@@ -11,8 +11,20 @@ import (
 
 const maxWAVHeaderBytes = 64 << 10
 
-// readDecodedWAV 只读取 FFmpeg 的 float32 WAV 流，不猜测未知多声道布局。
+// readDecodedWAV 保留旧的 float32 默认值，不猜测未知多声道布局。
 func readDecodedWAV(input io.Reader) (audio.Format, io.Reader, error) {
+	return readDecodedWAVOutput(input, DecodeFloat32)
+}
+
+func readDecodedWAVOutput(input io.Reader, output string) (audio.Format, io.Reader, error) {
+	output, err := DecodeOutput(output)
+	if err != nil {
+		return audio.Format{}, nil, err
+	}
+	sampleBytes := 4
+	if output == DecodeSigned16 {
+		sampleBytes = 2
+	}
 	var header [12]byte
 	if _, err := io.ReadFull(input, header[:]); err != nil || string(header[:4]) != "RIFF" || string(header[8:]) != "WAVE" {
 		return audio.Format{}, nil, fmt.Errorf("PROTOCOL_MISMATCH: invalid decoded WAV header")
@@ -34,16 +46,16 @@ func readDecodedWAV(input io.Reader) (audio.Format, io.Reader, error) {
 		headerBytes += 8
 		size := binary.LittleEndian.Uint32(chunk[4:])
 		if string(chunk[:4]) == "data" {
-			if format.Channels == 0 || size != mathMaxUint32 && size%uint32(format.Channels*4) != 0 {
+			if format.Channels == 0 || size != mathMaxUint32 && size%uint32(format.Channels*sampleBytes) != 0 {
 				return audio.Format{}, nil, fmt.Errorf("PROTOCOL_MISMATCH: invalid decoded WAV data")
 			}
 			if size == mathMaxUint32 {
 				if riffSize != mathMaxUint32 {
 					return audio.Format{}, nil, fmt.Errorf("PROTOCOL_MISMATCH: invalid streaming WAV size")
 				}
-				return format, input, nil
+				return format, decodedPCMReader(input, output), nil
 			}
-			return format, &exactWAVReader{input: input, remaining: int64(size)}, nil
+			return format, decodedPCMReader(&exactWAVReader{input: input, remaining: int64(size)}, output), nil
 		}
 		if size > maxWAVHeaderBytes || headerBytes+int(size)+int(size%2) > maxWAVHeaderBytes {
 			return audio.Format{}, nil, fmt.Errorf("PROTOCOL_MISMATCH: decoded WAV header exceeds limit")
@@ -58,7 +70,7 @@ func readDecodedWAV(input io.Reader) (audio.Format, io.Reader, error) {
 				return audio.Format{}, nil, fmt.Errorf("PROTOCOL_MISMATCH: duplicate decoded WAV format")
 			}
 			var err error
-			format, err = decodedWAVFormat(payload[:size])
+			format, err = decodedWAVOutputFormat(payload[:size], output)
 			if err != nil {
 				return audio.Format{}, nil, err
 			}
@@ -70,21 +82,30 @@ func readDecodedWAV(input io.Reader) (audio.Format, io.Reader, error) {
 const mathMaxUint32 = ^uint32(0)
 
 func decodedWAVFormat(payload []byte) (audio.Format, error) {
+	return decodedWAVOutputFormat(payload, DecodeFloat32)
+}
+
+func decodedWAVOutputFormat(payload []byte, output string) (audio.Format, error) {
 	invalid := fmt.Errorf("PROTOCOL_MISMATCH: unsupported decoded WAV format")
 	if len(payload) < 16 {
 		return audio.Format{}, invalid
 	}
 	channels := int(binary.LittleEndian.Uint16(payload[2:]))
-	if channels < 1 || channels > 8 || binary.LittleEndian.Uint32(payload[4:]) != 48000 || binary.LittleEndian.Uint32(payload[8:]) != uint32(48000*channels*4) || binary.LittleEndian.Uint16(payload[12:]) != uint16(channels*4) || binary.LittleEndian.Uint16(payload[14:]) != 32 {
+	bits, code := 32, uint16(3)
+	if output == DecodeSigned16 {
+		bits, code = 16, 1
+	}
+	sampleBytes := bits / 8
+	if channels < 1 || channels > 8 || binary.LittleEndian.Uint32(payload[4:]) != 48000 || binary.LittleEndian.Uint32(payload[8:]) != uint32(48000*channels*sampleBytes) || binary.LittleEndian.Uint16(payload[12:]) != uint16(channels*sampleBytes) || binary.LittleEndian.Uint16(payload[14:]) != uint16(bits) {
 		return audio.Format{}, invalid
 	}
 	mask := uint32(0)
 	switch binary.LittleEndian.Uint16(payload) {
-	case 3:
+	case code:
 		// 无扩展头的单声道、立体声采用 WAV 的约定；多声道必须带掩码。
 	case 0xfffe:
-		floatGUID := []byte{3, 0, 0, 0, 0, 0, 0x10, 0, 0x80, 0, 0, 0xaa, 0, 0x38, 0x9b, 0x71}
-		if len(payload) < 40 || binary.LittleEndian.Uint16(payload[16:]) < 22 || int(binary.LittleEndian.Uint16(payload[16:]))+18 > len(payload) || binary.LittleEndian.Uint16(payload[18:]) != 32 || !bytes.Equal(payload[24:40], floatGUID) {
+		pcmGUID := []byte{byte(code), 0, 0, 0, 0, 0, 0x10, 0, 0x80, 0, 0, 0xaa, 0, 0x38, 0x9b, 0x71}
+		if len(payload) < 40 || binary.LittleEndian.Uint16(payload[16:]) < 22 || int(binary.LittleEndian.Uint16(payload[16:]))+18 > len(payload) || binary.LittleEndian.Uint16(payload[18:]) != uint16(bits) || !bytes.Equal(payload[24:40], pcmGUID) {
 			return audio.Format{}, invalid
 		}
 		mask = binary.LittleEndian.Uint32(payload[20:])

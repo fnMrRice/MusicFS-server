@@ -54,7 +54,9 @@ Host 的 `host.entries` 返回固定根身份的 Entry 页；`host.state.get/com
 
 `audio.prepare/start` 还可接收 `dspChain`（最多 15 个 `{name,version:1,params}` 节点）与 `dspPlugins`（最多 16 个外部可执行节点注册配置）。用户 gain 位于首位，配置链按数组顺序执行。内建 `gain` 接受唯一的 `gainDB` 参数，范围 -96—12 dB；`bypass` 不接受参数。外部节点配置包含 `name/executable/sha256` 和可选 `args/timeoutMs`，宿主解析绝对路径并验证摘要，名称不能覆盖内建节点；这些执行配置属于受信任部署边界，不发送给 Web。
 
-官方 FFmpeg Worker 实现版本为 `0.3.0`，Host 对其 pluginId 与 pluginVersion 作精确匹配。旧 `0.1.0/0.2.0` 在发送音频请求前被拒绝；不因配置链为空而放宽。新增内置 equalizer/compressor/reverb 支持有状态及多声道处理，定位从曲首重建后裁切；`plan.profile` 增加 `opus-5.1`、`opus-7.1`，声道转换位于效果链前，具体见[效果与布局](../../../plugins/dsp-effects.md)。Server 与显式外部音频 Worker 必须配套升级；其他 Provider/NCM/Scraper 版本不因本扩展改变。
+官方 FFmpeg Worker 实现版本为 `0.4.0`，Host 对其 pluginId 与 pluginVersion 作精确匹配。旧 `0.1.0/0.2.0/0.3.0` 在发送音频请求前被拒绝，避免旧 Worker 静默忽略新解码格式；不因配置链为空而放宽。内置 equalizer/compressor/reverb 支持有状态及多声道处理，定位从曲首重建后裁切；`plan.profile` 支持 `opus-5.1`、`opus-7.1`，声道转换位于效果链前，具体见[效果与布局](../../../plugins/dsp-effects.md)。Server 与显式外部音频 Worker 必须配套升级；其他 Provider/NCM/Scraper 的 Worker 版本不因本扩展改变。
+
+`plan.decodeOutput` 可省略以沿用 `pcm_f32le`，也可指定 `pcm_s16le`。实际解码输出使用 WAV 携带原声道掩码，整数 PCM 在进入 DSP 前适配为 float32；此字段不改变播放编码 profile。`capabilities.decodeOutputs` 声明实际可用的 PCM 输出，`transcodeFormats` 声明显式转码支持的格式。`audio.decode` 与 `audio.transcode` 使用 `AudioCodecRequest`：前者只接受两种 PCM，后者接受 MP3、FLAC、Opus/WebM 或 WAV；两者均不执行播放 DSP，正文通过任务通道传输。`maxOutputBytes` 在宿主与 Worker 两端校验，上限为 1 GiB，SDK 调用省略时为 256 MiB；随机读取结果由任务临时文件承载，关闭、取消或错误时回收，不能改写来源文件。完整链式语义见[音频编解码插件](../../../plugins/audio-codecs.md)。
 
 外部 DSP 使用独立的 [DSP v1 二进制帧协议](../../../plugins/dsp-plugins.md)，不是 JSON-RPC 子方法；PCM 不进入控制协议。外部节点仍必须声明并遵守 `f32le/48000/stereo`、无状态、保持帧数和时标、零延迟与无追加尾音；多声道输出拒绝使用这些节点。新内置效果使用直接 Go 接口，不改变外部帧协议。宿主检查握手、身份、有限数值和时标，超时或取消回收进程；任意图、动态库加载与自动旁路仍不支持。
 
