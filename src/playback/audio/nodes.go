@@ -2,6 +2,7 @@ package audio
 
 import "fmt"
 
+// Node 保留旧版同格式 PCM 接口；可改变输出的节点同时实现 IOConfigurer 和 IODescriber。
 type Node interface {
 	Configure(Format) error
 	Process(*Block) error

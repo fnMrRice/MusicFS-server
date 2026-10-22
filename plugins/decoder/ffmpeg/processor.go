@@ -37,8 +37,10 @@ type Config struct {
 	DSPChain                                                   []audio.NodeSpec
 	DSPPlugins                                                 []dspworker.Config
 	OutputLayout                                               string
+	BufferFrames                                               int
 }
 type Processor struct {
+	parent        *Processor
 	gate          atomic.Pointer[lifecycleBinding]
 	version       atomic.Pointer[string]
 	dspVersions   map[string]string
@@ -50,6 +52,9 @@ type Processor struct {
 }
 
 func NewProcessor(ctx context.Context, cfg Config) (*Processor, error) {
+	if _, err := bufferFrames(cfg.BufferFrames); err != nil {
+		return nil, err
+	}
 	cfg.WorkerArgs = slices.Clone(cfg.WorkerArgs)
 	cfg.DSPChain = CloneDSPChain(cfg.DSPChain)
 	cfg.DSPPlugins = slices.Clone(cfg.DSPPlugins)
@@ -90,6 +95,10 @@ func NewProcessor(ctx context.Context, cfg Config) (*Processor, error) {
 	if err != nil {
 		return nil, err
 	}
+	if chain.Output().Format != format {
+		chain.Close()
+		return nil, fmt.Errorf("UNSUPPORTED: DSP output differs from selected encoding layout")
+	}
 	chain.Close()
 	capabilities, err := Probe(ctx, cfg.FFmpegPath, cfg.FFprobePath)
 	if err != nil {
@@ -97,6 +106,9 @@ func NewProcessor(ctx context.Context, cfg Config) (*Processor, error) {
 	}
 	processor := &Processor{config: cfg, dspVersions: dspVersions, Capabilities: capabilities, slots: make(chan struct{}, cfg.MaxConcurrent), normalizeSlot: make(chan struct{}, 1), identity: ProcessingIdentity{WorkerSHA256: hash, FFmpegSHA256: capabilities.FFmpegSHA256, PluginVersion: audioPluginVersion, PipelineRevision: dspRevision(cfg, hash)}}
 	if _, err := processor.OutputProfile(); err != nil {
+		return nil, err
+	}
+	if err := processor.ValidateSettings(ctx, processor.Defaults()); err != nil {
 		return nil, err
 	}
 	return processor, nil
@@ -140,7 +152,7 @@ func (p *Processor) Process(ctx context.Context, plan Plan, input io.ReadSeeker,
 		return fmt.Errorf("RATE_LIMITED: audio processing is busy")
 	}
 	return p.run(ctx, plan.TaskID, readerAt, size, output, func(peer *pluginproto.Peer, inputURL, outputURL string) error {
-		request := StartRequest{Plan: plan, FFmpegPath: p.config.FFmpegPath, FFmpegSHA256: p.Capabilities.FFmpegSHA256, InputURL: inputURL, OutputURL: outputURL, DSPChain: p.config.DSPChain, DSPPlugins: p.config.DSPPlugins}
+		request := StartRequest{Plan: plan, FFmpegPath: p.config.FFmpegPath, FFmpegSHA256: p.Capabilities.FFmpegSHA256, InputURL: inputURL, OutputURL: outputURL, DSPChain: p.config.DSPChain, DSPPlugins: p.config.DSPPlugins, BufferFrames: p.config.BufferFrames}
 		if err := peer.Call(ctx, "audio.prepare", request, nil); err != nil {
 			return err
 		}
@@ -286,7 +298,7 @@ func (p *Processor) run(ctx context.Context, taskID string, readerAt io.ReaderAt
 		}
 	}
 	version := ready.Manifest.PluginVersion
-	p.version.Store(&version)
+	p.runtime().version.Store(&version)
 	if err = operation(peer, base+"/input", base+"/output"); err != nil {
 		return err
 	}
@@ -328,7 +340,7 @@ func validateExecution(cfg Config) error {
 
 // PluginVersion returns only a release verified by a completed worker handshake.
 func (p *Processor) PluginVersion() string {
-	if version := p.version.Load(); version != nil {
+	if version := p.runtime().version.Load(); version != nil {
 		return *version
 	}
 	return ""

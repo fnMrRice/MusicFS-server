@@ -109,7 +109,7 @@ func TestMonoCopyAndConversionDoNotChangeFrameCount(t *testing.T) {
 
 func TestAllMatricesBoundFullScaleAndRejectInvalidPCM(t *testing.T) {
 	for input := range layouts {
-		for _, output := range []string{"stereo", "5.1", "7.1"} {
+		for _, output := range []string{"mono", "stereo", "5.1", "7.1"} {
 			converter, err := New(sourceFormat(input), sourceFormat(output))
 			if err != nil {
 				t.Fatal(err)
@@ -141,7 +141,7 @@ func TestAllMatricesBoundFullScaleAndRejectInvalidPCM(t *testing.T) {
 	if _, err := New(sourceFormat("unknown"), audio.Canonical); err == nil {
 		t.Fatal("unknown input accepted")
 	}
-	if _, err := New(audio.Canonical, sourceFormat("mono")); err == nil {
+	if _, err := New(audio.Canonical, sourceFormat("quad")); err == nil {
 		t.Fatal("unsupported output accepted")
 	}
 }

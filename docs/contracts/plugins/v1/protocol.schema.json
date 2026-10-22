@@ -918,7 +918,7 @@
     "DSPPlugin": {
       "type": "object", "additionalProperties": false, "required": ["name"],
       "properties": {
-        "name": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,63}$", "not": {"enum": ["gain", "bypass", "equalizer", "compressor", "reverb", "musicfs.dsp.equalizer", "musicfs.dsp.compressor", "musicfs.dsp.reverb"]}},
+        "name": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,63}$", "not": {"enum":["gain","bypass","equalizer","compressor","reverb","musicfs.dsp.equalizer","musicfs.dsp.compressor","musicfs.dsp.reverb","channelmix","musicfs.dsp.channelmix","musicfs.plugin.decoder.channelmix"]}},
         "builtin": {"type": "boolean", "description": "仅允许已编译的 musicfs.dsp.gain；主进程内执行不要求外部程序。"},
         "executable": {"type": "string", "description": "仅部署配置可指定；外部模式发送给音频 Worker 前已解析为绝对路径，内置模式不执行该文件。"},
         "sha256": {"type": "string"},
@@ -931,7 +931,7 @@
     },
     "AudioStart": {
       "type": "object", "additionalProperties": false, "required": ["plan", "ffmpegPath", "ffmpegSHA256", "inputUrl", "outputUrl"],
-      "properties": {"plan": {"$ref": "#/$defs/AudioPlan"}, "ffmpegPath": {"type": "string", "minLength": 1}, "ffmpegSHA256": {"$ref": "#/$defs/SHA256"}, "inputUrl": {"$ref": "#/$defs/TaskChannel"}, "outputUrl": {"$ref": "#/$defs/TaskChannel"}, "dspChain": {"type": "array", "maxItems": 15, "items": {"$ref": "#/$defs/DSPNodeSpec"}}, "dspPlugins": {"type": "array", "maxItems": 16, "items": {"$ref": "#/$defs/DSPPlugin"}}},
+      "properties": {"plan": {"$ref": "#/$defs/AudioPlan"}, "ffmpegPath": {"type": "string", "minLength": 1}, "ffmpegSHA256": {"$ref": "#/$defs/SHA256"}, "inputUrl": {"$ref": "#/$defs/TaskChannel"}, "outputUrl": {"$ref": "#/$defs/TaskChannel"}, "bufferFrames": {"type": "integer", "minimum": 64, "maximum": 16384, "default": 4096}, "dspChain": {"type": "array", "maxItems": 15, "items": {"$ref": "#/$defs/DSPNodeSpec"}}, "dspPlugins": {"type": "array", "maxItems": 16, "items": {"$ref": "#/$defs/DSPPlugin"}}},
       "description": "先按 profile 转换声道，再执行用户 gain 与 dspChain。内置多声道效果通过 Go 接口执行，有状态定位重建曲首历史后裁切；dspPlugins 注册的外部 MFD1 v1 节点只支持双声道。环绕输出与新内置效果要求内置音频执行。PCM 不进入 JSON-RPC。"
     },
     "AudioPrepared": {"type": "object", "required": ["profile", "positionOriginMs", "seekMode"], "properties": {"profile": {"enum": ["mp3-128", "opus-5.1", "opus-7.1"]}, "positionOriginMs": {"type": "integer", "minimum": 0}, "seekMode": {"const": "timeRestart"}}},

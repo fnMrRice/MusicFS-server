@@ -42,6 +42,15 @@ func (g *Gain) Configure(format audio.Format) error {
 	g.log().Debug("DSP gain node configured")
 	return nil
 }
+func (*Gain) DescribeIO(format audio.Format) (audio.Output, error) {
+	return audio.PCMOutput(format)
+}
+func (g *Gain) ConfigureIO(format audio.Format) (audio.Output, error) {
+	if err := g.Configure(format); err != nil {
+		return audio.Output{}, err
+	}
+	return g.DescribeIO(format)
+}
 func (g *Gain) Process(block *audio.Block) (processErr error) {
 	defer func() {
 		if processErr != nil {

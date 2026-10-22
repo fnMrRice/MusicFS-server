@@ -37,6 +37,10 @@ func (s *Service) RecoveryProfileForUser(ctx context.Context, owner string) (tim
 	s.mu.Lock()
 	processor := s.processor
 	s.mu.Unlock()
+	processor, err = s.processorForUser(ctx, owner, processor)
+	if err != nil {
+		return timeline.Profile{}, err
+	}
 	return recoveryProfile(processor, output)
 }
 

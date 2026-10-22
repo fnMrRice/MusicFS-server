@@ -78,6 +78,9 @@ func readFrame(r io.Reader) (uint32, []byte, error) {
 }
 
 func encodeBlock(block *audio.Block) ([]byte, error) {
+	if block == nil || block.Frames > 4096 {
+		return nil, fmt.Errorf("UNSUPPORTED: DSP v1 allows at most 4096 buffer frames")
+	}
 	if block.Format != audio.Canonical {
 		return nil, fmt.Errorf("UNSUPPORTED: DSP v1 requires stereo PCM")
 	}

@@ -53,6 +53,17 @@ func (n *node) Configure(format audio.Format) error {
 	return nil
 }
 
+func (*node) DescribeIO(format audio.Format) (audio.Output, error) {
+	return audio.PCMOutput(format)
+}
+
+func (n *node) ConfigureIO(format audio.Format) (audio.Output, error) {
+	if err := n.Configure(format); err != nil {
+		return audio.Output{}, err
+	}
+	return n.DescribeIO(format)
+}
+
 func (n *node) Process(block *audio.Block) error {
 	if !n.configured {
 		return fmt.Errorf("DSP not configured")

@@ -33,6 +33,7 @@ type StartRequest struct {
 	OutputURL    string             `json:"outputUrl"`
 	DSPChain     []audio.NodeSpec   `json:"dspChain,omitempty"`
 	DSPPlugins   []dspworker.Config `json:"dspPlugins,omitempty"`
+	BufferFrames int                `json:"bufferFrames,omitempty"`
 }
 
 const inputFormats = "wav,mp3,flac,aiff,ogg,mov,matroska,webm,aac"
@@ -50,6 +51,10 @@ func Pipeline(ctx context.Context, r StartRequest, output io.Writer) (pipelineEr
 	defer func() { finish(pipelineErr) }()
 	if ctx.Err() != nil {
 		return fmt.Errorf("CANCELED: audio processing stopped")
+	}
+	frames, err := bufferFrames(r.BufferFrames)
+	if err != nil {
+		return err
 	}
 	profile, supported := ProfileByID(r.Plan.Profile)
 	if !supported || r.Plan.PositionMs < 0 || r.Plan.PositionMs > 24*60*60*1000 {
@@ -75,6 +80,9 @@ func Pipeline(ctx context.Context, r StartRequest, output io.Writer) (pipelineEr
 		return err
 	}
 	defer node.Close()
+	if node.Output().Format != format {
+		return fmt.Errorf("UNSUPPORTED: DSP output differs from selected encoding layout")
+	}
 	requestCtx := ctx
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -123,7 +131,7 @@ func Pipeline(ctx context.Context, r StartRequest, output io.Writer) (pipelineEr
 	}
 	converted, err := convertedWAVReaderOutput(decoded, format, decodeOutput)
 	if err == nil {
-		err = transferPCMFormatWindow(ctx, converted, encodeInput, node, format, window)
+		err = transferPCMFormatsWindow(ctx, converted, encodeInput, node, format, node.Output().Format, frames, window)
 	}
 	closeErr := encodeInput.Close()
 	if err == nil && closeErr != nil {

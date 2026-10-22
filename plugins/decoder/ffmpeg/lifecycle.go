@@ -14,6 +14,7 @@ type lifecycleBinding struct {
 // SetGate is safe during bootstrap attachment and replaces no processing state.
 func (p *Processor) SetGate(gate *plugincontrol.Gate) {
 	if p != nil {
+		p = p.runtime()
 		if gate == nil {
 			p.gate.Store(nil)
 		} else {
@@ -26,7 +27,7 @@ func (p *Processor) AcquireLease(ctx context.Context) (*plugincontrol.Lease, err
 	if p == nil {
 		return nil, nil
 	}
-	binding := p.gate.Load()
+	binding := p.runtime().gate.Load()
 	if binding == nil {
 		return nil, nil
 	}

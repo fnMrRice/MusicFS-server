@@ -25,15 +25,27 @@ func transferPCMWindow(ctx context.Context, input io.Reader, output io.Writer, n
 }
 
 func transferPCMFormatWindow(ctx context.Context, input io.Reader, output io.Writer, node audio.Node, format audio.Format, window pcmWindow) error {
+	return transferPCMFormatsWindow(ctx, input, output, node, format, format, 4096, window)
+}
+
+func transferPCMFormatsWindow(ctx context.Context, input io.Reader, output io.Writer, node audio.Node, format, outputFormat audio.Format, framesPerBlock int, window pcmWindow) error {
 	if err := format.Validate(); err != nil {
+		return err
+	}
+	if err := outputFormat.Validate(); err != nil {
+		return err
+	}
+	framesPerBlock, err := bufferFrames(framesPerBlock)
+	if err != nil {
 		return err
 	}
 	if window.StartFrame < 0 || window.DiscardFrames < 0 {
 		return fmt.Errorf("UNSUPPORTED: invalid PCM playback window")
 	}
 	bytesPerFrame := format.Channels * 4
-	buffer := make([]byte, 4096*bytesPerFrame)
-	samples := make([]float32, 4096*format.Channels)
+	buffer := make([]byte, framesPerBlock*bytesPerFrame)
+	encoded := make([]byte, framesPerBlock*outputFormat.Channels*4)
+	samples := make([]float32, framesPerBlock*format.Channels)
 	var frames, emitted int64
 	var sequence uint64
 	for {
@@ -67,17 +79,20 @@ func transferPCMFormatWindow(ctx context.Context, input io.Reader, output io.Wri
 		if err := block.Validate(); err != nil {
 			return err
 		}
-		if block.Format != before.Format || block.Frames != before.Frames || block.Sequence != before.Sequence || block.PositionFrames != before.PositionFrames || block.End != before.End || block.Discontinuity != before.Discontinuity {
+		if block.Format != outputFormat {
+			return fmt.Errorf("PROTOCOL_MISMATCH: DSP output differs from encoding format")
+		}
+		if block.Frames != before.Frames || block.Sequence != before.Sequence || block.PositionFrames != before.PositionFrames || block.End != before.End || block.Discontinuity != before.Discontinuity {
 			return fmt.Errorf("PROTOCOL_MISMATCH: DSP changed block timing")
 		}
 		// 每个节点都看到完整 PCM 块；裁切不改变节点历史或块序号。
 		discard := min(int64(block.Frames), max(int64(0), window.DiscardFrames-frames))
-		outSamples := block.Samples[discard*int64(format.Channels):]
+		outSamples := block.Samples[discard*int64(outputFormat.Channels):]
 		for i, sample := range outSamples {
-			binary.LittleEndian.PutUint32(buffer[i*4:], math.Float32bits(sample))
+			binary.LittleEndian.PutUint32(encoded[i*4:], math.Float32bits(sample))
 		}
 		if len(outSamples) > 0 {
-			written, writeErr := output.Write(buffer[:len(outSamples)*4])
+			written, writeErr := output.Write(encoded[:len(outSamples)*4])
 			if err := ctx.Err(); err != nil {
 				return err
 			}

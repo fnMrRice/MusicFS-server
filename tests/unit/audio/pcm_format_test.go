@@ -26,7 +26,7 @@ func TestSupportedPCMFormatsAndBlocks(t *testing.T) {
 		if err := format.Validate(); err != nil {
 			t.Fatal(err)
 		}
-		for _, frames := range []int{0, 1, 4096} {
+		for _, frames := range []int{0, 1, audio.DefaultBlockFrames, audio.MaxBlockFrames} {
 			block := audio.Block{Format: format, Frames: frames, Samples: make([]float32, frames*item.channels)}
 			if err := block.Validate(); err != nil {
 				t.Fatal(err)
@@ -63,7 +63,7 @@ func TestUnsupportedPCMFormatsAndMalformedBlocks(t *testing.T) {
 	format, _ := audio.FormatForLayout("7.1")
 	for _, block := range []audio.Block{
 		{Format: format, Frames: -1},
-		{Format: format, Frames: 4097, Samples: make([]float32, 4097*8)},
+		{Format: format, Frames: audio.MaxBlockFrames + 1, Samples: make([]float32, (audio.MaxBlockFrames+1)*8)},
 		{Format: format, Frames: 1, Samples: make([]float32, 2)},
 		{Format: format, Frames: 1, Samples: make([]float32, 9)},
 	} {

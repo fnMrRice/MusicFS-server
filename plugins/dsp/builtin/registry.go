@@ -4,6 +4,7 @@ package builtin
 import (
 	"strings"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/dsp/channelmix"
 	"github.com/fnMrRice/MusicFS-server/plugins/dsp/effects"
 	dsp "github.com/fnMrRice/MusicFS-server/plugins/dsp/gain"
 	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
@@ -12,9 +13,12 @@ import (
 
 // EffectName 将官方效果别名映射为短名；第三方名称不会被接管。
 func EffectName(name string) string {
+	if name == channelmix.PluginID {
+		return "channelmix"
+	}
 	short := strings.TrimPrefix(name, "musicfs.dsp.")
 	switch short {
-	case "equalizer", "compressor", "reverb":
+	case "equalizer", "compressor", "reverb", "channelmix":
 		return short
 	default:
 		return ""
@@ -26,6 +30,9 @@ func Register(registry *audio.Registry) error {
 		return err
 	}
 	if err := effects.Register(registry); err != nil {
+		return err
+	}
+	if err := channelmix.Register(registry); err != nil {
 		return err
 	}
 	for name, factory := range map[string]audio.Factory{
@@ -43,6 +50,9 @@ func Register(registry *audio.Registry) error {
 // Version 来自随构建交付的实现声明，且不依赖插件子进程握手。
 func Version(name string) string {
 	if short := EffectName(name); short != "" {
+		if short == "channelmix" {
+			return bundledplugin.ChannelMixVersion
+		}
 		return bundledplugin.Version("musicfs.dsp." + short)
 	}
 	return ""

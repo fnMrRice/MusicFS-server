@@ -30,6 +30,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/codecsettings"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/dspsettings"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
@@ -235,6 +236,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 		sessions.OnRevoke = func(id string) { manager.RevokeSession(id); player.Revoke(id) }
 	}
 	handler.RegisterPlayback(player)
+	handler.RegisterDSPSettings(dspsettings.New(store, player.DSPSettingsConfig))
 	previousCleanup := cleanup
 	cleanup = func() { player.Close(); previousCleanup() }
 	closeManagedOnline, err = registerOnlineManagement(ctx, c, pluginManager, online, onlineRuntimes, recommendations)

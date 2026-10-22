@@ -76,6 +76,9 @@ func (w *audioWorker) handle(ctx context.Context, method string, raw json.RawMes
 	if json.Unmarshal(raw, &r) != nil {
 		return nil, fmt.Errorf("ACCESS_DENIED: invalid audio request")
 	}
+	if _, err := bufferFrames(r.BufferFrames); err != nil {
+		return nil, err
+	}
 	profile, supported := ProfileByID(r.Plan.Profile)
 	if !supported || r.Plan.PositionMs < 0 || r.Plan.PositionMs > 24*60*60*1000 || r.Plan.TaskID != taskID || r.Plan.AssetID == "" {
 		return nil, fmt.Errorf("UNSUPPORTED: invalid audio plan")
@@ -102,7 +105,11 @@ func (w *audioWorker) handle(ctx context.Context, method string, raw json.RawMes
 		if err != nil {
 			return nil, err
 		}
+		output := node.Output()
 		node.Close()
+		if output.Format != format {
+			return nil, fmt.Errorf("UNSUPPORTED: DSP output differs from selected encoding layout")
+		}
 		return map[string]any{"profile": profile.ID, "positionOriginMs": r.Plan.PositionMs, "seekMode": profile.SeekMode}, nil
 	}
 	w.mu.Lock()

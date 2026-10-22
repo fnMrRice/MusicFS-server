@@ -85,7 +85,8 @@ func (s *Service) RecoverSource(ctx context.Context, who auth.Session, id string
 		return empty, domain.Fail("RESOURCE_CHANGED", "Recovery source changed")
 	}
 	handle.Close()
-	profile, profileErr := s.RecoveryProfileForUser(ctx, who.User.ID)
+	// 恢复沿用会话创建时的 DSP；用户编辑只影响新播放。
+	profile, profileErr := s.recoveryProfileForSession(ctx, who.User.ID, a)
 	profile.GainDB = gain
 	check := timeline.Check{From: from, To: target(t), PositionMs: r.PositionMs, Profile: profile}
 	if r.EvidenceID != nil {
@@ -116,7 +117,7 @@ func (s *Service) RecoverSource(ctx context.Context, who auth.Session, id string
 		if err != nil {
 			return empty, err
 		}
-		prepared, err = s.prepare(ctx, who.User.ID, domain.NewID(), CreateRequest{SourceTrackID: r.TargetSourceTrackID, Capabilities: capabilities, Preferences: Preferences{ForceProcessing: true, GainDB: gain}})
+		prepared, err = s.prepare(ctx, who.User.ID, domain.NewID(), CreateRequest{SourceTrackID: r.TargetSourceTrackID, Capabilities: capabilities, Preferences: Preferences{ForceProcessing: true, GainDB: gain}}, a.processor)
 		if err != nil {
 			return empty, err
 		}

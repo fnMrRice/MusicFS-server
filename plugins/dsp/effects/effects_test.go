@@ -62,11 +62,11 @@ func signal(frames int) []float32 {
 }
 
 func TestStreamingStateLifecycleAndIsolation(t *testing.T) {
-	input, prefix := signal(12000), signal(2400)
+	input, prefix := signal(20000), signal(2400)
 	for _, factory := range factories {
 		t.Run(factory.name, func(t *testing.T) {
 			baseline := render(t, configured(t, factory.create, factory.params), input, 4096, false)
-			for _, chunk := range []int{1, 257, 4096} {
+			for _, chunk := range []int{1, 64, 257, 4096, audio.MaxBlockFrames} {
 				node := configured(t, factory.create, factory.params)
 				if node.DelayFrames() != 0 || node.(interface{ Stateless() bool }).Stateless() {
 					t.Fatal("invalid effect capabilities")
@@ -148,7 +148,7 @@ func TestInvalidBlocksDoNotMutateInputOrState(t *testing.T) {
 			if err := node.Configure(audio.Canonical); err != nil {
 				t.Fatal(err)
 			}
-			for _, block := range []*audio.Block{nil, {}, {Format: audio.Canonical, Frames: 1}, {Format: audio.Canonical, Frames: 4097, Samples: make([]float32, 8194)}} {
+			for _, block := range []*audio.Block{nil, {}, {Format: audio.Canonical, Frames: 1}, {Format: audio.Canonical, Frames: audio.MaxBlockFrames + 1, Samples: make([]float32, (audio.MaxBlockFrames+1)*2)}} {
 				if err := node.Process(block); err == nil {
 					t.Fatal("accepted invalid block")
 				}

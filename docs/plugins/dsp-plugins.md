@@ -1,6 +1,6 @@
 # Server DSP 插件
 
-官方内置 DSP 已提供增益、参数均衡器、压缩器和混响，支持固定布局的立体声、5.1、7.1 PCM；独立声道转换插件位于效果链前。内置有状态效果通过从曲首重建历史支持定位，保持帧数、零算法延迟且不追加曲尾。显式登记的第三方外部 DSP v1 仍仅支持无状态双声道节点。参数、配置、输出格式及限制见[常见 DSP 与声道转换](dsp-effects.md)。当前运行验证范围为 Windows；其他平台和任意第三方算法需分别验证。
+官方内置 DSP 已提供增益、参数均衡器、压缩器、混响和可排序声道转换，支持 mono、stereo、5.1、7.1 PCM 的逐节点输入输出协商。播放入口先自动适配所选布局，链末须匹配编码输出；节点可声明输出不能继续 DSP，此时禁止追加后继。内置有状态效果通过从曲首重建历史支持定位，保持帧数、零算法延迟且不追加曲尾。显式登记的第三方外部 DSP v1 仍仅支持无状态双声道节点。参数与格式见[常见 DSP 与声道转换](dsp-effects.md)，页面、个人覆盖和全局默认见[DSP 配置](dsp-settings.md)。当前运行验证范围为 Windows；其他平台和任意第三方算法需分别验证。
 
 官方音频 Worker 实现版本为 `0.4.0`。Host 握手要求该精确版本，旧 `0.1.0`、`0.2.0`、`0.3.0` 在音频请求前被拒绝，避免遗漏 DSP、声道转换或状态重建。内置音频实现随 Server 升级；显式外部进程模式需要配套升级 `musicfs-plugins`（或独立入口）并更新固定摘要。控制协议仍为 1.0，独立 MFD1 DSP 帧协议仍为 v1；内置有状态、多声道效果不使用该帧协议。
 
@@ -41,7 +41,7 @@ audioDSP:
 
 内建 `gain` 仅接受 `gainDB`，范围 -96—12 dB；`bypass` 不接受参数。`equalizer`、`compressor`、`reverb` 及其 `musicfs.dsp.*` 正式别名无需 `plugins` 注册，参数见[效果表](dsp-effects.md#已实现效果)。这些名称同样不允许被外部插件覆盖。HTTP 用户偏好仍为 `gainDb`，原有 -60—0 dB 边界不变。配置中的外部路径、启动参数和可执行摘要不会出现在 Web 播放描述中。
 
-当前通过部署文件注册内置或外部 DSP，尚无外部 DSP 商店、上传安装、自动发现或配置编辑界面。所有配置节点均必需，运行失败会中止处理，不自动旁路。非空链要求音频实例启用；若启动时处理器或必需 DSP 不可用，Server 拒绝启动，避免静默退回原流。内置 DSP 还要求音频插件使用内置执行；显式外部 FFmpeg 插件配内置 DSP 时返回 `builtin DSP requires builtin audio execution`，不会把官方 gain 放到插件子进程。执行权限与工具设置还须满足[配置说明](../operations/configuration.md)。
+Web 提供 DSP 配置页面，内置节点与已经部署注册的外部节点可按服务端声明编辑；外部程序仍仅由部署文件注册，没有 DSP 商店、上传安装或自动发现。个人和全局设置保存后在下一次播放生效，所有选中节点均必需，运行失败会中止处理，不自动旁路。非空部署链要求音频实例启用；若启动时处理器或必需 DSP 不可用，Server 拒绝启动。内置 DSP 还要求音频插件使用内置执行；显式外部 FFmpeg 插件配内置 DSP 时返回 `builtin DSP requires builtin audio execution`，不会把官方 gain 放到插件子进程。执行权限与工具设置还须满足[配置说明](../operations/configuration.md)。
 
 插件列表固定展示官方 `musicfs.dsp.gain`，`stateMutable=false`、`instances=[]`，不通过普通实例启停或配置接口修改。其 `dsp.configured` 表示已注册官方 gain 或在启动链中使用内建/官方 gain；`chainState` 为 `not_configured`（未配置）、`not_in_chain`（已注册但未加入链）、`in_chain`（已加入启动链）。`nodes` 汇总内建 `gain` 与官方 `musicfs.dsp.gain`，保留实际 `mode=builtin/process`（官方 gain 为 builtin）、完整原链从 1 开始的位置、节点协议版本及数值参数。重复节点保序，其他节点造成的位置间隔不会被重排；用户偏好增益及 `bypass` 不另列插件。
 
@@ -51,7 +51,7 @@ audioDSP:
 
 ## 构建并使用示例
 
-官方 `musicfs.dsp.gain` 在主进程内通过独立内存流执行原 `MFD1` 协议，不启动插件进程；节点版本为 1，参数与内建 gain 相同。可选独立入口 [musicfs-plugin-dsp-gain](../../plugins/dsp/gain/cmd/musicfs-plugin-dsp-gain/main.go) 保留；使用其单独文件时省略角色参数。该入口用于显式外部兼容或协议测试，默认部署不执行它；部署配置中的官方 gain 仍映射为内置实现。
+官方 `musicfs.dsp.gain` 在播放链中直接使用原生增益工厂，支持协商声道和较大缓冲区，不启动插件进程；节点版本为 1，参数与内建 gain 相同。可选独立入口 [musicfs-plugin-dsp-gain](../../plugins/dsp/gain/cmd/musicfs-plugin-dsp-gain/main.go) 保留原 `MFD1` 协议；使用其单独文件时省略角色参数。该入口用于显式外部兼容或协议测试，默认部署不执行它；部署配置中的官方 gain 仍映射为内置实现。
 
 需要构建兼容入口作独立协议验证时，在 Server 仓库根目录使用 PowerShell：
 

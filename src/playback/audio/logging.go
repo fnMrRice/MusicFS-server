@@ -22,6 +22,8 @@ func createLoggedNode(name string, factory Factory, params map[string]float64) (
 		id = "musicfs.dsp.compressor"
 	case "reverb", "musicfs.dsp.reverb":
 		id = "musicfs.dsp.reverb"
+	case "channelmix", "musicfs.dsp.channelmix", "musicfs.plugin.decoder.channelmix":
+		id = "musicfs.dsp.channelmix"
 	default:
 		return factory(params)
 	}
@@ -39,6 +41,16 @@ func (n *loggedNode) Configure(format Format) (err error) {
 	finish := pluginlog.Operation(n.ctx, "dsp.configure")
 	defer func() { finish(err) }()
 	return n.Node.Configure(format)
+}
+
+func (n *loggedNode) DescribeIO(format Format) (Output, error) {
+	return DescribeIO(n.Node, format)
+}
+
+func (n *loggedNode) ConfigureIO(format Format) (output Output, err error) {
+	finish := pluginlog.Operation(n.ctx, "dsp.configure")
+	defer func() { finish(err) }()
+	return configureIO(n.Node, format)
 }
 
 func (n *loggedNode) Process(block *Block) (err error) {

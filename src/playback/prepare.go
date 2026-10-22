@@ -62,7 +62,7 @@ func (p *preparedInput) discard() {
 	p.service.budget.Release(p.reserved - retained)
 	p.reserved = 0
 }
-func (s *Service) prepare(ctx context.Context, owner, task string, r CreateRequest) (*preparedInput, error) {
+func (s *Service) prepare(ctx context.Context, owner, task string, r CreateRequest, fixed ...*audioffmpeg.Processor) (*preparedInput, error) {
 	t, err := s.library.Track(ctx, owner, r.SourceTrackID)
 	if err != nil {
 		return nil, err
@@ -79,6 +79,15 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 	}
 	p := &preparedInput{service: s, track: t, lease: lease, decodeOutput: "native"}
 	p.processor, p.decoder = s.audioSnapshot()
+	if len(fixed) > 0 {
+		p.processor = fixed[0]
+	} else {
+		p.processor, err = s.processorForUser(ctx, owner, p.processor)
+		if err != nil {
+			p.discard()
+			return nil, err
+		}
+	}
 	ctx, cancelPreparation := context.WithCancel(lease.WithContext(ctx))
 	unlink := context.AfterFunc(lease.Context(), cancelPreparation)
 	defer func() { unlink(); cancelPreparation() }()

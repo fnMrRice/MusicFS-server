@@ -11,6 +11,11 @@ type Format struct {
 
 var Canonical = Format{SampleFormat: "f32le", SampleRate: 48000, Channels: 2, Layout: "stereo"}
 
+const (
+	DefaultBlockFrames = 4096
+	MaxBlockFrames     = 16384
+)
+
 // FormatForLayout 返回服务器支持的交错 PCM 格式；空布局沿用立体声默认值。
 // 5.1 声道顺序为 FL、FR、FC、LFE、BL、BR；7.1 末尾追加 SL、SR。
 func FormatForLayout(layout string) (Format, error) {
@@ -52,7 +57,7 @@ type Block struct {
 }
 
 func (b Block) Validate() error {
-	if b.Format.Validate() != nil || b.Frames < 0 || b.Frames > 4096 || len(b.Samples) != b.Frames*b.Format.Channels {
+	if b.Format.Validate() != nil || b.Frames < 0 || b.Frames > MaxBlockFrames || len(b.Samples) != b.Frames*b.Format.Channels {
 		return fmt.Errorf("UNSUPPORTED: invalid PCM block")
 	}
 	return nil

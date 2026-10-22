@@ -29,7 +29,7 @@ func New(input, output audio.Format) (*Converter, error) {
 	if !ok || input.SampleFormat != "f32le" || input.SampleRate != 48000 || input.Channels != len(source) {
 		return nil, fmt.Errorf("UNSUPPORTED: unsupported channel conversion input")
 	}
-	if output.Validate() != nil || output.Layout == "mono" {
+	if output.Validate() != nil {
 		return nil, fmt.Errorf("UNSUPPORTED: unsupported channel conversion output")
 	}
 	destination := layouts[output.Layout]
@@ -54,6 +54,16 @@ func New(input, output audio.Format) (*Converter, error) {
 }
 
 func coefficient(input, output, destination, source string) float64 {
+	if output == "mono" {
+		switch source {
+		case "LFE":
+			return 0
+		case "FC":
+			return 1
+		default:
+			return math.Sqrt(0.5)
+		}
+	}
 	if input == "mono" && output == "stereo" {
 		return 1
 	}

@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/dsp/builtin"
 	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
@@ -30,6 +29,9 @@ func (p *Processor) HasDSP() bool { return p != nil && len(p.config.DSPChain) !=
 func (p *Processor) DSPPluginVersion(name string) string {
 	if p == nil {
 		return ""
+	}
+	if version := builtin.Version(name); version != "" {
+		return version
 	}
 	return p.dspVersions[name]
 }
@@ -66,21 +68,14 @@ func buildDSPFormatVersions(ctx context.Context, gain float64, chain []audio.Nod
 	}
 	for _, config := range plugins {
 		if err := registry.Register(config.Name, func(params map[string]float64) (audio.Node, error) {
-			if format != audio.Canonical {
-				if !config.Builtin {
-					return nil, fmt.Errorf("UNSUPPORTED: external DSP v1 requires stereo output")
-				}
-				// 多声道官方增益使用同一工厂，避免扩展仅双声道的 MFD1 协议。
+			if config.Builtin {
+				// 官方增益直接使用原生工厂，支持协商声道与较大处理块。
 				if versions != nil {
 					versions[config.Name] = bundledplugin.GainVersion
 				}
 				return registry.Create("gain", params)
 			}
-			process, err := dspworker.New(ctx, config, params)
-			if err == nil && versions != nil {
-				versions[config.Name] = process.PluginVersion()
-			}
-			return process, err
+			return &externalDSP{ctx: ctx, config: config, params: params, versions: versions}, nil
 		}); err != nil {
 			return nil, err
 		}
@@ -105,6 +100,10 @@ func buildDSPFormatVersions(ctx context.Context, gain float64, chain []audio.Nod
 }
 
 func dspRevision(cfg Config, workerSHA string) string {
+	chain := cfg.DSPChain
+	if chain == nil {
+		chain = []audio.NodeSpec{}
+	}
 	layout := cfg.OutputLayout
 	if layout == "" {
 		layout = "stereo"
@@ -121,10 +120,11 @@ func dspRevision(cfg Config, workerSHA string) string {
 		WorkerVersion     string             `json:"workerVersion"`
 		ChannelMixVersion string             `json:"channelMixVersion"`
 		OutputLayout      string             `json:"outputLayout"`
+		BufferFrames      int                `json:"bufferFrames"`
 		BuiltinVersions   map[string]string  `json:"builtinVersions"`
 		Chain             []audio.NodeSpec   `json:"chain"`
 		Plugins           []dspworker.Config `json:"plugins"`
-	}{dspworker.ProtocolVersion, workerSHA, audioPluginVersion, bundledplugin.ChannelMixVersion, layout, versions, cfg.DSPChain, cfg.DSPPlugins})
+	}{dspworker.ProtocolVersion, workerSHA, audioPluginVersion, bundledplugin.ChannelMixVersion, layout, effectiveBufferFrames(cfg.BufferFrames), versions, chain, cfg.DSPPlugins})
 	hash := sha256.Sum256(data)
 	return "dsp-v1:" + hex.EncodeToString(hash[:])
 }

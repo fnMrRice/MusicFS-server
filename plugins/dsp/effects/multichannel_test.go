@@ -79,6 +79,11 @@ func TestMultichannelBlockSizesAndStateLifecycle(t *testing.T) {
 				if actual := renderFormat(t, reused, format, input, 1023, true); !slices.Equal(actual, baseline) {
 					t.Fatalf("discontinuity failed for %s", layout)
 				}
+				for _, chunk := range []int{64, audio.MaxBlockFrames} {
+					if actual := renderFormat(t, reused, format, input, chunk, true); !slices.Equal(actual, baseline) {
+						t.Fatalf("configurable block-size mismatch for %s at %d", layout, chunk)
+					}
+				}
 				wrongFormat := audio.Canonical
 				if format == audio.Canonical {
 					wrongFormat, _ = audio.FormatForLayout("mono")
