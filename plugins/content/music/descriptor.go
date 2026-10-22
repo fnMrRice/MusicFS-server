@@ -13,8 +13,8 @@ const (
 func Descriptor() contenttype.Descriptor {
 	return contenttype.Descriptor{
 		ID: TypeID, PluginID: PluginID, PluginVersion: PluginVersion,
-		Name:        "音乐",
-		Description: "按作品、发行和碟片组织音乐，保留本地音频及附带资料。",
+		Name:        "音乐专辑",
+		Description: "管理专辑、EP 与单曲发行，可导入 CD 抓轨或数字发行的本地音频及附带资料。",
 		CreditRoles: []contenttype.NamedValue{
 			{ID: "artist", Name: "艺术家"},
 			{ID: "composer", Name: "作曲"},
