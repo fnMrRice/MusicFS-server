@@ -13,6 +13,7 @@ func TestOfficialManifestInstancePolicy(t *testing.T) {
 		"musicfs.plugin.source.netease":    true,
 		"musicfs.plugin.source.qqmusic":    true,
 		"musicfs.plugin.source.applemusic": true,
+		"musicfs.plugin.source.bilibili":   true,
 		"musicfs.plugin.decoder.ffmpeg":    false,
 		"musicfs.plugin.decoder.ncm":       false,
 		"musicfs.scraper.local":            true,
@@ -23,6 +24,12 @@ func TestOfficialManifestInstancePolicy(t *testing.T) {
 				PluginID: pluginID, Plugin: pluginconfig.Identity(pluginID),
 				SupportsMultipleInstances: multiple, PluginVersion: "1.0.0", ProtocolVersion: pluginproto.ProtocolVersion,
 				Roles: []string{role}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems,
+			}
+			if role == "provider" {
+				manifest.SourceType = pluginproto.SourceNetwork
+				if pluginID == "musicfs.plugin.source.localfiles" {
+					manifest.SourceType = pluginproto.SourceLocal
+				}
 			}
 			if role == "audio" && (len(manifest.Plugin.Features) != 1 || manifest.Plugin.Features[0] != "audio-codec") {
 				t.Fatal("official audio plugin is not classified as an audio codec", manifest.Plugin)

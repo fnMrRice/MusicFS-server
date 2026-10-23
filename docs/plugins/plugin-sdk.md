@@ -10,9 +10,11 @@ SDK 和在线插件由私有 Server 仓库维护，具有独立 `go.mod`、构�
 | --- | --- | --- |
 | 根 Server 模块 | Server 宿主、编译内置插件与 `plugins/unified` 可选外部入口 | 组装层依赖 SDK 和已知内置实现，包括在线模块 |
 | `sdk` | JSON-RPC 帧与取消、协议 DTO、通用错误、实例 ID、在线结果校验、Provider Worker | 标准库及 SDK 明确列出的基础库 |
-| `plugins/source/online` | 网易云、QQ 音乐、Apple Music 适配、三个独立程序与统一在线入口 | SDK 和插件自身代码 |
+| `plugins/source/online` | 网易云、QQ 音乐、Apple Music、Bilibili 适配、四个独立程序与统一在线入口 | SDK 和插件自身代码 |
 
 Server 的受信任组装层直接链接官方在线平台适配器，以便在主进程运行；业务代码通过 SDK DTO 和宿主接口使用结果。SDK 和独立在线模块仍不能反向导入 `src/`。`plugins/unified` 保留外部进程兼容入口。公共 DTO 与上游请求实现分开，`Track`、`AccountView` 等类型仍由 SDK 拥有。
+
+来源插件必须在 Manifest 声明 `sourceType: local|network`，其他角色禁止该字段；声明不属于可修改的部署配置。网络音频通过可选 `provider.AudioClient` 提供格式描述和按需读取；`online.audioDescribe` 不读取媒体正文，`online.audioOpen/Read/Close` 在播放时消费有界音频块。宿主按类型选择路径并独立检查 `stream.resolve`，不按平台名称推断格式或播放能力。当前实现范围见 [Bilibili 来源](../providers/bilibili.md)，可选发行建议见[插件发行](optional-distribution.md)。
 
 SDK 包入口：
 
@@ -27,7 +29,7 @@ SDK 包入口：
 - `sdk/instanceid`：规范实例 UUID 和已有实例路径兼容规则。
 - `sdk/bundledplugin`：随包插件各自的发行版本声明，供 Worker 和宿主的未启动元数据共用。
 
-在线平台共用一个插件模块维护公共代码。默认由 Server 固定选择已编译的平台实现，在主进程为每个用户和实例创建独立会话，平台选择必须与握手身份一致。可选的 `musicfs-plugin-netease`、`musicfs-plugin-qqmusic`、`musicfs-plugin-applemusic` 及 `musicfs-plugin-online --plugin <平台>` 保留独立构建与进程部署能力。SDK 不拥有平台登录、加密、HTTP 请求、Cookie 或平台显示名称。已知平台 ID、结果 URL 校验及最大允许能力仍是 SDK/宿主的官方来源策略，未开放任意第三方身份、未知角色或音频能力。
+在线平台共用一个插件模块维护公共代码。默认由 Server 固定选择已编译的平台实现，在主进程为每个用户和实例创建独立会话，平台选择必须与握手身份一致。可选的 `musicfs-plugin-netease`、`musicfs-plugin-qqmusic`、`musicfs-plugin-applemusic`、`musicfs-plugin-bilibili` 及 `musicfs-plugin-online --plugin <平台>` 保留独立构建与进程部署能力。SDK 不拥有平台登录、加密、HTTP 请求、Cookie 或平台显示名称。已知平台 ID、结果 URL 校验及最大允许能力仍是 SDK/宿主的官方来源策略，未开放任意第三方身份、未知角色或音频能力。
 
 ## 内容类型与 CUE 增量
 
@@ -37,7 +39,7 @@ SDK 包入口：
 
 ## 构建与测试
 
-默认使用根目录 `scripts/build.ps1` 或 `scripts/build.sh` 构建 `musicfs` 与保留九种兼容入口的 `musicfs-plugins`。默认运行只启动 `musicfs`，内置插件不需要后一个文件。所有模块仍以 `GOWORK=off` 构建，不依赖开发者本机的 `go.work`。显式指定 PowerShell `-SplitPlugins` 或 shell `--split-plugins` 才额外生成平台、SQLite、DSP 等独立文件；发布脚本支持同名选项。源码模块、交付文件数量与运行时进程数量分别管理。
+默认使用根目录 `scripts/build.ps1` 或 `scripts/build.sh` 构建 `musicfs` 与保留十种兼容入口的 `musicfs-plugins`。默认运行只启动 `musicfs`，内置插件不需要后一个文件。所有模块仍以 `GOWORK=off` 构建，不依赖开发者本机的 `go.work`。显式指定 PowerShell `-SplitPlugins` 或 shell `--split-plugins` 才额外生成平台、SQLite、DSP 等独立文件；发布脚本支持同名选项。源码模块、交付文件数量与运行时进程数量分别管理。
 
 单独构建在线插件，在 `plugins/source/online` 执行：
 

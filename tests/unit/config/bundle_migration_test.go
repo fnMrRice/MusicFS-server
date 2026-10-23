@@ -59,7 +59,7 @@ func TestBundledOnlineSelectionPreservesUserSettings(t *testing.T) {
 
 func TestBuiltinDiscoveryUsesFixedCatalogWithoutPrograms(t *testing.T) {
 	doc := discoveredDocument(t, "", []string{"musicfs-plugin-qqmusic", "musicfs-plugin-unknown"})
-	if len(doc.Config.Plugins) != 7 {
+	if len(doc.Config.Plugins) != 8 {
 		t.Fatalf("builtin catalog changed with available programs: %+v", doc.Config.Plugins)
 	}
 	for _, plugin := range doc.Config.Plugins {
@@ -68,7 +68,7 @@ func TestBuiltinDiscoveryUsesFixedCatalogWithoutPrograms(t *testing.T) {
 		}
 	}
 	doc = discoveredDocument(t, "", []string{"musicfs-plugins"})
-	if len(doc.Config.Plugins) != 7 {
+	if len(doc.Config.Plugins) != 8 {
 		t.Fatal("full bundle did not supply all ordinary plugin identities")
 	}
 }

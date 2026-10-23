@@ -96,7 +96,11 @@ func (s *Server) RegisterOnline(service *onlinehost.Service) {
 		if err := DecodeJSON(w, r, &input); err != nil {
 			return err
 		}
-		return service.Resolve(r.Context(), session.User.ID, r.PathValue("id"), r.PathValue("externalId"))
+		track, err := service.Resolve(r.Context(), session.User.ID, r.PathValue("id"), r.PathValue("externalId"))
+		if err != nil {
+			return err
+		}
+		return WriteJSON(w, http.StatusOK, track)
 	})
 }
 

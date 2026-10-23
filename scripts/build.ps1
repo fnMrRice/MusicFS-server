@@ -13,7 +13,7 @@ foreach ($directory in @((Join-Path $repositoryRoot 'build'), $outputRoot)) {
         throw "Build output must not be a link: $directory"
     }
 }
-$splitNames = @('musicfs-plugin-storage-sqlite', 'musicfs-plugin-dsp-gain', 'musicfs-plugin-netease', 'musicfs-plugin-qqmusic', 'musicfs-plugin-applemusic', 'musicfs-plugin-online')
+$splitNames = @('musicfs-plugin-storage-sqlite', 'musicfs-plugin-dsp-gain', 'musicfs-plugin-netease', 'musicfs-plugin-qqmusic', 'musicfs-plugin-applemusic', 'musicfs-plugin-bilibili', 'musicfs-plugin-online')
 $programs = [ordered]@{
     'musicfs' = './src/app/musicfs'
     'musicfs-plugins' = './src/app/musicfs-plugins'
@@ -44,7 +44,7 @@ if (-not $SplitPlugins) {
 }
 Push-Location plugins/source/online
 try {
-    foreach ($program in @('musicfs-plugin-netease', 'musicfs-plugin-qqmusic', 'musicfs-plugin-applemusic', 'musicfs-plugin-online')) {
+    foreach ($program in @('musicfs-plugin-netease', 'musicfs-plugin-qqmusic', 'musicfs-plugin-applemusic', 'musicfs-plugin-bilibili', 'musicfs-plugin-online')) {
         go build -mod=readonly -trimpath -o "$outputRoot/$program$suffix" "./cmd/$program"
         if ($LASTEXITCODE) { throw "Build failed: $program" }
     }

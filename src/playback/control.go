@@ -59,6 +59,9 @@ func (s *Service) Control(ctx context.Context, who auth.Session, id, operation s
 	if a.description.AttemptID != r.AttemptID {
 		return Description{}, domain.Fail("CONFLICT", "Playback attempt is no longer current")
 	}
+	if a.online {
+		return Description{}, domain.Fail("RESTART_REQUIRED", "Online audio has no verified byte or timeline version; restart playback")
+	}
 	if a.description.SeekableRange == nil || r.PositionMs < a.description.SeekableRange.StartMs || r.PositionMs >= a.description.SeekableRange.EndMs {
 		return Description{}, domain.Fail("INVALID_ARGUMENT", "Position is outside the verified track range")
 	}

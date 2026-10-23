@@ -13,7 +13,7 @@ import (
 
 func bundledDocument(t *testing.T, extra string) *config.Document {
 	t.Helper()
-	return discoveredDocument(t, extra, []string{"musicfs-plugins", "musicfs-plugin-netease", "musicfs-plugin-qqmusic", "musicfs-plugin-applemusic"})
+	return discoveredDocument(t, extra, []string{"musicfs-plugins", "musicfs-plugin-netease", "musicfs-plugin-qqmusic", "musicfs-plugin-applemusic", "musicfs-plugin-bilibili"})
 }
 
 func discoveredDocument(t *testing.T, extra string, files []string) *config.Document {
@@ -37,7 +37,7 @@ func discoveredDocument(t *testing.T, extra string, files []string) *config.Docu
 
 func TestBundledDiscoveryDefaultsAndPendingConfiguration(t *testing.T) {
 	doc := bundledDocument(t, "")
-	if len(doc.Config.Plugins) != 7 {
+	if len(doc.Config.Plugins) != 8 {
 		t.Fatalf("plugins: %d", len(doc.Config.Plugins))
 	}
 	for _, p := range doc.Config.Plugins {

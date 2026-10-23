@@ -10,7 +10,7 @@ import (
 )
 
 func TestManifestRejectsUnknownRolesAndProtocol(t *testing.T) {
-	base := pluginproto.Manifest{PluginID: "musicfs.plugin.source.localfiles", Plugin: pluginconfig.Identity("musicfs.plugin.source.localfiles"), PluginVersion: "0.1.0", ProtocolVersion: "1.0", Roles: []string{"provider"}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}
+	base := pluginproto.Manifest{PluginID: "musicfs.plugin.source.localfiles", Plugin: pluginconfig.Identity("musicfs.plugin.source.localfiles"), PluginVersion: "0.1.0", ProtocolVersion: "1.0", SourceType: pluginproto.SourceLocal, Roles: []string{"provider"}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}
 	if err := base.Validate("provider"); err != nil {
 		t.Fatal(err)
 	}
@@ -36,6 +36,9 @@ func TestManifestRejectsUnknownRolesAndProtocol(t *testing.T) {
 func TestEveryManifestRequiresBoundedSemanticPluginVersion(t *testing.T) {
 	for _, role := range []string{"provider", "audio", "scraper"} {
 		manifest := pluginproto.Manifest{PluginID: "musicfs.plugin.source.localfiles", Plugin: pluginconfig.Identity("musicfs.plugin.source.localfiles"), PluginVersion: "2.3.4-rc.1+build.9", ProtocolVersion: pluginproto.ProtocolVersion, Roles: []string{role}, Capabilities: []string{}, Systems: []string{"windows"}, Architectures: []string{"amd64"}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}
+		if role == "provider" {
+			manifest.SourceType = pluginproto.SourceLocal
+		}
 		if err := manifest.Validate(role); err != nil {
 			t.Fatal(err)
 		}

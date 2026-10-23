@@ -44,7 +44,7 @@ func TestLocalDisplayHelperProcess(t *testing.T) {
 		if method != "host.hello" || json.Unmarshal(raw, &hello) != nil {
 			return nil, pluginproto.Failure("UNSUPPORTED", "Unsupported fixture method")
 		}
-		manifest := pluginproto.Manifest{PluginID: "musicfs.plugin.source.localfiles", Plugin: identity, PluginVersion: "0.3.0", ProtocolVersion: pluginproto.ProtocolVersion, Roles: []string{"provider"}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}
+		manifest := pluginproto.Manifest{PluginID: "musicfs.plugin.source.localfiles", Plugin: identity, PluginVersion: "0.3.0", ProtocolVersion: pluginproto.ProtocolVersion, SourceType: "local", Roles: []string{"provider"}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems}
 		return pluginproto.Ready{Manifest: manifest, InstanceID: hello.InstanceID, Nonce: hello.Nonce}, nil
 	})
 	<-peer.Done()

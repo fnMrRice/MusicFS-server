@@ -6,7 +6,7 @@
 
 顶层 `storage` 选择存储后端，`audioDSP` 保留有序效果链及外部节点；`audioDSP.enabled` 默认 false，禁用服务端增益、均衡、压缩、混响及外部音效。Web 使用本地 DSP，即使服务端显式开启音效也通过 `dspExecution=client` 避免重复处理。`audioChannels.enabled` 同样默认 false，禁用声道插件并忽略历史输出布局；转码优先保留源声道，编码或客户端限制下才使用 FFmpeg 兼容降混。显式启用时 `outputLayout` 可选 `stereo`、`'5.1'` 或 `'7.1'`；这些都是启动配置，修改后重启生效。配置、范围与示例见[本地 DSP 边界](../playback/local-dsp.md)、[常见 DSP 与声道转换](../plugins/dsp-effects.md)、[DSP 协议](../plugins/dsp-plugins.md)及[存储插件](../plugins/storage-plugins.md)。显式启用的非空 DSP 链和环绕声输出要求可用音频实例；环绕声还要求内置音频执行与 Opus/WebM，客户端格式不兼容时明确拒绝。旧 MFD1 外部 DSP 只能用于双声道。
 
-网易云、QQ 音乐及 Apple Music 的每个实例可在 `instanceId` 同级配置 `ownerUserId`，省略时兼容为 `admin`。每个 MusicFS 用户使用自己的实例，同一用户的不同平台账号也应配置不同 UUID `instanceId` 并分别登录；单实例只保留一个当前平台账号。非账号插件不接受 `ownerUserId`。实例归属是部署配置，变更需重启；不要通过修改既有实例的归属转移凭据，分配新 UUID 后重新登录。凭据加密范围包含平台、用户及实例，跨用户不可恢复旧凭据。
+网易云、QQ 音乐、Apple Music 及 Bilibili 的每个实例可在 `instanceId` 同级配置 `ownerUserId`，省略时兼容为 `admin`。每个 MusicFS 用户使用自己的实例，同一用户的不同平台账号也应配置不同 UUID `instanceId` 并分别登录；单实例只保留一个当前平台账号。Bilibili 当前使用匿名公开内容，仍受实例归属约束。其他插件不接受 `ownerUserId`。实例归属是部署配置，变更需重启；不要通过修改既有实例的归属转移凭据，分配新 UUID 后重新登录。凭据加密范围包含平台、用户及实例，跨用户不可恢复旧凭据。
 
 当前产品登录入口仍只创建 `admin` 会话，尚未实现多用户创建或注册；配置用户归属与服务隔离不代表已交付普通用户登录。`GET /admin/plugins` 及其插件实例列表默认仅展示当前用户的账号实例，保留共享插件实例；管理员显式传入 `allUsers=true` 可查看全部，返回 `ownerUserId` 和可选的已验证 `accountName`。该选项不扩大 `/online-instances`、平台登录/退出及资料请求的用户范围，也不会返回凭据；账号显示名只是展示快照，不用于授权。
 
@@ -78,8 +78,9 @@
 | `musicfs.plugin.decoder.ncm` | `audio`；`config: {}`，具体功能见[NCM说明](../playback/ncm.md) |
 | `musicfs.scraper.local` | `scraper`；`config: {}`，最多16个配置实例，只读取目标Provider授权的内嵌/旁置内容；见[补全任务](../metadata/metadata.md) |
 | `musicfs.plugin.source.netease` / `musicfs.plugin.source.qqmusic` / `musicfs.plugin.source.applemusic` | `provider`；`config: {}`，三平台合计最多16实例；业务访问要求已校验平台账号，禁止URL/Cookie/token/账号/本地根配置；能力差异见[在线接口](../providers/online.md) |
+| `musicfs.plugin.source.bilibili` | `provider`；`sourceType: network` 由插件声明，`config: {}`；匿名公开内容与按需音频播放，仍须 MusicFS 身份与实例归属，详见[Bilibili](../providers/bilibili.md)；与其他在线来源共用16实例上限 |
 
-当前只接受上述七个官方插件 ID，插件 ID 不可重复。插件通过 `supportsMultipleInstances` 声明是否支持多实例；本地音乐、FFmpeg、NCM 最多配置一个实例，已禁用实例也计数，多个本地目录放在同一实例中。三个在线来源与本地歌词/封面插件保留多实例。插件与实例的 `enabled` 省略时均默认false，只有两层都为true才在启动时启用。禁用不改写兄弟实例或删除已有库。有效启用必须配置可执行路径；禁用对象仍严格检查结构、身份、路径隔离与摘要格式，但不要求其程序或外部工具当前可运行。
+当前普通插件配置接受上述八个官方插件 ID，插件 ID 不可重复。插件通过 `supportsMultipleInstances` 声明是否支持多实例；本地音乐、FFmpeg、NCM 最多配置一个实例，已禁用实例也计数，多个本地目录放在同一实例中。四个在线来源与本地歌词/封面插件保留多实例。插件与实例的 `enabled` 省略时均默认false，只有两层都为true才在启动时启用。禁用不改写兄弟实例或删除已有库。有效启用必须配置可执行路径；禁用对象仍严格检查结构、身份、路径隔离与摘要格式，但不要求其程序或外部工具当前可运行。
 
 官方示例为内置插件和实例显式设置 `enabled: true`；自动发现新建的插件和默认实例也会启用，显式已有项省略开关仍保持禁用。缺少音乐目录或音频工具路径时保留为待配置，不阻止服务启动。设置任意一层 `enabled: false` 可禁用；旧配置中的 false 保持有效。Linux将`executable`改为对应Linux构建路径，程序无`.exe`后缀。可选`sha256`用于钉住管理员审核的程序；省略时采用现有显式本机路径信任与本次启动摘要检查，不代表跨重启钉住版本。
 

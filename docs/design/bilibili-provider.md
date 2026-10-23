@@ -1,6 +1,6 @@
 # Bilibili 音频 Provider 设计
 
-尚未实现或进行 B 站在线验收。插件拟为 `musicfs.plugin.source.bilibili`，任务与参考见[增量计划](nas-bilibili.md)。以下身份与能力划分为草案，精确协议待冻结。
+匿名公开内容已实现部分能力并完成部分线上端点验证，实际交付范围和限制见[Bilibili 来源](../providers/bilibili.md)。插件为 `musicfs.plugin.source.bilibili`。本文保留完整目标设计；未在实施文档列为完成的账号、展开策略、版本及恢复能力仍为待办。
 
 ## 1. 匿名优先与能力边界
 

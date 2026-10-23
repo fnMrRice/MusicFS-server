@@ -38,6 +38,10 @@ func Identity(pluginID string) *pluginproto.PluginIdentity {
 	case "musicfs.plugin.source.applemusic":
 		identity.Name = "Apple Music"
 		identity.Features = []string{"music-source"}
+	case "musicfs.plugin.source.bilibili":
+		identity.Name = "Bilibili"
+		identity.LocalizedNames = map[string]string{"zh": "哔哩哔哩", "zh-Hans": "哔哩哔哩", "zh-Hant": "嗶哩嗶哩"}
+		identity.Features = []string{"music-source"}
 	case "musicfs.plugin.decoder.ffmpeg":
 		identity.Name = "FFmpeg Audio Codec"
 		identity.LocalizedNames = map[string]string{"zh": "FFmpeg 音频编解码", "zh-Hans": "FFmpeg 音频编解码", "zh-Hant": "FFmpeg 音訊編解碼"}

@@ -2,7 +2,7 @@
   {"name":"health","schema":"Health","valid":true,"value":{"product":"MusicFS","instanceId":"instance-1","apiVersion":"1","ready":true}},
   {"name":"session","schema":"Session","valid":true,"value":{"user":{"id":"user-1","role":"admin"},"csrfToken":"test-csrf-not-a-credential","expiresAt":"2026-10-09T12:00:00Z"}},
   {"name":"session-reject-local-time","schema":"Session","valid":false,"value":{"user":{"id":"user-1","role":"admin"},"csrfToken":"test-csrf-not-a-credential","expiresAt":"2026-10-09T20:00:00+08:00"}},
-  {"name":"providers","schema":"Providers","valid":true,"value":{"items":[{"id":"b1548e96-3081-5c9c-8376-bf290e369d51","name":"测试音乐","capabilities":["library.scan","metadata.read","stream.resolve"],"availability":"available","accountState":"notRequired","configuration":null,"roots":[]}]}},
+  {"name":"providers","schema":"Providers","valid":true,"value":{"items":[{"id":"b1548e96-3081-5c9c-8376-bf290e369d51","name":"测试音乐","sourceType":"local","capabilities":["library.scan","metadata.read","stream.resolve"],"availability":"available","accountState":"notRequired","configuration":null,"roots":[]}]}},
   {"name":"scan-request","schema":"ScanRequest","valid":true,"value":{"mode":"full","schemaRevision":"local-import-v3","rootIds":["music"],"options":{}}},
   {"name":"scan-reject-unknown-mode","schema":"ScanRequest","valid":false,"value":{"mode":"erase","schemaRevision":"local-import-v3","rootIds":["music"],"options":{}}},
   {"name":"scan-reject-extra-field","schema":"ScanRequest","valid":false,"value":{"mode":"full","rootPath":"private","schemaRevision":"local-import-v3","rootIds":["music"],"options":{}}},

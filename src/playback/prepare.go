@@ -38,6 +38,7 @@ type preparedInput struct {
 	decodeOutput         string
 	dspExecution         string
 	gain                 float64
+	online               bool
 }
 
 func (p *preparedInput) discard() {
@@ -71,6 +72,12 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 	}
 	if t.Availability != "available" {
 		return nil, domain.Fail("SOURCE_OFFLINE", "Track is unavailable")
+	}
+	if s.library.SourceType(t.ProviderID) == "network" {
+		return s.prepareOnline(ctx, owner, t, r)
+	}
+	if s.library.SourceType(t.ProviderID) != "local" {
+		return nil, domain.Fail("UNSUPPORTED", "Provider has not declared a supported source type")
 	}
 	if t.Size <= 0 {
 		return nil, domain.Fail("UNSUPPORTED", "Source contains no audio data")
@@ -203,6 +210,9 @@ func (r preparationReader) Read(p []byte) (int, error) {
 }
 func (p *preparedInput) describe(id string, gain float64, expiry time.Time) Description {
 	t := p.track
+	if p.online {
+		return p.describeOnline(id, expiry)
+	}
 	d := Description{SessionID: id, AssetID: t.AssetID, DeliveryMode: "proxy", OutputProfile: OutputProfile{MIME: t.MIME, Codec: t.Codec, Container: t.Container, Transport: "htmlAudio",
 		SampleRate: p.profile.SampleRate, Channels: p.profile.Channels, Layout: p.profile.Layout, BitrateBps: p.profile.BitrateBps}, ExpiresAt: expiry, SeekMode: "byteRange", EffectiveProcessing: []Processing{}, ResumeDecision: "continue"}
 	d.DSPExecution = p.dspExecution

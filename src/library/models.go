@@ -38,6 +38,7 @@ type Track struct {
 	Size                int64                 `json:"-"`
 }
 type Provider struct {
+	SourceType    string                      `json:"sourceType,omitempty"`
 	ID            string                      `json:"id"`
 	Name          string                      `json:"name"`
 	Plugin        *pluginproto.PluginIdentity `json:"plugin,omitempty"`

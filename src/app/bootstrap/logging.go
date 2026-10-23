@@ -49,7 +49,7 @@ func startLogging(c config.Config, output io.Writer) (*logging.Manager, func(), 
 		return nil, nil, err
 	}
 	ids := []string{
-		"musicfs.plugin.source.localfiles", "musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic",
+		"musicfs.plugin.source.localfiles", "musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic", "musicfs.plugin.source.bilibili",
 		"musicfs.plugin.decoder.ffmpeg", "musicfs.plugin.decoder.ncm", "musicfs.scraper.local", "musicfs.dsp.gain", "musicfs.plugin.storage.sqlite",
 		"musicfs.plugin.analysis.chromaprint", "musicfs.plugin.tags.flac", "musicfs.plugin.matching.standard", "musicfs.plugin.transform.thumbnail",
 		"musicfs.dsp.equalizer", "musicfs.dsp.compressor", "musicfs.dsp.reverb", "musicfs.plugin.decoder.channelmix",

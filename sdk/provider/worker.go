@@ -15,11 +15,14 @@ import (
 )
 
 type worker struct {
-	mu     sync.Mutex
-	plugin Plugin
-	hello  pluginproto.OnlineHello
-	client Client
-	slots  chan struct{}
+	ctx     context.Context
+	audioMu sync.Mutex
+	audio   map[string]*audioStream
+	mu      sync.Mutex
+	plugin  Plugin
+	hello   pluginproto.OnlineHello
+	client  Client
+	slots   chan struct{}
 }
 
 // Run serves one plugin instance until its context or protocol channel closes.
@@ -28,7 +31,8 @@ func Run(ctx context.Context, plugin Plugin, input io.ReadCloser, output io.Writ
 	if err := plugin.Validate(); err != nil {
 		return err
 	}
-	w := &worker{plugin: plugin, slots: make(chan struct{}, 2)}
+	w := &worker{ctx: ctx, audio: make(map[string]*audioStream), plugin: plugin, slots: make(chan struct{}, 2)}
+	defer w.closeAudio()
 	peer := pluginproto.NewPeer(ctx, input, output, "w-", w.handle)
 	peer.Wait()
 	w.mu.Lock()
@@ -62,6 +66,46 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 	var scope pluginproto.Context
 	var run func(context.Context) (any, error)
 	switch method {
+	case "provider.online.audioDescribe":
+		var r pluginproto.OnlineReference
+		if err = pluginproto.DecodeOnline(raw, &r); err != nil {
+			return nil, err
+		}
+		scope = r.Context
+		run = func(ctx context.Context) (any, error) {
+			audio, ok := client.(AudioClient)
+			if !ok {
+				return nil, unsupported()
+			}
+			description, err := audio.DescribeAudio(ctx, r.ExternalID)
+			if err == nil {
+				err = description.Validate()
+			}
+			if err == nil && description.ExternalID != r.ExternalID {
+				err = pluginproto.Failure("PROTOCOL_MISMATCH", "Online audio identity mismatch")
+			}
+			return description, err
+		}
+	case "provider.online.audioOpen":
+		var r pluginproto.OnlineReference
+		if err = pluginproto.DecodeOnline(raw, &r); err != nil {
+			return nil, err
+		}
+		scope = r.Context
+		run = func(ctx context.Context) (any, error) { return w.openAudio(ctx, client, r.ExternalID) }
+	case "provider.online.audioRead", "provider.online.audioClose":
+		var r pluginproto.OnlineAudioRead
+		if err = pluginproto.DecodeOnline(raw, &r); err != nil {
+			return nil, err
+		}
+		if !pluginproto.ValidOnlineAudioID(r.StreamID) || r.Offset < 0 {
+			return nil, pluginproto.Failure("INVALID_ARGUMENT", "Invalid audio stream request")
+		}
+		scope = r.Context
+		priority = method == "provider.online.audioClose"
+		run = func(ctx context.Context) (any, error) {
+			return w.readAudio(ctx, r, method == "provider.online.audioClose")
+		}
 	case "provider.online.account":
 		var r pluginproto.OnlineAccount
 		if err = pluginproto.DecodeOnline(raw, &r); err != nil {
@@ -186,6 +230,9 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(scope.TimeoutMs)*time.Millisecond)
 	defer cancel()
 	if required != "" && !w.plugin.supports(required) {
+		if w.plugin.Descriptor.Authentication == "anonymous" {
+			return nil, pluginproto.Failure("UNSUPPORTED", "Online capability is not enabled by this plugin")
+		}
 		// Preserve login-first behavior without making supported requests read
 		// account state twice. Implementations authorize their enabled methods.
 		account, accountErr := client.Account(ctx, online.AccountRequest{Action: "state"})
@@ -230,6 +277,6 @@ func (w *worker) handshake(raw json.RawMessage) (pluginproto.Ready, error) {
 		return pluginproto.Ready{}, pluginproto.Failure("TEMPORARY_FAILURE", "Online plugin factory returned no client")
 	}
 	w.hello, w.client = hello, client
-	manifest := pluginproto.Manifest{PluginID: w.plugin.Descriptor.Plugin.ID, Plugin: w.plugin.Descriptor.Plugin, PluginVersion: w.plugin.Version, ProtocolVersion: pluginproto.ProtocolVersion, SupportsMultipleInstances: true, Roles: []string{"provider"}, Capabilities: w.plugin.capabilities(), Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems}
+	manifest := pluginproto.Manifest{PluginID: w.plugin.Descriptor.Plugin.ID, Plugin: w.plugin.Descriptor.Plugin, PluginVersion: w.plugin.Version, ProtocolVersion: pluginproto.ProtocolVersion, SupportsMultipleInstances: true, SourceType: "network", Roles: []string{"provider"}, Capabilities: w.plugin.capabilities(), Systems: []string{runtime.GOOS}, Architectures: []string{runtime.GOARCH}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems}
 	return pluginproto.Ready{Manifest: manifest, InstanceID: hello.InstanceID, Nonce: hello.Nonce}, nil
 }

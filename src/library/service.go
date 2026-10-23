@@ -17,6 +17,7 @@ import (
 
 type Runtime struct {
 	ID, Name, Owner string
+	SourceType      string
 	// Plugin is a bundled plugin declaration supplied by bootstrap. A verified
 	// worker takes precedence; neither configuration nor instance aliases set it.
 	Plugin             *pluginproto.PluginIdentity
@@ -29,6 +30,9 @@ type Runtime struct {
 	WriteBack          map[string]RootWriteBack
 	Configuration      *pluginproto.Configuration
 	Gate               *plugincontrol.Gate
+	OpenAudio          func(context.Context, string) (pluginproto.OnlineAudio, io.ReadCloser, error)
+	DescribeAudio      func(context.Context, string) (pluginproto.OnlineAudio, error)
+	AuthorizeAudio     func(context.Context) (*plugincontrol.Gate, error)
 }
 type Probe func(context.Context, io.ReadSeeker, int64) (Observation, error)
 type ProbeSession func(context.Context) (context.Context, Probe, func(), error)
@@ -49,6 +53,7 @@ func New(repo Repository, queue *jobs.Service, runtimes []Runtime, probe Probe) 
 		r.Plugin = r.Plugin.Clone()
 		if r.Worker != nil {
 			r.Plugin = r.Worker.PluginIdentity()
+			r.SourceType = r.Worker.Manifest.SourceType
 		}
 		s.runtimes[r.ID] = r
 		s.gates[r.ID] = &providerGate{barriers: map[string]bool{}, tasks: map[string]*ReadLease{}, changed: make(chan struct{})}
@@ -73,7 +78,12 @@ func (s *Service) Providers(ctx context.Context, user string) []Provider {
 				capabilities = append(capabilities, r.Worker.Manifest.Capabilities...)
 			}
 		}
-		items = append(items, Provider{ID: r.ID, Name: r.Name, Plugin: r.Plugin.Clone(), Capabilities: capabilities, Availability: availability, AccountState: "notRequired", ScanState: s.repo.ProviderScanState(ctx, user, r.ID), Configuration: safeProviderConfiguration(r), Roots: s.providerRoots(ctx, r)})
+		if r.SourceType == pluginproto.SourceNetwork && r.AuthorizeAudio != nil {
+			if _, err := r.AuthorizeAudio(ctx); err == nil {
+				availability = "available"
+			}
+		}
+		items = append(items, Provider{ID: r.ID, Name: r.Name, SourceType: r.SourceType, Plugin: r.Plugin.Clone(), Capabilities: capabilities, Availability: availability, AccountState: "notRequired", ScanState: s.repo.ProviderScanState(ctx, user, r.ID), Configuration: safeProviderConfiguration(r), Roots: s.providerRoots(ctx, r)})
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
 	return items

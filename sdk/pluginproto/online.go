@@ -50,6 +50,7 @@ type OnlineResult[T any] struct {
 type OnlineDescriptor struct {
 	Plugin         *OnlinePlugin       `json:"plugin,omitempty"`
 	Platform       string              `json:"platform"`
+	SourceType     string              `json:"sourceType"`
 	Authentication string              `json:"authentication"`
 	Capabilities   []online.Capability `json:"capabilities"`
 	SchemaRevision string              `json:"schemaRevision"`
@@ -59,7 +60,7 @@ type OnlineDescriptor struct {
 
 func OnlinePluginID(platform string) string {
 	switch platform {
-	case online.Netease, online.QQMusic, online.AppleMusic:
+	case online.Netease, online.QQMusic, online.AppleMusic, online.Bilibili:
 		return "musicfs.plugin.source." + platform
 	default:
 		return ""
@@ -70,8 +71,11 @@ func OnlinePluginID(platform string) string {
 // It deliberately has no plugin display identity; only a worker may supply it.
 func OnlinePolicy(platform string) OnlineDescriptor {
 	auth := "platformAccountRequired"
+	if platform == online.Bilibili {
+		auth = "anonymous"
+	}
 	return OnlineDescriptor{
-		Platform: platform, Authentication: auth, Capabilities: online.Capabilities(platform), SchemaRevision: OnlineRevision,
+		Platform: platform, SourceType: SourceNetwork, Authentication: auth, Capabilities: online.Capabilities(platform), SchemaRevision: OnlineRevision,
 		ConfigSchema: map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{}}, ConfigDefaults: map[string]any{},
 	}
 }
@@ -114,7 +118,7 @@ func OnlineCapabilities(platform string) []string {
 }
 
 func ValidateOnlineManifest(m Manifest, platform string) error {
-	if m.Validate("provider") != nil || OnlinePluginID(platform) == "" || !m.SupportsMultipleInstances || m.PluginID != OnlinePluginID(platform) || !ValidPluginVersion(m.PluginVersion) || !reflect.DeepEqual(m.Roles, []string{"provider"}) || !onlineCapabilitySubset(m.Capabilities, OnlineCapabilities(platform)) || m.Configuration != nil || m.MaxPageItems != online.MaxPageItems || m.MaxMessageBytes != MaxMessageBytes {
+	if m.Validate("provider") != nil || m.SourceType != SourceNetwork || OnlinePluginID(platform) == "" || !m.SupportsMultipleInstances || m.PluginID != OnlinePluginID(platform) || !ValidPluginVersion(m.PluginVersion) || !reflect.DeepEqual(m.Roles, []string{"provider"}) || !onlineCapabilitySubset(m.Capabilities, OnlineCapabilities(platform)) || m.Configuration != nil || m.MaxPageItems != online.MaxPageItems || m.MaxMessageBytes != MaxMessageBytes {
 		return Failure("PROTOCOL_MISMATCH", "Online manifest does not match the expected platform")
 	}
 	return nil

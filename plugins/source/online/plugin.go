@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/source/online/applemusic"
+	"github.com/fnMrRice/MusicFS-server/plugins/source/online/bilibili"
 	"github.com/fnMrRice/MusicFS-server/plugins/source/online/internal/adapter"
 	"github.com/fnMrRice/MusicFS-server/plugins/source/online/netease"
 	"github.com/fnMrRice/MusicFS-server/plugins/source/online/qqmusic"
@@ -43,6 +44,8 @@ func Plugin(platform string, options Options) provider.Plugin {
 		return qqmusic.Plugin(options)
 	case online.AppleMusic:
 		return applemusic.Plugin(options)
+	case online.Bilibili:
+		return bilibili.Plugin(options)
 	default:
 		return provider.Plugin{}
 	}

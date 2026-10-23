@@ -42,7 +42,9 @@ func (r *ReadLease) Close() error {
 func (g *providerGate) notify() { close(g.changed); g.changed = make(chan struct{}) }
 
 func (s *Service) providerGate(owner, provider string) (*providerGate, error) {
-	r, ok := s.Runtime(provider)
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	r, ok := s.runtimes[provider]
 	if !ok || r.Owner != owner {
 		return nil, domain.Fail("NOT_FOUND", "Provider not found")
 	}
@@ -64,6 +66,12 @@ func (s *Service) HoldReadLifetime(ctx, lifetime context.Context, owner, provide
 		return nil, err
 	}
 	runtime, _ := s.Runtime(provider)
+	if runtime.AuthorizeAudio != nil {
+		runtime.Gate, err = runtime.AuthorizeAudio(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if previous, _ := ctx.Value(readLeaseKey{}).(*ReadLease); previous != nil && previous.runtime.ID == provider {
 		lifetime = previous.WithContext(lifetime)
 	}
@@ -151,7 +159,9 @@ func (s *Service) holdTask(ctx context.Context, owner, provider, task string) (*
 }
 
 func (s *Service) taskContext(provider, task string, ctx context.Context) context.Context {
+	s.mu.RLock()
 	g := s.gates[provider]
+	s.mu.RUnlock()
 	if g == nil {
 		return ctx
 	}
@@ -163,7 +173,9 @@ func (s *Service) taskContext(provider, task string, ctx context.Context) contex
 	return ctx
 }
 func (s *Service) revokeTask(provider, task string) {
+	s.mu.RLock()
 	g := s.gates[provider]
+	s.mu.RUnlock()
 	if g == nil {
 		return
 	}

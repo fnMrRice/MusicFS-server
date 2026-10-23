@@ -6,6 +6,11 @@ const ProtocolVersion = "1.0"
 const MaxMessageBytes = 1 << 20
 const MaxPageItems = 200
 
+const (
+	SourceLocal   = "local"
+	SourceNetwork = "network"
+)
+
 type Manifest struct {
 	PluginID                  string          `json:"pluginId"`
 	Plugin                    *PluginIdentity `json:"plugin"`
@@ -13,12 +18,14 @@ type Manifest struct {
 	PluginVersion             string          `json:"pluginVersion"`
 	ProtocolVersion           string          `json:"protocolVersion"`
 	Roles                     []string        `json:"roles"`
-	Capabilities              []string        `json:"capabilities"`
-	Systems                   []string        `json:"systems"`
-	Architectures             []string        `json:"architectures"`
-	MaxMessageBytes           int             `json:"maxMessageBytes"`
-	MaxPageItems              int             `json:"maxPageItems"`
-	Configuration             *Configuration  `json:"configuration"`
+	// SourceType 由来源插件声明，决定宿主选择本地文件或按需网络读取。
+	SourceType      string         `json:"sourceType,omitempty"`
+	Capabilities    []string       `json:"capabilities"`
+	Systems         []string       `json:"systems"`
+	Architectures   []string       `json:"architectures"`
+	MaxMessageBytes int            `json:"maxMessageBytes"`
+	MaxPageItems    int            `json:"maxPageItems"`
+	Configuration   *Configuration `json:"configuration"`
 }
 
 func (m Manifest) Validate(role string) error {
@@ -26,11 +33,16 @@ func (m Manifest) Validate(role string) error {
 		return fmt.Errorf("PROTOCOL_MISMATCH: invalid plugin identity or protocol version")
 	}
 	found := false
+	provider := false
 	for _, r := range m.Roles {
 		if r != "provider" && r != "audio" && r != "scraper" {
 			return fmt.Errorf("PROTOCOL_MISMATCH: unknown role")
 		}
 		found = found || r == role
+		provider = provider || r == "provider"
+	}
+	if provider && m.SourceType != SourceLocal && m.SourceType != SourceNetwork || !provider && m.SourceType != "" {
+		return fmt.Errorf("PROTOCOL_MISMATCH: provider source type must be local or network")
 	}
 	if !found || m.MaxMessageBytes <= 0 || m.MaxMessageBytes > MaxMessageBytes || m.MaxPageItems <= 0 || m.MaxPageItems > MaxPageItems {
 		return fmt.Errorf("PROTOCOL_MISMATCH: invalid role or resource limits")

@@ -38,7 +38,7 @@ func TestOfficialExampleEnablesBuiltinPluginsAndPreservesDisable(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(document.Config.Plugins) != 7 {
+			if len(document.Config.Plugins) != 8 {
 				t.Fatal("official example changed the bundled plugin selection")
 			}
 			for _, plugin := range document.Config.Plugins {

@@ -28,7 +28,7 @@ func (w *OnlineWorker) requireOnlineCapability(method string, request any) error
 		capability = "track.details"
 	case "provider.online.playlist":
 		capability = "playlist.observe"
-	case "provider.online.resolve":
+	case "provider.online.resolve", "provider.online.audioDescribe", "provider.online.audioOpen", "provider.online.audioRead", "provider.online.audioClose":
 		capability = "stream.resolve"
 	case "provider.online.album":
 		capability = "metadata.album"

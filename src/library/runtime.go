@@ -42,6 +42,9 @@ func (s *Service) UpdateRuntime(r Runtime) error {
 	r.Plugin = previous.Plugin.Clone()
 	if r.Worker != nil {
 		r.Plugin = r.Worker.PluginIdentity()
+		r.SourceType = r.Worker.Manifest.SourceType
+	} else {
+		r.SourceType = previous.SourceType
 	}
 	s.runtimes[r.ID] = r
 	return nil

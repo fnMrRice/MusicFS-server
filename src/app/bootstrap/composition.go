@@ -178,6 +178,10 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	}
 	closeBeforeOnline := cleanup
 	cleanup = func() { closeOnline(); closeBeforeOnline() }
+	if err = online.ConfigureAudio(lib); err != nil {
+		cleanup()
+		return nil, nil, err
+	}
 	recommendations, err := configureRecommendations(onlineRuntimes)
 	if err != nil {
 		cleanup()

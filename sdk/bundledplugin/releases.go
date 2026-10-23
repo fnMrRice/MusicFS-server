@@ -11,6 +11,7 @@ const (
 	NetEaseVersion      = "0.1.0"
 	QQMusicVersion      = "0.1.0"
 	AppleMusicVersion   = "0.1.0"
+	BilibiliVersion     = "0.1.0"
 	GainVersion         = "0.1.0"
 	EqualizerVersion    = "0.1.0"
 	CompressorVersion   = "0.1.0"
@@ -49,6 +50,8 @@ func Version(pluginID string) string {
 		return QQMusicVersion
 	case "musicfs.plugin.source.applemusic":
 		return AppleMusicVersion
+	case "musicfs.plugin.source.bilibili":
+		return BilibiliVersion
 	case "musicfs.dsp.gain":
 		return GainVersion
 	case "musicfs.dsp.equalizer":

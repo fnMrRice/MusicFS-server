@@ -23,6 +23,7 @@ var releasePrograms = []releaseProgram{
 	{"musicfs-plugin-netease", "plugins/source/online", "./cmd/musicfs-plugin-netease"},
 	{"musicfs-plugin-qqmusic", "plugins/source/online", "./cmd/musicfs-plugin-qqmusic"},
 	{"musicfs-plugin-applemusic", "plugins/source/online", "./cmd/musicfs-plugin-applemusic"},
+	{"musicfs-plugin-bilibili", "plugins/source/online", "./cmd/musicfs-plugin-bilibili"},
 	{"musicfs-plugin-online", "plugins/source/online", "./cmd/musicfs-plugin-online"},
 }
 

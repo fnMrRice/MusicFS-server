@@ -7,6 +7,9 @@ import (
 )
 
 func platformSession(ctx context.Context, r Runtime) (online.AccountView, error) {
+	if r.descriptor.Authentication == "anonymous" {
+		return online.AccountView{}, ctx.Err()
+	}
 	var view online.AccountView
 	var err error
 	if p, ok := r.Provider.(interface {

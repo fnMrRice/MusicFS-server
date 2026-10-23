@@ -13,7 +13,7 @@ import (
 func TestBuiltinServerStartsSourcesWithoutAnyPluginExecutable(t *testing.T) {
 	cfg := serverConfig(t)
 	music := t.TempDir()
-	for _, id := range []string{"musicfs.plugin.source.localfiles", "musicfs.plugin.decoder.ncm", "musicfs.scraper.local", "musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic"} {
+	for _, id := range []string{"musicfs.plugin.source.localfiles", "musicfs.plugin.decoder.ncm", "musicfs.scraper.local", "musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic", "musicfs.plugin.source.bilibili"} {
 		instance := config.Instance{InstanceID: uuid.NewString(), Enabled: true}
 		if id == "musicfs.plugin.source.localfiles" {
 			instance.Permissions = &config.Permissions{ReadDirectories: []string{music}}

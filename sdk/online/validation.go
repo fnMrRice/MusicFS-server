@@ -14,7 +14,11 @@ func ValidateTrack(platform string, track Track) error {
 		validID = songMID.MatchString(track.ExternalID)
 		wantURL = "https://y.qq.com/n/ryqq/songDetail/" + track.ExternalID
 	}
-	if (platform != Netease && platform != QQMusic) || !validID || track.SourceURL != wantURL || track.PlaybackAvailability != "unknown" || track.Artists == nil || len(track.Artists) > 128 {
+	if platform == Bilibili {
+		wantURL = BilibiliTrackURL(track.ExternalID)
+		validID = wantURL != ""
+	}
+	if (platform != Netease && platform != QQMusic && platform != Bilibili) || !validID || track.SourceURL != wantURL || track.PlaybackAvailability != "unknown" || track.Artists == nil || len(track.Artists) > 128 {
 		return invalidResult()
 	}
 	title, err := TextValue(track.Title, 4096)
@@ -75,7 +79,13 @@ func ValidateSearch(platform string, page SearchPage, limit int) error {
 }
 
 func validatePlaylist(platform string, p Playlist) error {
-	if platform != Netease || !numericID.MatchString(p.ExternalID) || p.SourceURL != "https://music.163.com/playlist?id="+p.ExternalID || (p.TrackCount != nil && *p.TrackCount < 0) {
+	wantURL := ""
+	if platform == Netease && numericID.MatchString(p.ExternalID) {
+		wantURL = "https://music.163.com/playlist?id=" + p.ExternalID
+	} else if platform == Bilibili {
+		wantURL = BilibiliPlaylistURL(p.ExternalID)
+	}
+	if wantURL == "" || p.SourceURL != wantURL || (p.TrackCount != nil && *p.TrackCount < 0) {
 		return invalidResult()
 	}
 	if title, err := TextValue(p.Title, 4096); err != nil || title == "" || title != p.Title {
@@ -103,11 +113,16 @@ func ValidateRecommendations(platform string, page RecommendationPage, limit int
 }
 
 func ValidateObservation(platform string, p PlaylistObservation, id string) error {
-	if validatePlaylist(platform, p.Playlist) != nil || p.Playlist.ExternalID != id || p.Playlist.TrackCount == nil || p.Entries == nil || len(p.Entries) > MaxPlaylistEntries || p.ObservedAt.IsZero() || p.Consistency != Unversioned || p.Complete != (*p.Playlist.TrackCount == int64(len(p.Entries))) {
+	validCount := p.Playlist.TrackCount != nil && *p.Playlist.TrackCount == int64(len(p.Entries))
+	if validatePlaylist(platform, p.Playlist) != nil || p.Playlist.ExternalID != id || p.Entries == nil || len(p.Entries) > MaxPlaylistEntries || p.ObservedAt.IsZero() || p.Consistency != Unversioned || (p.Complete && !validCount) || (!p.Complete && validCount) {
 		return invalidResult()
 	}
 	for i, entry := range p.Entries {
-		if entry.Position != i || !numericID.MatchString(entry.ExternalTrackID) {
+		validID := numericID.MatchString(entry.ExternalTrackID)
+		if platform == Bilibili {
+			validID = BilibiliEntryID(entry.ExternalTrackID)
+		}
+		if entry.Position != i || !validID {
 			return invalidResult()
 		}
 	}

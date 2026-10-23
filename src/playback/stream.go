@@ -26,9 +26,19 @@ type Stream struct {
 	gain         float64
 	decodeOutput string
 	process      func(io.Writer) error
+	Online       bool
+	openOnline   func() (io.ReadCloser, error)
 }
 
-func (s *Stream) Close() { s.once.Do(func() { s.Cancel(); s.File.Close(); s.release() }) }
+func (s *Stream) Close() {
+	s.once.Do(func() {
+		s.Cancel()
+		if s.File != nil {
+			s.File.Close()
+		}
+		s.release()
+	})
+}
 func (s *Stream) Process(output io.Writer) (err error) {
 	started := time.Now()
 	slog.DebugContext(s.Context, "Playback processing started", "sessionId", s.Description.SessionID)
@@ -62,6 +72,9 @@ func (s *Service) OpenStream(ctx context.Context, who auth.Session, id, attempt 
 	}
 	if a.description.AttemptID != attempt {
 		return nil, domain.Fail("CONFLICT", "Playback attempt is no longer current")
+	}
+	if a.online {
+		return s.onlineStream(ctx, a, id, attempt, head)
 	}
 	if a.active >= 4 || (a.description.DeliveryMode == "processed" && !head && a.consumers[attempt] > 0) {
 		return nil, domain.Fail("RATE_LIMITED", "Too many stream consumers")

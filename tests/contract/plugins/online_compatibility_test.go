@@ -16,7 +16,7 @@ func TestOnlineReleaseVersionAndSubsetWireContract(t *testing.T) {
 	m := pluginproto.Manifest{
 		PluginID: d.Plugin.ID, Plugin: d.Plugin, SupportsMultipleInstances: true,
 		PluginVersion: "2.3.4-rc.1+fixture", ProtocolVersion: pluginproto.ProtocolVersion,
-		Roles: []string{"provider"}, Capabilities: []string{"metadata.track"},
+		Roles: []string{"provider"}, SourceType: pluginproto.SourceNetwork, Capabilities: []string{"metadata.track"},
 		Systems: []string{"windows"}, Architectures: []string{"amd64"},
 		MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems,
 	}

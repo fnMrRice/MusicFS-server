@@ -57,7 +57,7 @@ func TestOnlineWireContractActualDTOs(t *testing.T) {
 		descriptor := onlineplugins.Describe(platform)
 		onlineContract(t, "Descriptor", descriptor)
 		onlineContract(t, "", map[string]any{"jsonrpc": "2.0", "id": "h-2", "result": pluginproto.OnlineResult[pluginproto.OnlineDescriptor]{Context: scope, Value: descriptor}})
-		manifest := pluginproto.Manifest{PluginID: pluginproto.OnlinePluginID(platform), Plugin: descriptor.Plugin, SupportsMultipleInstances: true, PluginVersion: "0.1.0", ProtocolVersion: "1.0", Roles: []string{"provider"}, Capabilities: pluginproto.OnlineCapabilities(platform), Systems: []string{"windows", "linux"}, Architectures: []string{"amd64"}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems}
+		manifest := pluginproto.Manifest{PluginID: pluginproto.OnlinePluginID(platform), Plugin: descriptor.Plugin, SupportsMultipleInstances: true, PluginVersion: "0.1.0", ProtocolVersion: "1.0", SourceType: pluginproto.SourceNetwork, Roles: []string{"provider"}, Capabilities: pluginproto.OnlineCapabilities(platform), Systems: []string{"windows", "linux"}, Architectures: []string{"amd64"}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems}
 		onlineContract(t, "Ready", pluginproto.Ready{Manifest: manifest, InstanceID: scope.InstanceID, Nonce: hello.Nonce})
 	}
 	search := pluginproto.OnlineSearch{Context: scope, Query: "Synthetic", Limit: 1, Cursor: ""}
@@ -108,7 +108,7 @@ func TestOnlineWireRejectsScopeAndUnverifiedCapabilities(t *testing.T) {
 	if descriptor.Validate(online.AppleMusic) == nil {
 		t.Fatal("unverified Apple capability accepted by host")
 	}
-	manifest := pluginproto.Manifest{PluginID: "musicfs.plugin.source.qqmusic", Plugin: onlineplugins.Describe(online.QQMusic).Plugin, SupportsMultipleInstances: true, PluginVersion: "0.1.0", ProtocolVersion: "1.0", Roles: []string{"provider"}, Capabilities: []string{"stream.resolve"}, Systems: []string{"windows"}, Architectures: []string{"amd64"}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems}
+	manifest := pluginproto.Manifest{PluginID: "musicfs.plugin.source.qqmusic", Plugin: onlineplugins.Describe(online.QQMusic).Plugin, SupportsMultipleInstances: true, PluginVersion: "0.1.0", ProtocolVersion: "1.0", SourceType: pluginproto.SourceNetwork, Roles: []string{"provider"}, Capabilities: []string{"stream.resolve"}, Systems: []string{"windows"}, Architectures: []string{"amd64"}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems}
 	body, _ := json.Marshal(manifest)
 	if onlineSchema(t, "Manifest").Validate(testkit.DecodeJSON(t, body)) == nil || pluginproto.ValidateOnlineManifest(manifest, online.QQMusic) == nil {
 		t.Fatal("unverified audio capability accepted")

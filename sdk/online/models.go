@@ -17,6 +17,7 @@ const (
 	Netease            = "netease"
 	QQMusic            = "qqmusic"
 	AppleMusic         = "applemusic"
+	Bilibili           = "bilibili"
 	Unversioned        = "unversioned"
 	MaxPageItems       = 50
 	MaxPlaylistEntries = 10000
@@ -109,6 +110,9 @@ type PlaylistObservation struct {
 // Capabilities defines the host's verified upper bound for official platforms.
 // A particular plugin's actual enabled capabilities come from its descriptor.
 func Capabilities(platform string) []Capability {
+	if platform == Bilibili {
+		return bilibiliCapabilities()
+	}
 	return []Capability{
 		{"search.tracks", platform == Netease, "Login required; Netease EAPI and QQ desktop RPC; real account queries pending; Apple catalog unsupported"},
 		{"search.albums", platform == Netease, "Netease authenticated client public search verified"},

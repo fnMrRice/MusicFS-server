@@ -7,7 +7,7 @@ import (
 )
 
 func TestExplicitStandaloneOnlineSelectionSurvivesFullBundleDiscovery(t *testing.T) {
-	for _, platform := range []string{"netease", "qqmusic", "applemusic"} {
+	for _, platform := range []string{"netease", "qqmusic", "applemusic", "bilibili"} {
 		t.Run(platform, func(t *testing.T) {
 			digest := strings.Repeat("c", 64)
 			doc := bundledDocument(t, `plugins:
@@ -24,7 +24,7 @@ func TestExplicitStandaloneOnlineSelectionSurvivesFullBundleDiscovery(t *testing
 			plugin := discoveredPlugin(t, doc, "musicfs.plugin.source."+platform)
 			if filepath.Base(plugin.Executable) != "musicfs-plugin-"+platform ||
 				len(plugin.Args) != 0 || plugin.SHA256 != digest || len(plugin.Instances) != 1 ||
-				plugin.Instances[0].Enabled || len(doc.Config.Plugins) != 7 {
+				plugin.Instances[0].Enabled || len(doc.Config.Plugins) != 8 {
 				t.Fatalf("full bundle discovery replaced an explicit standalone choice: %+v", plugin)
 			}
 		})
@@ -51,8 +51,8 @@ func TestPinnedFullBundleRetainsIdentityAndCanStartOnline(t *testing.T) {
 
 func TestFullBundleDoesNotDiscoverDatabaseOrDSPAsOrdinaryPlugins(t *testing.T) {
 	doc := discoveredDocument(t, "", []string{"musicfs-plugins", "musicfs-plugin-storage-sqlite", "musicfs-plugin-dsp-gain"})
-	if len(doc.Config.Plugins) != 7 {
-		t.Fatalf("ordinary discovery must contain four local and three online identities: %+v", doc.Config.Plugins)
+	if len(doc.Config.Plugins) != 8 {
+		t.Fatalf("ordinary discovery must contain four local and four online identities: %+v", doc.Config.Plugins)
 	}
 	for _, plugin := range doc.Config.Plugins {
 		if strings.Contains(plugin.PluginID, "sqlite") || strings.Contains(plugin.PluginID, "dsp") {

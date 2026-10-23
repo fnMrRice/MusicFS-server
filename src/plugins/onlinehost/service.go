@@ -1,5 +1,4 @@
-// Package onlinehost scopes public metadata providers without importing audio
-// assets or granting account credentials to clients.
+// Package onlinehost 隔离在线实例的元数据、播放描述和按需音频读取，凭据不暴露给客户端。
 package onlinehost
 
 import (
@@ -11,6 +10,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
 
@@ -40,9 +40,10 @@ type Instance struct {
 }
 
 type Service struct {
-	mu       sync.RWMutex
-	runtimes []Runtime
-	slots    chan struct{}
+	audioLibrary *library.Service
+	mu           sync.RWMutex
+	runtimes     []Runtime
+	slots        chan struct{}
 }
 
 func New(runtimes []Runtime) (*Service, error) {

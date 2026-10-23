@@ -10,6 +10,8 @@ func OnlinePlatform(pluginID string) string {
 		return "qqmusic"
 	case "musicfs.plugin.source.applemusic":
 		return "applemusic"
+	case "musicfs.plugin.source.bilibili":
+		return "bilibili"
 	default:
 		return ""
 	}

@@ -58,6 +58,7 @@ type session struct {
 	decodeOutput            string
 	processing, decoding    *plugincontrol.Lease
 	unlinkPlugins           []func() bool
+	online, onlineOpened    bool
 }
 type Service struct {
 	mu        sync.Mutex
@@ -202,7 +203,9 @@ func (s *Service) stopLocked(ctx context.Context, id string, a *session) {
 	}
 	delete(s.sessions, id)
 	s.library.Revoke(a.track.ProviderID, id)
-	s.garbage[a.path] = a.size
+	if a.path != "" {
+		s.garbage[a.path] = a.size
+	}
 	s.collect()
 	raw, _ := json.Marshal(a.description)
 	if err := s.repo.PlaybackSave(ctx, id, a.owner, a.user, raw, "stopped", a.description.ExpiresAt); err != nil {

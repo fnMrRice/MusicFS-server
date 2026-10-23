@@ -40,7 +40,7 @@ func Select(args []string) (Worker, error) {
 		return ncmdecoder.RunWorker, nil
 	case "scraper-local":
 		return scraperlocal.RunWorker, nil
-	case "netease", "qqmusic", "applemusic":
+	case "netease", "qqmusic", "applemusic", "bilibili":
 		return func(ctx context.Context, input io.ReadCloser, output io.WriteCloser) error {
 			return onlineplugins.Run(ctx, role, input, output)
 		}, nil

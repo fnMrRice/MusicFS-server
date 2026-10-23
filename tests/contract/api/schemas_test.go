@@ -64,7 +64,7 @@ func TestContractSamples(t *testing.T) {
 func TestPluginDTOsMatchContract(t *testing.T) {
 	manifest := pluginproto.Manifest{
 		PluginID: "musicfs.plugin.source.localfiles", Plugin: pluginconfig.Identity("musicfs.plugin.source.localfiles"), PluginVersion: "0.1.0", ProtocolVersion: pluginproto.ProtocolVersion,
-		Roles: []string{"provider"}, Capabilities: []string{"library.scan", "metadata.read", "stream.resolve"},
+		Roles: []string{"provider"}, SourceType: pluginproto.SourceLocal, Capabilities: []string{"library.scan", "metadata.read", "stream.resolve"},
 		Systems: []string{"windows", "linux"}, Architectures: []string{"amd64"},
 		MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: pluginproto.MaxPageItems,
 	}

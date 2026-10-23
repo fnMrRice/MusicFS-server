@@ -64,7 +64,7 @@ func (s *Service) MetadataBatchForAccount(ctx context.Context, owner, id, accoun
 		if err != nil {
 			return online.TrackBatch{}, err
 		}
-		if account == "" || view.AccountID != account {
+		if (account == "" && r.descriptor.Authentication != "anonymous") || view.AccountID != account {
 			return online.TrackBatch{}, domain.Fail("ACCESS_DENIED", "Remote source belongs to a different platform account")
 		}
 		provider, ok := r.Provider.(DisplayProvider)

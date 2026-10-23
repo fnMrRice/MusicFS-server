@@ -17,7 +17,7 @@ func compatibleOnlinePlugin() (pluginproto.Manifest, pluginproto.OnlineDescripto
 	manifest := pluginproto.Manifest{
 		PluginID: descriptor.Plugin.ID, Plugin: descriptor.Plugin.Clone(),
 		SupportsMultipleInstances: true, PluginVersion: "2.3.4-beta.2+build.19",
-		ProtocolVersion: pluginproto.ProtocolVersion, Roles: []string{"provider"},
+		ProtocolVersion: pluginproto.ProtocolVersion, SourceType: "network", Roles: []string{"provider"},
 		Capabilities: []string{"metadata.track"}, MaxPageItems: online.MaxPageItems,
 		MaxMessageBytes: pluginproto.MaxMessageBytes,
 	}

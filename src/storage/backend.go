@@ -50,6 +50,7 @@ type Backend interface {
 	jobs.Repository
 	tasks.Repository
 	library.Repository
+	library.AudioRepository
 	library.GroupedRepository
 	library.RecordingCoverRepository
 	matching.Repository

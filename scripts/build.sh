@@ -29,7 +29,7 @@ for entry in \
 done
 obsolete_names="musicfs-plugin-local musicfs-plugin-audio-ffmpeg musicfs-plugin-ncm musicfs-plugin-scraper-local"
 if [ "$split_plugins" = false ]; then
-    obsolete_names="$obsolete_names musicfs-plugin-storage-sqlite musicfs-plugin-dsp-gain musicfs-plugin-netease musicfs-plugin-qqmusic musicfs-plugin-applemusic musicfs-plugin-online"
+    obsolete_names="$obsolete_names musicfs-plugin-storage-sqlite musicfs-plugin-dsp-gain musicfs-plugin-netease musicfs-plugin-qqmusic musicfs-plugin-applemusic musicfs-plugin-bilibili musicfs-plugin-online"
 fi
 for name in $obsolete_names; do
     obsolete="$output_root/$name$suffix"
@@ -47,7 +47,7 @@ for entry in \
 done
 (
     cd plugins/source/online
-    for name in musicfs-plugin-netease musicfs-plugin-qqmusic musicfs-plugin-applemusic musicfs-plugin-online; do
+    for name in musicfs-plugin-netease musicfs-plugin-qqmusic musicfs-plugin-applemusic musicfs-plugin-bilibili musicfs-plugin-online; do
         go build -mod=readonly -trimpath -o "$output_root/$name$suffix" "./cmd/$name"
     done
 )

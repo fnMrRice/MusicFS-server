@@ -15,11 +15,11 @@ func TestUnifiedOnlineDiscoveryAndStandalonePriority(t *testing.T) {
 			files = append(files, "musicfs-plugin-qqmusic")
 		}
 		raw := "plugins:\n"
-		for _, platform := range []string{"netease", "qqmusic", "applemusic"} {
+		for _, platform := range []string{"netease", "qqmusic", "applemusic", "bilibili"} {
 			raw += "  - pluginId: musicfs.plugin.source." + platform + "\n    execution: process\n    enabled: true\n"
 		}
 		doc := discoveredDocument(t, raw, files)
-		if len(doc.Config.Plugins) != 7 {
+		if len(doc.Config.Plugins) != 8 {
 			t.Fatal("alternative entry points created duplicate or missing providers")
 		}
 		for _, plugin := range doc.Config.Plugins {

@@ -31,6 +31,9 @@ func Serve(w http.ResponseWriter, r *http.Request, stream *playback.Stream) erro
 	w = output
 	w.Header().Set("Content-Type", stream.Description.OutputProfile.MIME)
 	w.Header().Set("Cache-Control", "private, no-store")
+	if stream.Online {
+		return serveOnline(w, r, stream, output)
+	}
 	if stream.Description.DeliveryMode == "proxy" {
 		if r.Method == http.MethodGet {
 			if err := ValidateRangeHeader(r.Header.Get("Range")); err != nil {

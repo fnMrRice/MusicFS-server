@@ -19,6 +19,7 @@ var bundledPlugins = []struct{ id, selector, instance, program string }{
 	{"musicfs.plugin.source.netease", "netease", "netease-public", "musicfs-plugin-netease"},
 	{"musicfs.plugin.source.qqmusic", "qqmusic", "qq-public", "musicfs-plugin-qqmusic"},
 	{"musicfs.plugin.source.applemusic", "applemusic", "apple-public", "musicfs-plugin-applemusic"},
+	{"musicfs.plugin.source.bilibili", "bilibili", "bilibili-public", "musicfs-plugin-bilibili"},
 }
 
 func bundlePath(root *yaml.Node, base string) string {

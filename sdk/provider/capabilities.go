@@ -8,7 +8,7 @@ func methodCapability(method string) string {
 		return "track.details"
 	case "provider.online.playlist":
 		return "playlist.observe"
-	case "provider.online.resolve":
+	case "provider.online.resolve", "provider.online.audioDescribe", "provider.online.audioOpen", "provider.online.audioRead", "provider.online.audioClose":
 		return "stream.resolve"
 	case "provider.online.album":
 		return "metadata.album"

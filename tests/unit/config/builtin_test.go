@@ -116,7 +116,7 @@ func TestOmittedPluginListDiscoversBuiltinCatalogWithoutFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(doc.Config.Plugins) != 7 {
+	if len(doc.Config.Plugins) != 8 {
 		t.Fatal("builtin catalog was not discovered")
 	}
 	for _, p := range doc.Config.Plugins {

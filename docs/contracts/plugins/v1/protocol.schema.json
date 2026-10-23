@@ -415,6 +415,7 @@
     "Version": {"type":"string","minLength":5,"maxLength":128,"pattern":"^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-(0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"},
     "Manifest": {
       "type": "object",
+      "allOf": [{"if": {"properties": {"roles": {"contains": {"const": "provider"}}}}, "then": {"required": ["sourceType"]}, "else": {"not": {"required": ["sourceType"]}}}],
       "required": [
         "plugin",
         "supportsMultipleInstances",
@@ -432,6 +433,7 @@
       "properties": {
         "plugin": {"$ref": "#/$defs/PluginIdentity"},
         "supportsMultipleInstances": {"type": "boolean", "default": false},
+        "sourceType": {"enum": ["local", "network"], "description": "来源插件必须声明本地或网络读取类型；其他角色禁止声明。该字段属于插件握手，不可由部署配置覆盖。"},
         "pluginId": {
           "$ref": "#/$defs/ID"
         },

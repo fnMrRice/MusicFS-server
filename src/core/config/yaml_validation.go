@@ -197,7 +197,7 @@ func validateDocumentShape(root *yaml.Node) error {
 			settings = mappingShape(map[string]fieldShape{"musicRoots": sequenceShape(musicRoot), "watch": watchShape()})
 		case "musicfs.plugin.decoder.ffmpeg":
 			settings = mappingShape(map[string]fieldShape{"ffmpegPath": stringShape, "ffprobePath": stringShape})
-		case "musicfs.plugin.decoder.ncm", "musicfs.scraper.local", "musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic":
+		case "musicfs.plugin.decoder.ncm", "musicfs.scraper.local", "musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic", "musicfs.plugin.source.bilibili":
 			settings = mappingShape(map[string]fieldShape{})
 		default:
 			return nodeError(id, "config.plugins[].pluginId", "unsupported plugin")

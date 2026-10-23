@@ -36,6 +36,9 @@ func onlineCall[T any](parent context.Context, w *OnlineWorker, method string, s
 	ctx, cancel := context.WithTimeout(parent, time.Duration(scope.TimeoutMs)*time.Millisecond)
 	defer cancel()
 	if err := w.requireOnlineCapability(method, request); err != nil {
+		if w.descriptor.Authentication == "anonymous" {
+			return empty, err
+		}
 		view, authErr := w.PlatformSession(ctx)
 		if authErr != nil {
 			return empty, authErr
@@ -147,14 +150,7 @@ func (w *OnlineWorker) PublicRecommendations(ctx context.Context, limit int) (on
 }
 
 func (w *OnlineWorker) Resolve(ctx context.Context, id string) error {
-	scope, err := w.newScope(ctx)
-	if err != nil {
-		return err
-	}
-	_, err = onlineCall[any](ctx, w, "provider.online.resolve", scope, pluginproto.OnlineReference{Context: scope, ExternalID: id})
-	if err == nil {
-		return domain.Fail("PROTOCOL_MISMATCH", "Online worker unexpectedly resolved audio")
-	}
+	_, err := w.DescribeAudio(ctx, id)
 	return err
 }
 
@@ -166,7 +162,7 @@ func onlineError(ctx context.Context, err error) error {
 	if errors.As(err, &rpc) {
 		code := rpc.Data.Code
 		switch code {
-		case "INVALID_ARGUMENT", "CURSOR_EXPIRED", "ACCESS_DENIED", "AUTH_REQUIRED", "PLATFORM_AUTH_REQUIRED", "NOT_FOUND", "RATE_LIMITED", "TEMPORARY_FAILURE", "UNSUPPORTED", "PROTOCOL_MISMATCH", "CANCELED":
+		case "INVALID_ARGUMENT", "CURSOR_EXPIRED", "ACCESS_DENIED", "AUTH_REQUIRED", "PLATFORM_AUTH_REQUIRED", "NOT_FOUND", "RATE_LIMITED", "RISK_CONTROL", "RESOURCE_CHANGED", "TEMPORARY_FAILURE", "UNSUPPORTED", "PROTOCOL_MISMATCH", "CANCELED":
 		default:
 			code = "TEMPORARY_FAILURE"
 		}

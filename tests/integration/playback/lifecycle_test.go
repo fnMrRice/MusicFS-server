@@ -90,7 +90,7 @@ func playbackService(t *testing.T) (*playback.Service, *gatedRepository, auth.Se
 		t.Fatal("fixture not published", err)
 	}
 	repo := &gatedRepository{Store: store, entered: make(chan struct{}), proceed: make(chan struct{})}
-	lib := library.New(repo, jobs.New(store), []library.Runtime{{ID: "root", Name: "Fixture", Owner: "admin", Worker: &pluginhost.Worker{Access: access}}}, nil)
+	lib := library.New(repo, jobs.New(store), []library.Runtime{{ID: "root", Name: "Fixture", Owner: "admin", Worker: &pluginhost.Worker{Access: access, Manifest: pluginproto.Manifest{SourceType: pluginproto.SourceLocal}}}}, nil)
 	repo.library = lib
 	service, err := playback.New(ctx, store, lib, &audioffmpeg.Processor{Capabilities: syntheticAudioCapabilities("")}, playback.Config{CacheRoot: filepath.Join(dir, "cache"), MaxSessions: 8, MaxCacheBytes: 16 << 20})
 	if err != nil {

@@ -6,7 +6,7 @@ import "github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 // Hosts still validate the worker's manifest before admitting runtime work.
 func Role(pluginID string) string {
 	switch pluginID {
-	case "musicfs.plugin.source.localfiles", "musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic":
+	case "musicfs.plugin.source.localfiles", "musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic", "musicfs.plugin.source.bilibili":
 		return "provider"
 	case "musicfs.plugin.decoder.ffmpeg", "musicfs.plugin.decoder.ncm":
 		return "audio"
@@ -21,7 +21,7 @@ func Role(pluginID string) string {
 // Unknown SDK plugins default to a single instance until explicitly declared.
 func SupportsMultipleInstances(pluginID string) bool {
 	switch pluginID {
-	case "musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic", "musicfs.scraper.local":
+	case "musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic", "musicfs.plugin.source.bilibili", "musicfs.scraper.local":
 		return true
 	default:
 		return false

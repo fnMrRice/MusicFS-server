@@ -79,6 +79,14 @@ plugins:
         enabled: true
         ownerUserId: 'admin'
         config: {}
+  - pluginId: 'musicfs.plugin.source.bilibili'
+    execution: builtin
+    enabled: true
+    instances:
+      - instanceId: '1e17e31f-4b87-54d9-9bef-d25f86a34277'
+        enabled: true
+        ownerUserId: 'admin'
+        config: {}
 maxSessions: 8
 maxProcessing: 2
 maxCacheBytes: 1073741824

@@ -4,6 +4,7 @@ import (
 	"context"
 	"regexp"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 )
@@ -49,7 +50,7 @@ func (p *playlistRemote) Authorize(ctx context.Context, owner string, ref playli
 	if err != nil {
 		return playlists.Binding{}, err
 	}
-	if ref.AccountID == "" {
+	if ref.AccountID == "" && runtime.descriptor.Authentication != "anonymous" {
 		return playlists.Binding{}, domain.Fail("RESOURCE_CHANGED", "Select the current platform account and import again")
 	}
 	if ref.AccountID != view.AccountID {
@@ -64,7 +65,11 @@ func (p *playlistRemote) Authorize(ctx context.Context, owner string, ref playli
 	if !supported {
 		return playlists.Binding{}, domain.Fail("UNSUPPORTED", "Public playlist import is not supported by this instance")
 	}
-	if !playlistExternalID.MatchString(ref.ExternalID) {
+	validID := playlistExternalID.MatchString(ref.ExternalID)
+	if runtime.Platform == online.Bilibili {
+		validID = online.BilibiliPlaylistURL(ref.ExternalID) != ""
+	}
+	if !validID {
 		return playlists.Binding{}, playlists.Invalid()
 	}
 	return playlists.Binding{RemoteRef: ref, Platform: runtime.Platform, ConfigRevision: runtime.ConfigRevision}, nil

@@ -20,10 +20,10 @@ func Select(args []string) (provider.Plugin, error) {
 	case len(args) == 1 && strings.HasPrefix(args[0], "--plugin="):
 		platform = strings.TrimPrefix(args[0], "--plugin=")
 	default:
-		return provider.Plugin{}, fmt.Errorf("Exactly one --plugin netease|qqmusic|applemusic argument is required")
+		return provider.Plugin{}, fmt.Errorf("Exactly one --plugin netease|qqmusic|applemusic|bilibili argument is required")
 	}
 	switch platform {
-	case online.Netease, online.QQMusic, online.AppleMusic:
+	case online.Netease, online.QQMusic, online.AppleMusic, online.Bilibili:
 		return onlineplugins.Plugin(platform, onlineplugins.Options{}), nil
 	default:
 		return provider.Plugin{}, fmt.Errorf("Unsupported online plugin platform")
