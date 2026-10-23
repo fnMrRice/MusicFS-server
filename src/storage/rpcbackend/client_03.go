@@ -4,18 +4,27 @@ package rpcbackend
 
 import (
 	"context"
-	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
-	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/tasks"
 )
+
+func (c *Client) FinishAutomationAction(a0 context.Context, a1 string, a2 enrichment.AutomationAction) (err error) {
+	err = c.Invoke(a0, "FinishAutomationAction", []any{a1, a2}, []any{})
+	return err
+}
+
+func (c *Client) FinishEnrichment(a0 context.Context, a1 enrichment.Work, a2 enrichment.Outcome) (err error) {
+	err = c.Invoke(a0, "FinishEnrichment", []any{a1, a2}, []any{})
+	return err
+}
 
 func (c *Client) FinishHash(a0 context.Context, a1 identification.HashJob, a2 identification.Result, a3 int64) (err error) {
 	err = c.Invoke(a0, "FinishHash", []any{a1, a2, a3}, []any{})
@@ -77,6 +86,11 @@ func (c *Client) GetPublication(a0 context.Context, a1 string, a2 string) (r0 me
 	return r0, err
 }
 
+func (c *Client) GetRefreshTask(a0 context.Context, a1 string, a2 string) (r0 tasks.Task, err error) {
+	err = c.Invoke(a0, "GetRefreshTask", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) GetWriteback(a0 context.Context, a1 string, a2 string) (r0 writebackhost.Job, err error) {
 	err = c.Invoke(a0, "GetWriteback", []any{a1, a2}, []any{&r0})
 	return r0, err
@@ -120,19 +134,4 @@ func (c *Client) InvalidateDerived(a0 context.Context, a1 string, a2 string) (er
 func (c *Client) InvalidateFingerprint(a0 context.Context, a1 string, a2 string) (err error) {
 	err = c.Invoke(a0, "InvalidateFingerprint", []any{a1, a2}, []any{})
 	return err
-}
-
-func (c *Client) InvalidatePublication(a0 context.Context, a1 string, a2 string, a3 string) (err error) {
-	err = c.Invoke(a0, "InvalidatePublication", []any{a1, a2, a3}, []any{})
-	return err
-}
-
-func (c *Client) ListGroupedTracks(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 library.Page, err error) {
-	err = c.Invoke(a0, "ListGroupedTracks", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) ListProcessedCache(a0 context.Context) (r0 []processedcache.Record, err error) {
-	err = c.Invoke(a0, "ListProcessedCache", []any{}, []any{&r0})
-	return r0, err
 }

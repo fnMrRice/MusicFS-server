@@ -117,13 +117,13 @@ func (s *Service) applyAutomaticTarget(ctx context.Context, repo enrichment.Auto
 			continue
 		}
 		result, err := s.applyAutomaticCandidate(ctx, repo, w, a, c)
-		if ctx.Err() != nil {
+		if err != nil && ctx.Err() != nil {
 			return ctx.Err()
 		}
 		if err != nil {
 			a.Status = "failed"
 			a.Reason = failureCode(err)
-			if a.Reason == "CONFLICT" {
+			if a.Reason == "CONFLICT" || a.Reason == "CANCELED" {
 				a.Status = "skipped"
 			}
 		} else {
@@ -140,8 +140,15 @@ func (s *Service) applyAutomaticTarget(ctx context.Context, repo enrichment.Auto
 				}
 			}
 		}
-		if err = repo.FinishAutomationAction(ctx, w.TriggerID, a); err != nil {
+		// 绑定可能已经提交；取消只阻止后续应用，仍须持久化本次真实结果。
+		finish, stop := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		err = repo.FinishAutomationAction(finish, w.TriggerID, a)
+		stop()
+		if err != nil {
 			return err
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
 		}
 	}
 	for _, field := range w.Policy.Fields {

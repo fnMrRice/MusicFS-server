@@ -12,6 +12,14 @@ import (
 )
 
 func (s *Store) QueueEnrichment(ctx context.Context, owner string, request enrichment.JobRequest, key string) (enrichment.Job, bool, error) {
+	return s.queueEnrichment(ctx, owner, request, key, "")
+}
+
+func (s *Store) QueueAutomaticEnrichment(ctx context.Context, owner, triggerID string, request enrichment.JobRequest) (enrichment.Job, bool, error) {
+	return s.queueEnrichment(ctx, owner, request, "automatic-"+triggerID, triggerID)
+}
+
+func (s *Store) queueEnrichment(ctx context.Context, owner string, request enrichment.JobRequest, key, triggerID string) (enrichment.Job, bool, error) {
 	var empty enrichment.Job
 	if owner == "" || len(key) < 8 || len(key) > 128 {
 		return empty, false, domain.Fail("INVALID_ARGUMENT", "Invalid metadata operation")
@@ -34,6 +42,33 @@ func (s *Store) QueueEnrichment(ctx context.Context, owner string, request enric
 		return empty, false, err
 	}
 	defer tx.Rollback()
+	var automation *enrichment.AutomationWork
+	if triggerID != "" {
+		w, err := readAutomation(tx.QueryRowContext(ctx, "SELECT "+automationColumns+" FROM metadata_automation a WHERE owner=? AND id=?", owner, triggerID))
+		if err != nil {
+			return empty, false, err
+		}
+		if err = activeAutomation(ctx, tx, triggerID); err != nil {
+			return empty, false, err
+		}
+		if len(request.SourceTrackIDs) != 1 || request.SourceTrackIDs[0] != w.SourceTrackID {
+			return empty, false, domain.Fail("CONFLICT", "Automatic metadata target changed")
+		}
+		if w.JobID != nil {
+			j, err := readEnrichmentJob(ctx, tx, owner, *w.JobID)
+			if err == nil {
+				stored, encodeErr := json.Marshal(j.Request)
+				if encodeErr != nil {
+					return empty, false, encodeErr
+				}
+				if string(stored) != string(raw) {
+					return empty, false, domain.Fail("CONFLICT", "Automatic metadata request changed")
+				}
+			}
+			return j, true, err
+		}
+		automation = &w
+	}
 	prior, replay, err := contentIdempotency(ctx, tx, owner, "metadata/jobs", key, digest)
 	if err != nil {
 		return empty, false, err
@@ -44,6 +79,14 @@ func (s *Store) QueueEnrichment(ctx context.Context, owner string, request enric
 			return empty, false, err
 		}
 		j, e := readEnrichmentJob(ctx, tx, owner, id)
+		if e == nil && automation != nil {
+			if len(j.Targets) != 1 || j.Targets[0].Target.SourceTrackID != automation.SourceTrackID || j.Targets[0].Target.AssetID != automation.AssetID || j.Targets[0].Target.AssetVersion != automation.AssetVersion {
+				return empty, false, domain.Fail("RESOURCE_CHANGED", "Automatic metadata source changed")
+			}
+			if _, e = tx.ExecContext(ctx, "UPDATE metadata_automation SET job_id=?,state='running' WHERE id=? AND owner=?", id, triggerID, owner); e == nil {
+				e = tx.Commit()
+			}
+		}
 		return j, true, e
 	}
 	sources, err := enrichmentSources(ctx, tx, owner, request)
@@ -70,6 +113,9 @@ func (s *Store) QueueEnrichment(ctx context.Context, owner string, request enric
 		if e = contentCurrentTarget(ctx, tx, owner, selection.Target); e != nil {
 			return empty, false, e
 		}
+		if automation != nil && (automation.AssetID != selection.Target.AssetID || automation.AssetVersion != selection.Target.AssetVersion) {
+			return empty, false, domain.Fail("RESOURCE_CHANGED", "Automatic metadata source changed")
+		}
 		target := enrichment.Target{SourceTrackID: source, AssetID: selection.Target.AssetID, AssetVersion: selection.Target.AssetVersion, Revision: selection.Revision}
 		raw, e := json.Marshal(target)
 		if e != nil {
@@ -82,6 +128,11 @@ func (s *Store) QueueEnrichment(ctx context.Context, owner string, request enric
 	result, _ := json.Marshal(id)
 	if err = saveContentIdempotency(ctx, tx, owner, "metadata/jobs", key, digest, result); err != nil {
 		return empty, false, err
+	}
+	if triggerID != "" {
+		if _, err = tx.ExecContext(ctx, "UPDATE metadata_automation SET job_id=?,state='running' WHERE id=? AND owner=?", id, triggerID, owner); err != nil {
+			return empty, false, err
+		}
 	}
 	j, err := readEnrichmentJob(ctx, tx, owner, id)
 	if err != nil {

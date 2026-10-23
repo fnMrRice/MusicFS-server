@@ -7,7 +7,6 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
-	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
@@ -16,13 +15,41 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
-	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) RecoverHashes(a0 context.Context) (err error) {
+	err = c.Invoke(a0, "RecoverHashes", []any{}, []any{})
+	return err
+}
+
+func (c *Client) RecoverJobs(a0 context.Context) (err error) {
+	err = c.Invoke(a0, "RecoverJobs", []any{}, []any{})
+	return err
+}
+
+func (c *Client) RecoverPluginOperations(a0 context.Context) (err error) {
+	err = c.Invoke(a0, "RecoverPluginOperations", []any{}, []any{})
+	return err
+}
+
+func (c *Client) RecoverRemoteSync(a0 context.Context) (err error) {
+	err = c.Invoke(a0, "RecoverRemoteSync", []any{}, []any{})
+	return err
+}
+
+func (c *Client) RecoverWritebackQueue(a0 context.Context, a1 map[string]bool) (err error) {
+	err = c.Invoke(a0, "RecoverWritebackQueue", []any{a1}, []any{})
+	return err
+}
 
 func (c *Client) ReferencePublication(a0 context.Context, a1 string, a2 string) (err error) {
 	err = c.Invoke(a0, "ReferencePublication", []any{a1, a2}, []any{})
 	return err
+}
+
+func (c *Client) RefreshTaskMetadataJobs(a0 context.Context, a1 string, a2 string) (r0 []string, err error) {
+	err = c.Invoke(a0, "RefreshTaskMetadataJobs", []any{a1, a2}, []any{&r0})
+	return r0, err
 }
 
 func (c *Client) Release(a0 context.Context, a1 string, a2 string) (r0 albums.Release, err error) {
@@ -107,35 +134,5 @@ func (c *Client) SaveMatchingRun(a0 context.Context, a1 matching.Run) (err error
 
 func (c *Client) SavePersonalProfile(a0 context.Context, a1 string, a2 *string) (r0 personal.Profile, err error) {
 	err = c.Invoke(a0, "SavePersonalProfile", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SavePluginOperation(a0 context.Context, a1 plugincontrol.Operation) (err error) {
-	err = c.Invoke(a0, "SavePluginOperation", []any{a1}, []any{})
-	return err
-}
-
-func (c *Client) SaveResult(a0 context.Context, a1 string, a2 string, a3 string, a4 string, a5 []uint8) (err error) {
-	err = c.Invoke(a0, "SaveResult", []any{a1, a2, a3, a4, a5}, []any{})
-	return err
-}
-
-func (c *Client) ScanAutomationResults(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 enrichment.AutomationPage, err error) {
-	err = c.Invoke(a0, "ScanAutomationResults", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) ScanStatus(a0 context.Context, a1 string, a2 string) (r0 jobs.ScanStatus, err error) {
-	err = c.Invoke(a0, "ScanStatus", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SearchPlaylists(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 []playlists.Playlist, err error) {
-	err = c.Invoke(a0, "SearchPlaylists", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SelectContent(a0 context.Context, a1 string, a2 mediastore.SelectRequest, a3 string) (r0 mediastore.Selection, err error) {
-	err = c.Invoke(a0, "SelectContent", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
 }

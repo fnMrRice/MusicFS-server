@@ -19,9 +19,12 @@ type Service struct {
 	cancel   context.CancelFunc
 	done     chan struct{}
 	failure  error
+	running  map[string]execution
 }
 
-func New(repo Repository) *Service { return &Service{repo: repo, handlers: map[string]Handler{}} }
+func New(repo Repository) *Service {
+	return &Service{repo: repo, handlers: map[string]Handler{}, running: map[string]execution{}}
+}
 func (s *Service) Register(kind string, h Handler) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -103,7 +106,7 @@ func (s *Service) run(ctx context.Context) {
 		if h == nil {
 			err = domain.Fail("UNSUPPORTED", "Unsupported scan task type")
 		} else {
-			n, err = h(ctx, job)
+			n, err = s.execute(ctx, job, h)
 		}
 		if !s.finish(job, n, err) {
 			s.stopFailed()

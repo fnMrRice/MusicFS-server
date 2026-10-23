@@ -36,6 +36,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	_ "github.com/fnMrRice/MusicFS-server/src/storage/rpcbackend"
+	"github.com/fnMrRice/MusicFS-server/src/tasks"
 )
 
 func checksum(path string) string {
@@ -215,6 +216,10 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 		return nil, nil, err
 	}
 	handler.RegisterEnrichment(metadata)
+	taskService := tasks.New(store, queue, metadata, lib.TaskNames)
+	beforeTasks := cleanup
+	cleanup = func() { taskService.Close(); beforeTasks() }
+	handler.RegisterTasks(taskService)
 	handler.RegisterMetadataAutomation(metadata)
 	handler.RegisterWriteBack(writebacks)
 	var fingerprintDetails matching.FingerprintDetails

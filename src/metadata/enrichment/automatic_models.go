@@ -79,6 +79,7 @@ type AutomationWork struct {
 type AutomationRepository interface {
 	NextAutomation(context.Context) (AutomationWork, error)
 	PrepareAutomation(context.Context, string, AutomaticPolicy) error
+	QueueAutomaticEnrichment(context.Context, string, string, JobRequest) (Job, bool, error)
 	AttachAutomationJob(context.Context, string, string) error
 	FinishAutomation(context.Context, string, string, *string) error
 	AutomationAction(context.Context, string, AutomationAction) (AutomationAction, error)

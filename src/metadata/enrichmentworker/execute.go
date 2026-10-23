@@ -32,10 +32,11 @@ func (s *Service) execute(parent context.Context, w enrichment.Work) {
 	ctx, cancel := context.WithTimeout(parent, 30*time.Second)
 	slog.InfoContext(ctx, "Metadata target started", "jobId", w.JobID, "instances", len(w.Request.InstanceIDs))
 	key := w.JobID + "/" + w.Target.SourceTrackID
+	done := make(chan struct{})
 	s.mu.Lock()
-	s.running[key] = runningTask{jobID: w.JobID, cancel: cancel}
+	s.running[key] = runningTask{jobID: w.JobID, cancel: cancel, done: done}
 	s.mu.Unlock()
-	defer func() { cancel(); s.mu.Lock(); delete(s.running, key); s.mu.Unlock() }()
+	defer func() { cancel(); s.mu.Lock(); delete(s.running, key); close(done); s.mu.Unlock() }()
 	out := enrichment.Outcome{Candidates: []enrichment.PreviewCandidate{}, Issues: []enrichment.JobIssue{}}
 	trace := newTrace(w)
 	err := s.collect(ctx, w, &out, trace)

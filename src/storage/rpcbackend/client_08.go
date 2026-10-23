@@ -4,9 +4,42 @@ package rpcbackend
 
 import (
 	"context"
+	"github.com/fnMrRice/MusicFS-server/src/library/albums"
+	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
+	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) UpdateSourceAlbum(a0 context.Context, a1 string, a2 string, a3 albums.UpdateSourceAlbumRequest, a4 string) (r0 albums.SourceAlbum, err error) {
+	err = c.Invoke(a0, "UpdateSourceAlbum", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) UpdateWork(a0 context.Context, a1 string, a2 string, a3 works.UpdateRequest, a4 string) (r0 works.Work, err error) {
+	err = c.Invoke(a0, "UpdateWork", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) Work(a0 context.Context, a1 string, a2 string) (r0 works.Work, err error) {
+	err = c.Invoke(a0, "Work", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) WorkPackage(a0 context.Context, a1 string, a2 string, a3 string) (r0 workpackages.Package, err error) {
+	err = c.Invoke(a0, "WorkPackage", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) WorkPackages(a0 context.Context, a1 string, a2 string) (r0 []workpackages.Package, err error) {
+	err = c.Invoke(a0, "WorkPackages", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) Works(a0 context.Context, a1 string, a2 works.Query) (r0 []works.Work, err error) {
+	err = c.Invoke(a0, "Works", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) WritebackWork(a0 context.Context, a1 string, a2 string) (r0 writebackhost.Work, err error) {
 	err = c.Invoke(a0, "WritebackWork", []any{a1, a2}, []any{&r0})

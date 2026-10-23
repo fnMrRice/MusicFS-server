@@ -139,6 +139,37 @@
       "parameters": [{"$ref": "#/components/parameters/ID"}],
       "post": {"operationId": "createScan", "description": "提交模式、当前 schemaRevision、显式 rootIds 与 options 部分覆盖。按有效范围/选项/版本合并；excludePatterns 整组覆盖并绑定范围，skipHidden/respectNoMedia 默认true；隐藏项及.nomedia动态排除由Host执行，排除的既有曲目保留；旧 schema 修订返回 CONFLICT；importLyrics=true 在扫描成功后独立触发歌词补缺，子任务状态从 metadata-results 查询。options.refreshMetadata=true 仅用于单次本地目录刷新，要求 mode=full 且 rootIds 只含一个根目录；该指令不写入实例或目录导入配置，结果原因是 refreshMetadata。", "parameters": [{"$ref": "#/components/parameters/CSRF"}, {"$ref": "#/components/parameters/Idempotency"}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/ScanRequest"}}}}, "responses": {"202": {"$ref": "#/components/responses/ScanAccepted"}, "default": {"$ref": "#/components/responses/Error"}}}
     },
+    "/tasks": {
+      "get": {
+        "operationId": "listTasks",
+        "description": "查询持久目录刷新任务，按创建时间和编号倒序分页。默认仅本人；scope=all 只允许管理员。只接入 options.refreshMetadata=true 的扫描及其元数据处理；activeCount 覆盖当前范围全部活动任务。",
+        "parameters": [
+          {"name": "scope", "in": "query", "schema": {"enum": ["mine", "all"], "default": "mine"}},
+          {"name": "cursor", "in": "query", "schema": {"type": "string", "maxLength": 256}, "description": "沿用同一授权范围返回的 nextCursor；客户端不得解析或拼接。"},
+          {"name": "limit", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50}}
+        ],
+        "responses": {"200": {"description": "任务列表与范围内活动总数", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/TaskPage"}}}}, "default": {"$ref": "#/components/responses/Error"}}
+      }
+    },
+    "/tasks/{id}": {
+      "parameters": [{"$ref": "#/components/parameters/ID"}],
+      "get": {
+        "operationId": "getTask",
+        "description": "读取目录刷新任务的扫描与元数据汇总。默认本人范围，他人任务返回 NOT_FOUND；管理员显式 scope=all 可读所有用户任务。",
+        "parameters": [{"name": "scope", "in": "query", "schema": {"enum": ["mine", "all"], "default": "mine"}}],
+        "responses": {"200": {"description": "刷新任务", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/Task"}}}}, "default": {"$ref": "#/components/responses/Error"}}
+      }
+    },
+    "/tasks/{id}/cancel": {
+      "parameters": [{"$ref": "#/components/parameters/ID"}],
+      "post": {
+        "operationId": "cancelTask", "x-idempotency": "natural",
+        "description": "取消等待中的目录刷新或协作中断执行中的任务；先持久记录取消意图并撤销后续发布，实际执行退出后终结。默认本人，管理员可通过 scope=all 中断他人任务。终态重复请求返回原结果；不回滚此前已发布的结果，不要求 Idempotency-Key。",
+        "parameters": [{"$ref": "#/components/parameters/CSRF"}, {"name": "scope", "in": "query", "schema": {"enum": ["mine", "all"], "default": "mine"}}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/TaskCancelRequest"}}}},
+        "responses": {"200": {"description": "当前任务状态；cancelling 需继续查询至 cancelled", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/Task"}}}}, "default": {"$ref": "#/components/responses/Error"}}
+      }
+    },
     "/scan-jobs/{id}": {
       "parameters": [{"$ref": "#/components/parameters/ID"}],
       "get": {"operationId": "getScan", "description": "持久扫描任务；retry_wait保留最后错误并公布下一UTC执行时间，最多3次总执行。paused停止自动执行，解决原因后需新幂等键。重复提交不会重置原任务预算。", "responses": {"200": {"$ref": "#/components/responses/ScanJob"}, "default": {"$ref": "#/components/responses/Error"}}}

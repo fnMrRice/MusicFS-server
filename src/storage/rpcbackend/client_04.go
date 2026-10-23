@@ -11,10 +11,32 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/tasks"
 	"time"
 )
+
+func (c *Client) InvalidatePublication(a0 context.Context, a1 string, a2 string, a3 string) (err error) {
+	err = c.Invoke(a0, "InvalidatePublication", []any{a1, a2, a3}, []any{})
+	return err
+}
+
+func (c *Client) ListGroupedTracks(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 library.Page, err error) {
+	err = c.Invoke(a0, "ListGroupedTracks", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) ListProcessedCache(a0 context.Context) (r0 []processedcache.Record, err error) {
+	err = c.Invoke(a0, "ListProcessedCache", []any{}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) ListRefreshTasks(a0 context.Context, a1 string, a2 string, a3 int) (r0 tasks.Page, err error) {
+	err = c.Invoke(a0, "ListRefreshTasks", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) ListScrapeDocuments(a0 context.Context, a1 string, a2 string) (r0 []mediastore.DerivedObject, err error) {
 	err = c.Invoke(a0, "ListScrapeDocuments", []any{a1, a2}, []any{&r0})
@@ -114,24 +136,4 @@ func (c *Client) PlaylistChanges(a0 context.Context, a1 string, a2 string, a3 in
 func (c *Client) PlaylistSnapshot(a0 context.Context, a1 string, a2 string, a3 int64) (r0 playlists.AggregateSnapshot, err error) {
 	err = c.Invoke(a0, "PlaylistSnapshot", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
-}
-
-func (c *Client) Playlists(a0 context.Context, a1 string, a2 string, a3 int) (r0 []playlists.Playlist, err error) {
-	err = c.Invoke(a0, "Playlists", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) PrepareAutomation(a0 context.Context, a1 string, a2 enrichment.AutomaticPolicy) (err error) {
-	err = c.Invoke(a0, "PrepareAutomation", []any{a1, a2}, []any{})
-	return err
-}
-
-func (c *Client) PrepareContent(a0 context.Context, a1 string, a2 mediastore.UploadInput, a3 string) (r0 mediastore.Publication, r1 bool, err error) {
-	err = c.Invoke(a0, "PrepareContent", []any{a1, a2, a3}, []any{&r0, &r1})
-	return r0, r1, err
-}
-
-func (c *Client) PrepareRestoredDatabase(a0 context.Context, a1 []mediastore.BackupObject) (err error) {
-	err = c.Invoke(a0, "PrepareRestoredDatabase", []any{a1}, []any{})
-	return err
 }

@@ -43,6 +43,18 @@ func (s *Store) applyEnrichment(ctx context.Context, owner, candidateID, expecte
 	if replay {
 		return m.result, nil
 	}
+	if automatic {
+		var cancelled bool
+		err = m.tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM enrichment_candidates c
+ JOIN metadata_automation a ON a.job_id=c.job_id AND a.owner=c.owner
+ JOIN refresh_task_cancellations r ON r.job_id=a.scan_job_id WHERE c.owner=? AND c.id=?)`, owner, candidateID).Scan(&cancelled)
+		if err != nil {
+			return empty, err
+		}
+		if cancelled {
+			return empty, domain.Fail("CANCELED", "Metadata refresh was cancelled")
+		}
+	}
 	c, err = readEnrichmentCandidate(ctx, m.tx, owner, candidateID)
 	if err != nil {
 		return empty, err

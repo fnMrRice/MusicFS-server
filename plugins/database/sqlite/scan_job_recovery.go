@@ -53,5 +53,11 @@ func (s *Store) RecoverJobs(ctx context.Context) error {
 	if _, err = tx.ExecContext(ctx, "UPDATE provider_scan_leases SET active_job_id=NULL"); err != nil {
 		return err
 	}
+	if _, err = tx.ExecContext(ctx, `UPDATE metadata_automation_actions SET document=json_set(document,'$.status','skipped','$.reason','CANCELED') WHERE json_extract(document,'$.status')='pending' AND trigger_id IN (SELECT a.id FROM metadata_automation a JOIN refresh_task_cancellations c ON c.job_id=a.scan_job_id WHERE c.completed_at IS NULL)`); err != nil {
+		return err
+	}
+	if _, err = tx.ExecContext(ctx, "UPDATE refresh_task_cancellations SET completed_at=? WHERE completed_at IS NULL", now.Format(time.RFC3339Nano)); err != nil {
+		return err
+	}
 	return tx.Commit()
 }

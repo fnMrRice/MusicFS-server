@@ -642,6 +642,62 @@
     },
     "Providers": {"type": "object", "required": ["items"], "properties": {"items": {"type": "array", "items": {"$ref": "#/$defs/Provider"}}}},
     "ScanOverrides": {"type": "object", "additionalProperties": false, "properties": {"recursive": {"type": "boolean"}, "maxDepth": {"type": "integer", "minimum": 0, "maximum": 64, "description": "开启递归时 0 表示不限深度，1—64 表示最多进入的子目录层数；关闭递归时只能为 0。"}, "importLyrics": {"type": "boolean"}, "skipHidden": {"type": "boolean", "description": "跳过点开头条目和 Windows 隐藏文件、目录。"}, "respectNoMedia": {"type": "boolean", "description": "遵循 .nomedia 标记，跳过所在目录及子目录。"}, "excludePatterns": {"type": "array", "maxItems": 32, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 256}, "description": "根相对 / 路径，*、? 和独立段 **；大小写敏感。匹配目录排除整支。运行时另验证UTF-8字节上限、禁止绝对/点路径、反斜线、字符类和否定。"}, "importArtwork": {"type": "boolean", "description": "扫描成功后提取内嵌或同名旁置封面并保存媒体数据目录；只补缺失且未锁定的封面。Local Files 默认开启，可按目录或本次扫描关闭。"}, "refreshMetadata": {"type": "boolean", "description": "仅用于本次本地目录扫描的元数据刷新；为 true 时必须使用 full 模式且只选择一个根目录，不保存到实例或目录导入配置。"}}, "if": {"properties": {"recursive": {"const": true}}, "required": ["recursive"]}, "then": {"properties": {"maxDepth": {"minimum": 0}}}, "else": {"if": {"required": ["recursive"]}, "then": {"properties": {"maxDepth": {"const": 0}}}}, "description": "本次扫描的部分导入选项覆盖及元数据刷新指令；null 与未知字段拒绝。refreshMetadata 不属于可保存的 ImportOptions 或 ImportOverrides。"},
+    "TaskRoot": {
+      "type": "object", "additionalProperties": false, "required": ["id", "name"],
+      "properties": {"id": {"$ref": "#/$defs/ID"}, "name": {"type": "string", "minLength": 1}},
+      "description": "目录显示名与不透明身份，不返回服务器磁盘路径；配置已删除时名称回退为身份。"
+    },
+    "TaskProgress": {
+      "type": "object", "additionalProperties": false, "required": ["observed", "metadataTotal", "metadataCompleted"],
+      "properties": {
+        "observed": {"type": "integer", "minimum": 0, "description": "已校验的扫描来源数，不表示已经发布。"},
+        "metadataTotal": {"type": "integer", "minimum": 0, "description": "本轮刷新触发的元数据处理项数。"},
+        "metadataCompleted": {"type": "integer", "minimum": 0, "description": "已结束的元数据处理项数，包含跳过和失败。"}
+      }
+    },
+    "TaskResult": {
+      "type": "object", "additionalProperties": false, "required": ["updated", "retained", "notFound", "failed"],
+      "properties": {
+        "updated": {"type": "integer", "minimum": 0},
+        "retained": {"type": "integer", "minimum": 0},
+        "notFound": {"type": "integer", "minimum": 0},
+        "failed": {"type": "integer", "minimum": 0}
+      },
+      "description": "元数据操作结果计数，不等于曲目数；一个来源可能包含歌词和封面等多项操作。"
+    },
+    "Task": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "kind", "ownerId", "ownerName", "providerInstanceId", "providerName", "rootIds", "roots", "status", "phase", "cancelRequested", "cancellable", "progress", "result", "createdAt", "updatedAt", "error"],
+      "properties": {
+        "id": {"$ref": "#/$defs/ID"},
+        "kind": {"const": "metadataRefresh"},
+        "ownerId": {"$ref": "#/$defs/ID"},
+        "ownerName": {"type": "string", "minLength": 1, "description": "当前使用账号标识作为显示名。"},
+        "providerInstanceId": {"$ref": "#/$defs/InstanceID"},
+        "providerName": {"type": "string", "minLength": 1},
+        "rootIds": {"type": "array", "minItems": 1, "maxItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/ID"}},
+        "roots": {"type": "array", "minItems": 1, "maxItems": 1, "items": {"$ref": "#/$defs/TaskRoot"}},
+        "status": {"enum": ["queued", "running", "cancelling", "succeeded", "failed", "cancelled"]},
+        "phase": {"enum": ["queued", "scanning", "metadata", "finished"]},
+        "cancelRequested": {"type": "boolean"},
+        "cancellable": {"type": "boolean"},
+        "progress": {"$ref": "#/$defs/TaskProgress"},
+        "result": {"$ref": "#/$defs/TaskResult"},
+        "createdAt": {"$ref": "#/$defs/Timestamp"},
+        "updatedAt": {"$ref": "#/$defs/Timestamp"},
+        "error": {"anyOf": [{"$ref": "#/$defs/ErrorDetail"}, {"type": "null"}]}
+      },
+      "description": "一个目录的刷新任务；id 复用创建扫描时返回的 jobId。状态覆盖扫描与元数据处理两个阶段，扫描成功不代表整个任务完成。"
+    },
+    "TaskPage": {
+      "type": "object", "additionalProperties": false, "required": ["items", "nextCursor", "activeCount"],
+      "properties": {
+        "items": {"type": "array", "maxItems": 200, "items": {"$ref": "#/$defs/Task"}},
+        "nextCursor": {"anyOf": [{"$ref": "#/$defs/ID"}, {"type": "null"}]},
+        "activeCount": {"type": "integer", "minimum": 0, "description": "当前授权查询范围内全部 queued/running/cancelling 任务数，包含后续页面与元数据阶段。"}
+      }
+    },
+    "TaskCancelRequest": {"type": "object", "additionalProperties": false, "maxProperties": 0},
     "ScanRequest": {
       "type": "object",
       "additionalProperties": false,

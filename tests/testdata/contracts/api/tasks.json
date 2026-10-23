@@ -1,0 +1,8 @@
+[
+  {"name": "empty-task-page", "schema": "TaskPage", "valid": true, "value": {"items": [], "nextCursor": null, "activeCount": 0}},
+  {"name": "task-page-active-count-required", "schema": "TaskPage", "valid": false, "value": {"items": [], "nextCursor": null}},
+  {"name": "task-page-negative-active-count", "schema": "TaskPage", "valid": false, "value": {"items": [], "nextCursor": null, "activeCount": -1}},
+  {"name": "task-cancel-empty-object", "schema": "TaskCancelRequest", "valid": true, "value": {}},
+  {"name": "task-cancel-rejects-unknown-fields", "schema": "TaskCancelRequest", "valid": false, "value": {"ownerId": "someone-else"}},
+  {"name": "task-cancel-rejects-null", "schema": "TaskCancelRequest", "valid": false, "value": null}
+]

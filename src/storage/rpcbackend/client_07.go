@@ -9,12 +9,42 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/sourcedisplay"
-	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
-	"github.com/fnMrRice/MusicFS-server/src/library/works"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) SavePluginOperation(a0 context.Context, a1 plugincontrol.Operation) (err error) {
+	err = c.Invoke(a0, "SavePluginOperation", []any{a1}, []any{})
+	return err
+}
+
+func (c *Client) SaveResult(a0 context.Context, a1 string, a2 string, a3 string, a4 string, a5 []uint8) (err error) {
+	err = c.Invoke(a0, "SaveResult", []any{a1, a2, a3, a4, a5}, []any{})
+	return err
+}
+
+func (c *Client) ScanAutomationResults(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 enrichment.AutomationPage, err error) {
+	err = c.Invoke(a0, "ScanAutomationResults", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) ScanStatus(a0 context.Context, a1 string, a2 string) (r0 jobs.ScanStatus, err error) {
+	err = c.Invoke(a0, "ScanStatus", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SearchPlaylists(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 []playlists.Playlist, err error) {
+	err = c.Invoke(a0, "SearchPlaylists", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SelectContent(a0 context.Context, a1 string, a2 mediastore.SelectRequest, a3 string) (r0 mediastore.Selection, err error) {
+	err = c.Invoke(a0, "SelectContent", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) SelectContentGuarded(a0 context.Context, a1 string, a2 mediastore.SelectRequest, a3 string, a4 mediastore.Guard) (r0 mediastore.Selection, err error) {
 	err = c.Invoke(a0, "SelectContentGuarded", []any{a1, a2, a3, a4}, []any{&r0})
@@ -103,35 +133,5 @@ func (c *Client) UpdateProgress(a0 context.Context, a1 jobs.Job, a2 int) (err er
 
 func (c *Client) UpdateRelease(a0 context.Context, a1 string, a2 string, a3 albums.UpdateReleaseRequest, a4 string) (r0 albums.Release, err error) {
 	err = c.Invoke(a0, "UpdateRelease", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) UpdateSourceAlbum(a0 context.Context, a1 string, a2 string, a3 albums.UpdateSourceAlbumRequest, a4 string) (r0 albums.SourceAlbum, err error) {
-	err = c.Invoke(a0, "UpdateSourceAlbum", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) UpdateWork(a0 context.Context, a1 string, a2 string, a3 works.UpdateRequest, a4 string) (r0 works.Work, err error) {
-	err = c.Invoke(a0, "UpdateWork", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) Work(a0 context.Context, a1 string, a2 string) (r0 works.Work, err error) {
-	err = c.Invoke(a0, "Work", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) WorkPackage(a0 context.Context, a1 string, a2 string, a3 string) (r0 workpackages.Package, err error) {
-	err = c.Invoke(a0, "WorkPackage", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) WorkPackages(a0 context.Context, a1 string, a2 string) (r0 []workpackages.Package, err error) {
-	err = c.Invoke(a0, "WorkPackages", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) Works(a0 context.Context, a1 string, a2 works.Query) (r0 []works.Work, err error) {
-	err = c.Invoke(a0, "Works", []any{a1, a2}, []any{&r0})
 	return r0, err
 }

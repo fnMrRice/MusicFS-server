@@ -82,6 +82,9 @@ func (s *Store) AttachAutomationJob(ctx context.Context, id, jobID string) error
 	if err != nil {
 		return err
 	}
+	if err = activeAutomation(ctx, tx, id); err != nil {
+		return err
+	}
 	j, err := readEnrichmentJob(ctx, tx, w.Owner, jobID)
 	if err != nil {
 		return err
@@ -115,6 +118,9 @@ func (s *Store) AutomationAction(ctx context.Context, id string, a enrichment.Au
 		return a, err
 	}
 	defer tx.Rollback()
+	if err = activeAutomation(ctx, tx, id); err != nil {
+		return a, err
+	}
 	var raw []byte
 	err = tx.QueryRowContext(ctx, "SELECT document,expected_revision FROM metadata_automation_actions WHERE trigger_id=? AND field=? AND language=?", id, a.Field, a.Language).Scan(&raw, &a.ExpectedRevision)
 	if err == nil {
@@ -140,7 +146,7 @@ func (s *Store) FinishAutomationAction(ctx context.Context, id string, a enrichm
 	if err != nil {
 		return err
 	}
-	_, err = s.DB.ExecContext(ctx, "UPDATE metadata_automation_actions SET document=? WHERE trigger_id=? AND field=? AND language=?", raw, id, a.Field, a.Language)
+	_, err = s.DB.ExecContext(ctx, `UPDATE metadata_automation_actions SET document=? WHERE trigger_id=? AND field=? AND language=? AND EXISTS(SELECT 1 FROM metadata_automation a LEFT JOIN refresh_task_cancellations c ON c.job_id=a.scan_job_id WHERE a.id=trigger_id AND (a.state IN ('queued','preparing','running') OR (c.job_id IS NOT NULL AND c.completed_at IS NULL)))`, raw, id, a.Field, a.Language)
 	return err
 }
 

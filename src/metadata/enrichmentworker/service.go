@@ -35,6 +35,7 @@ type Config struct {
 type runningTask struct {
 	jobID  string
 	cancel context.CancelFunc
+	done   chan struct{}
 }
 type Service struct {
 	runtimeMu sync.RWMutex
@@ -105,6 +106,10 @@ func (s *Service) Instances(_ context.Context, owner string) []enrichment.Instan
 }
 
 func (s *Service) Submit(ctx context.Context, owner string, request enrichment.JobRequest, key string) (enrichment.Job, bool, error) {
+	return s.submit(ctx, owner, request, key, s.repo.QueueEnrichment)
+}
+
+func (s *Service) submit(ctx context.Context, owner string, request enrichment.JobRequest, key string, queue func(context.Context, string, enrichment.JobRequest, string) (enrichment.Job, bool, error)) (enrichment.Job, bool, error) {
 	request, err := request.Normalize()
 	if err != nil {
 		return enrichment.Job{}, false, err
@@ -145,7 +150,7 @@ func (s *Service) Submit(ctx context.Context, owner string, request enrichment.J
 			ctx = lease.Context()
 		}
 	}
-	job, merged, err := s.repo.QueueEnrichment(ctx, owner, request, key)
+	job, merged, err := queue(ctx, owner, request, key)
 	if err == nil {
 		slog.InfoContext(ctx, "Metadata task queued", "jobId", job.JobID, "targets", len(request.SourceTrackIDs), "instances", len(request.InstanceIDs), "merged", merged)
 	}

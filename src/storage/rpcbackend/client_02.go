@@ -12,10 +12,22 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
+	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) CreateTimeline(a0 context.Context, a1 string, a2 timeline.Request, a3 string) (r0 timeline.Evidence, err error) {
+	err = c.Invoke(a0, "CreateTimeline", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) CreateWork(a0 context.Context, a1 string, a2 works.CreateRequest, a3 string) (r0 works.Work, err error) {
+	err = c.Invoke(a0, "CreateWork", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) CurrentEnrichment(a0 context.Context, a1 enrichment.Work) (err error) {
 	err = c.Invoke(a0, "CurrentEnrichment", []any{a1}, []any{})
@@ -124,15 +136,5 @@ func (c *Client) Finish(a0 context.Context, a1 jobs.Job, a2 int, a3 error) (err 
 
 func (c *Client) FinishAutomation(a0 context.Context, a1 string, a2 string, a3 *string) (err error) {
 	err = c.Invoke(a0, "FinishAutomation", []any{a1, a2, a3}, []any{})
-	return err
-}
-
-func (c *Client) FinishAutomationAction(a0 context.Context, a1 string, a2 enrichment.AutomationAction) (err error) {
-	err = c.Invoke(a0, "FinishAutomationAction", []any{a1, a2}, []any{})
-	return err
-}
-
-func (c *Client) FinishEnrichment(a0 context.Context, a1 enrichment.Work, a2 enrichment.Outcome) (err error) {
-	err = c.Invoke(a0, "FinishEnrichment", []any{a1, a2}, []any{})
 	return err
 }

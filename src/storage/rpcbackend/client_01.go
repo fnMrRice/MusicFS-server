@@ -9,7 +9,6 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/catalog"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
-	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
@@ -20,6 +19,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"time"
 )
+
+func (c *Client) CatalogQueryPage(a0 context.Context, a1 string, a2 string, a3 string, a4 int, a5 *catalog.Query) (r0 catalog.Page, err error) {
+	err = c.Invoke(a0, "CatalogQueryPage", []any{a1, a2, a3, a4, a5}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) ChangePlaylistHidden(a0 context.Context, a1 string, a2 string, a3 string, a4 playlists.ChangeHiddenRequest, a5 string) (r0 playlists.HiddenRules, err error) {
 	err = c.Invoke(a0, "ChangePlaylistHidden", []any{a1, a2, a3, a4, a5}, []any{&r0})
@@ -91,6 +95,11 @@ func (c *Client) CommitWriteback(a0 context.Context, a1 string, a2 string, a3 wr
 	return r0, err
 }
 
+func (c *Client) CompleteRefreshTaskCancellation(a0 context.Context, a1 string, a2 string) (err error) {
+	err = c.Invoke(a0, "CompleteRefreshTaskCancellation", []any{a1, a2}, []any{})
+	return err
+}
+
 func (c *Client) ContentObject(a0 context.Context, a1 string, a2 string) (r0 mediastore.ContentObject, err error) {
 	err = c.Invoke(a0, "ContentObject", []any{a1, a2}, []any{&r0})
 	return r0, err
@@ -128,15 +137,5 @@ func (c *Client) CreateRelease(a0 context.Context, a1 string, a2 albums.CreateRe
 
 func (c *Client) CreateSourceAlbum(a0 context.Context, a1 string, a2 albums.CreateSourceAlbumRequest, a3 string) (r0 albums.SourceAlbum, err error) {
 	err = c.Invoke(a0, "CreateSourceAlbum", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) CreateTimeline(a0 context.Context, a1 string, a2 timeline.Request, a3 string) (r0 timeline.Evidence, err error) {
-	err = c.Invoke(a0, "CreateTimeline", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) CreateWork(a0 context.Context, a1 string, a2 works.CreateRequest, a3 string) (r0 works.Work, err error) {
-	err = c.Invoke(a0, "CreateWork", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
 }

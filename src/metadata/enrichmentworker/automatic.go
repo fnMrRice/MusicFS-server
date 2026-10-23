@@ -25,7 +25,7 @@ func (s *Service) automationWorker(ctx context.Context, repo enrichment.Automati
 		w, err := repo.NextAutomation(ctx)
 		waiting := false
 		if err == nil {
-			waiting, err = s.automate(ctx, repo, w)
+			waiting, err = s.runAutomation(ctx, repo, w)
 		}
 		if err == nil && !waiting {
 			continue
@@ -105,19 +105,14 @@ func (s *Service) automate(ctx context.Context, repo enrichment.AutomationReposi
 			return fail(domain.Fail("RESOURCE_CHANGED", "Automatic metadata source changed"))
 		}
 		r := enrichment.JobRequest{SourceTrackIDs: []string{w.SourceTrackID}, Fields: p.Fields, Languages: p.Languages, InstanceIDs: p.InstancePriority}
-		j, _, err := s.Submit(ctx, w.Owner, r, "automatic-"+w.TriggerID)
+		j, _, err := s.submit(ctx, w.Owner, r, "automatic-"+w.TriggerID, func(ctx context.Context, owner string, request enrichment.JobRequest, _ string) (enrichment.Job, bool, error) {
+			return repo.QueueAutomaticEnrichment(ctx, owner, w.TriggerID, request)
+		})
 		if err != nil {
 			if failureCode(err) == "RATE_LIMITED" {
 				return true, nil
 			}
 			return fail(err)
-		}
-		if err = repo.AttachAutomationJob(ctx, w.TriggerID, j.JobID); err != nil {
-			if failureCode(err) == "RESOURCE_CHANGED" {
-				_, _ = s.Cancel(ctx, w.Owner, j.JobID)
-				return fail(err)
-			}
-			return false, err
 		}
 		slog.DebugContext(ctx, "Automatic metadata task attached", "jobId", j.JobID)
 		return true, nil

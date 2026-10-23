@@ -28,6 +28,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/tasks"
 )
 
 const ContractVersion = 1
@@ -47,6 +48,7 @@ type Backend interface {
 	identification.HashRepository
 	identification.FingerprintRepository
 	jobs.Repository
+	tasks.Repository
 	library.Repository
 	library.GroupedRepository
 	library.RecordingCoverRepository

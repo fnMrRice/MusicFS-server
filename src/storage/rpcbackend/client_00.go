@@ -14,6 +14,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/tasks"
 )
 
 func (c *Client) AlbumChanges(a0 context.Context, a1 string, a2 albums.Target, a3 int64, a4 int) (r0 []albums.Change, err error) {
@@ -101,6 +102,11 @@ func (c *Client) CancelHash(a0 context.Context, a1 string, a2 string) (r0 identi
 	return r0, err
 }
 
+func (c *Client) CancelRefreshTask(a0 context.Context, a1 string, a2 string) (r0 tasks.Task, err error) {
+	err = c.Invoke(a0, "CancelRefreshTask", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) CancelRemoteSync(a0 context.Context, a1 string, a2 string) (r0 playlists.SyncJob, err error) {
 	err = c.Invoke(a0, "CancelRemoteSync", []any{a1, a2}, []any{&r0})
 	return r0, err
@@ -128,10 +134,5 @@ func (c *Client) CatalogArtist(a0 context.Context, a1 string, a2 string) (r0 cat
 
 func (c *Client) CatalogFacets(a0 context.Context, a1 string, a2 string) (r0 catalog.Facets, err error) {
 	err = c.Invoke(a0, "CatalogFacets", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) CatalogQueryPage(a0 context.Context, a1 string, a2 string, a3 string, a4 int, a5 *catalog.Query) (r0 catalog.Page, err error) {
-	err = c.Invoke(a0, "CatalogQueryPage", []any{a1, a2, a3, a4, a5}, []any{&r0})
 	return r0, err
 }
