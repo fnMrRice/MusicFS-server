@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/scraper/local"
 	"github.com/fnMrRice/MusicFS-server/sdk/audioformat"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
@@ -19,10 +18,10 @@ import (
 
 // ScrapeInput is a host-only, single-task bundle. Set Target.Revision from the
 // content selection before opening a scraper session; it is not an asset version.
-// Inputs and DecodeNCM must be prepared before concurrent reads begin.
+// 并发读取前必须完成 Inputs 和 DecodeAudio 准备。
 type ScrapeInput struct {
 	Target    enrichment.Target
-	Inputs    []scraperlocal.Input
+	Inputs    []enrichment.Input
 	Issues    []enrichment.Issue
 	Query     enrichment.Query
 	Encrypted bool
@@ -61,7 +60,7 @@ func (s *Service) OpenScrape(ctx context.Context, owner, task, trackID string, f
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	h := &ScrapeInput{Target: enrichment.Target{SourceTrackID: t.ID, AssetID: t.AssetID, AssetVersion: t.Version},
-		Inputs: []scraperlocal.Input{}, Issues: []enrichment.Issue{}, service: s, track: t, task: task, ctx: ctx, cancel: cancel,
+		Inputs: []enrichment.Input{}, Issues: []enrichment.Issue{}, service: s, track: t, task: task, ctx: ctx, cancel: cancel,
 		Query: enrichment.Query{Artists: append([]string{}, t.Artists...)}, fields: slices.Clone(fields)}
 	if t.Title != nil {
 		h.Query.Title = *t.Title
@@ -91,7 +90,7 @@ func (s *Service) OpenScrape(ctx context.Context, owner, task, trackID string, f
 	if err != nil {
 		return nil, err
 	}
-	h.Inputs = append(h.Inputs, scraperlocal.Input{Resource: enrichment.Resource{ResourceRef: ref, Version: t.Version, Kind: "audio", SizeBytes: t.Size, Match: "embedded"}, Reader: guard, Validate: h.Validate})
+	h.Inputs = append(h.Inputs, enrichment.Input{Resource: enrichment.Resource{ResourceRef: ref, Version: t.Version, Kind: "audio", SizeBytes: t.Size, Match: "embedded"}, Reader: guard, Validate: h.Validate})
 	match, matched, err := audiocodecs.Detect(guard, t.Size)
 	if err != nil {
 		return nil, err
@@ -127,7 +126,7 @@ func (s *Service) OpenScrape(ctx context.Context, owner, task, trackID string, f
 		}
 		h.guards = append(h.guards, stable)
 		sidecarBytes += r.SizeBytes
-		h.Inputs = append(h.Inputs, scraperlocal.Input{Resource: enrichment.Resource{ResourceRef: r.ResourceRef, Version: r.ObservedVersion, Kind: sidecar.Kind, SizeBytes: r.SizeBytes, Match: sidecar.Match}, Reader: stable, Validate: h.Validate})
+		h.Inputs = append(h.Inputs, enrichment.Input{Resource: enrichment.Resource{ResourceRef: r.ResourceRef, Version: r.ObservedVersion, Kind: sidecar.Kind, SizeBytes: r.SizeBytes, Match: sidecar.Match}, Reader: stable, Validate: h.Validate})
 	}
 	if err = h.Validate(); err != nil {
 		return nil, err

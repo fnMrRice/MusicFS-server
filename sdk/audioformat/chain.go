@@ -50,14 +50,20 @@ type Request struct {
 type Output struct {
 	Input
 	Attachments   []Attachment
+	Processing    []Processing
 	NeedsDecoding bool
 	Close         func() error
 }
 
 type Decoder struct {
 	Detector
-	Decode func(context.Context, Request, Input) (Output, error)
+	// NativePassthrough 声明 native 请求只验证并透传输入，不依赖运行实例。
+	NativePassthrough bool
+	Decode            func(context.Context, Request, Input) (Output, error)
 }
+
+// Processing 由实际执行变换的插件声明，对外描述不由宿主按格式猜测。
+type Processing struct{ Type, Version string }
 
 type Chain struct{ decoders []Decoder }
 
@@ -90,6 +96,7 @@ type Decoded struct {
 	Input
 	Attachments []Attachment
 	Layers      []string
+	Processing  []Processing
 	closers     []func() error
 	mu          sync.Mutex
 }
@@ -167,6 +174,12 @@ func (c *Chain) Decode(ctx context.Context, request Request, input Input) (_ *De
 		}
 		result.Input = output.Input
 		result.Layers = append(result.Layers, pluginID)
+		for _, step := range output.Processing {
+			if step.Type == "" || len(step.Type) > 128 || step.Version == "" || len(step.Version) > 128 {
+				return nil, fmt.Errorf("INVALID_RESPONSE: invalid decoder processing declaration")
+			}
+			result.Processing = append(result.Processing, step)
+		}
 		if !output.NeedsDecoding {
 			return result, nil
 		}

@@ -11,22 +11,26 @@ Server 保持 Go 模块化单体，官方内置插件运行于 Server 主进程�
 | 用途 | 当前职责 | 协议与限制 |
 | --- | --- | --- |
 | `local` | 本地文件及已挂载 NAS 的观测、元数据、受限资源解析 | 通用 `provider`；根授权、稳定身份、扫描发布由宿主执行 |
-| `netease`、`qqmusic`、`applemusic` | 各平台账号控制及已声明的资料能力 | 通用 `provider`；业务要求已校验账号，真实账号验收与能力范围见[平台登录](../providers/platform-login.md) |
+| `netease`、`qqmusic`、`applemusic`、`bilibili` | 各平台声明的账号控制及资料能力 | 通用 `provider`；按能力声明判断账号要求，真实账号验收与能力范围见[平台登录](../providers/platform-login.md) |
 | `scraper-local` | 音频标签、容器附件及旁置文件中的歌词、封面候选 | 通用 `scraper`；不选用内容、不写原件，正文走任务二进制通道 |
 | `audio-ffmpeg` | 探测、解码、编码、规范化及有序 DSP 链 | 通用 `audio`；固定任务和受控输入/输出，见[音频处理](../playback/audio-processing.md) |
 | `ncm` | 解密 NCM 外层容器，保留 MP3/FLAC 编码字节并提供独立封面附件 | 通用 `audio`；宿主将附件交 Scraper 验证，源资产与解密表示分离，见[NCM](../playback/ncm.md) |
 | `dsp-gain` | 无状态、保持帧数和时标的 PCM 增益 | [DSP v1](dsp-plugins.md) 专用协议；零延迟、无尾音 |
-| `storage-sqlite` | 主库与实例状态库的建库、Schema、迁移、原子业务操作与快照 | [持久化专用协议](storage-plugins.md)；SQLite 必需，不能停用 |
+| `storage-sqlite` | 主库与实例状态库的建库、Schema、迁移、原子业务操作与快照 | [持久化专用协议](storage-plugins.md)；默认后端，可由实现同一契约的注册后端替换，运行期间不能停用 |
 | `analysis.chromaprint` | 规范化音频的 Chromaprint 指纹提取 | 内置分析接口；仍需校验 `fpcalc` 工具，不新增 BPM 或调性算法 |
 | `tags.flac` | FLAC 标签补丁、正文生成及音频范围识别 | `sdk/tagformat`；授权、原件保护、替换和恢复保留在宿主 |
 | `matching.standard` | 标签、时长与指纹证据的候选评分 | 内置评分接口；人工排除、最终关联与事务由核心决定 |
 | `transform.thumbnail` | PNG/JPEG 封面的缩略图变换 | `sdk/contenttransform`；源内容、版本与最终发布保留在宿主 |
 
-九种兼容命令行选择值与通用 Manifest 的 `provider/scraper/audio` 三种角色是不同层次。新增四类能力通过进程内 Go 接口组装，没有新增外部进程入口。DSP 和存储不向通用 Manifest 添加角色，也不使用普通实例启停接口；基础能力在管理列表中只读展示，修改部署配置后重启生效。
+命令行选择值与通用 Manifest 的 `provider/scraper/audio` 三种角色是不同层次。分析、标签、评分和内容变换通过进程内 Go 接口组装，没有新增外部进程入口。DSP 和存储不向通用 Manifest 添加角色，也不使用普通实例启停接口；基础能力在管理列表中只读展示，修改部署配置后重启生效。
 
 插件管理的功能分类同样独立于上述角色和接口：`plugins/transform/thumbnail`、`plugins/tags/*`、`plugins/scraper/*` 统一声明 `plugin.features=["metadata"]`，显示为“元数据”。本地刮削仍保留 `scraper` 角色及歌词、封面的业务能力，标签重写与缩略图仍使用各自的进程内接口；插件 ID 和源码目录保持稳定。
 
-普通插件按官方固定身份与角色适配器接入；未知 ID、角色、方法及超出平台策略的能力被拒绝。插件声明可以收窄已支持能力，不能授予额外权限。当前没有任意第三方自动发现、下载、安装、升级回滚或管理 CLI。
+算法管理清单由可信装配通过 `plugincontrol.RegisterBuiltin` 声明身份、发行版本、能力及业务开关；默认构建在 `builtinplugins` 集中注册四种官方算法。替代构建使用 `NewWithBuiltins` 注入实际算法清单，管理器不会补回 Chromaprint 或 FLAC。声明只反映装配与配置，不宣称工具可用或任务正在运行；算法仍通过各自的业务接口执行。
+
+普通插件通过可信装配注册身份、角色、版本、配置和运行工厂；未注册 ID、未知角色和方法仍被拒绝。目录、音频处理和在线平台能力不再由业务层的官方 ID 分支决定。Worker 声明不能授予额外文件、网络或凭据权限。当前没有任意第三方自动发现、下载、安装、升级回滚或管理 CLI。
+
+目录型 Provider 使用自身的导入配置声明；作品包访问要求 `library.packages` 能力，来源 ID 和资源引用为彼此独立的不透明标识。文件替换后的身份重绑定要求 `library.rebind.stable-paths-v1`：插件显式采用 `sdk/directoryidentity` 的状态协议，宿主按同一协议校验变更计划并负责授权、日志发布和恢复。未声明该能力的插件状态不按此格式解释。在线插件提供登录方式、资源 ID/URL 规则和图片域名，SDK 只执行通用结构与策略校验。播放依赖 `audioruntime.Processor/Decoder` 和公共音频类型，解码器按格式链选择；Scraper 使用通用 Host/Session 接口，DSP 节点及进程内执行器通过注册工厂接入。指纹身份由分析插件声明，标签支持格式由 `tagformat.Format` 声明；不同分析身份的证据不能混用。
 
 ## 宿主与插件的职责
 
@@ -51,7 +55,7 @@ Server 保持 Go 模块化单体，官方内置插件运行于 Server 主进程�
 - 编译内插件是受信任代码，与 Server 共享地址空间，不提供故障或权限沙箱。外部进程模式的摘要核验和受控 Broker 同样不构成 OS 沙箱。未知 ID 不会映射成主进程内可执行函数。
 - 内置协议关闭会取消当前请求、关闭双向管道并等待处理函数以及数据通道内已开始的宿主读写退出，再回收任务槽位。FFmpeg、ffprobe 与 fpcalc 是按需调用的外部工具，仍受各自的探测、摘要、超时和清理约束。
 - 内置代码必须通过错误返回处理可预期失败；未恢复的 panic 属于 Server 进程故障，内存通道不提供进程级故障隔离。
-- `dspPlugins[].builtin=true` 仅支持编译内的 `musicfs.dsp.gain`，且要求 FFmpeg 同样使用内置执行。外部 FFmpeg 与内置 DSP 的组合在初始化和任务启动时直接拒绝，避免把内置 gain 转移到子进程。内置音频握手还需声明 `audio.dsp.builtin`；宿主不会向旧外部 Worker 发送新字段。未使用内置 DSP 的现有外部请求继续使用原字段。
+- `dspPlugins[].builtin=true` 要求可信装配中存在对应执行工厂，并要求音频处理器支持进程内 DSP。默认装配提供 `musicfs.dsp.gain`；外部音频 Worker 不会自动获得宿主的进程内工厂。内置音频握手还需声明 `audio.dsp.builtin`。
 
 升级内置实现需要升级 Server，先正常停服并保留旧制品及状态快照。显式外部进程模式还须更新所选文件的固定摘要并重新握手；不能覆盖运行中的程序。状态不兼容时拒绝继续启动，不能让旧实现写入新格式。安装与回滚的自动化入口仍未实现。
 

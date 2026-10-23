@@ -28,6 +28,9 @@ func TestScraperWireDTOsAndRestrictedChannel(t *testing.T) {
 	for _, value := range []any{result, fetched} {
 		testkit.ValidatePlugin(t, "", map[string]any{"jsonrpc": "2.0", "id": "h-1", "result": value})
 	}
+	custom := candidate
+	custom.Origin, custom.Basis = "replacement", "replacement-v1"
+	testkit.ValidatePlugin(t, "ScrapeCandidate", custom)
 	hello := map[string]any{"protocolVersion": "1.0", "instanceId": "16107a0a-24d2-5c96-8a8a-c7111a798bcf", "nonce": ref, "configRevision": "1", "context": scope, "target": target, "baseUrl": "http://127.0.0.1:12345/" + ref}
 	testkit.ValidatePlugin(t, "ScrapeHello", hello)
 	testkit.ValidatePlugin(t, "", map[string]any{"jsonrpc": "2.0", "id": "h-1", "method": "host.hello", "params": hello})

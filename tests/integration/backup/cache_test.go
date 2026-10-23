@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
+	_ "github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
@@ -53,9 +54,9 @@ func testPortableProcessingRestore(t *testing.T, layout, profile, extension stri
 	payload := []byte("Disposable processing cache fixture")
 	hash := sha256.Sum256(payload)
 	digest := hex.EncodeToString(hash[:])
-	i := processedcache.Identity{Owner: "admin", ProviderID: "local", SourceTrackID: trackID,
+	i := processedcache.Identity{Owner: "admin", ProviderID: "local", SourceTrackID: trackID, PluginID: "musicfs.plugin.decoder.ffmpeg",
 		AssetID: "stale-asset", Version: "v1", InputSHA256: digest, WorkerSHA256: digest,
-		FFmpegSHA256: digest, PluginVersion: "0.1.0", PipelineRevision: "gain-v1", Profile: profile}
+		DecoderSHA256: digest, PluginVersion: "0.1.0", PipelineRevision: "gain-v1", Profile: profile}
 	if layout != "" {
 		i.PluginVersion = "0.3.0"
 		i.PipelineRevision = "dsp-v1:" + digest

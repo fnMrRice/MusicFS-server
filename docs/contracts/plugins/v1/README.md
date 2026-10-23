@@ -18,13 +18,13 @@ Manifest 的 `pluginVersion` 对 Provider、音频和 Scraper 都是必填项，
 
 FFmpeg/NCM 的单次任务握手使用 `DecoderHello`，额外必需 `taskId`。实例 UUID 在该配置生命周期内保持稳定；请求的任务 ID 必须匹配握手任务 ID，nonce 继续绑定本次通道。本地音乐和在线来源握手不传此字段。
 
-在线 Provider 的资料修订为 `online-authenticated-v3`，`provider.online.describe` 必须返回插件提供的 `plugin: {id,name,localizedNames,features}`，其 ID 与握手身份一致；Host 缓存并透传已验证值，不自行生成平台名称。显示语义、生命周期与版本兼容见 [插件身份与名称](../../../plugins/plugin-identity.md)，具体 wire 模型见 [online.schema.json](online.schema.json)。
+在线 Provider 的资料修订为 `online-declared-v4`，`provider.online.describe` 必须返回插件提供的 `plugin: {id,name,localizedNames,features}`，其 ID 与握手身份一致；Host 缓存并透传已验证值，不自行生成平台名称。显示语义、生命周期与版本兼容见 [插件身份与名称](../../../plugins/plugin-identity.md)，具体 wire 模型见 [online.schema.json](online.schema.json)。
 
 音乐来源可提供独立的展示统计 `{value, unit, localizedUnits}`；在线来源的数字、默认单位与译名由插件负责。本地音乐的管理摘要由宿主按有效部署权限生成允许访问目录数，这是权限展示的例外；包含零值、待配置与未启动状态，不使用已添加目录数量，也不向 Worker 传递未选授权路径。`value` 是 0—9007199254740991 的整数，`unit` 及每项译名是 1—128 个 Unicode 字符的纯文本；语言标签与身份译名采用相同校验，`localizedUnits` 必需且可为空对象。统计不能代替实例身份或权限。Web 不显示实例数量；插件上报的“个用户”“个来源”等单位也不由前端固定映射。
 
 兼容接口 `plugin.displayCount` 接受 `{instanceId, rootIds}`，仅传当前选中根 ID 并返回旧的来源统计，保留进程协议兼容。当前管理列表不使用这项统计，而由宿主返回允许访问目录数及“个允许访问的目录”译名，新增或移除已添加目录不影响权限数量。在线来源仍通过[账号响应](account.md)的可选 `displayCount` 提供统计；管理查询读取缓存、不触发 RPC。此展示字段不增加目录访问能力或账号权限。
 
-Go 消费入口位于独立 `sdk` 模块，见 [SDK 使用与分发](../../../plugins/plugin-sdk.md)。在线插件的 `pluginVersion` 接受合法语义版本；通信版本与资料修订仍精确校验。能力可声明当前平台允许集合的子集，Manifest 启用能力须与描述中的 `supported=true` 集合一致。宿主保留对未知或未验证能力的拒绝。平台账号作用域保持不变；插件管理 `version` 必填规则见前文。
+Go 消费入口位于独立 `sdk` 模块，见 [SDK 使用与分发](../../../plugins/plugin-sdk.md)。在线插件的 `pluginVersion` 接受合法语义版本；通信版本与资料修订仍精确校验。能力可声明通用在线协议方法的子集，Manifest 启用能力须与描述中的 `supported=true` 集合一致；未知方法仍被拒绝。平台资料规则由必需的 `resources` 提供，登录方式由可选 `login` 提供；宿主核验规则边界及结果一致性，不维护每个平台的能力上限、ID 或 CDN 列表。平台账号作用域保持不变；插件管理 `version` 必填规则见前文。
 
 ## Local Files 配置与扫描
 

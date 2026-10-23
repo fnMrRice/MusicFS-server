@@ -12,9 +12,11 @@ import (
 )
 
 type stateStore struct {
-	dir         string
-	mu          sync.Mutex
-	rebindReady *bool
+	dir              string
+	mu               sync.Mutex
+	rebindReady      *bool
+	rebindEnabled    bool
+	declarationReady bool
 }
 
 var stateKey = regexp.MustCompile(`^[a-z0-9_-]{1,80}$`)
@@ -50,6 +52,9 @@ func (s *stateStore) load(key string) (pluginproto.StateValue, error) {
 func (s *stateStore) save(r pluginproto.StateRequest) (pluginproto.StateValue, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if r.Key == rebindKey && s.rebindEnabled {
+		return pluginproto.StateValue{}, fmt.Errorf("ACCESS_DENIED: rebind journal is reserved for the host")
+	}
 	if r.Key != "root-identities" {
 		if err := s.readyLocked(); err != nil {
 			return pluginproto.StateValue{}, err

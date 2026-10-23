@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/source/online/internal/adapter"
+	"github.com/fnMrRice/MusicFS-server/plugins/source/online/internal/policies"
 	"github.com/fnMrRice/MusicFS-server/plugins/source/online/netease/driver"
 	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
@@ -16,6 +17,9 @@ type Options = adapter.Options
 
 func Plugin(options Options) provider.Plugin {
 	descriptor := pluginproto.OnlinePolicy(online.Netease)
+	descriptor.Resources = policies.Resources(online.Netease)
+	descriptor.Capabilities = policies.Capabilities(online.Netease)
+	descriptor.Login = &online.LoginDescriptor{Method: "qr", Validation: "liveAccountPending"}
 	descriptor.Plugin = &pluginproto.PluginIdentity{
 		ID: "musicfs.plugin.source.netease", Name: "NetEase Cloud Music",
 		LocalizedNames: map[string]string{"zh": "网易云音乐", "zh-Hans": "网易云音乐", "zh-Hant": "網易雲音樂"},

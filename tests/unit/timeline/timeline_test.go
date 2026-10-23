@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	_ "github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 )
 

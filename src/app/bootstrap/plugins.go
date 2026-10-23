@@ -6,36 +6,34 @@ import (
 	"log/slog"
 	"path/filepath"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
-	"github.com/fnMrRice/MusicFS-server/plugins/source/localfiles"
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audioruntime"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginhost"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 )
 
 // 父插件和实例必须同时显式启用；禁用项只保留提供者身份，不检查运行依赖。
-func configurePlugins(ctx context.Context, c config.Config, log *slog.Logger) ([]library.Runtime, *audioffmpeg.Processor, *ncmdecoder.Processor, string) {
+func configurePlugins(ctx context.Context, c config.Config, log *slog.Logger) ([]library.Runtime, audioruntime.Processor, audioruntime.Decoder, audioruntime.Probe) {
 	var runtimes []library.Runtime
-	var processor *audioffmpeg.Processor
-	var decoder *ncmdecoder.Processor
-	ffprobe := ""
+	var processor audioruntime.Processor
+	var decoder audioruntime.Decoder
+	var probe audioruntime.Probe
 	for _, plugin := range c.Plugins {
 		for _, instance := range plugin.Instances {
 			enabled := plugin.CanStart(instance)
 			var err error
-			switch plugin.PluginID {
-			case "musicfs.plugin.source.localfiles":
+			switch {
+			case pluginconfig.SupportsDirectories(plugin.PluginID):
 				name := instance.Name
 				if name == "" {
-					name = localfiles.Identity().Name
+					name = pluginconfig.Identity(plugin.PluginID).Name
 				}
 				defaults, defaultsErr := config.EffectiveImportDefaults(plugin.PluginID, instance)
-				declaration := pluginconfig.LocalFiles()
+				declaration := pluginconfig.Configuration(plugin.PluginID)
 				binaryHash := ""
 				if enabled {
 					binaryHash = pluginChecksum(plugin)
@@ -45,7 +43,7 @@ func configurePlugins(ctx context.Context, c config.Config, log *slog.Logger) ([
 				for _, root := range instance.Config.MusicRoots {
 					rootNames[root.ID] = root.Name
 					if root.ImportDefaults != nil {
-						rootOptions, rootErr := config.EffectiveRootImportDefaults(instance, root)
+						rootOptions, rootErr := config.EffectiveRootImportDefaults(plugin.PluginID, instance, root)
 						if rootErr != nil {
 							defaultsErr = rootErr
 						}
@@ -54,7 +52,8 @@ func configurePlugins(ctx context.Context, c config.Config, log *slog.Logger) ([
 				}
 				// The bundled plugin owns its declaration even before roots are selected.
 				// A successfully verified worker declaration supersedes this fallback.
-				r := library.Runtime{ID: instance.InstanceID, Name: name, Owner: "admin", StableHash: true, Plugin: localfiles.Identity(),
+				registered, _ := pluginconfig.Lookup(plugin.PluginID)
+				r := library.Runtime{ID: instance.InstanceID, Name: name, Owner: "admin", SourceType: registered.SourceType, StableHash: true, Plugin: pluginconfig.Identity(plugin.PluginID),
 					ImportDefaults: defaults, RootImportDefaults: rootDefaults, Configuration: declaration, RootNames: rootNames,
 					ConfigRevision: providerConfigRevision(instance, binaryHash, defaults)}
 				err = defaultsErr
@@ -72,7 +71,7 @@ func configurePlugins(ctx context.Context, c config.Config, log *slog.Logger) ([
 						var stateDir string
 						stateDir, err = instanceid.StateDirectory(filepath.Join(c.DataRoot, "providers"), instance.InstanceID)
 						if err == nil {
-							r.Worker, err = pluginhost.Start(ctx, pluginhost.Config{Builtin: plugin.InProcess(), Executable: plugin.Executable, Args: plugin.Args, SHA256: binaryHash, InstanceID: instance.InstanceID, UserID: "admin", Roots: roots, StateDir: stateDir, DatabasePath: config.PluginDatabasePath(c), DatabaseBackend: config.PluginDatabaseBackend(c)})
+							r.Worker, err = pluginhost.Start(ctx, pluginhost.Config{PluginID: plugin.PluginID, Builtin: plugin.InProcess(), Executable: plugin.Executable, Args: plugin.Args, SHA256: binaryHash, InstanceID: instance.InstanceID, UserID: "admin", Roots: roots, StateDir: stateDir, DatabasePath: config.PluginDatabasePath(c), DatabaseBackend: config.PluginDatabaseBackend(c)})
 						}
 					}
 					if err == nil {
@@ -88,16 +87,19 @@ func configurePlugins(ctx context.Context, c config.Config, log *slog.Logger) ([
 					}
 				}
 				runtimes = append(runtimes, r)
-			case "musicfs.plugin.decoder.ffmpeg":
+			default:
 				if enabled {
-					processor, err = audioffmpeg.NewProcessor(ctx, audioffmpeg.Config{Builtin: plugin.InProcess(), InstanceID: instance.InstanceID, FFmpegPath: instance.Config.FFmpegPath, FFprobePath: instance.Config.FFprobePath, WorkerPath: plugin.Executable, WorkerArgs: plugin.Args, WorkerSHA256: pluginChecksum(plugin), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing, DSPChain: c.AudioDSP.Chain, DSPPlugins: c.AudioDSP.Plugins, OutputLayout: c.AudioChannels.OutputLayout, DisableEffects: !c.AudioDSP.Enabled, DisableChannelMix: !c.AudioChannels.Enabled})
-					if err == nil {
-						ffprobe = instance.Config.FFprobePath
+					if factory, ok := audioFactory(plugin.PluginID); ok {
+						var value AudioInstance
+						value, err = createAudioInstance(ctx, factory, c, plugin, instance)
+						if err == nil {
+							if factory.Processing {
+								processor, probe = value.Processor, value.Probe
+							} else {
+								decoder = value.Decoder
+							}
+						}
 					}
-				}
-			case "musicfs.plugin.decoder.ncm":
-				if enabled {
-					decoder, err = ncmdecoder.NewProcessor(ncmdecoder.Config{Builtin: plugin.InProcess(), InstanceID: instance.InstanceID, WorkerPath: plugin.Executable, WorkerArgs: plugin.Args, WorkerSHA256: pluginChecksum(plugin), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing})
 				}
 			}
 			if err != nil {
@@ -105,5 +107,5 @@ func configurePlugins(ctx context.Context, c config.Config, log *slog.Logger) ([
 			}
 		}
 	}
-	return runtimes, processor, decoder, ffprobe
+	return runtimes, processor, decoder, probe
 }

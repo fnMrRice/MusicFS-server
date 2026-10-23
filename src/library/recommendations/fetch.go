@@ -35,7 +35,18 @@ func (s *Service) fetch(ctx context.Context, key cacheKey, r Runtime, e *entry, 
 	}
 	var size int64
 	if err == nil {
-		err = online.ValidateRecommendations(r.Platform, page, key.limit)
+		declaration, ok := r.Provider.(interface {
+			Descriptor() pluginproto.OnlineDescriptor
+		})
+		if !ok {
+			err = domain.Fail("PROTOCOL_MISMATCH", "Recommendation provider declaration is required")
+		} else {
+			descriptor := declaration.Descriptor()
+			err = descriptor.Validate(r.Platform)
+			if err == nil {
+				err = online.ValidateRecommendations(descriptor.Resources, page, key.limit)
+			}
+		}
 		if err == nil && (page.ObservedAt.After(time.Now().Add(5*time.Second)) || !page.ExpiresAt.After(time.Now())) {
 			err = domain.Fail("TEMPORARY_FAILURE", "Recommendation observation is expired or invalid")
 		}

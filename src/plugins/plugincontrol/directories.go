@@ -13,6 +13,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 )
 
 const directoryPageSize = 100
@@ -45,7 +46,7 @@ func (m *Manager) Directories(ctx context.Context, id, path, cursor string) (Dir
 	}
 	p, instance, revision := r.plugin, r.instance, m.revision
 	m.mu.Unlock()
-	if p.PluginID != "musicfs.plugin.source.localfiles" {
+	if !pluginconfig.SupportsDirectories(p.PluginID) {
 		return Directories{}, domain.Fail("UNSUPPORTED", "This plugin does not support music directory selection")
 	}
 	page := Directories{Revision: revision, Items: []Directory{}}

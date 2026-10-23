@@ -23,6 +23,7 @@ func (p *Processor) AudioDecoder() audioformat.Decoder {
 			attachments = append(attachments, audioformat.Attachment{Kind: "artwork", Reader: artwork, Size: size})
 		}
 		return audioformat.Output{
+			Processing: []audioformat.Processing{{Type: "ncmDecrypt", Version: "1"}},
 			Input: audioformat.Input{Reader: decoded, Size: decoded.Size(), Format: metadata.Format, MIME: metadata.MIME, Metadata: audioformat.Metadata{
 				Title: metadata.Title, Album: metadata.Album, Artists: metadata.Artists, DurationMs: metadata.DurationMs, BitrateBps: metadata.BitrateBps,
 			}},

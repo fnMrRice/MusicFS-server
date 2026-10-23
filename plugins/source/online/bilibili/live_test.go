@@ -28,7 +28,7 @@ func TestLiveAnonymousMetadata(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := online.ValidateTrack("bilibili", track); err != nil {
+			if err := online.ValidateTrack(Plugin(Options{}).Descriptor.Resources, track); err != nil {
 				t.Fatal(err)
 			}
 			t.Logf("metadata verified: %s", track.ExternalID)
@@ -40,7 +40,7 @@ func TestLiveAnonymousMetadata(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := online.ValidateObservation("bilibili", observation, id); err != nil {
+			if err := online.ValidateObservation(Plugin(Options{}).Descriptor.Resources, observation, id); err != nil {
 				t.Fatal(err)
 			}
 			t.Logf("collection verified: %s entries=%d complete=%t", id, len(observation.Entries), observation.Complete)

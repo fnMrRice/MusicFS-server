@@ -1,8 +1,8 @@
 [
   {
-    "name": "remote-playlist-reject-anonymous-import",
+    "name": "remote-playlist-anonymous-policy-validated-by-host",
     "schema": "ImportRemotePlaylistRequest",
-    "valid": false,
+    "valid": true,
     "value": {
       "instanceId": "7fe223d0-a3bd-5e87-87f8-305dc26d9041",
       "accountId": "",

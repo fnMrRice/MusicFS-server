@@ -153,7 +153,7 @@ func TestScrapeSourceMissingNCMDecoderRetainsSidecarsAndCancellation(t *testing.
 	if !input.Encrypted {
 		t.Fatal("NCM not identified")
 	}
-	if err = input.DecodeNCM(ctx, nil); err != nil {
+	if err = input.DecodeAudio(ctx, nil); err != nil {
 		t.Fatal(err)
 	}
 	if len(input.Inputs) != 2 || len(input.Issues) != 1 || input.Issues[0].Code != "UNSUPPORTED" {

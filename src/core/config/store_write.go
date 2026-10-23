@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -33,7 +34,7 @@ func (s *Store) SetEnabled(ctx context.Context, change Change) (Operation, error
 		return Operation{}, domain.Fail("CONFLICT", "Plugin configuration is being written")
 	}
 	defer unlockDatabase()
-	if change.Settings != nil && change.PluginID == "musicfs.plugin.source.localfiles" {
+	if change.Settings != nil && pluginconfig.SupportsDirectories(change.PluginID) {
 		return s.saveLocalSettings(ctx, change)
 	}
 	unlock, err := lockConfig(s.document.Path)

@@ -30,6 +30,9 @@ func (p *Processor) DSPPluginVersion(name string) string {
 	if p == nil {
 		return ""
 	}
+	if name == "channelConversion" {
+		return bundledplugin.ChannelMixVersion
+	}
 	if version := builtin.Version(name); version != "" {
 		return version
 	}
@@ -67,14 +70,15 @@ func buildDSPFormatVersions(ctx context.Context, gain float64, chain []audio.Nod
 		return nil, err
 	}
 	for _, config := range plugins {
-		if err := registry.Register(config.Name, func(params map[string]float64) (audio.Node, error) {
-			if config.Builtin {
-				// 官方增益直接使用原生工厂，支持协商声道与较大处理块。
+		if config.Builtin {
+			if definition, ok := audio.Definition(config.Name); ok {
 				if versions != nil {
-					versions[config.Name] = bundledplugin.GainVersion
+					versions[config.Name] = definition.PluginVersion
 				}
-				return registry.Create("gain", params)
+				continue
 			}
+		}
+		if err := registry.Replace(config.Name, func(params map[string]float64) (audio.Node, error) {
 			return &externalDSP{ctx: ctx, config: config, params: params, versions: versions}, nil
 		}); err != nil {
 			return nil, err

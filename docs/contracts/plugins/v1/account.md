@@ -2,7 +2,7 @@
 
 机器定义：[账号 Worker Schema](account.schema.json)；与在线资料 Schema 并列校验本扩展的方法。
 
-`provider.online.account` 方法，沿用 `OnlineHello` 已绑定的 userId / instanceId、逐请求 taskId / timeoutMs 和精确上下文回显。当前资料协议修订为 online-authenticated-v3，包含[插件身份与名称](../../../plugins/plugin-identity.md)；所有业务调用使用本 Worker 当前已校验账号，调用方不能通过 accountRef 指定或冒用其他账号。accountRef 保留为空是控制通道身份约束，不表示匿名执行。旧匿名和 v2 Worker 的握手不再兼容。
+`provider.online.account` 方法，沿用 `OnlineHello` 已绑定的 userId / instanceId、逐请求 taskId / timeoutMs 和精确上下文回显。当前资料协议修订为 online-declared-v4，包含[插件身份与名称](../../../plugins/plugin-identity.md)；所有业务调用使用本 Worker 当前已校验账号，调用方不能通过 accountRef 指定或冒用其他账号。accountRef 保留为空是控制通道身份约束，不表示匿名执行。旧匿名和 v2 Worker 的握手不再兼容。
 
 请求为 `{context, request}`；`request` 包含 action、可选 loginId、userToken、developerToken、secret。动作包括 state、begin、poll、complete、cancel、check、logout，以及仅 Host 可用的 restore、signalCancel。后两者不可经 HTTP 调用。signalCancel 在网络轮询仍在执行时标记挑战取消；loginId 为 * 时立即阻止并取消在途业务请求，且不占普通业务并发槽，正式 cancel 随后收尾；不向 HTTP 返回其临时结果。
 
@@ -16,6 +16,8 @@ View 的可选 `avatarUrl` 是展示资料，与 `displayName` 一起返回；�
 
 登录网络请求只允许固定 HTTPS 平台域名、公开解析地址、固定路径和有界响应，不跟随任意重定向；QQ授权回跳只解析并检查约定域名、路径和 state。平台授权失败不使 MusicFS 会话失效。
 
-当前没有账号事件推送，界面按受鉴权 GET / POST 查询状态。完整平台账号实测尚待用户授权；能力描述中的 account.login 不标为已验证支持，HTTP options 的 validation 固定为 liveAccountPending。
+当前没有账号事件推送，界面按受鉴权 GET / POST 查询状态。完整平台账号实测尚待用户授权；官方账号插件的 `account.login` 不标为已验证支持，`login.validation` 为 `liveAccountPending`。该状态由插件声明，不是通用协议固定值。
+
+`provider.online.accountOptions` 使用 `{context}` 请求并精确回显作用域，返回 `{context, value: {method, configured, validation, developerToken?}}`。`method/validation` 必须与插件 `login` 声明一致；没有登录声明时只能返回 `none/false/notSupported`，不能附加令牌。该方法不要求已登录平台，但仍要求 MusicFS 用户与实例归属。可选开发者令牌仅延续 MusicKit 本人浏览器授权所需的公开客户端配置；内部凭据仍只走 `provider.online.account` 的私有状态字段。
 
 View.revision 是每次有效登录的随机代次，恢复后首次校验也产生新值；同一登录的再次 check 保持不变。分页游标及推荐缓存绑定该代次。业务入口未登录/未校验返回 PLATFORM_AUTH_REQUIRED，HTTP 映射 403；账号状态、登录、校验和退出入口不受业务登录门槛影响。

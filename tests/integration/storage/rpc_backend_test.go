@@ -287,8 +287,8 @@ func TestRealPersistenceWorker(t *testing.T) {
 		cfg := plugindb.BackendConfig{Name: "plugin", Executable: options.Executable, SHA256: options.SHA256}
 		ctx := context.Background()
 		value, err := plugindb.ReadBackend(ctx, cfg, path, "test-plugin", "first-instance", "settings")
-		if err == nil || value.Revision != 0 {
-			t.Fatalf("missing private database was accepted: %+v %v", value, err)
+		if err != nil || value.Revision != 0 {
+			t.Fatalf("missing private state did not return an empty revision: %+v %v", value, err)
 		}
 		if _, err = os.Stat(path); !os.IsNotExist(err) {
 			t.Fatalf("read-only startup created database: %v", err)

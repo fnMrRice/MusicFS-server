@@ -23,12 +23,27 @@ type NodeSpec struct {
 }
 
 func NewRegistry() *Registry { return &Registry{factories: map[string]Factory{}} }
+
+// Factory 返回已注册工厂，供可信装配复用插件原有参数校验。
+func (r *Registry) Factory(name string) (Factory, bool) {
+	factory, ok := r.factories[name]
+	return factory, ok
+}
 func (r *Registry) Register(name string, f Factory) error {
 	if name == "" || f == nil {
 		return fmt.Errorf("invalid node registration")
 	}
 	if _, ok := r.factories[name]; ok {
 		return fmt.Errorf("duplicate node registration")
+	}
+	r.factories[name] = f
+	return nil
+}
+
+// Replace 用于已校验的实例配置覆盖默认工厂，变更仅影响当前处理链。
+func (r *Registry) Replace(name string, f Factory) error {
+	if name == "" || f == nil {
+		return fmt.Errorf("invalid node registration")
 	}
 	r.factories[name] = f
 	return nil

@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
@@ -104,7 +103,7 @@ func (s *Service) RecoverSource(ctx context.Context, who auth.Session, id string
 	if r.EvidenceID == nil {
 		reason = "TIMELINE_EVIDENCE_REQUIRED"
 	}
-	output, supported := audioffmpeg.ProfileByID(profile.OutputProfile)
+	output, supported := a.processor.LookupProfile(profile.OutputProfile)
 	if profileErr != nil || fromProfileErr != nil || profile != fromProfile || !supported || !supportsOutputProfile(capabilities, output) {
 		reason = "OUTPUT_PROFILE_UNAVAILABLE"
 		checkErr = domain.Fail("RESTART_REQUIRED", "A matching recovery processing profile is unavailable")

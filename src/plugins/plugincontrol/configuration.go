@@ -41,20 +41,20 @@ func (m *Manager) Configuration(id string) (Configuration, error) {
 	m.mu.Unlock()
 	v := Configuration{PluginID: p.PluginID, InstanceID: i.InstanceID, Revision: revision, Name: i.Name, Roots: []Root{}, FFmpegConfigured: i.Config.FFmpegPath != "", FFprobeConfigured: i.Config.FFprobePath != "", Schema: settingsSchema(p.PluginID)}
 	for _, r := range i.Config.MusicRoots {
-		options, err := config.EffectiveRootImportDefaults(i, r)
+		options, err := config.EffectiveRootImportDefaults(p.PluginID, i, r)
 		if err != nil {
 			return Configuration{}, err
 		}
 		v.Roots = append(v.Roots, Root{ID: r.ID, Name: r.Name, PathConfigured: r.Path != "", ImportDefaults: completeImportDefaults(options)})
 	}
-	if p.PluginID == "musicfs.plugin.source.localfiles" {
+	if pluginconfig.SupportsDirectories(p.PluginID) {
 		v.RootImportDefaultsSupported = true
 		watch := config.DefaultWatch()
 		if i.Config.Watch != nil {
 			watch = *i.Config.Watch
 		}
 		v.Watch = &watch
-		declaration := pluginconfig.LocalFiles()
+		declaration := pluginconfig.Configuration(p.PluginID)
 		defaults, e := config.EffectiveImportDefaults(p.PluginID, i)
 		if e != nil {
 			return Configuration{}, e
@@ -103,12 +103,13 @@ func settingsSchema(plugin string) map[string]any {
 		return map[string]any{"type": "string", "minLength": 1, "maxLength": 4096, "writeOnly": true}
 	}
 	properties := map[string]any{"name": text(256)}
-	if plugin == "musicfs.plugin.source.localfiles" {
-		properties["importDefaults"] = pluginconfig.LocalFiles().ImportOptionsSchema
-		properties["musicRoots"] = map[string]any{"type": "array", "minItems": 0, "maxItems": 256, "items": map[string]any{"type": "object", "required": []string{"id", "name"}, "additionalProperties": false, "properties": map[string]any{"id": map[string]any{"type": "string", "minLength": 1, "maxLength": 128}, "name": text(256), "path": path(), "importDefaults": pluginconfig.LocalFiles().ImportOptionsSchema}}}
+	if pluginconfig.SupportsDirectories(plugin) {
+		declaration := pluginconfig.Configuration(plugin)
+		properties["importDefaults"] = declaration.ImportOptionsSchema
+		properties["musicRoots"] = map[string]any{"type": "array", "minItems": 0, "maxItems": 256, "items": map[string]any{"type": "object", "required": []string{"id", "name"}, "additionalProperties": false, "properties": map[string]any{"id": map[string]any{"type": "string", "minLength": 1, "maxLength": 128}, "name": text(256), "path": path(), "importDefaults": declaration.ImportOptionsSchema}}}
 		properties["watch"] = map[string]any{"type": "object", "required": []string{"enabled", "debounceMs", "maxDelayMs", "fullRescanSeconds"}, "additionalProperties": false, "properties": map[string]any{"enabled": map[string]any{"type": "boolean"}, "debounceMs": map[string]any{"type": "integer", "minimum": 100, "maximum": 30000}, "maxDelayMs": map[string]any{"type": "integer", "minimum": 100, "maximum": 60000}, "fullRescanSeconds": map[string]any{"type": "integer", "minimum": 30, "maximum": 86400}}}
 	}
-	if plugin == "musicfs.plugin.decoder.ffmpeg" {
+	if pluginconfig.NeedsAudioTools(plugin) {
 		properties["ffmpegPath"] = path()
 		properties["ffprobePath"] = path()
 	}

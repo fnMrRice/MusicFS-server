@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/directoryidentity"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginhost"
@@ -130,5 +131,37 @@ func TestLocalRebindRefusesOccupiedNewIdentity(t *testing.T) {
 	got, err := os.ReadFile(filepath.Join(cfg.StateDir, "plugin-state", key))
 	if err != nil || string(got) != string(raw) {
 		t.Fatal("conflicting alias changed")
+	}
+}
+
+func TestLocalRebindRejectsDamagedStateBeforePublishingIntent(t *testing.T) {
+	w, cfg, r := rebindFixture(t)
+	private := filepath.Join(cfg.StateDir, "plugin-state")
+	path := filepath.Join(private, directoryidentity.AliasKey(r.RootID, r.OldIdentity)+".json")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var damaged pluginproto.StateValue
+	if err := json.Unmarshal(raw, &damaged); err != nil {
+		t.Fatal(err)
+	}
+	damaged.Revision = -1
+	raw, err = json.Marshal(damaged)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.RebindLocalTrack(t.Context(), r); err == nil {
+		t.Fatal("damaged source state was rebound")
+	}
+	if _, err := os.Stat(filepath.Join(private, "host-rebind-intent.json")); !os.IsNotExist(err) {
+		t.Fatal("invalid source state published a recovery journal", err)
+	}
+	actual, err := os.ReadFile(path)
+	if err != nil || string(actual) != string(raw) {
+		t.Fatal("invalid source state was partially modified", err)
 	}
 }

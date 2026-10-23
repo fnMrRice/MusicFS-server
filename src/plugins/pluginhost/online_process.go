@@ -106,6 +106,12 @@ func StartOnline(parent context.Context, config OnlineConfig) (worker *OnlineWor
 				cmd.Env = append(cmd.Env, key+"="+v)
 			}
 		}
+		// 环境授权来自受信任插件装配；Worker 描述符不能申请其它宿主环境变量。
+		for _, key := range onlineplugins.Plugin(config.Platform, onlineplugins.Options{}).Environment {
+			if value := os.Getenv(key); value != "" {
+				cmd.Env = append(cmd.Env, key+"="+value)
+			}
+		}
 		stdin, err := cmd.StdinPipe()
 		if err != nil {
 			cancel()

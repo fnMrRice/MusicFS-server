@@ -11,6 +11,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
 )
 
 var backendName = regexp.MustCompile(`^[a-z][a-z0-9-]{0,63}$`)
@@ -54,6 +55,11 @@ func (r *Registry) Register(driver Driver) error {
 	}
 	if _, exists := r.drivers[driver.Name]; exists {
 		return domain.Fail("CONFLICT", "Storage backend is already registered")
+	}
+	if r == Default {
+		if err := plugindb.Register(driver.Name, driver.OpenPluginState, driver.ReadPluginState); err != nil {
+			return err
+		}
 	}
 	r.drivers[driver.Name] = driver
 	return nil

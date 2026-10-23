@@ -48,7 +48,7 @@
 | `pluginBundle` | 可选全量插件统一程序路径，同时限定同目录的独立在线插件发现位置；省略时检查 Server 程序同目录；空字符串关闭发现 |
 | `writeBack.enabled` | 默认false；显式原件写回开关，不由上传/选用/自动补缺开启 |
 | `writeBack.allowOverwrite` | 默认false；覆盖旧标签还要求本次请求显式overwrite |
-| `writeBack.maxFileBytes` | 默认8589934592（8 GiB），范围46—1099511627776（1 TiB） |
+| `writeBack.maxFileBytes` | 默认8589934592（8 GiB），范围1—1099511627776（1 TiB）；结构最小长度由标签插件验证 |
 | `writeBack.roots` | 默认空；最多256个不重复的`{instanceId,rootId,fields}`授权，字段限lyrics/artwork |
 
 优先级为内置默认值 → YAML → 支持的环境变量 → 显式CLI参数。支持 `MUSICFS_LISTEN`、`MUSICFS_DATA_ROOT`、`MUSICFS_MEDIA_ROOT`、`MUSICFS_CACHE_ROOT`、`MUSICFS_WEB_ROOT`、`MUSICFS_LOG_LEVEL` 和 `MUSICFS_ADMIN_TOKEN`；当前CLI仅为普通配置提供 `--web-root` 覆盖，`--config`选择文件。插件及实例开关不接受环境或CLI覆盖。

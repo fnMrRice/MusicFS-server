@@ -1,43 +1,17 @@
 package builtin
 
+import "github.com/fnMrRice/MusicFS-server/src/playback/audio"
+
 // Port 描述插件可接受的 PCM 格式；具体输出由节点根据参数协商。
-type Port struct {
-	SampleFormat string   `json:"sampleFormat"`
-	SampleRate   int      `json:"sampleRate"`
-	Layouts      []string `json:"layouts"`
-}
+type Port = audio.Port
 
-type OutputPort struct {
-	CanContinueDSP bool     `json:"canContinueDSP"`
-	SameAsInput    bool     `json:"sameAsInput"`
-	Layouts        []string `json:"layouts"`
-}
+type OutputPort = audio.OutputPort
 
-type ParameterOption struct {
-	Label string  `json:"label"`
-	Value float64 `json:"value"`
-}
+type ParameterOption = audio.ParameterOption
 
-type Parameter struct {
-	Key          string            `json:"key"`
-	Label        string            `json:"label"`
-	Min          float64           `json:"min"`
-	Max          float64           `json:"max"`
-	Step         float64           `json:"step"`
-	DefaultValue float64           `json:"defaultValue"`
-	Options      []ParameterOption `json:"options,omitempty"`
-}
+type Parameter = audio.Parameter
 
-type Descriptor struct {
-	Name        string      `json:"name"`
-	Aliases     []string    `json:"aliases,omitempty"`
-	Version     int         `json:"version"`
-	DisplayName string      `json:"displayName"`
-	Description string      `json:"description"`
-	Input       Port        `json:"input"`
-	Output      OutputPort  `json:"output"`
-	Parameters  []Parameter `json:"parameters"`
-}
+type Descriptor = audio.Descriptor
 
 // Catalog 由内置插件提供设置声明，宿主和前端不维护另一套参数范围。
 func Catalog() []Descriptor {

@@ -24,6 +24,9 @@ func TestCatalogMetadataActualProbeTagsRateAndUnknownValues(t *testing.T) {
 	if err != nil || m.Album == nil || *m.Album != "Album" || m.Genre == nil || *m.Genre != "Rock" || m.Year == nil || *m.Year != 2024 || m.SampleRateHz == nil || *m.SampleRateHz != 48000 {
 		t.Fatal(m, err)
 	}
+	if m.ProbeAlgorithm != "ffprobe" || m.ProbeVersion == "" {
+		t.Fatalf("metadata probe lost its algorithm identity: %+v", m)
+	}
 	wave := toneWave(1)
 	unknown, err := audioffmpeg.ProbeMetadata(context.Background(), ffprobe, bytes.NewReader(wave), int64(len(wave)))
 	if err != nil || unknown.Album != nil || unknown.Genre != nil || unknown.Year != nil || unknown.SampleRateHz == nil || *unknown.SampleRateHz != 48000 {

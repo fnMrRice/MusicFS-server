@@ -3,6 +3,7 @@ package bilibili
 import (
 	"context"
 	"errors"
+	"github.com/fnMrRice/MusicFS-server/plugins/source/online/internal/policies"
 	"net/url"
 	"strconv"
 	"strings"
@@ -127,7 +128,7 @@ func (c *Client) audio(ctx context.Context, r reference) (audioInfo, error) {
 }
 
 func (c *Client) Metadata(ctx context.Context, raw string) (online.Track, error) {
-	if strings.HasPrefix(raw, "unavailable:") && online.BilibiliEntryID(raw) {
+	if strings.HasPrefix(raw, "unavailable:") && policies.Bilibili().ValidPlaylistEntry(raw) {
 		return online.Track{}, fault.Fail("NOT_FOUND", "Bilibili collection item is unavailable")
 	}
 	r, err := parseReference(raw)

@@ -4,12 +4,13 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
-	"github.com/fnMrRice/MusicFS-server/plugins/scraper/local"
+	_ "github.com/fnMrRice/MusicFS-server/plugins/scraper/local"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichmentworker"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audioruntime"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
@@ -18,14 +19,15 @@ func configureEnrichment(ctx context.Context, c config.Config, log *slog.Logger,
 	runtimes := []enrichmentworker.Runtime{}
 	available := false
 	for _, plugin := range c.Plugins {
-		if plugin.PluginID != scraperlocal.PluginID {
+		registration, registered := enrichment.Lookup(plugin.PluginID)
+		if !registered {
 			continue
 		}
 		for _, instance := range plugin.Instances {
-			runtime := enrichmentworker.Runtime{ID: instance.InstanceID, Name: instance.Name, Owner: "admin", Enabled: plugin.CanStart(instance)}
+			runtime := enrichmentworker.Runtime{ID: instance.InstanceID, Name: instance.Name, Owner: "admin", Descriptor: registration.Descriptor, Enabled: plugin.CanStart(instance)}
 			if plugin.CanStart(instance) {
 				var err error
-				runtime.Host, err = scraperlocal.NewHost(scraperlocal.Config{Builtin: plugin.InProcess(), WorkerPath: plugin.Executable, WorkerArgs: plugin.Args, WorkerSHA256: pluginChecksum(plugin), WorkDir: c.DataRoot, InstanceID: instance.InstanceID, MaxConcurrent: 1})
+				runtime.Host, err = registration.Open(enrichment.HostConfig{Builtin: plugin.InProcess(), WorkerPath: plugin.Executable, WorkerArgs: plugin.Args, WorkerSHA256: pluginChecksum(plugin), WorkDir: c.DataRoot, InstanceID: instance.InstanceID, MaxConcurrent: 1})
 				if err != nil {
 					log.Warn("scraper instance unavailable", "pluginId", plugin.PluginID, "instanceId", instance.InstanceID, "errorCode", pluginproto.ErrorCode(err))
 				}
@@ -34,13 +36,12 @@ func configureEnrichment(ctx context.Context, c config.Config, log *slog.Logger,
 			runtimes = append(runtimes, runtime)
 		}
 	}
-	var decoder *ncmdecoder.Processor
+	var decoder audioruntime.Decoder
 	if available {
-		// A fresh processor provides a separate one-slot background lane; it is
-		// not shared with playback or the fingerprint worker's NCM admission.
-		decoder = fingerprintNCMDecoder(c, log)
+		// 后台解码使用独立的单任务实例，不占用播放或指纹任务的并发配额。
+		decoder = backgroundDecoder(c, log)
 	}
-	service, err := enrichmentworker.New(store, lib, content, runtimes, enrichmentworker.Config{MaxConcurrent: 1, NCMDecoder: decoder, Automatic: c.Metadata.Automatic})
+	service, err := enrichmentworker.New(store, lib, content, runtimes, enrichmentworker.Config{MaxConcurrent: 1, Decoder: decoder, Automatic: c.Metadata.Automatic})
 	if err != nil {
 		return nil, err
 	}

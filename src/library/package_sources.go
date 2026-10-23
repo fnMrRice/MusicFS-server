@@ -34,9 +34,9 @@ func (s *Service) packageLease(ctx context.Context, owner, provider string) (*Re
 		lease.Close()
 		return nil, domain.Fail("SOURCE_OFFLINE", "Package provider is offline")
 	}
-	if w.Manifest.PluginID != "musicfs.plugin.source.localfiles" {
+	if !w.Supports("library.packages") {
 		lease.Close()
-		return nil, domain.Fail("UNSUPPORTED", "Package imports require Local Files")
+		return nil, domain.Fail("UNSUPPORTED", "Provider does not support package imports")
 	}
 	select {
 	case <-w.Done():

@@ -5,8 +5,9 @@ import (
 	"log/slog"
 	"os"
 
-	audioffmpeg "github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
+	"github.com/fnMrRice/MusicFS-server/sdk/audiotypes"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audiocodecs"
 )
 
 func (p *preparedInput) inspectOriginalProfile(ctx context.Context, track *library.Track) error {
@@ -14,11 +15,14 @@ func (p *preparedInput) inspectOriginalProfile(ctx context.Context, track *libra
 		return inspectWave(p.path, track, &p.profile)
 	}
 	if track.MIME == "audio/flac" {
-		info, err := audioffmpeg.InspectNativeFLAC(p.path, p.size)
+		info, err := audiocodecs.InspectNative("audio/flac", p.path, p.size)
 		if err != nil {
 			return err
 		}
-		p.profile.Channels, p.profile.SampleRate = info.Channels, info.SampleRate
+		p.profile.Channels = info.Channels
+		if info.SampleRateHz != nil {
+			p.profile.SampleRate = int(*info.SampleRateHz)
+		}
 		if info.DurationMs != nil {
 			track.DurationMs = info.DurationMs
 		}
@@ -29,7 +33,7 @@ func (p *preparedInput) inspectOriginalProfile(ctx context.Context, track *libra
 		return err
 	}
 	defer file.Close()
-	// 此时快照已解除 NCM 封装；探测实际交付字节，不读原文件或重新扫描音乐库。
+	// 此时快照已解除封装；探测实际交付字节，不读原文件或重新扫描音乐库。
 	metadata, err := p.processor.ProbeOutputMetadata(ctx, file, p.size)
 	if err != nil {
 		slog.DebugContext(ctx, "Original playback metadata unavailable", "error", err)
@@ -51,7 +55,7 @@ func (p *preparedInput) inspectOriginalProfile(ctx context.Context, track *libra
 	return ctx.Err()
 }
 
-func setOriginalLayout(profile *audioffmpeg.Profile) {
+func setOriginalLayout(profile *audiotypes.Profile) {
 	if profile.Channels == 1 {
 		profile.Layout = "mono"
 	} else if profile.Channels == 2 {

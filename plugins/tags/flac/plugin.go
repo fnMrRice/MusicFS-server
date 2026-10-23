@@ -14,6 +14,10 @@ var _ tagformat.Format = (*Plugin)(nil)
 
 func New() *Plugin { return &Plugin{} }
 
+func (*Plugin) Descriptor() tagformat.Descriptor {
+	return tagformat.Descriptor{Formats: []string{"flac"}, Extensions: []string{".flac"}, Fields: []string{"title", "artists", "album", "lyrics", "artwork"}}
+}
+
 func invalid(message string) error     { return fault.Fail("INVALID_ARGUMENT", message) }
 func unsupported(message string) error { return fault.Fail("UNSUPPORTED", message) }
 

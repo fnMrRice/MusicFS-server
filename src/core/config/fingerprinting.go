@@ -26,13 +26,6 @@ func (c Config) validateFingerprinting() error {
 	if f.FpcalcPath == "" || f.FpcalcSHA256 == "" {
 		return errors.New("enabled fingerprinting requires fpcalcPath and fpcalcSha256")
 	}
-	for _, plugin := range c.Plugins {
-		if plugin.PluginID != "musicfs.plugin.decoder.ffmpeg" {
-			continue
-		}
-		if len(plugin.Instances) > 0 {
-			return nil
-		}
-	}
-	return errors.New("enabled fingerprinting requires a configured audio FFmpeg instance")
+	// 规范化能力由实际装配的音频处理器确认，不按某个插件身份推断。
+	return nil
 }

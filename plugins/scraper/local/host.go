@@ -23,22 +23,13 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 )
 
-type Config struct {
-	Builtin                                       bool
-	WorkerArgs                                    []string
-	WorkerPath, WorkerSHA256, WorkDir, InstanceID string
-	MaxConcurrent                                 int
-}
+type Config = enrichment.HostConfig
 type Host struct {
 	config  Config
 	slots   chan struct{}
 	version atomic.Pointer[string]
 }
-type Input struct {
-	Resource enrichment.Resource
-	Reader   io.ReaderAt
-	Validate func() error
-}
+type Input = enrichment.Input
 type Session struct {
 	ctx       context.Context
 	cancel    context.CancelFunc
@@ -73,7 +64,7 @@ func NewHost(config Config) (*Host, error) {
 	return &Host{config: config, slots: make(chan struct{}, config.MaxConcurrent)}, nil
 }
 
-func (h *Host) Open(parent context.Context, scope pluginproto.Context, target enrichment.Target, inputs []Input) (opened *Session, openErr error) {
+func (h *Host) Open(parent context.Context, scope pluginproto.Context, target enrichment.Target, inputs []Input) (opened enrichment.Session, openErr error) {
 	parent = pluginlog.Context(parent, PluginID, h.config.InstanceID)
 	finish := pluginlog.Operation(parent, "scraper.open")
 	defer func() { finish(openErr) }()
@@ -217,6 +208,13 @@ func (h *Host) Open(parent context.Context, scope pluginproto.Context, target en
 }
 
 // PluginVersion returns only a release verified by a completed worker handshake.
+func (*Host) Descriptor() enrichment.Descriptor { return Descriptor() }
+
+// Descriptor 返回本地插件支持的字段与查询能力。
+func Descriptor() enrichment.Descriptor {
+	return enrichment.Descriptor{PluginID: PluginID, Fields: []string{"lyrics", "artwork"}}
+}
+
 func (h *Host) PluginVersion() string {
 	if version := h.version.Load(); version != nil {
 		return *version

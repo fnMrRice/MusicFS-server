@@ -14,7 +14,7 @@
 
 三个在线源统一要求登录：实例发现、能力说明与账号控制面可以在平台未登录时使用；所有业务查询与导入/同步必须有 signedIn 账号，重启恢复的 unverified 状态也不可查询。不会退回匿名接口。网易云所有已实现业务请求改用 PC EAPI 和账号 Cookie；QQ 曲目搜索改用带 musicKey/uin 的桌面 RPC，参考原始客户端抓包说明 [QQMusicApi issue 160](https://github.com/jsososo/QQMusicApi/issues/160)，不再调用 client_search_cp。Apple Music 及 QQ 尚未实现的业务能力在登录后仍明确返回 UNSUPPORTED；不因登录成功虚构查询或完整音频能力。独立 Scraper 不获得 Provider 登录态。
 
-当前协议修订为 online-authenticated-v3，authentication 固定为 platformAccountRequired；Server 和对应 Worker 必须同时升级，旧匿名或 v2 Worker 不兼容。v3 增加插件自己的 ID、默认名与译名声明，见 [插件身份与名称](../plugins/plugin-identity.md)。Web 提供 loginRequired 来源状态及 PLATFORM_AUTH_REQUIRED（HTTP 403）提示；该错误不触发 MusicFS 会话退出。旧 Client 须同步适配这些状态，不能按旧匿名能力继续发起查询。
+当前协议修订为 `online-declared-v4`。插件声明 `authentication` 为 `platformAccountRequired` 或 `anonymous`，并提供资料规则和可选登录声明；本页三个账号插件均要求平台登录，Bilibili 不声明交互登录。Server 和对应 Worker 必须同时升级，旧修订不兼容。平台 ID、默认名与译名见 [插件身份与名称](../plugins/plugin-identity.md)。Web 提供 loginRequired 来源状态及 PLATFORM_AUTH_REQUIRED（HTTP 403）提示；该错误不触发 MusicFS 会话退出。
 
 ## 使用
 
@@ -29,6 +29,8 @@ QQ 的现有 `QQLogin` / `GetLoginUserInfo` 登录链路尚无已核验的头像
 `avatarUrl` 为可选增量：旧 Web 可忽略该字段，新 Web 对旧 Server、缺失头像或图片加载失败使用默认头像，旧账号快照无需迁移。Worker 通道严格拒绝未知字段，提供头像的新 Worker 必须与本次 Server 配套部署，不能连接旧 Host。
 
 Apple 由部署者将**自己的、适用于该网页来源的开发者 JWT**通过服务进程环境 `MUSICFS_APPLE_DEVELOPER_TOKEN` 提供；不把签名私钥或令牌放入配置提交。设置页先加载官方 MusicKit，再由用户点击“打开 Apple 授权”；授权结果只经同源 CSRF 保护的 POST 传给插件。未配置时入口明确不可用。开发者 JWT 会提供给本人页面用于 MusicKit，它不是 Apple 用户令牌。
+
+登录方法与验收状态由插件的 `login` 描述符提供，配置是否可用由 `provider.online.accountOptions` 返回。Apple 插件读取现有开发者 JWT，并通过此 RPC 保留本人浏览器所需的 `developerToken` 字段；宿主不再根据 Apple 平台名读取环境或组装登录选项。外部 Worker 的环境变量授权来自可信装配，RPC 描述符不能申请任意宿主环境。私钥、Cookie、用户令牌和内部 `secret` 不进入登录选项。
 
 ## 会话与持久化
 

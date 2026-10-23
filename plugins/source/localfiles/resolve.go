@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/directoryidentity"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
@@ -13,7 +14,7 @@ func (w *worker) resolve(ctx context.Context, r pluginproto.ResolveRequest, meta
 		return nil, fmt.Errorf("ACCESS_DENIED: invalid resolve request")
 	}
 	var state pluginproto.StateValue
-	if err := w.peer.Call(ctx, "host.state.get", pluginproto.StateRequest{Key: "track-" + r.ExternalID}, &state); err != nil {
+	if err := w.peer.Call(ctx, "host.state.get", pluginproto.StateRequest{Key: directoryidentity.TrackKey(r.ExternalID)}, &state); err != nil {
 		return nil, err
 	}
 	if len(state.Value) == 0 {

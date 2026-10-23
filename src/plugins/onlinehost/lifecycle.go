@@ -3,6 +3,7 @@ package onlinehost
 import (
 	"context"
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
@@ -65,6 +66,18 @@ func (s *Service) RecommendationProvider(owner, id string) interface {
 type scopedRecommendation struct {
 	host      *Service
 	owner, id string
+}
+
+// 推荐适配器同步传递当前实例的已验证声明，不自行重建平台策略。
+func (p scopedRecommendation) Descriptor() pluginproto.OnlineDescriptor {
+	p.host.mu.RLock()
+	defer p.host.mu.RUnlock()
+	for _, r := range p.host.runtimes {
+		if r.Owner == p.owner && r.InstanceID == p.id {
+			return r.descriptor.Clone()
+		}
+	}
+	return pluginproto.OnlineDescriptor{}
 }
 
 func (p scopedRecommendation) PublicRecommendations(ctx context.Context, limit int) (online.RecommendationPage, error) {

@@ -32,7 +32,7 @@ func (unusedFingerprintExtractor) Extract(context.Context, fingerprint.Request, 
 
 func fingerprintTestIdentity() fingerprint.Identity {
 	id := fingerprint.Identity{Algorithm: "chromaprint", AlgorithmVersion: "1.6.1", AlgorithmConfig: "cli-2-raw-v1", NormalizationRevision: audio.NormalizationRevision, QualityRevision: fingerprint.QualityRevision,
-		Fpcalc: fingerprint.ToolIdentity{Version: "fpcalc version 1.6.1 (test)", SHA256: strings.Repeat("a", 64)}, Decoder: fingerprint.ToolIdentity{Version: "ffmpeg test", SHA256: strings.Repeat("b", 64)}}
+		Analyzer: fingerprint.ToolIdentity{Version: "fpcalc version 1.6.1 (test)", SHA256: strings.Repeat("a", 64)}, Decoder: fingerprint.ToolIdentity{Version: "ffmpeg test", SHA256: strings.Repeat("b", 64)}}
 	b, _ := json.Marshal(id)
 	id.ConfigRevision = fmt.Sprintf("sha256-%x", sha256.Sum256(b))
 	return id

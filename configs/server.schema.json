@@ -20,7 +20,7 @@
     "audioChannels": {"type": "object", "additionalProperties": false, "properties": {"outputLayout": {"enum": ["stereo", "5.1", "7.1"], "default": "stereo"}, "enabled": {"type": "boolean", "default": false}}, "description": "声道扩展插件默认禁用；仅显式启用时应用 outputLayout，修改后重启生效。禁用时编码器按来源声道选择兼容格式。"},
     "audioDSP": {
       "type": "object", "additionalProperties": false,
-      "description": "服务端音效默认禁用；启用后按用户增益和配置顺序处理，非空链要求已启用的 FFmpeg 实例。声道转换独立配置，重启生效。",
+      "description": "服务端音效默认禁用；启用后按用户增益和配置顺序处理，非空链要求已启用且声明音频处理能力的实例。声道转换独立配置，重启生效。",
       "properties": {
         "enabled": {"type": "boolean", "default": false},
         "chain": {"type": "array", "maxItems": 15, "items": {"$ref": "#/$defs/DSPNode"}},
@@ -44,11 +44,11 @@
     "sessionTtlSeconds": {"type": "integer", "minimum": 60, "maximum": 86400, "default": 3600},
     "writeBack": {
       "type": "object", "additionalProperties": false,
-      "description": "默认禁用的显式本地FLAC写回；不自动授权所有音乐根，不接受路径或原始正文。启用时加载器还校验每个Local Files实例与根的双层启用状态。",
+      "description": "默认禁用的显式标签写回，具体格式由标签插件声明；不自动授权所有音乐根，不接受路径或原始正文。启用时加载器校验目录型来源实例与根的双层启用状态。",
       "properties": {
         "enabled": {"type": "boolean", "default": false},
         "allowOverwrite": {"type": "boolean", "default": false},
-        "maxFileBytes": {"type": "integer", "minimum": 46, "maximum": 1099511627776, "default": 8589934592},
+        "maxFileBytes": {"type": "integer", "minimum": 1, "maximum": 1099511627776, "default": 8589934592},
         "roots": {"type": "array", "maxItems": 256, "uniqueItems": true, "default": [], "items": {
           "type": "object", "additionalProperties": false, "required": ["instanceId", "rootId", "fields"],
           "properties": {
@@ -80,7 +80,7 @@
     "fingerprinting": {
       "type": "object",
       "additionalProperties": false,
-      "description": "手动本实例音频指纹；固定 Chromaprint 1.6.1/算法 2，禁用时不启动工具，无自动上传或外部检索。",
+      "description": "手动本实例音频指纹；默认装配 Chromaprint 1.6.1/算法 2，算法身份由分析插件提供，禁用时不启动工具，无自动上传或外部检索。",
       "properties": {
         "enabled": {
           "type": "boolean",
@@ -142,39 +142,27 @@
         "bytesPerSecond": {"type": "integer", "minimum": 65536, "maximum": 1073741824, "default": 4194304}
       }
     },
-    "plugins": {"type": "array", "items": {"oneOf": [{"$ref": "#/$defs/LocalPlugin"}, {"$ref": "#/$defs/FFmpegPlugin"}, {"$ref": "#/$defs/NCMPlugin"}, {"$ref": "#/$defs/LocalScraperPlugin"}, {"$ref": "#/$defs/OnlinePlugin"}]}}
+    "plugins": {"type": "array", "items": {"oneOf": [{"$ref": "#/$defs/LocalPlugin"}, {"$ref": "#/$defs/FFmpegPlugin"}, {"$ref": "#/$defs/NCMPlugin"}, {"$ref": "#/$defs/LocalScraperPlugin"}, {"$ref": "#/$defs/OnlinePlugin"}, {"$ref": "#/$defs/RegisteredPlugin"}]}}
   },
   "allOf": [
     {
-      "if": {"required": ["audioChannels"], "properties": {"audioChannels": {"required": ["enabled", "outputLayout"], "properties": {"outputLayout": {"enum": ["5.1", "7.1"]}, "enabled": {"const": true}}}}},
-      "then": {
-        "required": ["plugins"],
-        "properties": {
-          "plugins": {
-            "contains": {
-              "required": ["pluginId", "enabled", "instances"],
-              "properties": {
-                "pluginId": {"const": "musicfs.plugin.decoder.ffmpeg"},
-                "enabled": {"const": true},
-                "execution": {"const": "builtin"},
-                "instances": {"contains": {"required": ["enabled"], "properties": {"enabled": {"const": true}}}}
-              }
-            }
-          }
-        }
-      }
-    },
-    {
       "if": {
         "required": [
-          "fingerprinting"
+          "audioChannels"
         ],
         "properties": {
-          "fingerprinting": {
+          "audioChannels": {
             "required": [
-              "enabled"
+              "enabled",
+              "outputLayout"
             ],
             "properties": {
+              "outputLayout": {
+                "enum": [
+                  "5.1",
+                  "7.1"
+                ]
+              },
               "enabled": {
                 "const": true
               }
@@ -195,15 +183,22 @@
                 "instances"
               ],
               "properties": {
-                "pluginId": {
-                  "const": "musicfs.plugin.decoder.ffmpeg"
+                "enabled": {
+                  "const": true
+                },
+                "execution": {
+                  "const": "builtin"
                 },
                 "instances": {
                   "contains": {
                     "required": [
                       "enabled"
                     ],
-                    "properties": {}
+                    "properties": {
+                      "enabled": {
+                        "const": true
+                      }
+                    }
                   }
                 }
               }
@@ -222,7 +217,8 @@
         "params": {"type": "object", "maxProperties": 64, "propertyNames": {"minLength": 1, "maxLength": 64}, "additionalProperties": {"type": "number"}}
       }
     },
-    "DSPPlugin": {"type":"object","additionalProperties":false,"required":["name"],"properties":{"name":{"type":"string","pattern":"^[a-z][a-z0-9_.-]{0,63}$","not":{"enum":["gain","bypass","equalizer","compressor","reverb","musicfs.dsp.equalizer","musicfs.dsp.compressor","musicfs.dsp.reverb","channelmix","musicfs.dsp.channelmix","musicfs.plugin.decoder.channelmix"]}},"executable":{"$ref":"#/$defs/NonemptyPath"},"sha256":{"type":"string","pattern":"^[a-fA-F0-9]{64}$"},"args":{"type":"array","maxItems":32,"items":{"type":"string","maxLength":4096}},"timeoutMs":{"type":"integer","anyOf":[{"const":0},{"minimum":10,"maximum":30000}],"default":5000},"builtin":{"type":"boolean","description":"官方 musicfs.dsp.gain 在主进程内执行；其他插件不可声明内置。"}},"if":{"properties":{"name":{"const":"musicfs.dsp.gain"}}},"else":{"required":["executable","sha256"]},"allOf":[{"if":{"required":["builtin"],"properties":{"builtin":{"const":true}}},"then":{"properties":{"name":{"const":"musicfs.dsp.gain"}}}}]},
+    "DSPPlugin": {"type":"object","additionalProperties":false,"required":["name"],"properties":{"name":{"type":"string","pattern":"^[a-z][a-z0-9_.-]{0,63}$"},"executable":{"$ref":"#/$defs/NonemptyPath"},"sha256":{"type":"string","pattern":"^[a-fA-F0-9]{64}$"},"args":{"type":"array","maxItems":32,"items":{"type":"string","maxLength":4096}},"timeoutMs":{"type":"integer","anyOf":[{"const":0},{"minimum":10,"maximum":30000}],"default":5000},"builtin":{"type":"boolean","description":"由可信装配注册的进程内 DSP；加载器检查工厂是否存在。"}},"if":{"anyOf":[{"required":["builtin"],"properties":{"builtin":{"const":true}}},{"properties":{"name":{"const":"musicfs.dsp.gain"}}}]},"else":{"required":["executable","sha256"],"properties":{"name":{"not":{"enum":["gain","bypass","equalizer","compressor","reverb","musicfs.dsp.equalizer","musicfs.dsp.compressor","musicfs.dsp.reverb","channelmix","musicfs.dsp.channelmix","musicfs.plugin.decoder.channelmix"]}}}}},
+    "RegisteredPlugin": {"allOf":[{"$ref":"#/$defs/Plugin"}],"description":"其他受信任注册插件；角色、能力、实例数量和配置由运行时注册声明校验，未注册身份仍拒绝。","properties":{"pluginId":{"not":{"enum":["musicfs.plugin.source.localfiles","musicfs.plugin.decoder.ffmpeg","musicfs.plugin.decoder.ncm","musicfs.scraper.local","musicfs.plugin.source.netease","musicfs.plugin.source.qqmusic","musicfs.plugin.source.applemusic","musicfs.plugin.source.bilibili"]}},"instances":{"items":{"$ref":"#/$defs/Instance"}}}},
     "OnlinePlugin": {"allOf": [{"$ref": "#/$defs/Plugin"}], "description": "按 MusicFS 用户及音乐平台账号隔离的在线实例；ownerUserId 省略时为 admin。每个实例只绑定一个平台账号，多个账号配置不同 instanceId。加载器额外限制在线平台总共最多16实例。禁止配置URL、Cookie、token或导入选项。", "properties": {"pluginId": {"enum": ["musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic", "musicfs.plugin.source.bilibili"]}, "instances": {"type": "array", "maxItems": 16, "items": {"allOf": [{"$ref": "#/$defs/Instance"}], "properties": {"config": {"type": "object", "additionalProperties": false}, "importDefaults": false}}}}},
     "ImportOverrides": {"type": "object", "additionalProperties": false, "properties": {"recursive": {"type": "boolean"}, "maxDepth": {"type": "integer", "minimum": 0, "maximum": 64, "description": "开启递归时 0 表示不限深度，1—64 表示最多进入的子目录层数；关闭递归时只能为 0。"}, "importLyrics": {"type": "boolean"}, "skipHidden": {"type": "boolean", "description": "跳过点开头条目和 Windows 隐藏文件、目录。"}, "respectNoMedia": {"type": "boolean", "description": "遵循 .nomedia 标记，跳过所在目录及子目录。"}, "excludePatterns": {"type": "array", "maxItems": 32, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 256}, "description": "根相对 / 路径，*、? 和独立段 **；大小写敏感。匹配目录排除整支。运行时另验证UTF-8字节上限、禁止绝对/点路径、反斜线、字符类和否定。"}, "importArtwork": {"type": "boolean", "description": "扫描成功后提取内嵌或同名旁置封面并保存媒体数据目录；只补缺失且未锁定的封面。Local Files 默认开启，可按目录或本次扫描关闭。"}}, "if": {"properties": {"recursive": {"const": true}}, "required": ["recursive"]}, "then": {"properties": {"maxDepth": {"minimum": 0}}}, "else": {"if": {"required": ["recursive"]}, "then": {"properties": {"maxDepth": {"const": 0}}}}, "description": "部分覆盖；关闭且未给深度规范为 0；从关闭切换开启且未给深度恢复 0；开启递归时 0 表示不限深度，1—64 表示子目录层数。null 与未知字段拒绝。importLyrics 在成功扫描后按资产版本补齐缺失且未人工锁定的歌词；需启用本地 Scraper。"},
     "ID": {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,128}$"},
@@ -231,7 +227,7 @@
     "NonemptyPath": {"$ref": "#/$defs/Path", "minLength": 1},
     "Enabled": {"type": "object", "required": ["enabled"], "properties": {"enabled": {"const": true}}},
     "BundledPlugin": {"required": ["args"], "properties": {"args": {"type": "array", "prefixItems": [{"const": "--plugin"}], "minItems": 2}}},
-    "Plugin": {"type":"object","additionalProperties":false,"required":["pluginId"],"properties":{"pluginId":{"enum":["musicfs.plugin.source.localfiles","musicfs.plugin.decoder.ffmpeg","musicfs.plugin.decoder.ncm","musicfs.scraper.local","musicfs.plugin.source.netease","musicfs.plugin.source.qqmusic","musicfs.plugin.source.applemusic", "musicfs.plugin.source.bilibili"]},"executable":{"$ref":"#/$defs/Path"},"args":{"type":"array","maxItems":64,"items":{"type":"string","maxLength":4096,"pattern":"^[^\u0000]*$"}},"sha256":{"type":"string","pattern":"^(?:[a-fA-F0-9]{64})?$"},"enabled":{"type":"boolean","default":false},"instances":{"type":"array"},"execution":{"enum":["builtin","process"],"default":"builtin"}},"if":{"allOf":[{"$ref":"#/$defs/Enabled"},{"required":["execution"],"properties":{"execution":{"const":"process"}}}]},"then":{"required":["executable"],"properties":{"executable":{"$ref":"#/$defs/NonemptyPath"}}}},
+    "Plugin": {"type":"object","additionalProperties":false,"required":["pluginId"],"properties":{"pluginId":{"type":"string","pattern":"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},"executable":{"$ref":"#/$defs/Path"},"args":{"type":"array","maxItems":64,"items":{"type":"string","maxLength":4096,"pattern":"^[^\u0000]*$"}},"sha256":{"type":"string","pattern":"^(?:[a-fA-F0-9]{64})?$"},"enabled":{"type":"boolean","default":false},"instances":{"type":"array"},"execution":{"enum":["builtin","process"],"default":"builtin"}},"if":{"allOf":[{"$ref":"#/$defs/Enabled"},{"required":["execution"],"properties":{"execution":{"const":"process"}}}]},"then":{"required":["executable"],"properties":{"executable":{"$ref":"#/$defs/NonemptyPath"}}}},
     "Instance": {
       "type": "object",
       "additionalProperties": false,

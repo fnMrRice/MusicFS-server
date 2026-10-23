@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/hex"
 	"fmt"
+	"maps"
 	"reflect"
 	"regexp"
 	"strings"
@@ -31,11 +32,11 @@ type AudioDSPConfig struct {
 }
 
 func PluginDatabaseBackend(c Config) plugindb.BackendConfig {
-	name := "sqlite"
-	if c.Storage.Backend == "plugin" {
-		name = "plugin"
+	name := c.Storage.Backend
+	if name == "" {
+		name = "sqlite"
 	}
-	return plugindb.BackendConfig{Name: name, Executable: c.Storage.Executable,
+	return plugindb.BackendConfig{Name: name, DataRoot: c.DataRoot, Options: maps.Clone(c.Storage.Options), Executable: c.Storage.Executable,
 		SHA256: c.Storage.SHA256, Args: append([]string(nil), c.Storage.Args...)}
 }
 

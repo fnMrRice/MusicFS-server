@@ -6,7 +6,7 @@
 
 - 默认主进程内置运行；`musicfs-plugins --plugin ncm` 仅供显式外部模式。插件标识 `musicfs.plugin.decoder.ncm`，角色 `audio`，能力 `audio.decrypt`。
 - 核心采用 Go 标准库重写；参考 [taurusxin/ncmdump-go 的 MIT 实现](https://git.taurusxin.com/taurusxin/ncmdump-go/src/branch/main/ncmcrypt/ncmcrypt.go)及 [ncmdump.rs 的 MIT 实现](https://github.com/iqiziqi/ncmdump.rs/blob/master/crates/ncmdump/src/ncmdump.rs)。未引入这两个项目的运行依赖，也未移植 GPL 的 keuin/ncm 源码。
-- NCM 是外层加密容器。解密结果保持内部编码字节，不将 MP3/FLAC 解码再压缩；后续仅在终端不兼容或用户要求 DSP 时进入已有 FFmpeg 管线。
+- NCM 是外层加密容器。解密结果保持内部编码字节，不将 MP3/FLAC 解码再压缩；后续仅在终端不兼容或用户要求 DSP 时进入已配置处理器，默认实现为 FFmpeg。宿主装配规则见[音频插件边界](plugin-boundaries.md)。
 - 原始文件只读，封面 URL 不下载，元数据不写回。外层封面作为独立有界附件输出，不写入解密后的 MP3/FLAC；曲名/艺术家可取自容器，时长/码率以内部音频的实际 ffprobe 结果为准。
 - NCM 插件只识别容器内封面的位置与长度，不解码图片。宿主将附件交给通用本地 Scraper 验证并生成候选；MP3/FLAC 自身的标签封面仍由同一 Scraper 提取，缩略图仍由现有内容变换插件处理。
 

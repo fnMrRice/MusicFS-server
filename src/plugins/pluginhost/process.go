@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/source/localfiles"
+	"github.com/fnMrRice/MusicFS-server/sdk/directoryidentity"
 	"github.com/fnMrRice/MusicFS-server/sdk/inprocess"
 	"github.com/fnMrRice/MusicFS-server/sdk/plugindisplay"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
@@ -41,11 +41,18 @@ type Worker struct {
 }
 
 func Start(ctx context.Context, cfg Config) (worker *Worker, startErr error) {
-	ctx = pluginlog.Context(ctx, "musicfs.plugin.source.localfiles", cfg.InstanceID)
+	if cfg.PluginID == "" {
+		cfg.PluginID = defaultDirectoryPlugin
+	}
+	ctx = pluginlog.Context(ctx, cfg.PluginID, cfg.InstanceID)
 	finish := pluginlog.Operation(ctx, "worker.start")
 	defer func() { finish(startErr) }()
 	if err := cfg.Validate(); err != nil {
 		return nil, err
+	}
+	run := directoryRunner(cfg.PluginID)
+	if cfg.Builtin && run == nil {
+		return nil, fmt.Errorf("UNSUPPORTED: builtin directory provider is not registered")
 	}
 	if err := os.MkdirAll(cfg.StateDir, 0700); err != nil {
 		return nil, err
@@ -85,7 +92,7 @@ func Start(ctx context.Context, cfg Config) (worker *Worker, startErr error) {
 	workerCtx, cancel := context.WithCancel(ctx)
 	w := &Worker{config: cfg, Access: access, cancel: cancel, done: make(chan struct{}), privateDir: privateDir, state: state, snapshots: map[string]entrySnapshot{}, scanGrants: map[string]scanGrant{}}
 	if cfg.Builtin {
-		local := inprocess.Start(workerCtx, localfiles.Run)
+		local := inprocess.Start(workerCtx, run)
 		w.peer = pluginproto.NewPeer(workerCtx, local.Output, local.Input, "h-", w.handle)
 		go func() {
 			<-local.Done
@@ -116,7 +123,7 @@ func Start(ctx context.Context, cfg Config) (worker *Worker, startErr error) {
 			os.Remove(privateDir)
 			return nil, err
 		}
-		stderr := logging.PluginStderr("musicfs.plugin.source.localfiles", cfg.InstanceID)
+		stderr := logging.PluginStderr(cfg.PluginID, cfg.InstanceID)
 		cmd.Stderr = stderr
 		defer func() {
 			if cmd.Process == nil {
@@ -150,7 +157,7 @@ func Start(ctx context.Context, cfg Config) (worker *Worker, startErr error) {
 	if err == nil {
 		err = pluginconfig.ValidateManifest(ready.Manifest, "provider")
 	}
-	if err == nil && (ready.InstanceID != cfg.InstanceID || ready.Nonce != nonce || ready.Manifest.PluginID != "musicfs.plugin.source.localfiles") {
+	if err == nil && (ready.InstanceID != cfg.InstanceID || ready.Nonce != nonce || ready.Manifest.PluginID != cfg.PluginID) {
 		err = fmt.Errorf("PROTOCOL_MISMATCH: invalid handshake")
 	}
 	if err == nil && (ready.Manifest.Plugin == nil || !slices.Contains(ready.Manifest.Plugin.Features, "music-source")) {
@@ -161,6 +168,10 @@ func Start(ctx context.Context, cfg Config) (worker *Worker, startErr error) {
 		return nil, err
 	}
 	w.Manifest = ready.Manifest
+	w.state.mu.Lock()
+	w.state.rebindEnabled = w.Supports(directoryidentity.Capability)
+	w.state.declarationReady = true
+	w.state.mu.Unlock()
 	pluginlog.Logger(ctx).InfoContext(ctx, "Plugin worker ready", "builtin", cfg.Builtin, "event", "plugin.lifecycle.started")
 	w.identity = ready.Manifest.Plugin.Clone()
 	displayContext, cancelDisplay := context.WithTimeout(ctx, time.Second)
@@ -212,6 +223,11 @@ func (w *Worker) Close() error {
 }
 
 func (w *Worker) peerContext() context.Context {
-	return pluginlog.Context(context.Background(), "musicfs.plugin.source.localfiles", w.config.InstanceID)
+	return pluginlog.Context(context.Background(), w.config.PluginID, w.config.InstanceID)
 }
 func (w *Worker) Done() <-chan struct{} { return w.done }
+
+// Supports 只读取握手后验证过的能力，不根据插件名称推断。
+func (w *Worker) Supports(capability string) bool {
+	return w != nil && slices.Contains(w.Manifest.Capabilities, capability)
+}

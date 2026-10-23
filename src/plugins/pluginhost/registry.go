@@ -9,11 +9,13 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 )
 
 type Config struct {
+	PluginID            string
 	Builtin             bool
 	Executable          string
 	Args                []string
@@ -41,6 +43,9 @@ func (c Config) snapshotTimeouts() (time.Duration, time.Duration) {
 }
 
 func (c Config) Validate() error {
+	if c.PluginID != "" && !pluginconfig.SupportsDirectories(c.PluginID) {
+		return fmt.Errorf("UNSUPPORTED: plugin has no registered directory capability")
+	}
 	idle, lifetime := c.snapshotTimeouts()
 	if idle <= 0 || lifetime <= 0 || idle > lifetime || lifetime > time.Hour {
 		return fmt.Errorf("ACCESS_DENIED: invalid scan snapshot timeouts")

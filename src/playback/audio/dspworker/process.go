@@ -10,8 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/dsp/gain"
-	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/sdk/inprocess"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
@@ -47,15 +45,13 @@ func New(ctx context.Context, cfg Config, params map[string]float64) (process *P
 		p.timeout = 5 * time.Second
 	}
 	if cfg.Builtin {
+		definition, ok := builtinFor(cfg.Name)
+		if !ok {
+			cancel()
+			return nil, fmt.Errorf("UNSUPPORTED: builtin DSP implementation unavailable")
+		}
 		local := inprocess.Start(ctx, func(ctx context.Context, input io.ReadCloser, output io.WriteCloser) error {
-			factory := func(params map[string]float64) (audio.Node, error) {
-				registry := audio.NewRegistry()
-				if err := dsp.Register(registry); err != nil {
-					return nil, err
-				}
-				return registry.Create("gain", params)
-			}
-			return Serve(ctx, input, output, cfg.Name, bundledplugin.GainVersion, factory)
+			return Serve(ctx, input, output, cfg.Name, definition.version, definition.factory)
 		})
 		p.input, p.output = local.Input, local.Output
 		p.cleanup = func() { _ = local.Close() }

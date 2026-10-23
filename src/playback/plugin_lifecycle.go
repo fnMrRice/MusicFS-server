@@ -2,21 +2,21 @@ package playback
 
 import (
 	"context"
+	"github.com/fnMrRice/MusicFS-server/sdk/audioformat"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audioruntime"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
 
 // UpdateAudio affects new sessions only. Existing sessions retain their verified
 // processor and admitted leases until stopping or explicit source recovery.
-func (s *Service) UpdateAudio(processor *audioffmpeg.Processor, decoder *ncmdecoder.Processor) {
+func (s *Service) UpdateAudio(processor audioruntime.Processor, decoder audioruntime.Decoder) {
 	s.mu.Lock()
-	s.processor, s.decoder = processor, decoder
+	s.processor, s.decoder = audioruntime.Safe(processor), decoder
 	s.mu.Unlock()
 }
 
-func (s *Service) audioSnapshot() (*audioffmpeg.Processor, *ncmdecoder.Processor) {
+func (s *Service) audioSnapshot() (audioruntime.Processor, audioruntime.Decoder) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.processor, s.decoder
@@ -34,15 +34,26 @@ func (p *preparedInput) processingLease(ctx context.Context) (context.Context, e
 	return plugincontrol.WithLease(ctx, lease), nil
 }
 
-func (p *preparedInput) decoderLease(ctx context.Context) (context.Context, error) {
-	if p.decoder == nil {
-		return ctx, nil
+func (p *preparedInput) decoderLease(ctx context.Context, decoder audioruntime.Decoder, request audioformat.Request, input audioformat.Input) (context.Context, error) {
+	id := decoder.AudioDecoder().PluginID
+	if id == p.processor.AudioDecoder().PluginID {
+		if p.processing != nil {
+			return plugincontrol.WithLease(ctx, p.processing), nil
+		}
+		return p.processingLease(ctx)
 	}
-	lease, err := p.decoder.AcquireLease(context.WithoutCancel(ctx))
+	if p.decoderLeases == nil {
+		p.decoderLeases = map[string]*plugincontrol.Lease{}
+	}
+	if lease, ok := p.decoderLeases[id]; ok {
+		return plugincontrol.WithLease(ctx, lease), nil
+	}
+	lease, err := decoder.AcquireLease(context.WithoutCancel(ctx))
 	if err != nil {
 		return ctx, err
 	}
-	p.decoding = lease
+	p.decoderLeases[id] = lease
+	p.decoding = append(p.decoding, lease)
 	return plugincontrol.WithLease(ctx, lease), nil
 }
 
@@ -52,7 +63,7 @@ func (p *preparedInput) checkLeases() error {
 			return err
 		}
 	}
-	for _, lease := range []*plugincontrol.Lease{p.processing, p.decoding} {
+	for _, lease := range append([]*plugincontrol.Lease{p.processing}, p.decoding...) {
 		if lease != nil {
 			if err := lease.Context().Err(); err != nil {
 				return err
@@ -70,7 +81,7 @@ func (s *Service) installPluginLeases(a *session, p *preparedInput) {
 		a.ctx = p.lease.WithContext(a.ctx)
 		a.unlinkPlugins = append(a.unlinkPlugins, context.AfterFunc(p.lease.Context(), a.cancel))
 	}
-	for _, lease := range []*plugincontrol.Lease{a.processing, a.decoding} {
+	for _, lease := range append([]*plugincontrol.Lease{a.processing}, a.decoding...) {
 		if lease == nil {
 			continue
 		}
@@ -85,6 +96,8 @@ func (a *session) releasePluginLeases() {
 	}
 	a.unlinkPlugins = nil
 	a.processing.Close()
-	a.decoding.Close()
+	for _, lease := range a.decoding {
+		lease.Close()
+	}
 	a.processing, a.decoding = nil, nil
 }

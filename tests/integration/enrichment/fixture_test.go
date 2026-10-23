@@ -116,7 +116,7 @@ func setup(t *testing.T) fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtimes := []enrichmentworker.Runtime{{ID: "d248bf34-1780-59d3-a557-9cf5d889e977", Name: "Local metadata", Owner: "admin", Host: host}, {ID: "disabled", Name: "Offline scraper", Owner: "admin"}}
+	runtimes := []enrichmentworker.Runtime{{ID: "d248bf34-1780-59d3-a557-9cf5d889e977", Name: "Local metadata", Owner: "admin", Host: host, Descriptor: scraperlocal.Descriptor()}, {ID: "disabled", Name: "Offline scraper", Owner: "admin", Descriptor: scraperlocal.Descriptor()}}
 	service, err := enrichmentworker.New(store, lib, content, runtimes, enrichmentworker.Config{MaxConcurrent: 1})
 	if err != nil {
 		t.Fatal(err)

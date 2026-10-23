@@ -45,11 +45,10 @@ func (d Detail) Encode() ([]byte, error) {
 	return raw, nil
 }
 
-// Validate checks the complete pinned algorithm identity without running tools.
+// Validate 验证公共证据身份和资源边界；具体算法与工具版本由插件负责。
 func (id Identity) Validate() error {
-	if id.NormalizationRevision != audio.NormalizationRevision || id.QualityRevision != QualityRevision || id.Algorithm != "chromaprint" || id.AlgorithmVersion != AlgorithmVersion || id.AlgorithmConfig != "cli-2-raw-v1" ||
-		id.ConfigRevision != id.Revision() || !validSHA(id.Decoder.SHA256) || !validSHA(id.Fpcalc.SHA256) || id.Decoder.Version == "" || len(id.Decoder.Version) > 512 ||
-		len(id.Fpcalc.Version) > 512 || strings.ContainsAny(id.Fpcalc.Version, "\r\n") || !strings.HasPrefix(id.Fpcalc.Version, "fpcalc version 1.6.1 (") || !strings.HasSuffix(id.Fpcalc.Version, ")") {
+	if id.NormalizationRevision != audio.NormalizationRevision || id.QualityRevision != QualityRevision || !validIdentityText(id.Algorithm, 128) || !validIdentityText(id.AlgorithmVersion, 128) || !validIdentityText(id.AlgorithmConfig, 128) ||
+		id.ConfigRevision != id.Revision() || !validSHA(id.Decoder.SHA256) || !validSHA(id.Analyzer.SHA256) || !validIdentityText(id.Decoder.Version, 512) || !validIdentityText(id.Analyzer.Version, 512) {
 		return fmt.Errorf("INVALID_ARGUMENT: invalid fingerprint identity")
 	}
 	return nil
@@ -61,6 +60,10 @@ func (id Identity) Revision() string {
 	raw, _ := json.Marshal(id)
 	sum := sha256.Sum256(raw)
 	return "sha256-" + hex.EncodeToString(sum[:])
+}
+
+func validIdentityText(value string, limit int) bool {
+	return value != "" && len(value) <= limit && !strings.ContainsAny(value, "\x00\r\n")
 }
 
 func validSHA(value string) bool {

@@ -37,7 +37,7 @@ func TestFavoritesFullPagingPartsDuplicatesAndUnavailable(t *testing.T) {
 	if !page.Complete || *page.Playlist.TrackCount != 41 || len(page.Items) != 30 || page.NextCursor == nil || viewCalls != 1 || listCalls != 2 {
 		t.Fatalf("incomplete favorites observation: %+v", page)
 	}
-	if err := online.ValidatePlaylistTracks("bilibili", page, r); err != nil {
+	if err := online.ValidatePlaylistTracks(Plugin(Options{}).Descriptor.Resources, page, r); err != nil {
 		t.Fatal(err)
 	}
 	r.Cursor = *page.NextCursor
@@ -52,7 +52,7 @@ func TestFavoritesFullPagingPartsDuplicatesAndUnavailable(t *testing.T) {
 	_, err = c.PlaylistTracks(context.Background(), r)
 	errorCode(t, err, "INVALID_ARGUMENT")
 	observation := c.snapshots[strings.Split(r.Cursor, ":")[0]].observation
-	if err := online.ValidateObservation("bilibili", observation, "favorite:99"); err != nil {
+	if err := online.ValidateObservation(Plugin(Options{}).Descriptor.Resources, observation, "favorite:99"); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -82,7 +82,7 @@ func TestAudioMenuReadsEveryPageAndPreservesDuplicates(t *testing.T) {
 	if pages != 2 || !observation.Complete || len(observation.Entries) != 101 || *observation.Playlist.TrackCount != 101 || observation.Entries[100].Position != 100 {
 		t.Fatal("audio menu pagination lost duplicate entries")
 	}
-	if err := online.ValidateObservation("bilibili", observation, "audio-menu:88"); err != nil {
+	if err := online.ValidateObservation(Plugin(Options{}).Descriptor.Resources, observation, "audio-menu:88"); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -178,7 +178,7 @@ func TestFavoritesCapReturnsIncompleteUnknownCount(t *testing.T) {
 	if o.Complete || o.Playlist.TrackCount != nil || len(o.Entries) != online.MaxPlaylistEntries {
 		t.Fatal("truncated collection claimed a complete count")
 	}
-	if err := online.ValidateObservation("bilibili", o, "favorite:99"); err != nil {
+	if err := online.ValidateObservation(Plugin(Options{}).Descriptor.Resources, o, "favorite:99"); err != nil {
 		t.Fatal(err)
 	}
 }

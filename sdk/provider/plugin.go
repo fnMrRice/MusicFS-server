@@ -38,6 +38,8 @@ type Plugin struct {
 	Descriptor pluginproto.OnlineDescriptor
 	Version    string
 	NewClient  Factory
+	// Environment 仅由受信任装配使用，不通过描述符或客户端请求授权。
+	Environment []string
 }
 
 func (p Plugin) Validate() error {

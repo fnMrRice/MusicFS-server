@@ -40,11 +40,11 @@ func TestCandidatesFingerprintBindingAndCompatibility(t *testing.T) {
 			d.PCM.SampleCount = 22050
 			d.Quality = fingerprint.Assess(d.Values, d.PCM.SampleCount)
 		}, false},
-		{"unrecognizedAlgorithm", func(v *candidates.Input) {
+		{"differentAlgorithmVersion", func(v *candidates.Input) {
 			d := &v.Fingerprint.Detail
 			d.Identity.AlgorithmVersion = "future"
 			stampCandidateIdentity(&d.Identity)
-		}, true},
+		}, false},
 		{"falseQuality", func(v *candidates.Input) { v.Fingerprint.Detail.Quality.Status = "short" }, true},
 		{"tooManyItems", func(v *candidates.Input) {
 			d := &v.Fingerprint.Detail

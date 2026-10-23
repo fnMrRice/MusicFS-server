@@ -85,7 +85,7 @@ func fixture(t *testing.T) (*repository, *details) {
 			values, samples = v.Fingerprint, v.Samples
 		}
 	}
-	id := fingerprint.Identity{Algorithm: "chromaprint", AlgorithmVersion: fingerprint.AlgorithmVersion, AlgorithmConfig: "cli-2-raw-v1", NormalizationRevision: audio.NormalizationRevision, QualityRevision: fingerprint.QualityRevision, Fpcalc: fingerprint.ToolIdentity{Version: "fpcalc version 1.6.1 (test identity)", SHA256: strings.Repeat("a", 64)}, Decoder: fingerprint.ToolIdentity{Version: "ffmpeg version test identity", SHA256: strings.Repeat("b", 64)}}
+	id := fingerprint.Identity{Algorithm: "chromaprint", AlgorithmVersion: "1.6.1", AlgorithmConfig: "cli-2-raw-v1", NormalizationRevision: audio.NormalizationRevision, QualityRevision: fingerprint.QualityRevision, Analyzer: fingerprint.ToolIdentity{Version: "fpcalc version 1.6.1 (test identity)", SHA256: strings.Repeat("a", 64)}, Decoder: fingerprint.ToolIdentity{Version: "ffmpeg version test identity", SHA256: strings.Repeat("b", 64)}}
 	b, _ := json.Marshal(id)
 	id.ConfigRevision = fmt.Sprintf("sha256-%x", sha256.Sum256(b))
 	d := fingerprint.Detail{SchemaVersion: 1, Identity: id, RequestedDurationMs: 120000, PCM: audio.PCMInfo{Format: audio.FingerprintPCM, NormalizationRevision: audio.NormalizationRevision, SampleCount: samples, DecoderVersion: id.Decoder.Version, DecoderSHA256: id.Decoder.SHA256}, Quality: fingerprint.Assess(values, samples), Values: values}

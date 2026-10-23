@@ -20,12 +20,12 @@ type cacheScope struct {
 // cacheScope is captured under the playback mutex; no subsequent attempt can
 // mutate the immutable processing identity held by an active stream.
 func (s *Service) cacheScope(a *session) cacheScope {
-	tool := a.processor.ProcessingIdentityForDecodeOutput(decodePlanOutput(a.decodeOutput))
+	tool := a.processor.RuntimeIdentity(decodePlanOutput(a.decodeOutput))
 	return cacheScope{
 		auth:  processedcache.Authorization{Owner: a.user, AuthID: a.owner, SessionID: a.description.SessionID, AttemptID: a.description.AttemptID},
 		track: a.track,
-		identity: processedcache.Identity{Owner: a.user, ProviderID: a.track.ProviderID, SourceTrackID: a.track.ID, AssetID: a.track.AssetID, Version: a.track.Version,
-			InputSHA256: strings.Trim(a.etag, "\""), WorkerSHA256: tool.WorkerSHA256, FFmpegSHA256: tool.FFmpegSHA256, PluginVersion: tool.PluginVersion,
+		identity: processedcache.Identity{Owner: a.user, ProviderID: a.track.ProviderID, SourceTrackID: a.track.ID, AssetID: a.track.AssetID, Version: a.track.Version, PluginID: a.processor.AudioDecoder().PluginID,
+			InputSHA256: strings.Trim(a.etag, "\""), WorkerSHA256: tool.WorkerSHA256, DecoderSHA256: tool.DecoderSHA256, PluginVersion: tool.PluginVersion,
 			PipelineRevision: tool.PipelineRevision, Profile: a.description.OutputProfile.ID, GainDB: a.gain, PositionMs: a.description.PositionOriginMs},
 	}
 }

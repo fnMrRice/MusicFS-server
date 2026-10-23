@@ -13,7 +13,7 @@ func (w *OnlineWorker) MetadataBatch(ctx context.Context, ids []string) (online.
 	}
 	result, err := onlineCall[online.TrackBatch](ctx, w, "provider.online.metadataBatch", scope, pluginproto.OnlineTrackBatch{Context: scope, ExternalIDs: ids})
 	if err == nil {
-		err = online.ValidateTrackBatch(w.config.Platform, result, ids)
+		err = online.ValidateTrackBatch(w.descriptor.Resources, result, ids)
 	}
 	if err != nil {
 		return online.TrackBatch{}, err
@@ -27,7 +27,7 @@ func (w *OnlineWorker) PlaylistTracks(ctx context.Context, r online.PlaylistTrac
 	}
 	result, err := onlineCall[online.PlaylistTracksPage](ctx, w, "provider.online.playlistTracks", scope, pluginproto.OnlinePlaylistTracks{Context: scope, PlaylistTracksRequest: r})
 	if err == nil {
-		err = online.ValidatePlaylistTracks(w.config.Platform, result, r)
+		err = online.ValidatePlaylistTracks(w.descriptor.Resources, result, r)
 	}
 	if err != nil {
 		return online.PlaylistTracksPage{}, err
@@ -42,7 +42,7 @@ func (w *OnlineWorker) Playlists(ctx context.Context, r online.PlaylistsRequest)
 	}
 	result, err := onlineCall[online.PlaylistsPage](ctx, w, "provider.online.playlists", scope, pluginproto.OnlinePlaylists{Context: scope, PlaylistsRequest: r})
 	if err == nil {
-		err = online.ValidatePlaylists(w.config.Platform, result, r.Limit)
+		err = online.ValidatePlaylists(w.descriptor.Resources, result, r.Limit)
 	}
 	if err != nil {
 		return online.PlaylistsPage{}, err

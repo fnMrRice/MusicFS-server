@@ -36,7 +36,8 @@ func (m *Manager) restore(ctx context.Context) error {
 		}
 		name := file.Name()
 		id, suffix, ok := strings.Cut(name, ".")
-		if !ok || !validHex(id, 48) || (suffix != "part" && suffix != "mp3" && suffix != "webm") {
+		// 旧扩展名仅用于清理失效文件；新缓存不根据具体编码器身份推断容器。
+		if !ok || !validHex(id, 48) || (suffix != "part" && suffix != "audio" && suffix != "mp3" && suffix != "webm") {
 			continue
 		}
 		path := filepath.Join(m.config.Root, name)

@@ -2,9 +2,15 @@ package pluginconfig
 
 import "github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 
-// Identity 提供官方插件的默认显示声明；宿主和 Worker 共用这些默认值，
-// 已验证的 Worker 可以提供更新后的显示名称。
+// Identity 返回可信注册声明；未接入通用实例的官方基础设施使用默认显示信息。
 func Identity(pluginID string) *pluginproto.PluginIdentity {
+	if d, ok := Lookup(pluginID); ok {
+		return d.Identity
+	}
+	return builtinIdentity(pluginID)
+}
+
+func builtinIdentity(pluginID string) *pluginproto.PluginIdentity {
 	identity := &pluginproto.PluginIdentity{ID: pluginID, LocalizedNames: map[string]string{}, Features: []string{}}
 	switch pluginID {
 	case "musicfs.plugin.analysis.chromaprint":

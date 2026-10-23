@@ -103,10 +103,16 @@ func (s *Service) collect(ctx context.Context, w enrichment.Work, out *enrichmen
 			return err
 		}
 		r, ok := s.Runtime(id)
-		attempt := trace.attempt(id)
+		attempt := trace.attempt(id, r.Descriptor.PluginID)
 		if !ok || r.Owner != w.Owner || r.Host == nil {
 			addIssue(out, id, "SOURCE_OFFLINE")
 			lastFailure = domain.Fail("SOURCE_OFFLINE", "Selected scraper instance is offline")
+			finishAttempt(attempt, lastFailure)
+			continue
+		}
+		if !r.Descriptor.Supports(w.Request.Fields, w.Request.Query) {
+			lastFailure = domain.Fail("UNSUPPORTED", "Scraper capabilities changed while queued")
+			addIssue(out, id, "UNSUPPORTED")
 			finishAttempt(attempt, lastFailure)
 			continue
 		}
@@ -175,8 +181,11 @@ func (s *Service) scrape(ctx context.Context, w enrichment.Work, task string, r 
 	}
 	defer session.Close()
 	attempt.PluginVersion = session.PluginVersion()
-	result, err := session.Search(ctx, w.Request.Fields, w.Request.Languages, nil)
+	result, err := session.Search(ctx, w.Request.Fields, w.Request.Languages, w.Request.Query)
 	if err != nil {
+		return err
+	}
+	if err := enrichment.ValidateSearchResult(result, w.Target, w.Request.Fields); err != nil {
 		return err
 	}
 	slog.DebugContext(ctx, "Metadata search completed", "jobId", w.JobID, "instanceId", r.ID, "candidates", len(result.Candidates), "issues", len(result.Issues), "durationMs", time.Since(started).Milliseconds())

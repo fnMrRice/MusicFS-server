@@ -160,10 +160,7 @@ func validateEnrichmentCandidate(ctx context.Context, tx *sql.Tx, w enrichment.W
 	if !slices.Contains(w.Request.InstanceIDs, c.InstanceID) || !slices.Contains(w.Request.Fields, c.Field) {
 		return bad()
 	}
-	validBasis := c.Origin == "sidecar" && (c.Basis == "exactStem" || c.Field == "artwork" && c.Basis == "directoryCover") ||
-		c.Origin == "embedded" && (c.Field == "lyrics" && slices.Contains([]string{"USLT", "LYRICS", "UNSYNCEDLYRICS"}, c.Basis) || c.Field == "artwork" && slices.Contains([]string{"APIC", "PICTURE"}, c.Basis)) ||
-		c.Origin == "container" && c.Field == "artwork" && c.Basis == "containerEmbedded"
-	if !validBasis {
+	if !enrichment.ValidProvenance(c.Origin, c.Basis, c.Field) {
 		return bad()
 	}
 	if c.Status == "unavailable" {

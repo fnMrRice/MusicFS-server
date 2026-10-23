@@ -121,7 +121,7 @@ func TestYAMLFingerprintsActualToolsMediaAuthorizationAndPlayback(t *testing.T) 
 			}
 			index := *job.Result
 			results[name] = index
-			if index.Quality.Status != "available" || index.ValueCount < 100 || !index.Current || index.ExtractorIdentity.Fpcalc.SHA256 != pin {
+			if index.Quality.Status != "available" || index.ValueCount < 100 || !index.Current || index.ExtractorIdentity.Analyzer.SHA256 != pin {
 				t.Fatalf("invalid real fingerprint: %+v", index)
 			}
 			if index.SampleCount < 31*11025 || index.SampleCount > 33*11025 {

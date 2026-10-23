@@ -49,8 +49,8 @@ func TestBilibiliOpenAPIResolveAndNamespaces(t *testing.T) {
 		valid  []string
 		reject []string
 	}{
-		{base + "/tracks/{externalId}", []string{"video:BV13x41117TL:101", "audio:10"}, []string{"unavailable:2:500", "audio:01", "favorite:10"}},
-		{base + "/playlists/{externalId}", []string{"favorite:10", "audio-menu:10"}, []string{"favorite:01", "video:BV13x41117TL:101", "https://example.invalid/list"}},
+		{base + "/tracks/{externalId}", []string{"video:BV13x41117TL:101", "audio:10", "custom_track.1"}, []string{"", "https://example.invalid/track", "id?redirect=x"}},
+		{base + "/playlists/{externalId}", []string{"favorite:10", "audio-menu:10", "custom_playlist.1"}, []string{"", "id#fragment", "https://example.invalid/list"}},
 	} {
 		item := paths[fixture.path].(map[string]any)
 		var pattern string

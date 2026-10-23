@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/audiotypes"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/src/core/logging"
 
@@ -17,14 +18,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio/dspworker"
 )
 
-type Plan struct {
-	TaskID       string  `json:"taskId"`
-	AssetID      string  `json:"assetId"`
-	Profile      string  `json:"profile"`
-	GainDB       float64 `json:"gainDB"`
-	PositionMs   int64   `json:"positionMs"`
-	DecodeOutput string  `json:"decodeOutput,omitempty"`
-}
+type Plan = audiotypes.Plan
 type StartRequest struct {
 	Plan              Plan               `json:"plan"`
 	FFmpegPath        string             `json:"ffmpegPath"`

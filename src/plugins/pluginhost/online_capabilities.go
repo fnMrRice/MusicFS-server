@@ -10,7 +10,7 @@ import (
 func (w *OnlineWorker) requireOnlineCapability(method string, request any) error {
 	capability := ""
 	switch method {
-	case "provider.online.describe", "provider.online.account":
+	case "provider.online.describe", "provider.online.account", "provider.online.accountOptions":
 		return nil
 	case "provider.online.search":
 		r, ok := request.(pluginproto.OnlineSearch)

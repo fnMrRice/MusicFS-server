@@ -11,12 +11,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
-	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
+	"github.com/fnMrRice/MusicFS-server/sdk/audioformat"
+	"github.com/fnMrRice/MusicFS-server/sdk/audiotypes"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audioruntime"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
 
@@ -31,10 +32,13 @@ type preparedInput struct {
 	reserved             int64
 	lease                *library.ReadLease
 	processed, decrypted bool
-	processor            *audioffmpeg.Processor
-	profile              audioffmpeg.Profile
-	decoder              *ncmdecoder.Processor
-	processing, decoding *plugincontrol.Lease
+	processor            audioruntime.Processor
+	profile              audiotypes.Profile
+	decoder              audioruntime.Decoder
+	decodeProcessing     []audioformat.Processing
+	processing           *plugincontrol.Lease
+	decoding             []*plugincontrol.Lease
+	decoderLeases        map[string]*plugincontrol.Lease
 	decodeOutput         string
 	dspExecution         string
 	gain                 float64
@@ -43,7 +47,9 @@ type preparedInput struct {
 
 func (p *preparedInput) discard() {
 	p.processing.Close()
-	p.decoding.Close()
+	for _, lease := range p.decoding {
+		lease.Close()
+	}
 	if p.lease != nil {
 		p.lease.Close()
 		p.lease = nil
@@ -65,7 +71,7 @@ func (p *preparedInput) discard() {
 	p.service.budget.Release(p.reserved - retained)
 	p.reserved = 0
 }
-func (s *Service) prepare(ctx context.Context, owner, task string, r CreateRequest, fixed ...*audioffmpeg.Processor) (*preparedInput, error) {
+func (s *Service) prepare(ctx context.Context, owner, task string, r CreateRequest, fixed ...audioruntime.Processor) (*preparedInput, error) {
 	t, err := s.library.Track(ctx, owner, r.SourceTrackID)
 	if err != nil {
 		return nil, err
@@ -216,8 +222,8 @@ func (p *preparedInput) describe(id string, gain float64, expiry time.Time) Desc
 	d := Description{SessionID: id, AssetID: t.AssetID, DeliveryMode: "proxy", OutputProfile: OutputProfile{MIME: t.MIME, Codec: t.Codec, Container: t.Container, Transport: "htmlAudio",
 		SampleRate: p.profile.SampleRate, Channels: p.profile.Channels, Layout: p.profile.Layout, BitrateBps: p.profile.BitrateBps}, ExpiresAt: expiry, SeekMode: "byteRange", EffectiveProcessing: []Processing{}, ResumeDecision: "continue"}
 	d.DSPExecution = p.dspExecution
-	if p.decrypted {
-		d.EffectiveProcessing = append(d.EffectiveProcessing, Processing{Type: "ncmDecrypt", Version: "1", Execution: "server"})
+	for _, step := range p.decodeProcessing {
+		d.EffectiveProcessing = append(d.EffectiveProcessing, Processing{Type: step.Type, Version: step.Version, Execution: "server"})
 	}
 	if t.DurationMs != nil {
 		d.SeekableRange = &Range{EndMs: *t.DurationMs}
@@ -234,14 +240,14 @@ func (p *preparedInput) describe(id string, gain float64, expiry time.Time) Desc
 		}
 		if !p.processor.ChannelMixDisabled() {
 			d.EffectiveProcessing = append(d.EffectiveProcessing,
-				Processing{Type: "channelMix", Version: bundledplugin.ChannelMixVersion, Execution: "server", Parameters: map[string]float64{"outputChannels": float64(profile.Channels)}})
+				Processing{Type: "channelMix", Version: p.processor.DSPPluginVersion("channelConversion"), Execution: "server", Parameters: map[string]float64{"outputChannels": float64(profile.Channels)}})
 		}
 		if !p.processor.EffectsDisabled() {
 			d.EffectiveProcessing = append(d.EffectiveProcessing, Processing{Type: "gain", GainDB: gain, Version: "1", Execution: "server"})
 		}
 		for _, node := range p.processor.DSPChain() {
 			step := Processing{Type: node.Name, Version: strconv.Itoa(node.Version), Execution: "server", Parameters: node.Params}
-			if node.Name == "gain" {
+			if audio.HasCapability(node.Name, "gain") {
 				step.GainDB = node.Params["gainDB"]
 			}
 			d.EffectiveProcessing = append(d.EffectiveProcessing, step)

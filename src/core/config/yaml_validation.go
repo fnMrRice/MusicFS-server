@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 	"math"
 	"strconv"
 
@@ -192,15 +193,16 @@ func validateDocumentShape(root *yaml.Node) error {
 	for _, plugin := range plugins.Content {
 		id := yamlField(plugin, "pluginId")
 		var settings fieldShape
-		switch id.Value {
-		case "musicfs.plugin.source.localfiles":
-			settings = mappingShape(map[string]fieldShape{"musicRoots": sequenceShape(musicRoot), "watch": watchShape()})
-		case "musicfs.plugin.decoder.ffmpeg":
-			settings = mappingShape(map[string]fieldShape{"ffmpegPath": stringShape, "ffprobePath": stringShape})
-		case "musicfs.plugin.decoder.ncm", "musicfs.scraper.local", "musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic", "musicfs.plugin.source.bilibili":
-			settings = mappingShape(map[string]fieldShape{})
-		default:
+		if pluginconfig.Role(id.Value) == "" {
 			return nodeError(id, "config.plugins[].pluginId", "unsupported plugin")
+		}
+		switch {
+		case pluginconfig.SupportsDirectories(id.Value):
+			settings = mappingShape(map[string]fieldShape{"musicRoots": sequenceShape(musicRoot), "watch": watchShape()})
+		case pluginconfig.NeedsAudioTools(id.Value):
+			settings = mappingShape(map[string]fieldShape{"ffmpegPath": stringShape, "ffprobePath": stringShape})
+		default:
+			settings = mappingShape(map[string]fieldShape{})
 		}
 		for _, instance := range yamlField(plugin, "instances").Content {
 			if owner := yamlField(instance, "ownerUserId"); owner != nil && owner.Value == "" {

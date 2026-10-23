@@ -7,7 +7,6 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 )
 
-const AlgorithmVersion = "1.6.1"
 const MaxDetailBytes = 64 << 10
 const QualityRevision = "minimum-10s-unique8-dominant90-v1"
 
@@ -30,7 +29,7 @@ type Identity struct {
 	ConfigRevision        string       `json:"configRevision"`
 	NormalizationRevision string       `json:"normalizationRevision"`
 	QualityRevision       string       `json:"qualityRevision"`
-	Fpcalc                ToolIdentity `json:"fpcalc"`
+	Analyzer              ToolIdentity `json:"analyzer"`
 	Decoder               ToolIdentity `json:"decoder"`
 }
 

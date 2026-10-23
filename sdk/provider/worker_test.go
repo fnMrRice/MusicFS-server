@@ -48,6 +48,7 @@ func (c *testClient) Search(context.Context, online.SearchRequest) (online.Searc
 
 func fixturePlugin(client provider.Client) provider.Plugin {
 	d := pluginproto.OnlinePolicy(online.Netease)
+	d.Resources = online.ResourcePolicy{Tracks: []online.ReferenceRule{{IDPattern: `^([1-9][0-9]{0,19})$`, URLTemplate: "https://music.163.com/song?id=${1}"}}}
 	d.Plugin = &pluginproto.PluginIdentity{
 		ID: pluginproto.OnlinePluginID(online.Netease), Name: "Test metadata provider",
 		LocalizedNames: map[string]string{}, Features: []string{"music-source"},
@@ -96,7 +97,7 @@ func TestWorkerNegotiatesAndEnforcesCapabilitySubset(t *testing.T) {
 		t.Fatal("worker did not negotiate a compatible independent release")
 	}
 	var metadata pluginproto.OnlineResult[online.Track]
-	if err := host.Call(ctx, "provider.online.metadata", pluginproto.OnlineReference{Context: scope, ExternalID: "42"}, &metadata); err != nil || online.ValidateTrack(online.Netease, metadata.Value) != nil {
+	if err := host.Call(ctx, "provider.online.metadata", pluginproto.OnlineReference{Context: scope, ExternalID: "42"}, &metadata); err != nil || online.ValidateTrack(descriptor.Value.Resources, metadata.Value) != nil {
 		t.Fatalf("enabled metadata method failed: %v", err)
 	}
 	if client.accountCalls.Load() != 0 {

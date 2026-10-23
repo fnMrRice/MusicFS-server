@@ -26,6 +26,7 @@ type AudioRange struct {
 
 // Format 只读取宿主提供的源并写入未发布的目标；授权、校验、替换和恢复由宿主执行。
 type Format interface {
+	Descriptor() Descriptor
 	ValidatePatch(Patch) error
 	AudioRange(io.ReaderAt, int64) (AudioRange, error)
 	Rewrite(context.Context, io.ReaderAt, int64, io.Writer, Patch) (EditResult, error)

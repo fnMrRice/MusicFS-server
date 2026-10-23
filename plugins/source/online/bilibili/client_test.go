@@ -77,7 +77,7 @@ func TestVideoMetadataAndUploaderDetails(t *testing.T) {
 	if track.ExternalID != "video:BV13x41117TL:102" || track.SourceURL != "https://www.bilibili.com/video/BV13x41117TL?cid=102" || len(track.Artists) != 0 || track.Album != "" || *track.DurationMs != 70000 {
 		t.Fatalf("unexpected video track: %+v", track)
 	}
-	if err := online.ValidateTrack("bilibili", track); err != nil {
+	if err := online.ValidateTrack(Plugin(Options{}).Descriptor.Resources, track); err != nil {
 		t.Fatal(err)
 	}
 	details, err := c.TrackDetails(context.Background(), track.ExternalID)
@@ -111,7 +111,7 @@ func TestAudioMetadataPreservesDeclaredAuthor(t *testing.T) {
 	if track.DurationMs != nil || len(track.Artists) != 1 || track.Artists[0] != "Declared artist" || track.ExternalID != "audio:10" {
 		t.Fatalf("unexpected audio metadata: %+v", track)
 	}
-	if err := online.ValidateTrack("bilibili", track); err != nil {
+	if err := online.ValidateTrack(Plugin(Options{}).Descriptor.Resources, track); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -188,7 +188,7 @@ func TestMetadataBatchKeepsMissingItems(t *testing.T) {
 	if batch.Items[1].Track != nil || *batch.Items[1].ErrorCode != "NOT_FOUND" || len(batch.Items) != 3 {
 		t.Fatal("missing or duplicate batch item lost")
 	}
-	if err := online.ValidateTrackBatch("bilibili", batch, ids); err != nil {
+	if err := online.ValidateTrackBatch(Plugin(Options{}).Descriptor.Resources, batch, ids); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -208,7 +208,7 @@ func TestUnavailableZeroTypeStaysMissingWithoutNetwork(t *testing.T) {
 	if len(batch.Items) != 1 || batch.Items[0].Track != nil || batch.Items[0].ErrorCode == nil || *batch.Items[0].ErrorCode != "NOT_FOUND" {
 		t.Fatal("zero-type placeholder was not preserved")
 	}
-	if err := online.ValidateTrackBatch("bilibili", batch, ids); err != nil {
+	if err := online.ValidateTrackBatch(Plugin(Options{}).Descriptor.Resources, batch, ids); err != nil {
 		t.Fatal(err)
 	}
 }

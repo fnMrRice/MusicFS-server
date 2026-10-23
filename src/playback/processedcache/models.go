@@ -21,19 +21,19 @@ const MaxEntries = 128
 
 type Identity struct {
 	Owner, ProviderID, SourceTrackID, AssetID, Version string
-	InputSHA256, WorkerSHA256, FFmpegSHA256            string
-	PluginVersion, PipelineRevision, Profile           string
+	InputSHA256, WorkerSHA256, DecoderSHA256           string
+	PluginID, PluginVersion, PipelineRevision, Profile string
 	GainDB                                             float64
 	PositionMs                                         int64
 }
 
 func (i Identity) Key() (string, error) {
-	for _, value := range []string{i.Owner, i.ProviderID, i.SourceTrackID, i.AssetID, i.Version, i.PluginVersion} {
+	for _, value := range []string{i.Owner, i.ProviderID, i.SourceTrackID, i.AssetID, i.Version, i.PluginID, i.PluginVersion} {
 		if value == "" || len(value) > 1024 || !utf8.ValidString(value) || strings.IndexFunc(value, unicode.IsControl) >= 0 {
 			return "", errors.New("invalid processed cache identity")
 		}
 	}
-	if !validHex(i.InputSHA256, 64) || !validHex(i.WorkerSHA256, 64) || !validHex(i.FFmpegSHA256, 64) || !timeline.ValidProcessingRevision(i.PipelineRevision) || !timeline.ValidOutputProfile(i.Profile) || math.IsNaN(i.GainDB) || i.GainDB < -60 || i.GainDB > 0 || i.PositionMs < 0 || i.PositionMs > 86400000 {
+	if !validHex(i.InputSHA256, 64) || !validHex(i.WorkerSHA256, 64) || !validHex(i.DecoderSHA256, 64) || !timeline.ValidProcessingRevision(i.PipelineRevision) || !timeline.ValidOutputProfile(i.Profile) || math.IsNaN(i.GainDB) || i.GainDB < -60 || i.GainDB > 0 || i.PositionMs < 0 || i.PositionMs > 86400000 {
 		return "", errors.New("invalid processed cache configuration")
 	}
 	raw, err := json.Marshal(i)

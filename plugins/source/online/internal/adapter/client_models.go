@@ -12,6 +12,9 @@ import (
 type Options struct {
 	Transport http.RoundTripper
 	Timeout   time.Duration
+	// 插件提供的受信任账号适配，不来自 RPC。
+	LoginOptions   func(context.Context) (AccountOptions, error)
+	PrepareAccount func(AccountRequest) AccountRequest
 }
 
 func (c *Client) Scope() Scope { return c.scope }

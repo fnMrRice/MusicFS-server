@@ -326,6 +326,22 @@ func (e *ExclusiveLease) Access() (*sourceaccess.Access, error) {
 	}
 	return w.Access, nil
 }
+
+// CheckCapability 校验租约捕获的 Worker，不能以稍后读取的运行配置替代。
+func (e *ExclusiveLease) CheckCapability(ctx context.Context, capability string) error {
+	if err := e.Check(ctx); err != nil {
+		return err
+	}
+	w := e.runtime.Worker
+	if w == nil {
+		return domain.Fail("SOURCE_OFFLINE", "Provider is offline")
+	}
+	if !w.Supports(capability) {
+		return domain.Fail("UNSUPPORTED", "Provider does not support the required capability")
+	}
+	return nil
+}
+
 func (e *ExclusiveLease) RebindLocalTrack(ctx context.Context, r pluginhost.LocalRebind) (pluginproto.Observation, error) {
 	// Keep the coordination mutex through the short mapping transaction so a
 	// concurrent Close cannot let a scan observe its intermediate file states.

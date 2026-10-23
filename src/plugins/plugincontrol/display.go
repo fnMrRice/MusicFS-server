@@ -6,6 +6,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/sdk/plugindisplay"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 )
 
 // SnapshotFor resolves request-scoped account names without retaining them in
@@ -33,7 +34,7 @@ func (m *Manager) snapshotFor(ctx context.Context, owner string, scoped, allUser
 		if runtime.hooks.AccountName != nil {
 			accounts[id] = runtime.hooks.AccountName
 		}
-		if runtime.plugin.PluginID == "musicfs.plugin.source.localfiles" {
+		if pluginconfig.SupportsDirectories(runtime.plugin.PluginID) {
 			// Deployment permissions remain meaningful before a worker starts.
 			// Never send unselected directory paths to the provider process.
 			count := localAllowedDirectoryCount(runtime.instance)

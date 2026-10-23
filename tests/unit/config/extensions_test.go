@@ -15,7 +15,7 @@ import (
 
 func TestExtensionConfigurationAndEditorSchema(t *testing.T) {
 	digest := strings.Repeat("a", 64)
-	external := "storage: {backend: plugin, executable: './storage-worker', sha256: '" + digest + "'}\n"
+	external := "plugins: []\nstorage: {backend: plugin, executable: './storage-worker', sha256: '" + digest + "'}\n"
 	dsp := "audioDSP:\n  enabled: true\n  chain: [{name: gain, version: 1, params: {gainDB: -3.5}}]\n"
 	for name, tc := range map[string]struct {
 		raw string
@@ -50,7 +50,8 @@ func TestExtensionConfigurationAndEditorSchema(t *testing.T) {
 				t.Fatal(err)
 			}
 			err = configurationSchema(t).Validate(testkit.DecodeJSON(t, raw))
-			if (err == nil) != tc.ok {
+			// 静态 Schema 接受注册形状；是否存在对应工厂由加载器校验。
+			if (err == nil) != (tc.ok || name == "unknown builtin DSP") {
 				t.Fatalf("schema validity differs: %v", err)
 			}
 			if tc.ok && strings.Contains(tc.raw, "backend: plugin") && !filepath.IsAbs(doc.Config.Storage.Executable) {
@@ -70,7 +71,7 @@ func TestExtensionConfigurationAndEditorSchema(t *testing.T) {
 
 func TestStorageSnapshotRedactionAndCopyIsolation(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "server.yaml")
-	raw := minimalYAML + "storage:\n  backend: plugin\n  executable: './worker'\n  sha256: '" +
+	raw := minimalYAML + "plugins: []\nstorage:\n  backend: plugin\n  executable: './worker'\n  sha256: '" +
 		strings.Repeat("a", 64) + "'\n  args: ['PRIVATE-ARG']\n  options: {connection: 'PRIVATE-CONNECTION'}\n"
 	if err := os.WriteFile(path, []byte(raw), 0600); err != nil {
 		t.Fatal(err)
@@ -98,7 +99,7 @@ func TestStorageSnapshotRedactionAndCopyIsolation(t *testing.T) {
 func TestStartupSettingsPreserveExplicitEmptyCollections(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "server.yaml")
 	digest := strings.Repeat("a", 64)
-	raw := minimalYAML + "storage: {backend: plugin, executable: './storage', sha256: '" + digest + "', args: [], options: {}}\n" +
+	raw := minimalYAML + "plugins: []\nstorage: {backend: plugin, executable: './storage', sha256: '" + digest + "', args: [], options: {}}\n" +
 		"audioDSP: {chain: [], plugins: [{name: example, executable: './dsp', sha256: '" + digest + "', args: []}]}\n"
 	if err := os.WriteFile(path, []byte(raw), 0600); err != nil {
 		t.Fatal(err)

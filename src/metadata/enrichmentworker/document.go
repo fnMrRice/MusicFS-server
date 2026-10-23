@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/scraper/local"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
@@ -30,8 +29,8 @@ func (d *documentTrace) source(input *library.ScrapeInput) {
 		d.doc.SourceIssues = append(d.doc.SourceIssues, enrichment.DocumentIssue{ResourceNumber: d.resources[issue.ResourceRef], Code: issue.Code})
 	}
 }
-func (d *documentTrace) attempt(id string) *enrichment.ScraperAttempt {
-	d.doc.Attempts = append(d.doc.Attempts, enrichment.ScraperAttempt{InstanceID: id, PluginID: scraperlocal.PluginID, State: "started", Fetches: []enrichment.DocumentFetch{}})
+func (d *documentTrace) attempt(id, pluginID string) *enrichment.ScraperAttempt {
+	d.doc.Attempts = append(d.doc.Attempts, enrichment.ScraperAttempt{InstanceID: id, PluginID: pluginID, State: "started", Fetches: []enrichment.DocumentFetch{}})
 	return &d.doc.Attempts[len(d.doc.Attempts)-1]
 }
 func (d *documentTrace) search(result enrichment.SearchResult) *enrichment.DocumentSearch {

@@ -12,6 +12,7 @@ import (
 	_ "github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	_ "github.com/fnMrRice/MusicFS-server/src/storage/rpcbackend"
@@ -174,7 +175,7 @@ func dependencies(ctx context.Context, c config.Config) []Dependency {
 	for _, plugin := range c.Plugins {
 		add(plugin.PluginID, plugin.Executable)
 		for _, instance := range plugin.Instances {
-			if plugin.PluginID == "musicfs.plugin.decoder.ffmpeg" {
+			if pluginconfig.NeedsAudioTools(plugin.PluginID) {
 				add(instance.InstanceID+"/ffmpeg", instance.Config.FFmpegPath)
 				add(instance.InstanceID+"/ffprobe", instance.Config.FFprobePath)
 			}

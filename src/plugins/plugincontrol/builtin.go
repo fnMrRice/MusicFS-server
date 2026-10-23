@@ -1,8 +1,7 @@
 package plugincontrol
 
 import (
-	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 )
 
 // BuiltinStatus 只描述已装配能力与业务开关，不宣称依赖可用或当前正在处理任务。
@@ -11,30 +10,39 @@ type BuiltinStatus struct {
 	Capabilities []string `json:"capabilities"`
 }
 
-func algorithmPlugin(id string) bool {
-	switch id {
-	case "musicfs.plugin.analysis.chromaprint", "musicfs.plugin.tags.flac", "musicfs.plugin.matching.standard", "musicfs.plugin.transform.thumbnail", "musicfs.plugin.decoder.channelmix":
-		return true
+func (m *Manager) algorithmPlugin(id string) bool {
+	for _, item := range m.builtins {
+		if item.PluginID == id {
+			return true
+		}
+	}
+	for _, descriptor := range audio.Catalog() {
+		if descriptor.Capability == "channelConversion" && descriptor.PluginID == id {
+			return true
+		}
 	}
 	return false
 }
 
 func (m *Manager) builtinPluginsLocked() []Plugin {
-	items := []struct {
-		id           string
-		configured   bool
-		capabilities []string
-	}{
-		{"musicfs.plugin.analysis.chromaprint", m.desired.Fingerprinting.Enabled, []string{"fingerprint.chromaprint"}},
-		{"musicfs.plugin.tags.flac", m.desired.WriteBack.Enabled, []string{"tags.flac.rewrite"}},
-		{"musicfs.plugin.matching.standard", true, []string{"matching.candidates"}},
-		{"musicfs.plugin.transform.thumbnail", true, []string{"artwork.thumbnail256"}},
-		{"musicfs.plugin.decoder.channelmix", m.desired.AudioChannels.Enabled, []string{"audio.channels.stereo", "audio.channels.5.1", "audio.channels.7.1"}},
+	result := make([]Plugin, 0, len(m.builtins))
+	for _, item := range m.builtins {
+		configured := item.Configured(m.desired)
+		result = append(result, Plugin{SettingsAvailable: item.SettingsAvailable, PluginID: item.PluginID, Plugin: item.Identity.Clone(), Version: item.Version, Execution: "builtin", ConfiguredEnabled: configured,
+			Builtin: &BuiltinStatus{Configured: configured, Capabilities: append([]string(nil), item.Capabilities...)}, Instances: []Instance{}})
 	}
-	result := make([]Plugin, 0, len(items))
-	for _, item := range items {
-		result = append(result, Plugin{SettingsAvailable: item.id == "musicfs.plugin.matching.standard", PluginID: item.id, Plugin: pluginconfig.Identity(item.id), Version: bundledplugin.Version(item.id), Execution: "builtin", ConfiguredEnabled: item.configured,
-			Builtin: &BuiltinStatus{Configured: item.configured, Capabilities: item.capabilities}, Instances: []Instance{}})
+	seen := map[string]bool{}
+	for _, descriptor := range audio.Catalog() {
+		if descriptor.Capability != "channelConversion" || descriptor.PluginID == "" || seen[descriptor.PluginID] {
+			continue
+		}
+		seen[descriptor.PluginID] = true
+		capabilities := []string{}
+		for _, layout := range descriptor.Output.Layouts {
+			capabilities = append(capabilities, "audio.channels."+layout)
+		}
+		result = append(result, Plugin{PluginID: descriptor.PluginID, Plugin: dspIdentity(descriptor), Version: descriptor.PluginVersion, Execution: "builtin", ConfiguredEnabled: m.desired.AudioChannels.Enabled,
+			Builtin: &BuiltinStatus{Configured: m.desired.AudioChannels.Enabled, Capabilities: capabilities}, Instances: []Instance{}})
 	}
 	return result
 }

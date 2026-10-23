@@ -13,11 +13,24 @@ import (
 	"testing"
 	"time"
 
+	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/sdk/provider"
 	"github.com/fnMrRice/MusicFS-server/src/app/bootstrap"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 )
 
 func TestWebPolicyAllowsLoginQRImagesAndPlatformAvatars(t *testing.T) {
+	registerWebPolicySource(t)
+	wantHosts := []string{}
+	for _, descriptor := range onlineplugins.Descriptors() {
+		for _, host := range descriptor.Resources.ImageHosts {
+			wantHosts = append(wantHosts, "https://"+host)
+		}
+	}
+	slices.Sort(wantHosts)
+	wantImages := append([]string{"'self'", "data:", "blob:"}, slices.Compact(wantHosts)...)
 	cfg, base := yamlServiceConfig(t)
 	cfg.WebRoot = t.TempDir()
 	const page = "<!doctype html><title>Login QR policy fixture</title>"
@@ -39,7 +52,7 @@ func TestWebPolicyAllowsLoginQRImagesAndPlatformAvatars(t *testing.T) {
 					directives[fields[0]] = fields[1:]
 				}
 			}
-			if !slices.Equal(directives["img-src"], []string{"'self'", "data:", "blob:", "https://p1.music.126.net", "https://p2.music.126.net", "https://p3.music.126.net", "https://p4.music.126.net"}) {
+			if !slices.Equal(directives["img-src"], wantImages) || !slices.Contains(directives["img-src"], "https://images.independent.example") {
 				t.Fatal("Web policy must allow same-origin images, inline QR images and verified platform avatar hosts")
 			}
 			if !slices.Equal(directives["default-src"], []string{"'self'"}) || !slices.Equal(directives["object-src"], []string{"'none'"}) {
@@ -56,6 +69,27 @@ func TestWebPolicyAllowsLoginQRImagesAndPlatformAvatars(t *testing.T) {
 				t.Fatal("Web artifact MIME protection is missing")
 			}
 		})
+	}
+}
+
+// 独立插件声明无需修改宿主白名单；非法主机不能借声明注入额外 CSP 指令。
+func registerWebPolicySource(t *testing.T) {
+	t.Helper()
+	factory := func(platform, host string) onlineplugins.PluginFactory {
+		return func(onlineplugins.Options) provider.Plugin {
+			descriptor := pluginproto.OnlinePolicy(platform)
+			descriptor.Plugin = &pluginproto.PluginIdentity{ID: pluginproto.OnlinePluginID(platform), Name: "Web policy source", LocalizedNames: map[string]string{}, Features: []string{"music-source"}}
+			descriptor.Resources.ImageHosts = []string{host}
+			return provider.Plugin{Descriptor: descriptor, Version: "1.0.0", NewClient: func(online.Scope, time.Duration) (provider.Client, error) {
+				return nil, fmt.Errorf("CSP fixture does not create a worker")
+			}}
+		}
+	}
+	if err := onlineplugins.Register("web-policy-invalid", factory("web-policy-invalid", "images.example; connect-src *")); err == nil {
+		t.Fatal("unsafe image declaration was registered")
+	}
+	if err := onlineplugins.Register("web-policy-independent", factory("web-policy-independent", "images.independent.example")); err != nil {
+		t.Fatal(err)
 	}
 }
 

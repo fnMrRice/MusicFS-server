@@ -189,7 +189,7 @@ func metadataPlaybackFixture(t *testing.T, name string, payload []byte, processo
 	}
 	request.Preferences.DSPExecution = "client"
 	request.Capabilities.Formats = append(request.Capabilities.Formats, playback.Format{MIME: "audio/flac", CanPlay: "probably"})
-	player, err := playback.New(t.Context(), repo.Store, repo.library, processor, playback.Config{NCMDecoder: decoder, CacheRoot: t.TempDir(), MaxSessions: 8, MaxCacheBytes: 16 << 20})
+	player, err := playback.New(t.Context(), repo.Store, repo.library, processor, playback.Config{Decoder: decoder, CacheRoot: t.TempDir(), MaxSessions: 8, MaxCacheBytes: 16 << 20})
 	if err != nil {
 		t.Fatal(err)
 	}

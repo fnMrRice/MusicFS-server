@@ -97,7 +97,7 @@ func (e extractor) Extract(ctx context.Context, r fingerprint.Request, _ io.Read
 }
 
 func fixtureIdentity(decoderHash string) fingerprint.Identity {
-	id := fingerprint.Identity{Algorithm: "chromaprint", AlgorithmVersion: "1.6.1", AlgorithmConfig: "cli-2-raw-v1", NormalizationRevision: audio.NormalizationRevision, QualityRevision: fingerprint.QualityRevision, Fpcalc: fingerprint.ToolIdentity{Version: "fpcalc version 1.6.1 (fixture)", SHA256: strings.Repeat("a", 64)}, Decoder: fingerprint.ToolIdentity{Version: "fixture-decoder", SHA256: strings.Repeat(decoderHash, 64)}}
+	id := fingerprint.Identity{Algorithm: "chromaprint", AlgorithmVersion: "1.6.1", AlgorithmConfig: "cli-2-raw-v1", NormalizationRevision: audio.NormalizationRevision, QualityRevision: fingerprint.QualityRevision, Analyzer: fingerprint.ToolIdentity{Version: "fpcalc version 1.6.1 (fixture)", SHA256: strings.Repeat("a", 64)}, Decoder: fingerprint.ToolIdentity{Version: "fixture-decoder", SHA256: strings.Repeat(decoderHash, 64)}}
 	raw, _ := json.Marshal(id)
 	sum := sha256.Sum256(raw)
 	id.ConfigRevision = "sha256-" + hex.EncodeToString(sum[:])

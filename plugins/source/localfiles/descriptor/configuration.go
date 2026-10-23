@@ -1,10 +1,9 @@
-// Package pluginconfig owns official plugin configuration declarations shared by
-// the plugin handshake and host configuration loader.
-package pluginconfig
+// Package descriptor 提供本地文件插件的配置声明，宿主只通过注册表消费。
+package descriptor
 
 import "github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 
-func LocalFiles() *pluginproto.Configuration {
+func Configuration() *pluginproto.Configuration {
 	return &pluginproto.Configuration{
 		SchemaRevision:     "local-import-v6",
 		ImportDefaults:     pluginproto.ImportOptions{Recursive: true, MaxDepth: 0, ImportArtwork: true, ExcludePatterns: []string{}, SkipHidden: true, RespectNoMedia: true},

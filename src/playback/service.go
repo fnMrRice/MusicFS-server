@@ -10,13 +10,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audioruntime"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
 
@@ -30,7 +29,8 @@ type Repository interface {
 	CommitPlayback(context.Context, string, string, string, []byte, time.Time, string, string, string) error
 }
 type Config struct {
-	NCMDecoder        *ncmdecoder.Processor
+	Decoder           audioruntime.Decoder
+	Decoders          []audioruntime.Decoder
 	CacheRoot         string
 	MaxSessions       int
 	MaxCacheBytes     int64
@@ -54,9 +54,10 @@ type session struct {
 	recovery                timeline.Budget
 	sourceLease             *library.ReadLease
 	cachePin                *processedcache.Pin
-	processor               *audioffmpeg.Processor
+	processor               audioruntime.Processor
 	decodeOutput            string
-	processing, decoding    *plugincontrol.Lease
+	processing              *plugincontrol.Lease
+	decoding                []*plugincontrol.Lease
 	unlinkPlugins           []func() bool
 	online, onlineOpened    bool
 }
@@ -64,8 +65,8 @@ type Service struct {
 	mu        sync.Mutex
 	repo      Repository
 	library   *library.Service
-	processor *audioffmpeg.Processor
-	decoder   *ncmdecoder.Processor
+	processor audioruntime.Processor
+	decoder   audioruntime.Decoder
 	config    Config
 	sessions  map[string]*session
 	garbage   map[string]int64
@@ -79,7 +80,8 @@ type Service struct {
 	preparing map[string]context.CancelFunc
 }
 
-func New(ctx context.Context, repo Repository, lib *library.Service, processor *audioffmpeg.Processor, c Config) (*Service, error) {
+func New(ctx context.Context, repo Repository, lib *library.Service, processor audioruntime.Processor, c Config) (*Service, error) {
+	processor = audioruntime.Safe(processor)
 	dir := filepath.Join(c.CacheRoot, "playback")
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return nil, err
@@ -101,7 +103,7 @@ func New(ctx context.Context, repo Repository, lib *library.Service, processor *
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	s := &Service{repo: repo, library: lib, processor: processor, config: c, sessions: map[string]*session{}, garbage: map[string]int64{}, ctx: ctx, cancel: cancel, done: make(chan struct{}), creation: make(chan struct{}, 1), preparing: map[string]context.CancelFunc{}}
-	s.decoder = c.NCMDecoder
+	s.decoder = c.Decoder
 	s.readers = map[string]int{}
 	s.budget, err = processedcache.NewBudget(c.MaxCacheBytes)
 	if err != nil {

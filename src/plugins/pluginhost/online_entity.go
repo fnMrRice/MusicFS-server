@@ -14,7 +14,7 @@ func (w *OnlineWorker) Album(ctx context.Context, id string) (online.Album, erro
 	}
 	value, err := onlineCall[online.Album](ctx, w, "provider.online.album", scope, pluginproto.OnlineReference{Context: scope, ExternalID: id})
 	if err == nil {
-		err = online.ValidateAlbum(w.config.Platform, value)
+		err = online.ValidateAlbum(w.descriptor.Resources, value)
 	}
 	if err == nil && value.ExternalID != id {
 		err = domain.Fail("PROTOCOL_MISMATCH", "Album identity mismatch")
@@ -31,7 +31,7 @@ func (w *OnlineWorker) Artist(ctx context.Context, id string) (online.Artist, er
 	}
 	value, err := onlineCall[online.Artist](ctx, w, "provider.online.artist", scope, pluginproto.OnlineReference{Context: scope, ExternalID: id})
 	if err == nil {
-		err = online.ValidateArtist(w.config.Platform, value)
+		err = online.ValidateArtist(w.descriptor.Resources, value)
 	}
 	if err == nil && value.ExternalID != id {
 		err = domain.Fail("PROTOCOL_MISMATCH", "Artist identity mismatch")
@@ -48,7 +48,7 @@ func (w *OnlineWorker) entityPage(ctx context.Context, method, kind string, r on
 	}
 	value, err := onlineCall[online.SearchPage](ctx, w, method, scope, pluginproto.OnlineEntityPage{Context: scope, EntityPageRequest: r})
 	if err == nil {
-		err = online.ValidateSearch(w.config.Platform, value, r.Limit)
+		err = online.ValidateSearch(w.descriptor.Resources, value, r.Limit)
 	}
 	if err == nil && value.Kind != kind {
 		err = domain.Fail("PROTOCOL_MISMATCH", "Entity relationship kind mismatch")

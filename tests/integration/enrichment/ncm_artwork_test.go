@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	_ "github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	ncmdecoder "github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
@@ -64,7 +65,7 @@ func TestNCMContainerArtworkIsAutomaticallyPublished(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.service.Close()
-	f.service, err = enrichmentworker.New(f.store, f.lib, f.content, f.runtimes, enrichmentworker.Config{NCMDecoder: decoder})
+	f.service, err = enrichmentworker.New(f.store, f.lib, f.content, f.runtimes, enrichmentworker.Config{Decoder: decoder})
 	if err != nil {
 		t.Fatal(err)
 	}

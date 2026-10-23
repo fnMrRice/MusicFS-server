@@ -2,16 +2,17 @@ package fingerprintworker
 
 import (
 	"context"
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
+	"time"
+
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audioruntime"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
-	"time"
 )
 
-// NewDormant preserves durable job reads when the configured audio dependency
-// is disabled at startup. Only a later validated runtime can admit new work.
+// NewDormant 在音频依赖或分析工具不可用时仍保留持久任务查询；
+// 只有后续验证通过的运行实例才能接收新任务。
 func NewDormant(repo identification.FingerprintRepository, source identification.FingerprintSource, media *mediastore.Service, c Config) (*Service, error) {
 	if c.Timeout == 0 {
 		c.Timeout = 30 * time.Second
@@ -21,16 +22,16 @@ func NewDormant(repo identification.FingerprintRepository, source identification
 	}
 	return &Service{repo: repo, source: source, media: media, config: c, running: map[string]context.CancelFunc{}}, nil
 }
-func (s *Service) UpdateRuntime(extractor Extractor, decoder *ncmdecoder.Processor, gate *plugincontrol.Gate) {
+func (s *Service) UpdateRuntime(extractor Extractor, decoder audioruntime.Decoder, gate *plugincontrol.Gate) {
 	s.runtimeMu.Lock()
 	s.extractor = extractor
-	s.config.NCMDecoder = decoder
+	s.config.Decoder = decoder
 	s.gate = gate
 	s.epoch = gate.Epoch()
 	s.runtimeMu.Unlock()
 }
-func (s *Service) runtime() (Extractor, *ncmdecoder.Processor, *plugincontrol.Gate, uint64) {
+func (s *Service) runtime() (Extractor, audioruntime.Decoder, *plugincontrol.Gate, uint64) {
 	s.runtimeMu.RLock()
 	defer s.runtimeMu.RUnlock()
-	return s.extractor, s.config.NCMDecoder, s.gate, s.epoch
+	return s.extractor, s.config.Decoder, s.gate, s.epoch
 }

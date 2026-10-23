@@ -31,7 +31,7 @@ func New(ctx context.Context, c Config, normalizer Normalizer) (*Extractor, erro
 	if c.MaxConcurrent == 0 {
 		c.MaxConcurrent = 1
 	}
-	if normalizer == nil || c.MaxConcurrent < 1 || c.MaxConcurrent > 2 || c.Timeout < time.Second || c.Timeout > 2*time.Minute || !validSHA(c.FFmpegSHA256) || c.FFmpegVersion == "" || len(c.FFmpegVersion) > 512 {
+	if normalizer == nil || c.MaxConcurrent < 1 || c.MaxConcurrent > 2 || c.Timeout < time.Second || c.Timeout > 2*time.Minute || !validSHA(c.DecoderSHA256) || c.DecoderVersion == "" || len(c.DecoderVersion) > 512 {
 		return nil, fmt.Errorf("INVALID_ARGUMENT: invalid fingerprint configuration")
 	}
 	if err := verifyTool(c.FpcalcPath, c.FpcalcSHA256); err != nil {
@@ -41,8 +41,11 @@ func New(ctx context.Context, c Config, normalizer Normalizer) (*Extractor, erro
 	if err != nil {
 		return nil, err
 	}
-	identity := Identity{Algorithm: "chromaprint", AlgorithmVersion: AlgorithmVersion, AlgorithmConfig: "cli-2-raw-v1", NormalizationRevision: audio.NormalizationRevision, QualityRevision: QualityRevision, Fpcalc: ToolIdentity{Version: version, SHA256: c.FpcalcSHA256}, Decoder: ToolIdentity{Version: c.FFmpegVersion, SHA256: c.FFmpegSHA256}}
+	identity := Identity{Algorithm: "chromaprint", AlgorithmVersion: AlgorithmVersion, AlgorithmConfig: "cli-2-raw-v1", NormalizationRevision: audio.NormalizationRevision, QualityRevision: QualityRevision, Analyzer: ToolIdentity{Version: version, SHA256: c.FpcalcSHA256}, Decoder: ToolIdentity{Version: c.DecoderVersion, SHA256: c.DecoderSHA256}}
 	identity.ConfigRevision = identity.Revision()
+	if err := identity.Validate(); err != nil {
+		return nil, err
+	}
 	return &Extractor{config: c, normalizer: normalizer, identity: identity, slots: make(chan struct{}, c.MaxConcurrent)}, nil
 }
 
@@ -133,7 +136,7 @@ func (e *Extractor) Extract(parent context.Context, r Request, input io.ReaderAt
 	if stdout.exceeded || stderr.exceeded {
 		return detail, fmt.Errorf("PROTOCOL_MISMATCH: fingerprint tool output exceeds limit")
 	}
-	if info.Format != audio.FingerprintPCM || info.NormalizationRevision != audio.NormalizationRevision || info.StartSample != start || info.SampleCount <= 0 || info.SampleCount > count || info.SampleCount*2 != pcm.count || info.DecoderVersion != e.config.FFmpegVersion || info.DecoderSHA256 != e.config.FFmpegSHA256 {
+	if info.Format != audio.FingerprintPCM || info.NormalizationRevision != audio.NormalizationRevision || info.StartSample != start || info.SampleCount <= 0 || info.SampleCount > count || info.SampleCount*2 != pcm.count || info.DecoderVersion != e.config.DecoderVersion || info.DecoderSHA256 != e.config.DecoderSHA256 {
 		return detail, fmt.Errorf("PROTOCOL_MISMATCH: normalization evidence mismatch")
 	}
 	values := []uint32{}

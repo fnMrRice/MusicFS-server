@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
@@ -45,11 +44,30 @@ type Manager struct {
 	sequence          int64
 	subscribers       map[chan Event]struct{}
 	storageVersion    string
+	builtins          []BuiltinDeclaration
 }
 
 func New(ctx context.Context, desired config.Config, store *config.Store, repo Repository, storageVersions ...string) (*Manager, error) {
+	return NewWithBuiltins(ctx, desired, store, repo, BuiltinCatalog(), storageVersions...)
+}
+
+// NewWithBuiltins 允许替代装配精确注入算法清单，避免管理视图误报官方实现。
+func NewWithBuiltins(ctx context.Context, desired config.Config, store *config.Store, repo Repository, builtins []BuiltinDeclaration, storageVersions ...string) (*Manager, error) {
 	run, cancel := context.WithCancel(ctx)
 	m := &Manager{store: store, repo: repo, desired: desired, runtimes: map[string]*runtime{}, pending: map[string]*pendingOperation{}, ctx: run, cancel: cancel, done: make(chan struct{}), subscribers: map[chan Event]struct{}{}}
+	seen := map[string]bool{}
+	for _, declaration := range builtins {
+		if err := declaration.validate(); err != nil {
+			cancel()
+			return nil, err
+		}
+		if seen[declaration.PluginID] {
+			cancel()
+			return nil, domain.Fail("CONFLICT", "Duplicate builtin algorithm declaration")
+		}
+		seen[declaration.PluginID] = true
+		m.builtins = append(m.builtins, declaration.clone())
+	}
 	if err := m.initializeStorage(storageVersions); err != nil {
 		cancel()
 		return nil, err
@@ -65,7 +83,7 @@ func New(ctx context.Context, desired config.Config, store *config.Store, repo R
 		}
 	}
 	for _, p := range desired.Plugins {
-		if !pluginproto.ValidPluginVersion(bundledplugin.Version(p.PluginID)) {
+		if !pluginproto.ValidPluginVersion(pluginconfig.Version(p.PluginID)) {
 			cancel()
 			return nil, domain.Fail("INVALID_ARGUMENT", "Plugin release version is required")
 		}
@@ -172,8 +190,8 @@ func (m *Manager) Snapshot() Snapshot {
 		s.RestartRequired = s.RestartRequired || v.DiskChanged
 	}
 	for _, p := range m.desired.Plugins {
-		v := Plugin{PluginID: p.PluginID, Plugin: pluginconfig.Identity(p.PluginID), Version: bundledplugin.Version(p.PluginID), SupportsMultipleInstances: pluginconfig.SupportsMultipleInstances(p.PluginID), ConfiguredEnabled: p.Enabled, StateMutable: true, Instances: []Instance{}}
-		v.SettingsAvailable = p.PluginID == "musicfs.plugin.decoder.ffmpeg" || p.PluginID == "musicfs.plugin.decoder.ncm"
+		v := Plugin{PluginID: p.PluginID, Plugin: pluginconfig.Identity(p.PluginID), Version: pluginconfig.Version(p.PluginID), SupportsMultipleInstances: pluginconfig.SupportsMultipleInstances(p.PluginID), ConfiguredEnabled: p.Enabled, StateMutable: true, Instances: []Instance{}}
+		v.SettingsAvailable = pluginconfig.HasSettings(p.PluginID)
 		v.Execution = "process"
 		if p.InProcess() {
 			v.Execution = "builtin"
@@ -223,7 +241,8 @@ func (m *Manager) Snapshot() Snapshot {
 		}
 		s.Items = append(s.Items, v)
 	}
-	s.Items = append(s.Items, m.storagePluginLocked(), m.gainPluginLocked())
+	s.Items = append(s.Items, m.storagePluginLocked())
+	s.Items = append(s.Items, m.gainPluginsLocked()...)
 	s.Items = append(s.Items, m.builtinDSPPluginsLocked()...)
 	s.Items = append(s.Items, m.builtinPluginsLocked()...)
 	return s

@@ -18,7 +18,7 @@ func TestDefaultAndSplitReleasePrograms(t *testing.T) {
 		want := []string{"musicfs", "musicfs-plugins"}
 		if split {
 			want = append(want, "musicfs-plugin-storage-sqlite", "musicfs-plugin-dsp-gain",
-				"musicfs-plugin-netease", "musicfs-plugin-qqmusic", "musicfs-plugin-applemusic", "musicfs-plugin-online")
+				"musicfs-plugin-netease", "musicfs-plugin-qqmusic", "musicfs-plugin-applemusic", "musicfs-plugin-bilibili", "musicfs-plugin-online")
 		}
 		if !slices.Equal(b.programNames(), want) {
 			t.Fatalf("split=%v program catalog = %v, want %v", split, b.programNames(), want)
@@ -53,7 +53,7 @@ func TestDefaultAndSplitReleasePrograms(t *testing.T) {
 }
 
 func TestReleaseCatalogSeparatesBuiltinsAndOptionalProcessRoles(t *testing.T) {
-	expected := []string{"local", "audio-ffmpeg", "ncm", "scraper-local", "netease", "qqmusic", "applemusic", "storage-sqlite", "dsp-gain"}
+	expected := []string{"local", "audio-ffmpeg", "ncm", "scraper-local", "netease", "qqmusic", "applemusic", "bilibili", "storage-sqlite", "dsp-gain"}
 	for _, split := range []bool{false, true} {
 		roles := map[string]bool{}
 		builtinCount := 0
@@ -85,10 +85,10 @@ func TestReleaseCatalogSeparatesBuiltinsAndOptionalProcessRoles(t *testing.T) {
 				}
 			}
 		}
-		if len(roles) != 9 {
-			t.Fatalf("split=%v bundled roles = %d, want 9", split, len(roles))
+		if len(roles) != len(expected) {
+			t.Fatalf("split=%v bundled roles = %d, want %d", split, len(roles), len(expected))
 		}
-		if builtinCount != 13 {
+		if builtinCount != 14 {
 			t.Fatalf("release omits builtin capabilities: count=%d", builtinCount)
 		}
 	}

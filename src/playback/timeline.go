@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audioruntime"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/codecsettings"
 )
 
@@ -37,7 +37,8 @@ func (s *Service) RecoveryProfileForUser(ctx context.Context, owner string, exec
 	if execution != "server" && execution != "client" {
 		return timeline.Profile{}, domain.Fail("INVALID_ARGUMENT", "DSP execution must be server or client")
 	}
-	output, err := codecsettings.DecodeOutput(ctx, s.repo, owner)
+	current, _ := s.audioSnapshot()
+	output, err := codecsettings.DecodeOutput(ctx, s.repo, owner, current.AudioDecoder().PluginID)
 	if err != nil {
 		return timeline.Profile{}, err
 	}
@@ -58,7 +59,8 @@ func decodePlanOutput(output string) string {
 	return output
 }
 
-func recoveryProfile(processor *audioffmpeg.Processor, outputs ...string) (timeline.Profile, error) {
+func recoveryProfile(processor audioruntime.Processor, outputs ...string) (timeline.Profile, error) {
+	processor = audioruntime.Safe(processor)
 	p := timeline.Profile{ProcessingRevision: "gain-v1"}
 	decodeOutput := ""
 	if len(outputs) > 0 {
@@ -69,12 +71,12 @@ func recoveryProfile(processor *audioffmpeg.Processor, outputs ...string) (timel
 		return p, domain.Fail("UNSUPPORTED", "A verified recovery processing profile is unavailable")
 	}
 	p.OutputProfile = output.ID
-	if processor != nil {
-		p.DecoderSHA256 = processor.Capabilities.FFmpegSHA256
+	if processor.Available() {
+		p.DecoderSHA256 = processor.RuntimeCapabilities().DecoderSHA256
 		if err := processor.SupportsDecodeOutput(decodeOutput); err != nil {
 			return p, domain.Fail("UNSUPPORTED", "A verified decoder output format is unavailable")
 		}
-		if revision := processor.ProcessingIdentityForDecodeOutput(decodeOutput).PipelineRevision; revision != "" {
+		if revision := processor.RuntimeIdentity(decodeOutput).PipelineRevision; revision != "" {
 			p.ProcessingRevision = revision
 		}
 	}
@@ -114,8 +116,8 @@ func (s *Service) AddTimeline(ctx context.Context, owner string, r timeline.Requ
 
 // 人工对齐证据可绑定会话所选码率，仍须匹配当前部署编码、布局和处理身份。
 func matchRecoveryBitrate(expected timeline.Profile, requested string) timeline.Profile {
-	base, baseOK := audioffmpeg.ProfileByID(expected.OutputProfile)
-	selected, selectedOK := audioffmpeg.ProfileByID(requested)
+	base, baseOK := audioruntime.LookupProfile(expected.OutputProfile)
+	selected, selectedOK := audioruntime.LookupProfile(requested)
 	if baseOK && selectedOK && selected.Codec == base.Codec && selected.Layout == base.Layout {
 		expected.OutputProfile = requested
 	}
@@ -123,8 +125,8 @@ func matchRecoveryBitrate(expected timeline.Profile, requested string) timeline.
 }
 
 // 来源声道由会话选择，人工证据仍必须绑定已探测编码能力与同一无扩展身份。
-func matchRecoveryChannels(expected timeline.Profile, requested string, processor *audioffmpeg.Processor) timeline.Profile {
-	selected, valid := audioffmpeg.ProfileByID(requested)
+func matchRecoveryChannels(expected timeline.Profile, requested string, processor audioruntime.Processor) timeline.Profile {
+	selected, valid := processor.LookupProfile(requested)
 	if valid && processor.SupportsProfile(selected) {
 		expected.OutputProfile = requested
 	}

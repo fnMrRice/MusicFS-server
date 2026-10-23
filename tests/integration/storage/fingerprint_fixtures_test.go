@@ -23,7 +23,7 @@ import (
 // Synthetic extractor identities and arrays test storage boundaries only. Real
 // audio/tool behavior belongs to the fingerprint worker integration suite.
 func fpIdentity(label string) fingerprint.Identity {
-	id := fingerprint.Identity{Algorithm: "chromaprint", AlgorithmVersion: fingerprint.AlgorithmVersion, AlgorithmConfig: "cli-2-raw-v1", NormalizationRevision: audio.NormalizationRevision, QualityRevision: fingerprint.QualityRevision, Fpcalc: fingerprint.ToolIdentity{Version: "fpcalc version 1.6.1 (test)", SHA256: strings.Repeat("a", 64)}, Decoder: fingerprint.ToolIdentity{Version: "test-" + label, SHA256: strings.Repeat("b", 64)}}
+	id := fingerprint.Identity{Algorithm: "chromaprint", AlgorithmVersion: "1.6.1", AlgorithmConfig: "cli-2-raw-v1", NormalizationRevision: audio.NormalizationRevision, QualityRevision: fingerprint.QualityRevision, Analyzer: fingerprint.ToolIdentity{Version: "fpcalc version 1.6.1 (test)", SHA256: strings.Repeat("a", 64)}, Decoder: fingerprint.ToolIdentity{Version: "test-" + label, SHA256: strings.Repeat("b", 64)}}
 	raw, _ := json.Marshal(id)
 	sum := sha256.Sum256(raw)
 	id.ConfigRevision = "sha256-" + hex.EncodeToString(sum[:])

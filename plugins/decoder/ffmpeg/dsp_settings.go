@@ -119,10 +119,12 @@ func (p *Processor) ValidateSettings(ctx context.Context, options dspsettings.Op
 		return err
 	}
 	for _, plugin := range config.DSPPlugins {
-		if err = registry.Register(plugin.Name, func(params map[string]float64) (audio.Node, error) {
-			if plugin.Builtin {
-				return registry.Create("gain", params)
+		if plugin.Builtin {
+			if _, ok := audio.Definition(plugin.Name); ok {
+				continue
 			}
+		}
+		if err = registry.Replace(plugin.Name, func(params map[string]float64) (audio.Node, error) {
 			if options.BufferFrames > 4096 {
 				return nil, fmt.Errorf("UNSUPPORTED: external DSP v1 allows at most 4096 buffer frames")
 			}

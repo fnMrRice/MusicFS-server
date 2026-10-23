@@ -10,30 +10,25 @@ import (
 
 type accountProvider interface {
 	PlatformAccount(context.Context, online.AccountRequest) (online.AccountView, error)
-	PlatformDeveloperToken() string
 }
-type AccountOptions struct {
-	Method         string `json:"method"`
-	DeveloperToken string `json:"developerToken,omitempty"`
-	Configured     bool   `json:"configured"`
-	Validation     string `json:"validation"`
-}
+type AccountOptions = online.AccountOptions
 
 func (s *Service) AccountOptions(ctx context.Context, owner, id string) (AccountOptions, error) {
-	return callControl(ctx, s, owner, id, func(_ context.Context, r Runtime) (AccountOptions, error) {
-		p, ok := r.Provider.(accountProvider)
+	return callControl(ctx, s, owner, id, func(ctx context.Context, r Runtime) (AccountOptions, error) {
+		if r.descriptor.Login == nil {
+			return AccountOptions{Method: "none", Configured: false, Validation: "notSupported"}, nil
+		}
+		p, ok := r.Provider.(interface {
+			PlatformAccountOptions(context.Context) (online.AccountOptions, error)
+		})
 		if !ok {
 			return AccountOptions{}, domain.Fail("UNSUPPORTED", "Platform login is not supported by this worker")
 		}
-		method := "qr"
-		token := ""
-		configured := true
-		if r.Platform == online.AppleMusic {
-			method = "musicKit"
-			token = p.PlatformDeveloperToken()
-			configured = token != ""
+		options, err := p.PlatformAccountOptions(ctx)
+		if err == nil {
+			err = options.Validate(r.descriptor.Login)
 		}
-		return AccountOptions{Method: method, DeveloperToken: token, Configured: configured, Validation: "liveAccountPending"}, nil
+		return options, err
 	})
 }
 func (s *Service) Account(ctx context.Context, owner, id string, request online.AccountRequest) (online.AccountView, error) {

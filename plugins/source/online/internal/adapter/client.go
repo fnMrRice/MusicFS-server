@@ -12,6 +12,7 @@ import (
 )
 
 type Client struct {
+	options  Options
 	driver   session.Driver
 	account  accountState
 	platform string
@@ -44,7 +45,7 @@ func New(platform string, scope Scope, opts Options, factory session.Factory) (*
 	if opts.Transport == nil {
 		opts.Transport = publicTransport()
 	}
-	c := &Client{platform: platform, scope: scope, http: &http.Client{
+	c := &Client{options: opts, platform: platform, scope: scope, http: &http.Client{
 		Transport: opts.Transport, Timeout: opts.Timeout,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}}

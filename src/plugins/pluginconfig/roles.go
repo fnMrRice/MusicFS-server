@@ -2,38 +2,39 @@ package pluginconfig
 
 import "github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 
-// Role is the official plugin declaration shared by workers and the host.
-// Hosts still validate the worker's manifest before admitting runtime work.
 func Role(pluginID string) string {
-	switch pluginID {
-	case "musicfs.plugin.source.localfiles", "musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic", "musicfs.plugin.source.bilibili":
-		return "provider"
-	case "musicfs.plugin.decoder.ffmpeg", "musicfs.plugin.decoder.ncm":
-		return "audio"
-	case "musicfs.scraper.local":
-		return "scraper"
-	default:
-		return ""
-	}
+	d, _ := Lookup(pluginID)
+	return d.Role
 }
 
-// SupportsMultipleInstances declares independent configuration support.
-// Unknown SDK plugins default to a single instance until explicitly declared.
+// SupportsMultipleInstances 返回可信装配声明的独立多实例能力。
 func SupportsMultipleInstances(pluginID string) bool {
-	switch pluginID {
-	case "musicfs.plugin.source.netease", "musicfs.plugin.source.qqmusic", "musicfs.plugin.source.applemusic", "musicfs.plugin.source.bilibili", "musicfs.scraper.local":
-		return true
-	default:
-		return false
-	}
+	d, _ := Lookup(pluginID)
+	return d.SupportsMultipleInstances
 }
 
-// ValidateManifest checks the worker declaration against the official policy.
+func SupportsDirectories(id string) bool { d, _ := Lookup(id); return d.Directories }
+func NeedsAudioTools(id string) bool     { d, _ := Lookup(id); return d.AudioTools }
+func ProcessesAudio(id string) bool      { d, _ := Lookup(id); return d.AudioProcessing }
+func Version(id string) string           { d, _ := Lookup(id); return d.Version }
+func HasSettings(id string) bool         { d, _ := Lookup(id); return d.Settings }
+
+// Configuration 返回插件声明的独立副本，不允许调用者改写注册数据。
+func Configuration(id string) *pluginproto.Configuration {
+	d, ok := Lookup(id)
+	if !ok || d.Configuration == nil {
+		return nil
+	}
+	return d.Configuration()
+}
+
+// ValidateManifest 将 Worker 声明与可信装配中的角色和来源类型核对。
 func ValidateManifest(manifest pluginproto.Manifest, role string) error {
 	if err := manifest.Validate(role); err != nil {
 		return err
 	}
-	if Role(manifest.PluginID) != role || manifest.SupportsMultipleInstances != SupportsMultipleInstances(manifest.PluginID) {
+	d, ok := Lookup(manifest.PluginID)
+	if !ok || d.Role != role || manifest.SupportsMultipleInstances != d.SupportsMultipleInstances || manifest.SourceType != d.SourceType {
 		return pluginproto.Failure("PROTOCOL_MISMATCH", "Plugin instance support does not match its declaration")
 	}
 	return nil

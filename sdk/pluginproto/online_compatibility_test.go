@@ -46,7 +46,7 @@ func TestOnlineIncompatibleDeclarationsAreRejected(t *testing.T) {
 	cases := map[string]func(*pluginproto.Manifest, *pluginproto.OnlineDescriptor){
 		"wire version":    func(m *pluginproto.Manifest, _ *pluginproto.OnlineDescriptor) { m.ProtocolVersion = "2.0" },
 		"schema revision": func(_ *pluginproto.Manifest, d *pluginproto.OnlineDescriptor) { d.SchemaRevision = "online-v999" },
-		"authentication":  func(_ *pluginproto.Manifest, d *pluginproto.OnlineDescriptor) { d.Authentication = "anonymous" },
+		"authentication":  func(_ *pluginproto.Manifest, d *pluginproto.OnlineDescriptor) { d.Authentication = "unknown" },
 		"unknown capability": func(m *pluginproto.Manifest, d *pluginproto.OnlineDescriptor) {
 			m.Capabilities = []string{"filesystem.write"}
 			d.Capabilities = []online.Capability{{Name: "filesystem.write", Supported: true}}

@@ -15,7 +15,7 @@
     }
   },
   {
-    "name": "online-not-a-stream-url",
+    "name": "online-source-url-requires-https",
     "schema": "OnlineTrack",
     "valid": false,
     "value": {
@@ -24,7 +24,7 @@
       "artists": [],
       "album": "",
       "durationMs": null,
-      "sourceUrl": "https://media.invalid/file.mp3",
+      "sourceUrl": "http://media.invalid/file.mp3",
       "metadataDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "playbackAvailability": "unknown"
     }

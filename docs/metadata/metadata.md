@@ -21,7 +21,11 @@ Linux 使用 `../build/linux/musicfs-plugins`，保留相同 `args`。可选 `sh
 
 `GET /api/v1/scraper-instances` 返回本人实例的编号、显示名、字段和可用状态，不包含执行路径。`available` 表示已启用且程序通过本地校验，不保证每个源都支持提取。`queryCorrectionsSupported=false`：当前本地插件不进行在线搜索，提交非空标题/艺人修正返回415 `UNSUPPORTED`。
 
+宿主调度只依赖 `enrichment.Host/Session/Input` 和插件声明的 `Descriptor`。受信任插件通过注册工厂接入，实例列表、字段校验、查询修正和刮削轨迹使用该声明；本地插件的不支持查询修正不再成为所有 Scraper 的限制。显式选择不支持所请求字段或修正的实例会被拒绝；未指定实例时，只选择能力匹配的可用实例。当前官方仍只装配本地 Scraper，这不表示新增在线刮削服务已经实现。
+
 支持的格式和限制见[插件说明](../../plugins/scraper/local/README.md)：MP3 ID3v2.3/v2.4 的 USLT/APIC、原生 FLAC 的歌词注释/PICTURE，以及授权的同名歌词/图片和目录封面。NCM 由独立后台解密通道提供 MP3/FLAC 字节及外层封面附件，宿主将附件作为独立资源交本地 Scraper 验证，不将其重写进音频标签。容器元数据中的封面 URL 不下载；图片经过与其他封面相同的类型、尺寸和内容检查后才成为可用候选。不支持的内嵌内容保留问题说明，仍可使用有效旁置内容。
+
+候选的 `origin`/`basis` 为有界来源说明，存储层不再按本地标签名称筛选其他插件的结果；本地插件自行验证 USLT、APIC 等标签及附件归属。宿主统一复核候选范围、大小、正文摘要和格式。自动选用仍只接受公共的单曲归属语义（`embedded`、`sidecar/exactStem`、`container/containerEmbedded`）；自定义来源默认只供人工预览和选用。
 
 ## 搜索和预览
 

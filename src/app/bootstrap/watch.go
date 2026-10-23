@@ -9,12 +9,13 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/scanwatch"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 )
 
 func configureWatch(ctx context.Context, c config.Config, lib *library.Service, runtimes []library.Runtime, log *slog.Logger) func() {
 	var watchers []*scanwatch.Watcher
 	for _, plugin := range c.Plugins {
-		if plugin.PluginID != "musicfs.plugin.source.localfiles" || !plugin.Enabled {
+		if !pluginconfig.SupportsDirectories(plugin.PluginID) || !plugin.Enabled {
 			continue
 		}
 		for _, instance := range plugin.Instances {

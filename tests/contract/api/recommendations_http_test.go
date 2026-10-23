@@ -3,6 +3,8 @@ package api_test
 import (
 	"context"
 	"encoding/json"
+	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -19,6 +21,10 @@ import (
 type recommendationHTTPProvider struct {
 	calls atomic.Int32
 	fail  atomic.Bool
+}
+
+func (*recommendationHTTPProvider) Descriptor() pluginproto.OnlineDescriptor {
+	return onlineplugins.Describe(online.Netease)
 }
 
 func (p *recommendationHTTPProvider) PublicRecommendations(context.Context, int) (online.RecommendationPage, error) {

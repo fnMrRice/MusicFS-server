@@ -3,7 +3,7 @@ package writeback
 import "golang.org/x/sys/windows"
 
 func inspectCapability(root Root) error {
-	fs, err := openDisk(root, Target{RelativePath: "capability-check.flac"})
+	fs, err := openDisk(root, Target{RelativePath: "capability-check"})
 	if err != nil {
 		return err
 	}

@@ -5,12 +5,12 @@ import (
 	"errors"
 	"io"
 
-	audioffmpeg "github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/sdk/audioformat"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/audiocodecs"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audioruntime"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/codecsettings"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 )
@@ -25,17 +25,11 @@ func (p *preparedInput) prepareInput(ctx context.Context, task string, input *so
 	if err != nil {
 		return nil, 0, false, noop, err
 	}
-	p.decodeOutput, err = codecsettings.DecodeOutput(ctx, p.service.repo, track.Owner)
+	p.decodeOutput, err = codecsettings.DecodeOutput(ctx, p.service.repo, track.Owner, p.processor.AudioDecoder().PluginID)
 	if err != nil {
 		return nil, 0, false, noop, err
 	}
 	wrapped := matched && match.RequiresDecode
-	if wrapped {
-		ctx, err = p.decoderLease(ctx)
-		if err != nil {
-			return nil, 0, false, noop, err
-		}
-	}
 	limit, release := track.Size, noop
 	if p.decodeOutput != "native" {
 		ctx, err = p.processingLease(ctx)
@@ -43,7 +37,7 @@ func (p *preparedInput) prepareInput(ctx context.Context, task string, input *so
 			return nil, 0, false, noop, err
 		}
 		// 解码临时文件与播放副本同时计费，最多占用一半总配额以留出复制空间。
-		limit = min(audioffmpeg.DefaultDecodeOutputBytes, p.service.budget.Limit()/2)
+		limit = min(int64(256<<20), p.service.budget.Limit()/2)
 		if p.service.cache != nil {
 			p.service.cache.MakeRoom(ctx, limit)
 		}
@@ -52,9 +46,10 @@ func (p *preparedInput) prepareInput(ctx context.Context, task string, input *so
 		}
 		release = func() { p.service.budget.Release(limit) }
 	}
-	decoded, err := audiocodecs.Decode(ctx, p.processor, p.decoder, audioformat.Request{
+	instances := append([]audioruntime.Decoder{p.processor, p.decoder}, p.service.config.Decoders...)
+	decoded, err := audiocodecs.DecodeAdmitted(ctx, instances, audioformat.Request{
 		TaskID: task, AssetID: track.AssetID, OutputFormat: p.decodeOutput, MaxOutputBytes: limit,
-	}, audioformat.Input{Reader: input, Size: track.Size})
+	}, audioformat.Input{Reader: input, Size: track.Size}, p.decoderLease)
 	if err != nil {
 		if !errors.Is(err, audioformat.ErrCleanup) {
 			release()
@@ -76,6 +71,7 @@ func (p *preparedInput) prepareInput(ctx context.Context, task string, input *so
 		track.Codec = &format
 	}
 	track.MIME = decoded.MIME
+	p.decodeProcessing = append([]audioformat.Processing(nil), decoded.Processing...)
 	return io.NewSectionReader(decoded.Reader, 0, decoded.Size), decoded.Size, wrapped, func() {
 		if err := decoded.Close(); err != nil {
 			if err = decoded.Close(); err != nil {

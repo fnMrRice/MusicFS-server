@@ -107,34 +107,6 @@ type PlaylistObservation struct {
 	ObservedAt     time.Time       `json:"observedAt"`
 }
 
-// Capabilities defines the host's verified upper bound for official platforms.
-// A particular plugin's actual enabled capabilities come from its descriptor.
-func Capabilities(platform string) []Capability {
-	if platform == Bilibili {
-		return bilibiliCapabilities()
-	}
-	return []Capability{
-		{"search.tracks", platform == Netease, "Login required; Netease EAPI and QQ desktop RPC; real account queries pending; Apple catalog unsupported"},
-		{"search.albums", platform == Netease, "Netease authenticated client public search verified"},
-		{"search.artists", platform == Netease, "Netease authenticated client public search verified"},
-		{"search.playlists", platform == Netease, "Netease authenticated client public search verified"},
-		{"metadata.album", platform == Netease, "Netease authenticated client album detail verified"},
-		{"metadata.artist", platform == Netease, "Netease authenticated client artist detail verified"},
-		{"album.tracks", platform == Netease, "Digest-bound album observation with paged tracks"},
-		{"artist.albums", platform == Netease, "Netease public artist album paging verified"},
-		{"artist.tracks", platform == Netease, "Netease public artist track paging verified; order remains upstream hot order"},
-		{"metadata.tracks.batch", platform == Netease, "At most 50 public track identities per request"},
-		{"playlist.tracks", platform == Netease, "Digest-bound observation with batched display metadata; no audio authorization"},
-		{"metadata.track", platform == Netease, "Only Netease authenticated client detail has been verified"},
-		{"track.details", platform == Netease, "Provider-owned read-only track detail fields"},
-		{"playlist.observe", platform == Netease, "Unversioned public entry observations only"},
-		{"playlist.list", platform == Netease, "Current account playlists; account-bound paging tested; live account validation pending"},
-		{"recommendations.playlists", platform == Netease, "Login required; first-page recommendations; personalization is not verified"},
-		{"account.login", false, "Login adapters are available for evaluation; live account validation is pending"},
-		{"stream.resolve", false, "No authorized complete audio resource has been verified"},
-	}
-}
-
 // TextValue validates UTF-8 text against a byte limit and strips outer space.
 func TextValue(s string, limit int) (string, error) {
 	if !utf8.ValidString(s) || len(s) > limit || strings.ContainsFunc(s, unicode.IsControl) {

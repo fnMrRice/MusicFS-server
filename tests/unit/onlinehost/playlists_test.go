@@ -3,6 +3,8 @@ package onlinehost_test
 import (
 	"context"
 	"errors"
+	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"testing"
 	"time"
 
@@ -14,7 +16,16 @@ import (
 
 type observedPlaylist struct {
 	onlinehost.Provider
-	calls int
+	calls    int
+	platform string
+}
+
+func (p *observedPlaylist) Descriptor() pluginproto.OnlineDescriptor {
+	platform := p.platform
+	if platform == "" {
+		platform = online.Netease
+	}
+	return onlineplugins.Describe(platform)
 }
 
 func (p *observedPlaylist) ObservePlaylist(_ context.Context, id string) (online.PlaylistObservation, error) {
@@ -26,7 +37,7 @@ func TestRemotePlaylistAdapterScopeAndConfigurationBinding(t *testing.T) {
 	p := &observedPlaylist{}
 	host, err := onlinehost.New([]onlinehost.Runtime{
 		{Owner: "mine", InstanceID: "net", Platform: online.Netease, ConfigRevision: "current", Enabled: true, Provider: p},
-		{Owner: "mine", InstanceID: "qq", Platform: online.QQMusic, ConfigRevision: "current", Enabled: true, Provider: p},
+		{Owner: "mine", InstanceID: "qq", Platform: online.QQMusic, ConfigRevision: "current", Enabled: true, Provider: &observedPlaylist{platform: online.QQMusic}},
 		{Owner: "mine", InstanceID: "off", Platform: online.Netease, ConfigRevision: "current", Provider: p},
 	})
 	if err != nil {

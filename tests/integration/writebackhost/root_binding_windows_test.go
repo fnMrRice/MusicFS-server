@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/tags/flac"
+	"github.com/fnMrRice/MusicFS-server/sdk/directoryidentity"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
@@ -68,7 +70,7 @@ func TestWritebackSubmitRejectsChangedDirectoryBinding(t *testing.T) {
 		t.Fatal(err)
 	}
 	track := library.Track{ID: "track", Owner: "owner", ProviderID: "provider", RootID: "music", Path: "track.flac", AssetID: "asset", Version: entry.ObservedVersion, Size: entry.SizeBytes, Availability: "available"}
-	runtime := library.Runtime{ID: "provider", Owner: "owner", Worker: &pluginhost.Worker{Access: original}}
+	runtime := library.Runtime{ID: "provider", Owner: "owner", Worker: &pluginhost.Worker{Access: original, Manifest: pluginproto.Manifest{Capabilities: []string{directoryidentity.Capability}}}}
 	probe := func(context.Context, io.ReadSeeker, int64) (library.Observation, error) {
 		return library.Observation{}, nil
 	}
@@ -93,7 +95,7 @@ func TestWritebackSubmitRejectsChangedDirectoryBinding(t *testing.T) {
 	if job, _, err := service.Submit(ctx, "owner", request, "original-root-submit"); err != nil || job.Status != "queued" || repo.queued != 1 {
 		t.Fatalf("original directory grant did not admit a submission: %+v %v", job, err)
 	}
-	runtime.Worker = &pluginhost.Worker{Access: replacement}
+	runtime.Worker = &pluginhost.Worker{Access: replacement, Manifest: pluginproto.Manifest{Capabilities: []string{directoryidentity.Capability}}}
 	if err = lib.UpdateRuntime(runtime); err != nil {
 		t.Fatal(err)
 	}

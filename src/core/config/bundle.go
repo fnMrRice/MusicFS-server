@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -201,14 +202,14 @@ func markPendingConfiguration(c *Config, bundle string) {
 			if !p.InProcess() && platform != "" && (isBundle || isOnlineBundle) && !onlineSelectorArgs(p.Args, platform) {
 				i.PendingConfiguration = true
 			}
-			switch p.PluginID {
-			case "musicfs.plugin.source.localfiles":
+			switch {
+			case pluginconfig.SupportsDirectories(p.PluginID):
 				i.PendingConfiguration = i.PendingConfiguration || len(i.Config.MusicRoots) == 0
 				for _, root := range i.Config.MusicRoots {
 					info, err := os.Stat(root.Path)
 					i.PendingConfiguration = i.PendingConfiguration || err != nil || !info.IsDir()
 				}
-			case "musicfs.plugin.decoder.ffmpeg":
+			case pluginconfig.NeedsAudioTools(p.PluginID):
 				for _, path := range []string{i.Config.FFmpegPath, i.Config.FFprobePath} {
 					info, err := os.Stat(path)
 					i.PendingConfiguration = i.PendingConfiguration || err != nil || !info.Mode().IsRegular()

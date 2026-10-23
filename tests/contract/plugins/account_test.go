@@ -42,7 +42,11 @@ func TestPlatformAccountWireSchema(t *testing.T) {
 	if public.Validate(map[string]any{"state": "signedIn", "secret": map[string]any{"token": "fixture"}}) == nil {
 		t.Fatal("public schema accepted secret")
 	}
-	for _, address := range []string{"http://p1.music.126.net/avatar.jpg", "https://example.com/avatar.jpg", "https://p1.music.126.net/avatar.jpg?token=private", "https://p1.music.126.net:443/avatar.jpg"} {
+	// 通用契约只限定 URL 结构，平台主机约束由插件负责。
+	if err := public.Validate(map[string]any{"state": "signedIn", "avatarUrl": "https://avatars.example.com/avatar.jpg"}); err != nil {
+		t.Fatal("Public schema rejected a plugin-owned avatar host", err)
+	}
+	for _, address := range []string{"http://p1.music.126.net/avatar.jpg", "https://user@p1.music.126.net/avatar.jpg", "https://p1.music.126.net/avatar.jpg?token=private", "https://p1.music.126.net:443/avatar.jpg", "https://p1.music.126.net/avatar.jpg#private"} {
 		if public.Validate(map[string]any{"state": "signedIn", "avatarUrl": address}) == nil {
 			t.Fatal("Public schema accepted an unsupported avatar URL")
 		}

@@ -5,31 +5,24 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audioruntime"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
 
 // configureAudioManagement rebuilds verified processors only after the manager
 // has drained their previous leases. onChange refreshes background consumers
 // before the new generation can accept work; long-running work must use runCtx.
-func configureAudioManagement(c config.Config, manager *plugincontrol.Manager, player *playback.Service, processor *audioffmpeg.Processor, decoder *ncmdecoder.Processor, onChange func(context.Context, *audioffmpeg.Processor, *ncmdecoder.Processor, string) error) error {
+func configureAudioManagement(c config.Config, manager *plugincontrol.Manager, player *playback.Service, processor audioruntime.Processor, decoder audioruntime.Decoder, onChange func(context.Context, audioruntime.Processor, audioruntime.Decoder, audioruntime.Probe) error) error {
 	var mu sync.Mutex
 	var changeMu sync.Mutex
 	currentAudio, currentDecoder := processor, decoder
-	probePath := ""
-	for _, plugin := range c.Plugins {
-		if plugin.PluginID == "musicfs.plugin.decoder.ffmpeg" && plugin.Enabled && processor != nil {
-			for _, instance := range plugin.Instances {
-				if instance.Enabled {
-					probePath = instance.Config.FFprobePath
-				}
-			}
-		}
+	var probePath audioruntime.Probe
+	if processor != nil && processor.Available() {
+		probePath = processor.ProbeOutputMetadata
 	}
-	apply := func(ctx context.Context, audio *audioffmpeg.Processor, ncm *ncmdecoder.Processor, probe string) error {
+	apply := func(ctx context.Context, audio audioruntime.Processor, ncm audioruntime.Decoder, probe audioruntime.Probe) error {
 		if onChange != nil {
 			if err := onChange(ctx, audio, ncm, probe); err != nil {
 				return err
@@ -42,13 +35,14 @@ func configureAudioManagement(c config.Config, manager *plugincontrol.Manager, p
 		return nil
 	}
 	for _, plugin := range c.Plugins {
-		if plugin.PluginID != "musicfs.plugin.decoder.ffmpeg" && plugin.PluginID != "musicfs.plugin.decoder.ncm" {
+		factory, registered := audioFactory(plugin.PluginID)
+		if !registered {
 			continue
 		}
 		for _, instance := range plugin.Instances {
 			gate := manager.Gate(instance.InstanceID)
-			isAudio := plugin.PluginID == "musicfs.plugin.decoder.ffmpeg"
-			ready := plugin.CanStart(instance) && (isAudio && processor != nil || !isAudio && decoder != nil)
+			isAudio := factory.Processing
+			ready := plugin.CanStart(instance) && (isAudio && processor != nil && processor.AudioDecoder().PluginID == plugin.PluginID || !isAudio && decoder != nil && decoder.AudioDecoder().PluginID == plugin.PluginID)
 			if ready {
 				if isAudio {
 					processor.SetGate(gate)
@@ -61,7 +55,7 @@ func configureAudioManagement(c config.Config, manager *plugincontrol.Manager, p
 				DSPVersion: func(name string) string {
 					mu.Lock()
 					defer mu.Unlock()
-					if isAudio && currentAudio != nil {
+					if isAudio && currentAudio != nil && currentAudio.AudioDecoder().PluginID == plugin.PluginID {
 						return currentAudio.DSPPluginVersion(name)
 					}
 					return ""
@@ -69,10 +63,10 @@ func configureAudioManagement(c config.Config, manager *plugincontrol.Manager, p
 				PluginVersion: func() string {
 					mu.Lock()
 					defer mu.Unlock()
-					if isAudio && currentAudio != nil {
+					if isAudio && currentAudio != nil && currentAudio.AudioDecoder().PluginID == plugin.PluginID {
 						return currentAudio.PluginVersion()
 					}
-					if !isAudio && currentDecoder != nil {
+					if !isAudio && currentDecoder != nil && currentDecoder.AudioDecoder().PluginID == plugin.PluginID {
 						return currentDecoder.PluginVersion()
 					}
 					return ""
@@ -87,7 +81,7 @@ func configureAudioManagement(c config.Config, manager *plugincontrol.Manager, p
 						return []string{"audio.decrypt"}
 					}
 					caps := []string{"audio.decode", "audio.transcode", "audio.dsp", "audio.encode", "audio.mux"}
-					if currentAudio != nil && currentAudio.Capabilities.Normalization {
+					if currentAudio != nil && currentAudio.RuntimeCapabilities().Normalization {
 						caps = append(caps, "audio.normalize")
 					}
 					return caps
@@ -99,21 +93,21 @@ func configureAudioManagement(c config.Config, manager *plugincontrol.Manager, p
 					activeAudio, activeDecoder, activeProbe := currentAudio, currentDecoder, probePath
 					mu.Unlock()
 					if isAudio {
-						audio, err := audioffmpeg.NewProcessor(ctx, audioffmpeg.Config{Builtin: p.InProcess(), InstanceID: i.InstanceID, FFmpegPath: i.Config.FFmpegPath, FFprobePath: i.Config.FFprobePath, WorkerPath: p.Executable, WorkerArgs: p.Args, WorkerSHA256: pluginChecksum(p), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing, DSPChain: c.AudioDSP.Chain, DSPPlugins: c.AudioDSP.Plugins, OutputLayout: c.AudioChannels.OutputLayout, DisableEffects: !c.AudioDSP.Enabled, DisableChannelMix: !c.AudioChannels.Enabled})
+						value, err := createAudioInstance(ctx, factory, c, p, i)
 						if err != nil {
 							return err
 						}
-						audio.SetGate(gate)
-						if err = apply(ctx, audio, activeDecoder, i.Config.FFprobePath); err != nil {
+						value.Processor.SetGate(gate)
+						if err = apply(ctx, value.Processor, activeDecoder, value.Probe); err != nil {
 							return err
 						}
 					} else {
-						ncm, err := ncmdecoder.NewProcessor(ncmdecoder.Config{Builtin: p.InProcess(), InstanceID: i.InstanceID, WorkerPath: p.Executable, WorkerArgs: p.Args, WorkerSHA256: pluginChecksum(p), WorkDir: c.DataRoot, MaxConcurrent: c.MaxProcessing})
+						value, err := createAudioInstance(ctx, factory, c, p, i)
 						if err != nil {
 							return err
 						}
-						ncm.SetGate(gate)
-						if err = apply(ctx, activeAudio, ncm, activeProbe); err != nil {
+						value.Decoder.SetGate(gate)
+						if err = apply(ctx, activeAudio, value.Decoder, activeProbe); err != nil {
 							return err
 						}
 					}
@@ -135,9 +129,9 @@ func configureAudioManagement(c config.Config, manager *plugincontrol.Manager, p
 					mu.Lock()
 					audio, ncm, probe := currentAudio, currentDecoder, probePath
 					mu.Unlock()
-					if isAudio {
-						audio, probe = nil, ""
-					} else {
+					if isAudio && audio != nil && audio.AudioDecoder().PluginID == plugin.PluginID {
+						audio, probe = nil, nil
+					} else if !isAudio && ncm != nil && ncm.AudioDecoder().PluginID == plugin.PluginID {
 						ncm = nil
 					}
 					if err := apply(ctx, audio, ncm, probe); err != nil {

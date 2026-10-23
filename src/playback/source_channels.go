@@ -4,13 +4,12 @@ import (
 	"context"
 	"os"
 
-	audioffmpeg "github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 )
 
 // 只探测已经固定的解封装快照，避免上游多声道先被转成立体声再交给 Web。
 func (p *preparedInput) selectProcessingProfile(ctx context.Context, capabilities Capabilities, bitrate int64, processed, fixed bool) error {
-	if p.processor == nil {
+	if !p.processor.Available() {
 		if processed {
 			return domain.Fail("UNSUPPORTED", "Audio processor is unavailable")
 		}
@@ -30,9 +29,15 @@ func (p *preparedInput) selectProcessingProfile(ctx context.Context, capabilitie
 		channels = metadata.Channels
 	}
 	if !fixed {
-		surround, _ := audioffmpeg.ProfileByID("opus-5.1")
-		selected := p.processor.WithSourceChannels(channels, supportsOutputProfile(capabilities, surround))
-		selected, err := selected.WithSourceBitrate(bitrate)
+		allowSurround := false
+		for _, profile := range p.processor.RuntimeCapabilities().Profiles {
+			if profile.Channels > 2 && supportsOutputProfile(capabilities, profile) {
+				allowSurround = true
+				break
+			}
+		}
+		selected := p.processor.SelectSourceChannels(channels, allowSurround)
+		selected, err := selected.SelectSourceBitrate(bitrate)
 		if err == nil {
 			p.processor = selected
 		} else if processed {

@@ -13,6 +13,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -27,6 +28,7 @@ type Service struct {
 	journal     Journal
 	coordinator Coordinator
 	format      tagformat.Format
+	descriptor  tagformat.Descriptor
 	mu          sync.Mutex
 }
 
@@ -51,10 +53,17 @@ func New(policy Policy, journal Journal, coordinator Coordinator, format tagform
 	if journal == nil || coordinator == nil || format == nil {
 		return nil, invalid("Writeback requires durable journaling, host coordination and a tag format plugin")
 	}
+	descriptor := format.Descriptor()
+	if err := descriptor.Validate(); err != nil {
+		return nil, err
+	}
+	descriptor.Formats = slices.Clone(descriptor.Formats)
+	descriptor.Extensions = slices.Clone(descriptor.Extensions)
+	descriptor.Fields = slices.Clone(descriptor.Fields)
 	if policy.MaxFileBytes == 0 {
 		policy.MaxFileBytes = 8 << 30
 	}
-	if policy.MaxFileBytes < 46 || policy.MaxFileBytes > 1<<40 {
+	if policy.MaxFileBytes < 1 || policy.MaxFileBytes > 1<<40 {
 		return nil, invalid("Invalid writeback size limit")
 	}
 	policy.Roots = append([]Root(nil), policy.Roots...)
@@ -73,7 +82,7 @@ func New(policy Policy, journal Journal, coordinator Coordinator, format tagform
 		}
 		policy.Roots[i] = root
 	}
-	return &Service{policy: policy, journal: journal, coordinator: coordinator, format: format}, nil
+	return &Service{policy: policy, journal: journal, coordinator: coordinator, format: format, descriptor: descriptor}, nil
 }
 
 func supportedField(field string) bool {
@@ -90,6 +99,14 @@ func (s *Service) authorize(owner string, target Target, fields []string) (Root,
 	}
 	if target.SourceTrackID == "" || target.AssetID == "" || target.AssetVersion == "" || target.FileIdentity == "" || !validRelative(target.RelativePath) {
 		return Root{}, invalid("Invalid writeback target binding")
+	}
+	if !s.descriptor.SupportsName(target.RelativePath) {
+		return Root{}, unsupported("Tag format plugin does not support this source")
+	}
+	for _, field := range fields {
+		if !slices.Contains(s.descriptor.Fields, field) {
+			return Root{}, unsupported("Tag format plugin does not support this field")
+		}
 	}
 	for _, root := range s.policy.Roots {
 		if root.Owner != owner || root.InstanceID != target.InstanceID || root.RootID != target.RootID {
@@ -118,7 +135,7 @@ func validRelative(value string) bool {
 			return false
 		}
 	}
-	return strings.EqualFold(path.Ext(value), ".flac")
+	return true
 }
 
 func (s *Service) Apply(ctx context.Context, owner string, request Request) (result Result, err error) {
@@ -253,7 +270,7 @@ func (s *Service) describe(ctx context.Context, fs disk, file *os.File) (FileSta
 	if err != nil {
 		return state, err
 	}
-	if state.Size < 46 || state.Size > s.policy.MaxFileBytes+maxMetadata {
+	if state.Size < 1 || state.Size > s.policy.MaxFileBytes+maxMetadata {
 		return state, unsupported("Source exceeds the writeback size limit")
 	}
 	h := sha512.New()

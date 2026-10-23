@@ -4,10 +4,9 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichmentworker"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/fingerprintworker"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audioruntime"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
 
@@ -25,18 +24,25 @@ func audioGate(manager *plugincontrol.Manager, pluginID string) *plugincontrol.G
 	return nil
 }
 
-func backgroundAudioUpdate(manager *plugincontrol.Manager, probe *managedProbe, metadata *enrichmentworker.Service, fingerprints *fingerprintworker.Service, log *slog.Logger) func(context.Context, *audioffmpeg.Processor, *ncmdecoder.Processor, string) error {
-	return func(ctx context.Context, audio *audioffmpeg.Processor, ncm *ncmdecoder.Processor, ffprobe string) error {
+func runtimeAudioGate(manager *plugincontrol.Manager, decoder audioruntime.Decoder) *plugincontrol.Gate {
+	if decoder == nil {
+		return nil
+	}
+	return audioGate(manager, decoder.AudioDecoder().PluginID)
+}
+
+func backgroundAudioUpdate(manager *plugincontrol.Manager, probe *managedProbe, metadata *enrichmentworker.Service, fingerprints *fingerprintworker.Service, log *slog.Logger) func(context.Context, audioruntime.Processor, audioruntime.Decoder, audioruntime.Probe) error {
+	return func(ctx context.Context, audio audioruntime.Processor, ncm audioruntime.Decoder, ffprobe audioruntime.Probe) error {
 		c := manager.RuntimeConfig()
-		var metadataDecoder, fingerprintDecoder *ncmdecoder.Processor
+		var metadataDecoder, fingerprintDecoder audioruntime.Decoder
 		if ncm != nil {
-			metadataDecoder = fingerprintNCMDecoder(c, log)
-			fingerprintDecoder = fingerprintNCMDecoder(c, log)
+			metadataDecoder = backgroundDecoder(c, log)
+			fingerprintDecoder = backgroundDecoder(c, log)
 			if metadataDecoder != nil {
-				metadataDecoder.SetGate(audioGate(manager, "musicfs.plugin.decoder.ncm"))
+				metadataDecoder.SetGate(audioGate(manager, metadataDecoder.AudioDecoder().PluginID))
 			}
 			if fingerprintDecoder != nil {
-				fingerprintDecoder.SetGate(audioGate(manager, "musicfs.plugin.decoder.ncm"))
+				fingerprintDecoder.SetGate(audioGate(manager, fingerprintDecoder.AudioDecoder().PluginID))
 			}
 		}
 		if fingerprints != nil {
@@ -44,10 +50,14 @@ func backgroundAudioUpdate(manager *plugincontrol.Manager, probe *managedProbe, 
 			if err != nil {
 				log.Warn("fingerprinting dependency unavailable", "errorCode", "UNSUPPORTED")
 			}
-			fingerprints.UpdateRuntime(extractor, fingerprintDecoder, audioGate(manager, "musicfs.plugin.decoder.ffmpeg"))
+			fingerprints.UpdateRuntime(extractor, fingerprintDecoder, audioGate(manager, audioruntime.Safe(audio).AudioDecoder().PluginID))
 		}
 		metadata.UpdateDecoder(metadataDecoder)
-		probe.update(ffprobe, ncm, audioGate(manager, "musicfs.plugin.decoder.ffmpeg"), audioGate(manager, "musicfs.plugin.decoder.ncm"))
+		decoderID := ""
+		if ncm != nil {
+			decoderID = ncm.AudioDecoder().PluginID
+		}
+		probe.update(ffprobe, ncm, audioGate(manager, audioruntime.Safe(audio).AudioDecoder().PluginID), audioGate(manager, decoderID))
 		return nil
 	}
 }

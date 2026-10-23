@@ -70,14 +70,14 @@ func (s *Service) execute(parent context.Context, j identification.FingerprintJo
 
 func (s *Service) extractAndPublish(ctx context.Context, j identification.FingerprintJob) error {
 	extractor, decoder, gate, epoch := s.runtime()
-	if extractor == nil {
-		return domain.Fail("PLUGIN_DISABLED", "Fingerprint audio dependency is unavailable")
-	}
 	lease, err := gate.AcquireEpoch(ctx, epoch)
 	if err != nil {
 		return err
 	}
 	defer lease.Close()
+	if extractor == nil {
+		return domain.Fail("UNSUPPORTED", "Fingerprint extraction is unavailable")
+	}
 	if lease != nil {
 		ctx = lease.Context()
 	}

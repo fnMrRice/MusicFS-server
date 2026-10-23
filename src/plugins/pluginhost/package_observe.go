@@ -4,15 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
+	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 )
 
-// ObservePackage 只向已验证的 Local Files 实例传递当前授权根内的精确音频批次。
+// ObservePackage 只向声明作品包能力的实例传递当前授权根内的精确音频批次。
 func (w *Worker) ObservePackage(ctx context.Context, entries []pluginproto.Entry) ([]pluginproto.Observation, error) {
-	if w == nil || w.Access == nil || w.Manifest.PluginID != "musicfs.plugin.source.localfiles" {
-		return nil, domain.Fail("UNSUPPORTED", "Package observations require Local Files")
+	if w == nil || w.Access == nil || !w.Supports("library.packages") {
+		return nil, domain.Fail("UNSUPPORTED", "Provider does not support package observations")
 	}
 	if len(entries) < 1 || len(entries) > pluginproto.MaxPageItems {
 		return nil, domain.Fail("INVALID_ARGUMENT", "Invalid package observation count")
@@ -47,7 +50,7 @@ func (w *Worker) ObservePackage(ctx context.Context, entries []pluginproto.Entry
 	identities := map[string]bool{}
 	for i, item := range result.Items {
 		entry := entries[i]
-		if !localExternalID.MatchString(item.ExternalID) || identities[item.ExternalID] || item.RootID != entry.RootID || item.RelativePath != entry.RelativePath || item.ObservedVersion != entry.ObservedVersion || item.SizeBytes != entry.SizeBytes || item.MIME != entry.MIME || item.SourceRef != item.ExternalID {
+		if !providerReference(item.ExternalID, 256) || !providerReference(item.SourceRef, 256) || identities[item.ExternalID] || item.RootID != entry.RootID || item.RelativePath != entry.RelativePath || item.ObservedVersion != entry.ObservedVersion || item.SizeBytes != entry.SizeBytes || item.MIME != entry.MIME {
 			return nil, domain.Fail("PROTOCOL_MISMATCH", "Package observation does not match its source")
 		}
 		identities[item.ExternalID] = true
@@ -57,4 +60,9 @@ func (w *Worker) ObservePackage(ctx context.Context, entries []pluginproto.Entry
 		}
 	}
 	return result.Items, nil
+}
+
+// 来源 ID 和引用都是插件的不透明标识，宿主只约束长度与文本有效性。
+func providerReference(value string, limit int) bool {
+	return len(value) <= limit && strings.TrimSpace(value) != "" && utf8.ValidString(value) && strings.IndexFunc(value, unicode.IsControl) < 0
 }

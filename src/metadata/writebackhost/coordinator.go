@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/directoryidentity"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
@@ -41,6 +42,11 @@ func (s *Service) acquire(ctx context.Context, owner string, target writeback.Ta
 		if errors.As(err, &de) && de.Code == "CONFLICT" {
 			return nil, errBusy
 		}
+		return nil, err
+	}
+	// 排队后可能发生重载；持久任务与恢复均重新检查本次排他租约绑定的实现。
+	if err = g.CheckCapability(ctx, directoryidentity.Capability); err != nil {
+		g.Close()
 		return nil, err
 	}
 	access, err := g.Access()

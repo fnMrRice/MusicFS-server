@@ -8,9 +8,9 @@ import (
 )
 
 type Config struct {
-	FpcalcPath, FpcalcSHA256, FFmpegSHA256, FFmpegVersion string
-	MaxConcurrent                                         int
-	Timeout                                               time.Duration
+	FpcalcPath, FpcalcSHA256, DecoderSHA256, DecoderVersion string
+	MaxConcurrent                                           int
+	Timeout                                                 time.Duration
 }
 
 type Normalizer = fingerprint.Normalizer
@@ -19,6 +19,6 @@ type ToolIdentity = fingerprint.ToolIdentity
 type Request = fingerprint.Request
 type Detail = fingerprint.Detail
 
-const AlgorithmVersion = fingerprint.AlgorithmVersion
+const AlgorithmVersion = "1.6.1"
 const QualityRevision = fingerprint.QualityRevision
 const MaxDetailBytes = fingerprint.MaxDetailBytes

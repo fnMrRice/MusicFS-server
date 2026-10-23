@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"slices"
 
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore/content"
@@ -82,7 +83,8 @@ func (s *Session) validateResult(result enrichment.SearchResult, resources []enr
 		}
 		ids[candidate.CandidateID] = true
 		if r.Kind == "audio" {
-			if candidate.Origin != "embedded" {
+			validBasis := candidate.Field == "lyrics" && slices.Contains([]string{"USLT", "LYRICS", "UNSYNCEDLYRICS"}, candidate.Basis) || candidate.Field == "artwork" && slices.Contains([]string{"APIC", "PICTURE"}, candidate.Basis)
+			if candidate.Origin != "embedded" || !validBasis {
 				return fmt.Errorf("PROTOCOL_MISMATCH: invalid embedded provenance")
 			}
 		} else {

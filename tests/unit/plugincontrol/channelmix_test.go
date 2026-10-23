@@ -31,7 +31,7 @@ func TestChannelConversionIsAnImmutableBuiltinAlgorithm(t *testing.T) {
 	if item := managedItem(t, enabled, id); !item.ConfiguredEnabled || !item.Builtin.Configured {
 		t.Fatal("explicit channel plugin enablement was not published", item)
 	}
-	if !reflect.DeepEqual(item.Builtin.Capabilities, []string{"audio.channels.stereo", "audio.channels.5.1", "audio.channels.7.1"}) {
+	if !reflect.DeepEqual(item.Builtin.Capabilities, []string{"audio.channels.mono", "audio.channels.stereo", "audio.channels.5.1", "audio.channels.7.1"}) {
 		t.Fatal("channel converter capabilities differ", item.Builtin.Capabilities)
 	}
 	for _, enabled := range []bool{false, true} {

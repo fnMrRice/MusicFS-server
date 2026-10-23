@@ -3,6 +3,7 @@ package bilibili
 
 import (
 	"context"
+	"github.com/fnMrRice/MusicFS-server/plugins/source/online/internal/policies"
 	"net/http"
 	"sync"
 	"time"
@@ -29,6 +30,9 @@ var _ provider.AudioClient = (*Client)(nil)
 
 func Plugin(options Options) provider.Plugin {
 	d := pluginproto.OnlinePolicy(online.Bilibili)
+	d.Resources = policies.Resources(online.Bilibili)
+	d.Capabilities = policies.Capabilities(online.Bilibili)
+	d.Authentication = "anonymous"
 	d.Plugin = &pluginproto.PluginIdentity{ID: "musicfs.plugin.source.bilibili", Name: "Bilibili", LocalizedNames: map[string]string{"zh": "哔哩哔哩", "zh-Hans": "哔哩哔哩", "zh-Hant": "嗶哩嗶哩"}, Features: []string{"music-source"}}
 	return provider.Plugin{Descriptor: d, Version: bundledplugin.BilibiliVersion, NewClient: func(scope online.Scope, timeout time.Duration) (provider.Client, error) {
 		opts := options

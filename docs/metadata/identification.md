@@ -62,7 +62,9 @@ Windows 通过 [ReOpenFile](https://learn.microsoft.com/en-us/windows/win32/api/
 
 当前由内置音频分析插件 `musicfs.plugin.analysis.chromaprint` 提取指纹，实现位于 [`plugins/analysis/chromaprint`](../../plugins/analysis/chromaprint)。插件直接在 Server 主进程执行，通过本地工具 `fpcalc` 1.6.1 的 CLI 算法 2 完成计算；`fpcalc` 是外部工具进程，不是独立的插件服务或插件 Worker。当前没有新增 BPM、调性等分析能力，也不包含外部检索或上传路径；没有向 AcoustID 等服务自动上传指纹。准确版本、源码提交、CLI 编号及许可证见[算法来源](../../src/metadata/identification/fingerprint/REFERENCES.md)。`fpcalc`、FFmpeg/ffprobe 均是显式外部依赖；工具二进制不提交到仓库。
 
-宿主在组装时注入提取器，保留 [`fingerprint`](../../src/metadata/identification/fingerprint) 的证据模型、版本与明细校验，以及 [`fingerprintworker`](../../src/metadata/identification/fingerprintworker) 的授权、稳定读取、任务调度、取消和发布事务。插件只接受已绑定资产的读取输入并返回指纹明细，不自行修改资产、证据索引或任务状态。本次拆分保留原有 Chromaprint 算法身份、质量门槛和证据版本。
+宿主在组装时注入提取器，保留 [`fingerprint`](../../src/metadata/identification/fingerprint) 的证据模型、版本与明细校验，以及 [`fingerprintworker`](../../src/metadata/identification/fingerprintworker) 的授权、稳定读取、任务调度、取消和发布事务。插件只接受已绑定资产的读取输入并返回指纹明细，不自行修改资产、证据索引或任务状态。公共身份使用 `analyzer` 和 `decoder` 记录工具版本及摘要，算法名称、版本和参数版本由提取器声明；Chromaprint 对 fpcalc 1.6.1 的限制位于其插件实现。宿主继续验证固定的 PCM/uint32 明细规格、质量门槛和完整身份摘要，不接受跨不同算法、工具或配置身份的指纹比较。新增算法可实现现有 `Extractor` 契约；这不代表任意指纹二进制格式已经受支持。
+
+数据库迁移 034 将旧 `fpcalc` 身份的指纹任务及索引原文归档到 `retired_fingerprint_evidence`，撤销旧派生证据和未完成发布，不在业务代码兼容旧 JSON。旧指纹任务编号不再作为当前任务查询，旧请求幂等记录失效；新请求重新提取。原音乐、歌曲身份、录音关系和其他业务数据保持不变。过期指纹文件由媒体回收流程处理，仍受备份引用保护。
 
 YAML 的 `fingerprinting` 默认禁用。启用时指定 `fpcalcPath` 与实际文件的 `fpcalcSha256`，同时启用音频插件及其实例。路径相对配置文件解析，工具 SHA-256 和版本在启动/执行时校验。完整字段与有效示例见[配置说明](../operations/configuration.md)及[示例配置](../../configs/server.example.yaml)。并发默认为 1、最多 2；超时默认 30 秒、配置最多 120 秒。音频规范化自身仍有 30 秒上限。
 

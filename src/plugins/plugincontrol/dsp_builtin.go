@@ -3,26 +3,32 @@ package plugincontrol
 import (
 	"maps"
 
-	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 )
 
 func dspPlugin(id string) bool {
-	switch id {
-	case "musicfs.dsp.gain", "musicfs.dsp.equalizer", "musicfs.dsp.compressor", "musicfs.dsp.reverb":
-		return true
+	for _, descriptor := range audio.Catalog() {
+		if descriptor.PluginID == id {
+			return true
+		}
 	}
 	return false
 }
 
 // 直接内置的 DSP 只投影启动链，不注册普通实例或外部进程。
 func (m *Manager) builtinDSPPluginsLocked() []Plugin {
-	result := make([]Plugin, 0, 3)
-	for _, name := range []string{"equalizer", "compressor", "reverb"} {
-		id := "musicfs.dsp." + name
+	result := []Plugin{}
+	seen := map[string]bool{}
+	for _, descriptor := range audio.Catalog() {
+		id := descriptor.PluginID
+		if id == "" || descriptor.PluginVersion == "" || descriptor.Capability == "gain" || descriptor.Capability == "channelConversion" || seen[id] {
+			continue
+		}
+		seen[id] = true
 		status := &DSPStatus{ChainState: "not_configured", Nodes: []DSPNode{}}
 		for index, node := range m.desired.AudioDSP.Chain {
-			if node.Name != name && node.Name != id {
+			selected, ok := audio.Definition(node.Name)
+			if !ok || selected.PluginID != id {
 				continue
 			}
 			params := maps.Clone(node.Params)
@@ -38,7 +44,7 @@ func (m *Manager) builtinDSPPluginsLocked() []Plugin {
 		if !m.desired.AudioDSP.Enabled {
 			status.ChainState = "disabled"
 		}
-		result = append(result, Plugin{PluginID: id, Plugin: pluginconfig.Identity(id), Version: bundledplugin.Version(id), Execution: "builtin",
+		result = append(result, Plugin{PluginID: id, Plugin: dspIdentity(descriptor), Version: descriptor.PluginVersion, Execution: "builtin",
 			ConfiguredEnabled: m.desired.AudioDSP.Enabled && status.Configured, DSP: status, Instances: []Instance{}})
 	}
 	return result

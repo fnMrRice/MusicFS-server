@@ -114,13 +114,18 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 		scope = r.Context
 		priority = r.Request.Action == "signalCancel" || r.Request.Action == "logout"
 		run = func(ctx context.Context) (any, error) { return client.Account(ctx, r.Request) }
-	case "provider.online.describe":
+	case "provider.online.describe", "provider.online.accountOptions":
 		var r pluginproto.OnlineScope
 		if err = pluginproto.DecodeOnline(raw, &r); err != nil {
 			return nil, err
 		}
 		scope = r.Context
-		run = func(context.Context) (any, error) { return w.plugin.Descriptor, nil }
+		run = func(ctx context.Context) (any, error) {
+			if method == "provider.online.accountOptions" {
+				return w.loginOptions(ctx, client)
+			}
+			return w.plugin.Descriptor, nil
+		}
 	case "provider.online.search":
 		var r pluginproto.OnlineSearch
 		if err = pluginproto.DecodeOnline(raw, &r); err != nil {

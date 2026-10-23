@@ -52,7 +52,7 @@ func stateWorkerEndpoint(t *testing.T, driver storage.Driver, mode, path string)
 	hello := map[string]any{
 		"Protocol": pluginrpc.Protocol, "Contract": pluginrpc.Fingerprint(contract),
 		"Nonce": strings.Repeat("0", 48), "Mode": mode,
-		"Options": map[string]string{"Path": path, "Plugin": "custom-plugin", "Instance": "custom-instance"},
+		"Options": map[string]any{"Path": path, "Plugin": "custom-plugin", "Instance": "custom-instance", "DataRoot": filepath.Dir(path), "Options": map[string]string{"tenant": "custom"}},
 	}
 	var ready map[string]any
 	if err := endpoint.Peer.Call(ctx, "persistence.hello", hello, &ready); err != nil {
@@ -69,7 +69,8 @@ func TestPersistenceWorkerUsesDriverStateFactories(t *testing.T) {
 			openCalls, readCalls := 0, 0
 			store := &driverState{}
 			verify := func(cfg plugindb.BackendConfig, gotPath, plugin, instance string) {
-				if !reflect.DeepEqual(cfg, plugindb.BackendConfig{}) || gotPath != path || plugin != "custom-plugin" || instance != "custom-instance" {
+				want := plugindb.BackendConfig{DataRoot: filepath.Dir(path), Options: map[string]string{"tenant": "custom"}}
+				if !reflect.DeepEqual(cfg, want) || gotPath != path || plugin != "custom-plugin" || instance != "custom-instance" {
 					t.Errorf("state factory arguments changed: %+v %q %q %q", cfg, gotPath, plugin, instance)
 				}
 			}

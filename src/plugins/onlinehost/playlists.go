@@ -2,7 +2,6 @@ package onlinehost
 
 import (
 	"context"
-	"regexp"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
@@ -10,8 +9,6 @@ import (
 )
 
 type playlistRemote struct{ host *Service }
-
-var playlistExternalID = regexp.MustCompile(`^[1-9][0-9]{0,19}$`)
 
 // PlaylistRemote reuses the scoped online workers; callers cannot supply URLs,
 // platform credentials, transport settings, or a configuration revision.
@@ -65,10 +62,7 @@ func (p *playlistRemote) Authorize(ctx context.Context, owner string, ref playli
 	if !supported {
 		return playlists.Binding{}, domain.Fail("UNSUPPORTED", "Public playlist import is not supported by this instance")
 	}
-	validID := playlistExternalID.MatchString(ref.ExternalID)
-	if runtime.Platform == online.Bilibili {
-		validID = online.BilibiliPlaylistURL(ref.ExternalID) != ""
-	}
+	validID := online.ReferenceURL(runtime.descriptor.Resources.Playlists, ref.ExternalID) != ""
 	if !validID {
 		return playlists.Binding{}, playlists.Invalid()
 	}

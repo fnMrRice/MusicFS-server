@@ -8,6 +8,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/directoryidentity"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
@@ -49,10 +50,10 @@ func (w *worker) observeEntry(ctx context.Context, entry pluginproto.Entry) (plu
 		return pluginproto.Observation{}, err
 	}
 	var state pluginproto.StateValue
-	if err = w.peer.Call(ctx, "host.state.get", pluginproto.StateRequest{Key: "track-" + externalID}, &state); err != nil {
+	if err = w.peer.Call(ctx, "host.state.get", pluginproto.StateRequest{Key: directoryidentity.TrackKey(externalID)}, &state); err != nil {
 		return pluginproto.Observation{}, err
 	}
-	if err = w.peer.Call(ctx, "host.state.compareAndSet", pluginproto.StateRequest{Key: "track-" + externalID, Revision: state.Revision, Value: raw}, nil); err != nil {
+	if err = w.peer.Call(ctx, "host.state.compareAndSet", pluginproto.StateRequest{Key: directoryidentity.TrackKey(externalID), Revision: state.Revision, Value: raw}, nil); err != nil {
 		return pluginproto.Observation{}, err
 	}
 	return item, nil

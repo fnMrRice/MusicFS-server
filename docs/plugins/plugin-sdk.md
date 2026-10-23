@@ -21,15 +21,16 @@ SDK 包入口：
 - `sdk/pluginsettings`：声明式设置页字段、按钮与可选本地化文案，宿主路由及持久化见[插件设置](settings.md)。
 - `sdk/audioformat`：插件提供格式探测、识别优先级、解码能力与独立有界容器附件，宿主组合多层解码链并保留各层附件及生命周期；输出格式、终止和资源限制见[音频编解码插件](audio-codecs.md)。
 - `sdk/pluginproto`：现有 Provider 协议、Manifest、双向 RPC、帧处理、取消及配置声明校验。
+- `sdk/directoryidentity`：目录 Provider 可选的稳定路径身份状态协议；文件替换重绑定的准入、状态结构及恢复边界见[目录身份协议](../contracts/plugins/v1/directory-identity.md)。
 - `sdk/inprocess`：为受信任编译内函数创建独立内存双向管道，取消时关闭阻塞读写；`Peer.Wait` 等待请求退出。
-- `sdk/tagformat`、`sdk/contenttransform`：FLAC 标签处理与封面变换的最小能力契约，宿主控制授权和最终发布。
-- `sdk/online`：在线平台公共 DTO 与现有官方来源的结果校验策略，不访问平台网络。
+- `sdk/tagformat`、`sdk/contenttransform`：声明支持格式的标签处理与封面变换契约，宿主控制授权和最终发布；默认实现为 FLAC 标签和 PNG/JPEG 缩略图。
+- `sdk/online`：在线平台公共 DTO、声明式资料规则与通用结果校验，不维护平台名单、不访问平台网络。
 - `sdk/provider`：通过接口和工厂注入业务实现的在线 Worker；处理握手、作用域、截止时间、取消、消息大小和并发限制。
 - `sdk/fault`：公共错误和随机请求标识。Server `domain.Error` 为同一类型的别名，保持 `errors.As` 行为。
 - `sdk/instanceid`：规范实例 UUID 和已有实例路径兼容规则。
 - `sdk/bundledplugin`：随包插件各自的发行版本声明，供 Worker 和宿主的未启动元数据共用。
 
-在线平台共用一个插件模块维护公共代码。默认由 Server 固定选择已编译的平台实现，在主进程为每个用户和实例创建独立会话，平台选择必须与握手身份一致。可选的 `musicfs-plugin-netease`、`musicfs-plugin-qqmusic`、`musicfs-plugin-applemusic`、`musicfs-plugin-bilibili` 及 `musicfs-plugin-online --plugin <平台>` 保留独立构建与进程部署能力。SDK 不拥有平台登录、加密、HTTP 请求、Cookie 或平台显示名称。已知平台 ID、结果 URL 校验及最大允许能力仍是 SDK/宿主的官方来源策略，未开放任意第三方身份、未知角色或音频能力。
+在线平台共用一个插件模块维护公共代码。Server 默认装配官方实现，在主进程为每个用户和实例创建独立会话，平台选择必须与握手身份一致。可选的 `musicfs-plugin-netease`、`musicfs-plugin-qqmusic`、`musicfs-plugin-applemusic`、`musicfs-plugin-bilibili` 及 `musicfs-plugin-online --plugin <平台>` 保留独立构建与进程部署能力。SDK 不拥有平台登录、加密、HTTP 请求、Cookie 或平台显示名称。新增内置平台由可信启动代码调用 `onlineplugins.Register` 注册工厂，并向宿主 `pluginconfig.Register` 注册身份、版本、角色和平台；配置或 RPC 不能动态注入代码。外部 Worker 同样需要宿主准入声明和程序摘要。
 
 ## 内容类型与 CUE 增量
 
@@ -56,11 +57,11 @@ Windows PowerShell 先执行 `$env:GOWORK = 'off'`，再执行对应 `go build` 
 
 ## 版本与能力兼容
 
-所有插件必须声明发行版本，格式为最多 128 字符的有效语义版本（SemVer）；缺失、空白、无效格式及带前导零的纯数字预发行标识均拒绝。通用 Manifest 的 `pluginVersion` 由 `ValidPluginVersion` 统一校验，适用于 Provider、音频和 Scraper。发行版本独立于 Server 版本、SDK 模块依赖版本和通信协议；在线插件不要求精确等于 `0.1.0`，通信兼容仍由 `protocolVersion=1.0` 和 `schemaRevision=online-authenticated-v3` 严格判断。版本号变化不会自动获得新方法或权限；FFmpeg 等角色已有的精确版本约束仍保留。
+所有插件必须声明发行版本，格式为最多 128 字符的有效语义版本（SemVer）；缺失、空白、无效格式及带前导零的纯数字预发行标识均拒绝。通用 Manifest 的 `pluginVersion` 由 `ValidPluginVersion` 统一校验，适用于 Provider、音频和 Scraper。发行版本独立于 Server 版本、SDK 模块依赖版本和通信协议；在线插件不要求精确等于 `0.1.0`，通信兼容仍由 `protocolVersion=1.0` 和 `schemaRevision=online-declared-v4` 严格判断。版本号变化不会自动获得新方法或权限；FFmpeg 等角色已有的精确版本约束仍保留。
 
 随包七种普通插件、DSP gain、SQLite 和新增的分析、标签、评分、缩略图四项实现的发行版本统一定义在 [sdk/bundledplugin/releases.go](../../sdk/bundledplugin/releases.go)，各插件独立演进。普通 Worker 和管理快照引用同一声明；`GET /admin/plugins` 的每项 `version` 必填，尚无有效握手版本时返回随包声明，包括未启动、待配置、已禁用或启动失败的情况；取得有效握手版本后优先返回实际版本。当前配置仅支持已声明的官方普通插件，未知 ID 仍被拒绝，不以 Server 版本或占位字符串代替插件版本。
 
-在线声明可以提供已知且已验证能力的子集。宿主分别验证 Manifest 与描述，并核对启用能力集合和显示身份一致；重复能力、未知能力、超出当前平台策略的能力、错误协议或声明不一致均拒绝启动。运行期间依据已验证声明展示与执行能力，不能用宿主默认能力覆盖插件自己的限制。新增上游能力仍须更新并验证宿主策略及协议，而不是通过提升插件版本绕过检查。
+在线声明可以提供通用协议能力的子集。宿主分别验证 Manifest 与描述，并核对启用能力集合和显示身份一致；重复能力、未知方法、错误协议或声明不一致均拒绝启动。平台自己的 `resources` 声明 ID 与规范资料 URL 的绑定规则、占位条目和图片主机，`login` 声明交互登录方法与验收状态；SDK 统一检查有界规则、HTTPS、固定主机及结果身份。平台新增既有协议能力或新的 ID/CDN 规则只需更新插件实现与声明，不修改通用校验器。新增协议方法仍须更新 SDK 和契约。运行期间以握手通过的实际声明执行，不以宿主默认能力覆盖插件限制。
 
 账号与实例身份保持不变。Web 与 Client 继续读取 Server 返回的能力和必填发行版本；旧 Server 缺失版本时的界面兼容提示不替代服务端校验。独立 DSP 和持久化 Worker 的 ready 响应也必须携带有效 `pluginVersion`；旧 Worker 缺少该字段会被新宿主拒绝。Server、`musicfs-plugins` 及使用的独立入口须配套升级并更新固定摘要，不能只依据未变化的帧协议号或接口合同号判断可混用。专用协议和升级边界见 [DSP 插件](dsp-plugins.md)与[存储插件](storage-plugins.md)。
 

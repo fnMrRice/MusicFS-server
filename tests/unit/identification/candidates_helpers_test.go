@@ -52,9 +52,9 @@ func stampCandidateIdentity(id *fingerprint.Identity) {
 }
 
 func candidateInput(id string, vector candidateVector) candidates.Input {
-	identity := fingerprint.Identity{Algorithm: "chromaprint", AlgorithmVersion: fingerprint.AlgorithmVersion, AlgorithmConfig: "cli-2-raw-v1", NormalizationRevision: audio.NormalizationRevision, QualityRevision: fingerprint.QualityRevision,
-		Fpcalc:  fingerprint.ToolIdentity{Version: "fpcalc version 1.6.1 (test identity)", SHA256: strings.Repeat("a", 64)},
-		Decoder: fingerprint.ToolIdentity{Version: "ffmpeg version test identity", SHA256: strings.Repeat("b", 64)}}
+	identity := fingerprint.Identity{Algorithm: "chromaprint", AlgorithmVersion: "1.6.1", AlgorithmConfig: "cli-2-raw-v1", NormalizationRevision: audio.NormalizationRevision, QualityRevision: fingerprint.QualityRevision,
+		Analyzer: fingerprint.ToolIdentity{Version: "fpcalc version 1.6.1 (test identity)", SHA256: strings.Repeat("a", 64)},
+		Decoder:  fingerprint.ToolIdentity{Version: "ffmpeg version test identity", SHA256: strings.Repeat("b", 64)}}
 	stampCandidateIdentity(&identity)
 	d := fingerprint.Detail{SchemaVersion: 1, Identity: identity, RequestedDurationMs: 120000,
 		PCM:     audio.PCMInfo{Format: audio.FingerprintPCM, NormalizationRevision: audio.NormalizationRevision, SampleCount: vector.Samples, DecoderVersion: identity.Decoder.Version, DecoderSHA256: identity.Decoder.SHA256},

@@ -2,6 +2,7 @@ package onlinehost_test
 
 import (
 	"context"
+	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
 	"io"
 	"testing"
 
@@ -19,7 +20,7 @@ type disabledAudioProvider struct {
 }
 
 func (p *disabledAudioProvider) Descriptor() pluginproto.OnlineDescriptor {
-	d := pluginproto.OnlinePolicy(online.Bilibili)
+	d := onlineplugins.Describe(online.Bilibili)
 	d.Plugin = &pluginproto.PluginIdentity{ID: pluginproto.OnlinePluginID(online.Bilibili), Name: "Metadata fixture", LocalizedNames: map[string]string{}, Features: []string{"music-source"}}
 	for i := range d.Capabilities {
 		if d.Capabilities[i].Name == "stream.resolve" {

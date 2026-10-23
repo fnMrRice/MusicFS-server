@@ -11,14 +11,27 @@ import (
 	"testing"
 	"time"
 
+	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/onlinehost"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 
-type playlistHTTPProvider struct{ onlinehost.Provider }
+type playlistHTTPProvider struct {
+	onlinehost.Provider
+	platform string
+}
+
+func (p *playlistHTTPProvider) Descriptor() pluginproto.OnlineDescriptor {
+	platform := p.platform
+	if platform == "" {
+		platform = online.Netease
+	}
+	return onlineplugins.Describe(platform)
+}
 
 func (*playlistHTTPProvider) ObservePlaylist(context.Context, string) (online.PlaylistObservation, error) {
 	panic("import must not perform network reads")
@@ -29,7 +42,7 @@ func TestRemotePlaylistsHTTPImportSyncSnapshotPrivacyAndErrors(t *testing.T) {
 	cookie, session := login(t, server)
 	host, err := onlinehost.New([]onlinehost.Runtime{
 		{Owner: "admin", InstanceID: "7fe223d0-a3bd-5e87-87f8-305dc26d9041", Platform: online.Netease, ConfigRevision: "private-config-revision", Enabled: true, Provider: &playlistHTTPProvider{}},
-		{Owner: "admin", InstanceID: "b5e86bbe-524b-53fc-bde9-bbe3cbb02a80", Platform: online.QQMusic, ConfigRevision: "private-config-revision", Enabled: true, Provider: &playlistHTTPProvider{}},
+		{Owner: "admin", InstanceID: "b5e86bbe-524b-53fc-bde9-bbe3cbb02a80", Platform: online.QQMusic, ConfigRevision: "private-config-revision", Enabled: true, Provider: &playlistHTTPProvider{platform: online.QQMusic}},
 		{Owner: "other", InstanceID: "843558e1-a158-56ac-834a-baffd12bb5c5", Platform: online.Netease, ConfigRevision: "private-config-revision", Enabled: true, Provider: &playlistHTTPProvider{}},
 	})
 	if err != nil {
@@ -99,6 +112,7 @@ func TestRemotePlaylistsHTTPImportSyncSnapshotPrivacyAndErrors(t *testing.T) {
 	otherRef.ExternalID = "92"
 	expect("POST", "/remote-playlists", otherRef, "import-key-1", 409, "Error")
 	expect("POST", "/remote-playlists", map[string]any{"instanceId": "7fe223d0-a3bd-5e87-87f8-305dc26d9041", "externalId": "91"}, "missing-account", 400, "Error")
+	expect("POST", "/remote-playlists", map[string]any{"instanceId": "7fe223d0-a3bd-5e87-87f8-305dc26d9041", "accountId": "", "externalId": "91"}, "anonymous-account-provider", 409, "Error")
 	expect("POST", "/remote-playlists", map[string]any{"instanceId": "7fe223d0-a3bd-5e87-87f8-305dc26d9041", "accountId": "", "externalId": "91", "url": "private"}, "forged-url", 400, "Error")
 	for _, tc := range []struct {
 		ref    playlists.RemoteRef

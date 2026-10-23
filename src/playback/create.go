@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
+	"github.com/fnMrRice/MusicFS-server/sdk/audiotypes"
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
@@ -28,7 +28,7 @@ func supports(c Capabilities, wanted string) bool {
 }
 
 // 客户端声明容器时可省略编解码器；显式声明时必须包含实际输出编解码器。
-func supportsOutputProfile(c Capabilities, profile audioffmpeg.Profile) bool {
+func supportsOutputProfile(c Capabilities, profile audiotypes.Profile) bool {
 	for _, format := range c.Formats {
 		base, params, err := mime.ParseMediaType(format.MIME)
 		if err != nil || base != profile.MIME || format.CanPlay != "maybe" && format.CanPlay != "probably" {

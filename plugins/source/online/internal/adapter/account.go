@@ -27,6 +27,9 @@ type accountState struct {
 type accountSecret = session.Secret
 
 func (c *Client) Account(ctx context.Context, r AccountRequest) (result AccountResult, err error) {
+	if c.options.PrepareAccount != nil {
+		r = c.options.PrepareAccount(r)
+	}
 	defer func() {
 		if err == nil {
 			result.DisplayCount = accountDisplayCount(result.View)

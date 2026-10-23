@@ -20,7 +20,7 @@ const MaxDecodeOutputBytes int64 = 1 << 30
 // AudioDecoder 将插件自己的识别、优先级及解码行为装入通用解码链。
 // 原生表示无需工具进程，PCM 解码则要求已验证的 FFmpeg 实例。
 func (p *Processor) AudioDecoder() audioformat.Decoder {
-	return audioformat.Decoder{Detector: FormatDetector(), Decode: p.Decode}
+	return audioformat.Decoder{Detector: FormatDetector(), NativePassthrough: true, Decode: p.Decode}
 }
 
 func (p *Processor) Decode(ctx context.Context, request audioformat.Request, input audioformat.Input) (audioformat.Output, error) {

@@ -28,17 +28,14 @@ func TestChannelOutputProfilesBindCodecLayoutAndEncoding(t *testing.T) {
 		}
 		testkit.ValidateHTTP(t, "OutputProfile", raw)
 		value := testkit.DecodeJSON(t, raw).(map[string]any)
-		value["channels"] = float64(3)
+		value["channels"] = float64(0)
 		if testkit.ContractSchema(t, "http", "OutputProfile").Validate(value) == nil {
-			t.Fatal("HTTP accepted a mismatched output channel count")
+			t.Fatal("HTTP accepted a nonpositive output channel count")
 		}
 		value["channels"] = float64(profile.Channels)
-		value["bitrateBps"] = float64(profile.BitrateBps + 1)
-		if strings.Count(id, "-") == 2 {
-			value["bitrateBps"] = float64(0)
-		}
+		value["bitrateBps"] = float64(0)
 		if testkit.ContractSchema(t, "http", "OutputProfile").Validate(value) == nil {
-			t.Fatal("HTTP accepted a mismatched processed output bitrate")
+			t.Fatal("HTTP accepted a nonpositive processed output bitrate")
 		}
 		encoded, _ := json.Marshal(profile)
 		wire := testkit.DecodeJSON(t, encoded).(map[string]any)
@@ -58,8 +55,8 @@ func TestOutputProfileContractsRejectInvalidBitrateIdentities(t *testing.T) {
 			t.Fatal("timeline accepted an invalid bitrate identity", id)
 		}
 		profile := map[string]any{"outputProfile": id, "processingRevision": "gain-v1", "decoderSha256": strings.Repeat("b", 64), "gainDb": float64(0)}
-		if testkit.ContractSchema(t, "http", "TimelineProfile").Validate(profile) == nil {
-			t.Fatal("timeline contract accepted an invalid bitrate identity", id)
+		if testkit.ContractSchema(t, "http", "TimelineProfile").Validate(profile) != nil {
+			t.Fatal("HTTP syntax validation incorrectly selected an audio implementation", id)
 		}
 		plan := map[string]any{"profile": id, "taskId": "task", "assetId": "asset", "positionMs": float64(0), "gainDB": float64(0)}
 		if testkit.ContractSchema(t, "plugin", "AudioPlan").Validate(plan) == nil {

@@ -3,7 +3,6 @@ package pluginhost
 import (
 	"context"
 	"encoding/json"
-	"os"
 	"path/filepath"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
@@ -77,9 +76,6 @@ func (w *OnlineWorker) PlatformAccount(ctx context.Context, request online.Accou
 	if request.Action == "restore" || request.Action == "signalCancel" || len(request.Secret) > 0 || request.DeveloperToken != "" {
 		return online.AccountView{}, domain.Fail("ACCESS_DENIED", "Private platform operations are Host-only")
 	}
-	if request.Action == "begin" && w.config.Platform == online.AppleMusic {
-		request.DeveloperToken = os.Getenv("MUSICFS_APPLE_DEVELOPER_TOKEN")
-	}
 	if request.Action == "logout" {
 		if err := w.accountStore.Save(nil); err != nil {
 			return online.AccountView{}, domain.Fail("TEMPORARY_FAILURE", "Platform account could not be removed")
@@ -96,11 +92,16 @@ func (w *OnlineWorker) PlatformAccount(ctx context.Context, request online.Accou
 	}
 	return result.View, nil
 }
-func (w *OnlineWorker) PlatformDeveloperToken() string {
-	if w.config.Platform != online.AppleMusic {
-		return ""
+func (w *OnlineWorker) PlatformAccountOptions(ctx context.Context) (online.AccountOptions, error) {
+	scope, err := w.newScope(ctx)
+	if err != nil {
+		return online.AccountOptions{}, err
 	}
-	return os.Getenv("MUSICFS_APPLE_DEVELOPER_TOKEN")
+	options, err := onlineCall[online.AccountOptions](ctx, w, "provider.online.accountOptions", scope, pluginproto.OnlineScope{Context: scope})
+	if err == nil {
+		err = options.Validate(w.descriptor.Login)
+	}
+	return options, err
 }
 
 // PlatformSession reads worker state without exposing or rewriting its secret.

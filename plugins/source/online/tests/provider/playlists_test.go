@@ -2,6 +2,7 @@ package provideronline_test
 
 import (
 	"context"
+	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
 	"io"
 	"net/http"
 	"strings"
@@ -23,7 +24,7 @@ func TestOnlineWorkerListsOnlyItsAuthenticatedAccountPlaylists(t *testing.T) {
 	assertCode(t, peer.Call(context.Background(), "provider.online.playlists", request, nil), "PLATFORM_AUTH_REQUIRED")
 	authenticate(t, peer)
 	var result pluginproto.OnlineResult[online.PlaylistsPage]
-	if err := peer.Call(context.Background(), "provider.online.playlists", request, &result); err != nil || len(result.Value.Items) != 1 || result.Value.Items[0].ExternalID != "91" || online.ValidatePlaylists(online.Netease, result.Value, 20) != nil {
+	if err := peer.Call(context.Background(), "provider.online.playlists", request, &result); err != nil || len(result.Value.Items) != 1 || result.Value.Items[0].ExternalID != "91" || online.ValidatePlaylists(onlineplugins.Describe(online.Netease).Resources, result.Value, 20) != nil {
 		t.Fatal("invalid account playlist RPC result", result, err)
 	}
 	assertCode(t, peer.Call(context.Background(), "provider.online.playlists", map[string]any{"context": scope(), "limit": 20, "cursor": "", "userId": "other"}, nil), "PROTOCOL_MISMATCH")

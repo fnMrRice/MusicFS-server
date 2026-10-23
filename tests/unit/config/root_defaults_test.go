@@ -21,7 +21,7 @@ func TestRootImportDefaultsYAMLValidationInheritanceAndClone(t *testing.T) {
 		t.Fatal(err)
 	}
 	instance := doc.Config.Plugins[0].Instances[0]
-	options, err := config.EffectiveRootImportDefaults(instance, instance.Config.MusicRoots[0])
+	options, err := config.EffectiveRootImportDefaults("musicfs.plugin.source.localfiles", instance, instance.Config.MusicRoots[0])
 	if err != nil || !options.Recursive || options.MaxDepth != 2 || options.SkipHidden || !options.RespectNoMedia {
 		t.Fatal("root defaults did not overlay instance defaults", options, err)
 	}

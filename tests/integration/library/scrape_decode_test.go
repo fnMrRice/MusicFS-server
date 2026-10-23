@@ -50,7 +50,7 @@ func TestScrapeSourceActualNCMDecoder(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer input.Close()
-	if err = input.DecodeNCM(context.Background(), decoder); err != nil {
+	if err = input.DecodeAudio(context.Background(), decoder); err != nil {
 		t.Fatal(err)
 	}
 	if len(input.Issues) != 0 || len(input.Inputs) != 2 || input.Inputs[0].Resource.SizeBytes != int64(len(payload)) {

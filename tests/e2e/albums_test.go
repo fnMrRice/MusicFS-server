@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
@@ -30,8 +31,9 @@ func TestAlbumsActualServerSnapshotDocumentsThumbnailAndRestart(t *testing.T) {
 		}
 	}
 	cfg, base := yamlServiceConfig(t)
+	importArtwork := false
 	cfg.Plugins = []config.Plugin{
-		{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Album fixture", Path: music}}}}}},
+		{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, ImportDefaults: &pluginproto.ImportOverrides{ImportArtwork: &importArtwork}, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Album fixture", Path: music}}}}}},
 		{PluginID: "musicfs.scraper.local", Executable: scraper, Enabled: true, Instances: []config.Instance{{InstanceID: "d248bf34-1780-59d3-a557-9cf5d889e977", Enabled: true}}},
 	}
 	var album albums.SourceAlbum

@@ -6,12 +6,16 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/tags/flac"
+	"github.com/fnMrRice/MusicFS-server/sdk/directoryidentity"
 	"github.com/fnMrRice/MusicFS-server/sdk/plugindisplay"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/scanwatch"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
 
@@ -25,7 +29,7 @@ func configureLibraryManagement(runCtx context.Context, c config.Config, lib *li
 		}
 	}
 	for _, plugin := range c.Plugins {
-		if plugin.PluginID != "musicfs.plugin.source.localfiles" {
+		if !pluginconfig.SupportsDirectories(plugin.PluginID) {
 			continue
 		}
 		for _, instance := range plugin.Instances {
@@ -166,9 +170,15 @@ func retainedWritebackRoots(initial library.Runtime, before, after config.Instan
 		for _, old := range before.Config.MusicRoots {
 			if root.ID == old.ID && root.Path == old.Path {
 				cap := initial.WriteBack[root.ID]
-				if current.Worker != nil {
+				if current.Worker != nil && current.Worker.Access != nil {
 					for _, actual := range current.Worker.Access.Roots() {
 						if actual.ID == root.ID && actual.Path == cap.BoundPath && actual.ExpectedIdentity == cap.BoundIdentity {
+							// 禁用启动后首次启用也重新核验，不能沿用旧 Worker 的能力状态。
+							cap.Available = false
+							grant := writeback.Root{Owner: current.Owner, InstanceID: current.ID, RootID: root.ID, Path: cap.BoundPath, Identity: cap.BoundIdentity, Fields: cap.Fields}
+							if assessed, err := writeback.InspectCapability(grant, flac.New()); err == nil {
+								cap.Available = assessed.Available && current.Worker.Supports(directoryidentity.Capability)
+							}
 							result[root.ID] = cap
 						}
 					}

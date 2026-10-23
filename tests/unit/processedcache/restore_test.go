@@ -33,7 +33,7 @@ func TestRestartRestoresVerifiedCompleteOutputAndDeletesOrphans(t *testing.T) {
 		t.Fatal("orphan restored or remained accounted")
 	}
 	restarted.Close()
-	if err = os.WriteFile(filepath.Join(root, id+".mp3"), []byte("changed-output!"), 0600); err != nil {
+	if err = os.WriteFile(filepath.Join(root, id+".audio"), []byte("changed-output!"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	b, _ = processedcache.NewBudget(1024)
@@ -78,7 +78,7 @@ func TestInputReservationsAndOutputShareOneBudget(t *testing.T) {
 	}
 }
 
-func TestSurroundCacheRestoresItsWebMFileAndProfile(t *testing.T) {
+func TestSurroundCacheRestoresContainerNeutralFileAndProfile(t *testing.T) {
 	for _, profile := range []string{"opus-5.1", "opus-7.1", "opus-5.1-192000", "opus-7.1-2048000"} {
 		t.Run(profile, func(t *testing.T) {
 			manager, _, repo, root, _ := setup(t, 1024)
@@ -99,7 +99,7 @@ func TestSurroundCacheRestoresItsWebMFileAndProfile(t *testing.T) {
 			}
 			defer lease.Close()
 			data, err := io.ReadAll(lease.File)
-			if err != nil || string(data) != "surround-output" || filepath.Ext(lease.File.Name()) != ".webm" {
+			if err != nil || string(data) != "surround-output" || filepath.Ext(lease.File.Name()) != ".audio" {
 				t.Fatal("surround cache restored the wrong representation", lease.File.Name(), err)
 			}
 			other := current

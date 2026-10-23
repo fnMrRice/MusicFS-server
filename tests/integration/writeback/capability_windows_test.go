@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/fnMrRice/MusicFS-server/plugins/tags/flac"
 	"os"
 	"path/filepath"
 	"testing"
@@ -18,18 +19,18 @@ func TestCapabilityInspectsActualRootWithoutWriting(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	capability, err := writeback.InspectCapability(policy.Roots[0])
+	capability, err := writeback.InspectCapability(policy.Roots[0], flac.New())
 	if err != nil || !capability.Available || capability.Replacement != "recoverableReplace" || len(capability.Formats) != 1 || capability.Formats[0] != "flac" {
 		t.Fatalf("capability: %+v %v", capability, err)
 	}
 	wrong := policy.Roots[0]
 	wrong.Identity = "a-different-root"
-	if _, err = writeback.InspectCapability(wrong); err == nil {
+	if _, err = writeback.InspectCapability(wrong, flac.New()); err == nil {
 		t.Fatal("root identity was not checked")
 	}
 	wrong = policy.Roots[0]
 	wrong.Path = `\\server\share\music`
-	if _, err = writeback.InspectCapability(wrong); err == nil {
+	if _, err = writeback.InspectCapability(wrong, flac.New()); err == nil {
 		t.Fatal("network root advertised writeback")
 	}
 	after, err := os.ReadDir(root)
@@ -78,7 +79,7 @@ func TestCapabilityAcceptsModifyACLWithFileDeletePermission(t *testing.T) {
 	if !errors.Is(err, windows.ERROR_ACCESS_DENIED) {
 		t.Fatal("expected ACL denial, not a sharing conflict", err)
 	}
-	if _, err = writeback.InspectCapability(policy.Roots[0]); err != nil {
+	if _, err = writeback.InspectCapability(policy.Roots[0], flac.New()); err != nil {
 		t.Fatal("ordinary Modify ACL rejected", err)
 	}
 	result, err := service(t, policy, journal, h).Apply(context.Background(), "admin", request)

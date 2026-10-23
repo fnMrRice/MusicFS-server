@@ -6,18 +6,17 @@ import (
 	"io"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
 	"github.com/fnMrRice/MusicFS-server/sdk/audioformat"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/audiocodecs"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audioruntime"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 )
 
-func metadataProbe(ffprobe string, decoder *ncmdecoder.Processor) library.Probe {
-	if ffprobe == "" && decoder == nil {
+func metadataProbe(probe audioruntime.Probe, decoder audioruntime.Decoder) library.Probe {
+	if probe == nil && decoder == nil {
 		return nil
 	}
 	return func(ctx context.Context, input io.ReadSeeker, size int64) (library.Observation, error) {
@@ -47,8 +46,8 @@ func metadataProbe(ffprobe string, decoder *ncmdecoder.Processor) library.Probe 
 			input = io.NewSectionReader(decoded.Reader, 0, decoded.Size)
 			size = decoded.Size
 		}
-		if ffprobe != "" {
-			m, err := audioffmpeg.ProbeMetadata(ctx, ffprobe, input, size)
+		if probe != nil {
+			m, err := probe(ctx, input, size)
 			if err != nil {
 				return result, err
 			}
@@ -62,7 +61,7 @@ func metadataProbe(ffprobe string, decoder *ncmdecoder.Processor) library.Probe 
 				if wrapped {
 					configRevision = "decoded-payload-first-audio-stream-v1"
 				}
-				result.Evidence = []identification.Evidence{{Spec: identification.Spec{Kind: "bitrate", Origin: m.BitrateOrigin, Algorithm: "ffprobe", AlgorithmVersion: identification.AlgorithmVersionID(m.ProbeVersion), ConfigRevision: configRevision, Range: identification.Range{Unit: "milliseconds", End: m.DurationMs}}, Result: identification.Result{Status: "reported", BitrateBps: m.BitrateBps, BitrateMode: "unknown", ComputedAt: &now}}}
+				result.Evidence = []identification.Evidence{{Spec: identification.Spec{Kind: "bitrate", Origin: m.BitrateOrigin, Algorithm: m.ProbeAlgorithm, AlgorithmVersion: identification.AlgorithmVersionID(m.ProbeVersion), ConfigRevision: configRevision, Range: identification.Range{Unit: "milliseconds", End: m.DurationMs}}, Result: identification.Result{Status: "reported", BitrateBps: m.BitrateBps, BitrateMode: "unknown", ComputedAt: &now}}}
 			}
 		} else if !wrapped {
 			return result, fmt.Errorf("UNSUPPORTED: metadata probe unavailable")

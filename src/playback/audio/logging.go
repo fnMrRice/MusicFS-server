@@ -14,18 +14,9 @@ type loggedNode struct {
 }
 
 func createLoggedNode(name string, factory Factory, params map[string]float64) (Node, error) {
-	var id string
-	switch name {
-	case "equalizer", "musicfs.dsp.equalizer":
-		id = "musicfs.dsp.equalizer"
-	case "compressor", "musicfs.dsp.compressor":
-		id = "musicfs.dsp.compressor"
-	case "reverb", "musicfs.dsp.reverb":
-		id = "musicfs.dsp.reverb"
-	case "channelmix", "musicfs.dsp.channelmix", "musicfs.plugin.decoder.channelmix":
-		id = "musicfs.dsp.channelmix"
-	default:
-		return factory(params)
+	id := name
+	if descriptor, ok := Definition(name); ok && descriptor.PluginID != "" {
+		id = descriptor.PluginID
 	}
 	ctx := pluginlog.Context(context.Background(), id, "")
 	finish := pluginlog.Operation(ctx, "dsp.create")

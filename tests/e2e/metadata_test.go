@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
@@ -40,8 +41,9 @@ func TestMetadataActualServerCandidatesApplyCancelAndRestart(t *testing.T) {
 		}
 	}
 	cfg, base := yamlServiceConfig(t)
+	importArtwork := false
 	cfg.Plugins = []config.Plugin{
-		{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Metadata fixture", Path: music}}}}}},
+		{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, ImportDefaults: &pluginproto.ImportOverrides{ImportArtwork: &importArtwork}, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Metadata fixture", Path: music}}}}}},
 		{PluginID: "musicfs.scraper.local", Executable: scraper, Enabled: true, Instances: []config.Instance{{InstanceID: "d248bf34-1780-59d3-a557-9cf5d889e977", Name: "Local metadata", Enabled: true}, {InstanceID: "4d8409cd-1d37-5e46-8e79-1b8b48e78020", Enabled: false}}},
 		{PluginID: "musicfs.plugin.decoder.ncm", Executable: decoder, Enabled: true, Instances: []config.Instance{{InstanceID: "96412f52-9ff4-5a82-9eaa-7644a5837cda", Enabled: true}}},
 	}

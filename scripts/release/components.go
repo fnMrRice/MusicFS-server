@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite/migrations"
+	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginrpc"
@@ -33,8 +35,19 @@ func components(splitPlugins bool) []component {
 		{Program: "musicfs-plugin-ncm", PluginID: "musicfs.plugin.decoder.ncm", Version: "0.1.0", Protocol: pluginproto.ProtocolVersion, Capabilities: []string{"audio.decrypt"}, Requirements: []string{}},
 		{Program: "musicfs-plugin-scraper-local", PluginID: "musicfs.scraper.local", Version: "0.1.0", Protocol: pluginproto.ProtocolVersion, Capabilities: []string{"scrape.search", "scrape.fetch", "lyrics", "artwork"}, Requirements: []string{"authorized host content channel"}},
 	}
-	for _, platform := range []string{"netease", "qqmusic", "applemusic"} {
-		result = append(result, component{Program: "musicfs-plugin-" + platform, PluginID: pluginproto.OnlinePluginID(platform), Version: "0.1.0", Protocol: pluginproto.ProtocolVersion, Capabilities: pluginproto.OnlineCapabilities(platform), Requirements: []string{"host-controlled network", "platform account authorization for online data", "no full audio resolution"}})
+	onlinePrograms := map[string]bool{}
+	for _, descriptor := range onlineplugins.Descriptors() {
+		capabilities := pluginproto.OnlineCapabilities(descriptor)
+		requirements := []string{"host-controlled network"}
+		if descriptor.Authentication == "platformAccountRequired" {
+			requirements = append(requirements, "platform account authorization for online data")
+		}
+		if !slices.Contains(capabilities, "stream.resolve") {
+			requirements = append(requirements, "no full audio resolution")
+		}
+		plugin := onlineplugins.Plugin(descriptor.Platform, onlineplugins.Options{})
+		result = append(result, component{Program: "musicfs-plugin-" + descriptor.Platform, PluginID: pluginproto.OnlinePluginID(descriptor.Platform), Version: plugin.Version, Protocol: pluginproto.ProtocolVersion, Capabilities: capabilities, Requirements: requirements})
+		onlinePrograms[descriptor.Platform] = true
 	}
 	result = append(result,
 		component{Program: "musicfs-plugin-storage-sqlite", Required: true, Version: "0.1.0", Protocol: pluginrpc.Protocol, Capabilities: []string{"storage.repositories", "storage.instance-state", "storage.snapshot"}, Requirements: []string{"mandatory persistence backend", "startup fails if unavailable"}},
@@ -53,12 +66,12 @@ func components(splitPlugins bool) []component {
 		builtins = append(builtins, builtin)
 		item.Required, item.Execution = false, "process"
 		item.Requirements = append([]string{"optional external process; requires explicit execution and executable SHA-256"}, item.Requirements...)
-		if splitPlugins && i >= 5 {
+		if splitPlugins && (onlinePrograms[selector] || selector == "storage-sqlite" || selector == "dsp-gain") {
 			alternative := *item
 			alternative.Required = false
 			alternative.Requirements = append([]string{"optional standalone alternative to the bundled role"}, item.Requirements...)
 			alternatives = append(alternatives, alternative)
-			if i <= 7 {
+			if onlinePrograms[selector] {
 				alternative.Program = "musicfs-plugin-online"
 				alternative.Args = []string{"--plugin", selector}
 				alternatives = append(alternatives, alternative)

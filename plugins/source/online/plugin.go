@@ -1,5 +1,4 @@
-// Package onlineplugins composes the separately built official online plugins.
-// Applications communicate with the executables through the SDK protocol.
+// Package onlineplugins 装配在线插件，应用通过 SDK 协议与独立实现通信。
 package onlineplugins
 
 import (
@@ -8,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/source/online/applemusic"
-	"github.com/fnMrRice/MusicFS-server/plugins/source/online/bilibili"
 	"github.com/fnMrRice/MusicFS-server/plugins/source/online/internal/adapter"
 	"github.com/fnMrRice/MusicFS-server/plugins/source/online/netease"
 	"github.com/fnMrRice/MusicFS-server/plugins/source/online/qqmusic"
@@ -32,22 +30,6 @@ func New(platform string, scope online.Scope, options Options) (*Client, error) 
 		return applemusic.New(scope, options)
 	default:
 		return nil, fault.Fail("INVALID_ARGUMENT", "Unknown online platform")
-	}
-}
-
-// Plugin selects a declaration before opening the protocol channel.
-func Plugin(platform string, options Options) provider.Plugin {
-	switch platform {
-	case online.Netease:
-		return netease.Plugin(options)
-	case online.QQMusic:
-		return qqmusic.Plugin(options)
-	case online.AppleMusic:
-		return applemusic.Plugin(options)
-	case online.Bilibili:
-		return bilibili.Plugin(options)
-	default:
-		return provider.Plugin{}
 	}
 }
 

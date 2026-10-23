@@ -5,7 +5,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 )
@@ -75,11 +74,7 @@ func New(ctx context.Context, repo Repository, budget *Budget, c Config) (*Manag
 
 func (m *Manager) now() time.Time { return m.config.Now().UTC() }
 func (m *Manager) path(id, profile string) string {
-	extension := ".mp3"
-	if strings.HasPrefix(profile, "opus-") {
-		extension = ".webm"
-	}
-	return filepath.Join(m.config.Root, id+extension)
+	return filepath.Join(m.config.Root, id+".audio")
 }
 func (m *Manager) reap() {
 	defer close(m.done)

@@ -12,9 +12,9 @@ import (
 )
 
 func TestFingerprintIdentityRejectsIncompatibleAndAlteredEvidence(t *testing.T) {
-	id := fingerprint.Identity{Algorithm: "chromaprint", AlgorithmVersion: fingerprint.AlgorithmVersion, AlgorithmConfig: "cli-2-raw-v1", NormalizationRevision: audio.NormalizationRevision, QualityRevision: fingerprint.QualityRevision,
-		Fpcalc:  fingerprint.ToolIdentity{Version: "fpcalc version 1.6.1 (test)", SHA256: strings.Repeat("a", 64)},
-		Decoder: fingerprint.ToolIdentity{Version: "ffmpeg version test", SHA256: strings.Repeat("b", 64)}}
+	id := fingerprint.Identity{Algorithm: "chromaprint", AlgorithmVersion: "1.6.1", AlgorithmConfig: "cli-2-raw-v1", NormalizationRevision: audio.NormalizationRevision, QualityRevision: fingerprint.QualityRevision,
+		Analyzer: fingerprint.ToolIdentity{Version: "fpcalc version 1.6.1 (test)", SHA256: strings.Repeat("a", 64)},
+		Decoder:  fingerprint.ToolIdentity{Version: "ffmpeg version test", SHA256: strings.Repeat("b", 64)}}
 	stamp := func(value *fingerprint.Identity) {
 		value.ConfigRevision = ""
 		b, _ := json.Marshal(value)
@@ -30,10 +30,10 @@ func TestFingerprintIdentityRejectsIncompatibleAndAlteredEvidence(t *testing.T) 
 		t.Fatal("stale revision accepted")
 	}
 	for _, mutate := range []func(*fingerprint.Identity){
-		func(v *fingerprint.Identity) { v.AlgorithmVersion = "1.6.0" },
-		func(v *fingerprint.Identity) { v.AlgorithmConfig = "cli-1-raw-v1" },
+		func(v *fingerprint.Identity) { v.AlgorithmVersion = "" },
+		func(v *fingerprint.Identity) { v.AlgorithmConfig = "" },
 		func(v *fingerprint.Identity) { v.Decoder.SHA256 = strings.Repeat("B", 64) },
-		func(v *fingerprint.Identity) { v.Fpcalc.Version = "fpcalc version 1.6.0 (test)" },
+		func(v *fingerprint.Identity) { v.Analyzer.Version = "invalid\nversion" },
 		func(v *fingerprint.Identity) { v.NormalizationRevision = "unknown" },
 		func(v *fingerprint.Identity) { v.QualityRevision = "unknown" },
 	} {
@@ -58,6 +58,22 @@ func TestFingerprintRangeRoundingAndLimits(t *testing.T) {
 		if _, _, err := r.Samples(); err == nil {
 			t.Fatal("invalid or overflowing range accepted")
 		}
+	}
+}
+
+func TestFingerprintIdentityAcceptsIndependentAnalyzerAndRelease(t *testing.T) {
+	id := fingerprint.Identity{Algorithm: "independent-fingerprint", AlgorithmVersion: "3.2.0", AlgorithmConfig: "raw-words-v2", NormalizationRevision: audio.NormalizationRevision, QualityRevision: fingerprint.QualityRevision,
+		Analyzer: fingerprint.ToolIdentity{Version: "native-analyzer 3.2.0", SHA256: strings.Repeat("a", 64)}, Decoder: fingerprint.ToolIdentity{Version: "native-decoder 2", SHA256: strings.Repeat("b", 64)}}
+	id.ConfigRevision = id.Revision()
+	if err := id.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	upgraded := id
+	upgraded.AlgorithmVersion = "3.3.0"
+	upgraded.Analyzer.Version = "native-analyzer 3.3.0"
+	upgraded.ConfigRevision = upgraded.Revision()
+	if err := upgraded.Validate(); err != nil || upgraded.ConfigRevision == id.ConfigRevision {
+		t.Fatal("analyzer release was not independently versioned", err)
 	}
 }
 

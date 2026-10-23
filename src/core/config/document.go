@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 	"io"
 	"maps"
 	"os"
@@ -124,7 +125,7 @@ func parseDocument(raw []byte, path string, overrides map[string]string, expecte
 	}
 	markPendingConfiguration(&c, bundlePath(root, filepath.Dir(abs)))
 	for pi := range c.Plugins {
-		if c.Plugins[pi].PluginID != "musicfs.plugin.source.localfiles" {
+		if !pluginconfig.SupportsDirectories(c.Plugins[pi].PluginID) {
 			continue
 		}
 		for ii := range c.Plugins[pi].Instances {

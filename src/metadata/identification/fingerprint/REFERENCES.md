@@ -1,6 +1,8 @@
 # 本地指纹提取的算法来源
 
-本模块以 Go 标准库控制独立 Chromaprint `fpcalc` **1.6.1**，不内嵌其实现，不新增 Go/cgo、Node 或 Python 运行依赖。工具路径与 SHA-256 必须显式提供，启动和每次提取均校验；缺少工具时该能力不可用，不改变播放能力。
+本页记录官方 Chromaprint 插件的算法来源。公共 `fingerprint` 模块接受提取器声明的算法名称、版本和 `analyzer`/`decoder` 工具身份；以下具体版本限制由 `plugins/analysis/chromaprint` 实现，宿主不据此拒绝其他提取器。
+
+官方插件以 Go 标准库控制独立 Chromaprint `fpcalc` **1.6.1**，不内嵌其实现，不新增 Go/cgo、Node 或 Python 运行依赖。工具路径与 SHA-256 必须显式提供，启动和每次提取均校验；缺少工具时该能力不可用，不改变播放能力。
 
 - 官方版本：[v1.6.1](https://github.com/acoustid/chromaprint/releases/tag/v1.6.1)，对应源码提交 `aed8eba2202dd9d7b3b0a56c77904cc805490d72`。
 - [CLI 实现](https://github.com/acoustid/chromaprint/blob/v1.6.1/src/cmd/fpcalc.cpp)：使用 `-algorithm 2 -raw -json`，输入仅为 stdin 的 `s16le/mono/11025 Hz`。CLI 算法 2 对应 C API 枚举值 1，不能混用编号。

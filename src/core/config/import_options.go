@@ -8,13 +8,13 @@ import (
 )
 
 func EffectiveImportDefaults(pluginID string, instance Instance) (pluginproto.ImportOptions, error) {
-	if pluginID != "musicfs.plugin.source.localfiles" {
+	declaration := pluginconfig.Configuration(pluginID)
+	if declaration == nil {
 		if instance.ImportDefaults != nil {
 			return pluginproto.ImportOptions{}, errors.New("importDefaults requires a provider configuration declaration")
 		}
 		return pluginproto.ImportOptions{}, nil
 	}
-	declaration := pluginconfig.LocalFiles()
 	patch := pluginproto.ImportOverrides{}
 	if instance.ImportDefaults != nil {
 		patch = *instance.ImportDefaults
@@ -27,8 +27,12 @@ func EffectiveImportDefaults(pluginID string, instance Instance) (pluginproto.Im
 }
 
 // Root defaults overlay instance defaults; omitted overrides retain inheritance.
-func EffectiveRootImportDefaults(instance Instance, root MusicRoot) (pluginproto.ImportOptions, error) {
-	base, err := EffectiveImportDefaults("musicfs.plugin.source.localfiles", instance)
+func EffectiveRootImportDefaults(pluginID string, instance Instance, root MusicRoot) (pluginproto.ImportOptions, error) {
+	declaration := pluginconfig.Configuration(pluginID)
+	if declaration == nil {
+		return pluginproto.ImportOptions{}, errors.New("provider has no import configuration")
+	}
+	base, err := EffectiveImportDefaults(pluginID, instance)
 	if err != nil {
 		return base, err
 	}
@@ -38,23 +42,12 @@ func EffectiveRootImportDefaults(instance Instance, root MusicRoot) (pluginproto
 			return base, err
 		}
 	}
-	return base, pluginconfig.LocalFiles().ValidateOptions(base)
+	return base, declaration.ValidateOptions(base)
 }
 
 func importDefaultsShape() fieldShape {
-	properties := pluginconfig.LocalFiles().ImportOptionsSchema["properties"].(map[string]any)
-	fields := make(map[string]fieldShape, len(properties))
-	for name, raw := range properties {
-		switch raw.(map[string]any)["type"] {
-		case "boolean":
-			fields[name] = boolShape
-		case "integer":
-			fields[name] = intShape
-		case "string":
-			fields[name] = stringShape
-		case "array":
-			fields[name] = sequenceShape(stringShape)
-		}
-	}
-	return mappingShape(fields)
+	// YAML 这里只验证公共 ImportOverrides 的形状，取值范围由插件声明验证。
+	return mappingShape(map[string]fieldShape{"recursive": boolShape, "maxDepth": intShape,
+		"importLyrics": boolShape, "importArtwork": boolShape, "excludePatterns": sequenceShape(stringShape),
+		"skipHidden": boolShape, "respectNoMedia": boolShape})
 }

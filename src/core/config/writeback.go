@@ -1,6 +1,9 @@
 package config
 
-import "errors"
+import (
+	"errors"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
+)
 
 type WriteBackRoot struct {
 	InstanceID string   `yaml:"instanceId" json:"instanceId"`
@@ -17,7 +20,7 @@ type WriteBackConfig struct {
 
 func (c Config) validateWriteBack() error {
 	p := c.WriteBack
-	if p.MaxFileBytes < 46 || p.MaxFileBytes > 1<<40 || len(p.Roots) > 256 || (p.Enabled && len(p.Roots) == 0) {
+	if p.MaxFileBytes < 1 || p.MaxFileBytes > 1<<40 || len(p.Roots) > 256 || (p.Enabled && len(p.Roots) == 0) {
 		return errors.New("invalid writeBack limits or missing explicit root grants")
 	}
 	type instanceGrant struct {
@@ -25,7 +28,7 @@ func (c Config) validateWriteBack() error {
 	}
 	instances := map[string]instanceGrant{}
 	for _, plugin := range c.Plugins {
-		if plugin.PluginID != "musicfs.plugin.source.localfiles" {
+		if !pluginconfig.SupportsDirectories(plugin.PluginID) {
 			continue
 		}
 		for _, instance := range plugin.Instances {

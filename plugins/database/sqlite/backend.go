@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"math"
+	"os"
 	"path/filepath"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite/state"
@@ -52,6 +53,12 @@ func Driver() storage.Driver {
 			return state.Open(ctx, path, plugin, instance)
 		},
 		ReadPluginState: func(ctx context.Context, _ plugindb.BackendConfig, path, plugin, instance, key string) (pluginproto.StateValue, error) {
+			// 配置预读不创建数据库；文件不存在表示该实例尚无保存状态。
+			if _, err := os.Stat(path); os.IsNotExist(err) {
+				return pluginproto.StateValue{}, nil
+			} else if err != nil {
+				return pluginproto.StateValue{}, err
+			}
 			return state.Read(ctx, path, plugin, instance, key)
 		},
 	}

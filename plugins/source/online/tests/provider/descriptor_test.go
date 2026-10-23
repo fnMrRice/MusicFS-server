@@ -45,7 +45,7 @@ func TestOnlineDescriptorRejectsInvalidIdentityAndPreservesCapabilityPolicy(t *t
 		"empty translation": func(d *pluginproto.OnlineDescriptor) { d.Plugin.LocalizedNames["fr"] = "" },
 		"duplicate locale":  func(d *pluginproto.OnlineDescriptor) { d.Plugin.LocalizedNames["ZH"] = "名称" },
 		"stale revision":    func(d *pluginproto.OnlineDescriptor) { d.SchemaRevision = "online-authenticated-v2" },
-		"capability":        func(d *pluginproto.OnlineDescriptor) { d.Capabilities[len(d.Capabilities)-1].Supported = true },
+		"capability":        func(d *pluginproto.OnlineDescriptor) { d.Capabilities[len(d.Capabilities)-1].Name = "filesystem.write" },
 		"config":            func(d *pluginproto.OnlineDescriptor) { d.ConfigDefaults["unverified"] = true },
 	} {
 		t.Run(name, func(t *testing.T) {

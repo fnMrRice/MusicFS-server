@@ -3,6 +3,7 @@ package plugins_test
 import (
 	"context"
 	"encoding/json"
+	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
 	"io"
 	"net/http"
 	"strings"
@@ -64,7 +65,7 @@ func TestBilibiliMetadataActualDTOsMatchWireAndHTTPContracts(t *testing.T) {
 	ctx := context.Background()
 	descriptor := bilibili.Plugin(bilibili.Options{}).Descriptor
 	bilibiliMetadataContract(t, "Descriptor", descriptor)
-	manifest := pluginproto.Manifest{PluginID: pluginproto.OnlinePluginID(online.Bilibili), Plugin: descriptor.Plugin, SupportsMultipleInstances: true, PluginVersion: "0.1.0", ProtocolVersion: "1.0", SourceType: pluginproto.SourceNetwork, Roles: []string{"provider"}, Capabilities: pluginproto.OnlineCapabilities(online.Bilibili), Systems: []string{"windows"}, Architectures: []string{"amd64"}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems}
+	manifest := pluginproto.Manifest{PluginID: pluginproto.OnlinePluginID(online.Bilibili), Plugin: descriptor.Plugin, SupportsMultipleInstances: true, PluginVersion: "0.1.0", ProtocolVersion: "1.0", SourceType: pluginproto.SourceNetwork, Roles: []string{"provider"}, Capabilities: pluginproto.OnlineCapabilities(onlineplugins.Describe(online.Bilibili)), Systems: []string{"windows"}, Architectures: []string{"amd64"}, MaxMessageBytes: pluginproto.MaxMessageBytes, MaxPageItems: online.MaxPageItems}
 	onlineContract(t, "Manifest", manifest)
 	instance := onlinehost.Instance{InstanceID: bilibiliContractInstance, Name: "Bilibili", PluginID: manifest.PluginID, Availability: "available", OnlineDescriptor: descriptor}
 	body, _ := json.Marshal(instance)
@@ -125,10 +126,7 @@ func TestBilibiliMetadataContractsRejectSpoofedScopeAndPlayablePlaceholders(t *t
 	descriptor := bilibili.Plugin(bilibili.Options{}).Descriptor
 	for _, platform := range []string{online.Bilibili, online.Netease} {
 		descriptor.Platform = platform
-		descriptor.Authentication = "anonymous"
-		if platform == online.Bilibili {
-			descriptor.Authentication = "platformAccountRequired"
-		}
+		descriptor.Authentication = "unknown"
 		body, _ := json.Marshal(descriptor)
 		for _, schema := range []struct{ family, name string }{{"wire", "Descriptor"}, {"http", "OnlineDescriptor"}} {
 			var validationErr error
@@ -149,15 +147,17 @@ func TestBilibiliMetadataContractsRejectSpoofedScopeAndPlayablePlaceholders(t *t
 	}
 	for _, source := range []string{"https://www.bilibili.com.evil.invalid/audio/au10", "https://www.bilibili.com@evil.invalid/audio/au10", "http://127.0.0.1/private"} {
 		track.SourceURL = source
-		body, _ := json.Marshal(track)
-		if onlineSchema(t, "Track").Validate(testkit.DecodeJSON(t, body)) == nil || testkit.ContractSchema(t, "http", "OnlineTrack").Validate(testkit.DecodeJSON(t, body)) == nil {
-			t.Fatal("forged source URL accepted by contract", source)
+		track.MetadataDigest = ""
+		track.MetadataDigest = online.Digest(track)
+		if online.ValidateTrack(bilibili.Plugin(bilibili.Options{}).Descriptor.Resources, track) == nil {
+			t.Fatal("forged source URL accepted by plugin resource policy", source)
 		}
 	}
 	track.SourceURL = "https://www.bilibili.com/audio/au10"
+	track.MetadataDigest = ""
+	track.MetadataDigest = online.Digest(track)
 	lookup := online.TrackLookup{ExternalID: "unavailable:2:500", Track: &track}
-	body, _ := json.Marshal(lookup)
-	if onlineSchema(t, "TrackLookup").Validate(testkit.DecodeJSON(t, body)) == nil || testkit.ContractSchema(t, "http", "OnlineTrackLookup").Validate(testkit.DecodeJSON(t, body)) == nil {
+	if online.ValidateTrackBatch(bilibili.Plugin(bilibili.Options{}).Descriptor.Resources, online.TrackBatch{Items: []online.TrackLookup{lookup}}, []string{lookup.ExternalID}) == nil {
 		t.Fatal("unavailable collection identity advertised playable metadata")
 	}
 }
@@ -170,7 +170,7 @@ func TestIncompleteBilibiliObservationKeepsUnknownCount(t *testing.T) {
 	observation.Complete = false
 	observation.Playlist.TrackCount = nil
 	observation.MetadataDigest = online.PlaylistDigest(observation.Playlist, observation.Entries)
-	if err := online.ValidateObservation(online.Bilibili, observation, "favorite:99"); err != nil {
+	if err := online.ValidateObservation(onlineplugins.Describe(online.Bilibili).Resources, observation, "favorite:99"); err != nil {
 		t.Fatal(err)
 	}
 	bilibiliMetadataContract(t, "Observation", observation)

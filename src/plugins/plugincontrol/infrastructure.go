@@ -6,6 +6,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 )
 
@@ -87,27 +88,39 @@ func (m *Manager) storagePluginLocked() Plugin {
 	return Plugin{PluginID: id, Plugin: identity, Version: m.storageVersion, Required: true, ConfiguredEnabled: true, Storage: status, Instances: []Instance{}}
 }
 
-// Built-in gain and the official gain worker use the same package. Each node
-// retains its execution mode and original position in the complete chain.
-// This describes configuration, never a currently running playback worker.
-func (m *Manager) gainPluginLocked() Plugin {
+// 增益能力按注册声明投影，保留执行模式及节点在完整链中的位置。
+func (m *Manager) gainPluginsLocked() []Plugin {
+	result := []Plugin{}
+	seen := map[string]bool{}
+	for _, descriptor := range audio.Catalog() {
+		if descriptor.Capability != "gain" || descriptor.PluginID == "" || seen[descriptor.PluginID] {
+			continue
+		}
+		seen[descriptor.PluginID] = true
+		result = append(result, m.gainPluginLocked(descriptor))
+	}
+	return result
+}
+
+func (m *Manager) gainPluginLocked(descriptor audio.Descriptor) Plugin {
+	id := descriptor.PluginID
 	status := &DSPStatus{ChainState: "not_configured", Nodes: []DSPNode{}}
 	for _, registered := range m.desired.AudioDSP.Plugins {
-		if registered.Name == "musicfs.dsp.gain" {
+		selected, ok := audio.Definition(registered.Name)
+		if ok && selected.PluginID == id {
 			status.Configured = true
 		}
 	}
 	for index, node := range m.desired.AudioDSP.Chain {
-		mode := "builtin"
-		if node.Name == "musicfs.dsp.gain" {
-			mode = "process"
-			for _, registered := range m.desired.AudioDSP.Plugins {
-				if registered.Name == node.Name && registered.Builtin {
-					mode = "builtin"
-				}
-			}
-		} else if node.Name != "gain" {
+		selected, ok := audio.Definition(node.Name)
+		if !ok || selected.PluginID != id {
 			continue
+		}
+		mode := "builtin"
+		for _, registered := range m.desired.AudioDSP.Plugins {
+			if registered.Name == node.Name && !registered.Builtin {
+				mode = "process"
+			}
 		}
 		params := maps.Clone(node.Params)
 		if params == nil {
@@ -125,15 +138,15 @@ func (m *Manager) gainPluginLocked() Plugin {
 	if !m.desired.AudioDSP.Enabled {
 		status.ChainState = "disabled"
 	}
-	version := bundledplugin.GainVersion
+	version := descriptor.PluginVersion
 	for _, runtime := range m.runtimes {
 		if runtime.hooks.DSPVersion != nil {
-			if verified := runtime.hooks.DSPVersion("musicfs.dsp.gain"); pluginproto.ValidPluginVersion(verified) {
+			if verified := runtime.hooks.DSPVersion(id); pluginproto.ValidPluginVersion(verified) {
 				version = verified
 				break
 			}
 		}
 	}
-	return Plugin{PluginID: "musicfs.dsp.gain", Plugin: pluginconfig.Identity("musicfs.dsp.gain"), Version: version,
+	return Plugin{PluginID: id, Plugin: dspIdentity(descriptor), Version: version,
 		ConfiguredEnabled: m.desired.AudioDSP.Enabled && len(status.Nodes) != 0, DSP: status, Instances: []Instance{}}
 }

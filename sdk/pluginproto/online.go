@@ -16,7 +16,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 )
 
-const OnlineRevision = "online-authenticated-v3"
+const OnlineRevision = "online-declared-v4"
 
 type OnlineHello struct {
 	Hello
@@ -48,34 +48,30 @@ type OnlineResult[T any] struct {
 }
 
 type OnlineDescriptor struct {
-	Plugin         *OnlinePlugin       `json:"plugin,omitempty"`
-	Platform       string              `json:"platform"`
-	SourceType     string              `json:"sourceType"`
-	Authentication string              `json:"authentication"`
-	Capabilities   []online.Capability `json:"capabilities"`
-	SchemaRevision string              `json:"schemaRevision"`
-	ConfigSchema   map[string]any      `json:"configSchema"`
-	ConfigDefaults map[string]any      `json:"configDefaults"`
+	Plugin         *OnlinePlugin           `json:"plugin,omitempty"`
+	Platform       string                  `json:"platform"`
+	SourceType     string                  `json:"sourceType"`
+	Authentication string                  `json:"authentication"`
+	Capabilities   []online.Capability     `json:"capabilities"`
+	Resources      online.ResourcePolicy   `json:"resources"`
+	Login          *online.LoginDescriptor `json:"login,omitempty"`
+	SchemaRevision string                  `json:"schemaRevision"`
+	ConfigSchema   map[string]any          `json:"configSchema"`
+	ConfigDefaults map[string]any          `json:"configDefaults"`
 }
 
+// OnlinePluginID 只校验平台标识格式；插件准入由宿主受信任注册表管理。
 func OnlinePluginID(platform string) string {
-	switch platform {
-	case online.Netease, online.QQMusic, online.AppleMusic, online.Bilibili:
-		return "musicfs.plugin.source." + platform
-	default:
+	if !regexp.MustCompile(`^[a-z][a-z0-9-]{0,63}$`).MatchString(platform) {
 		return ""
 	}
+	return "musicfs.plugin.source." + platform
 }
 
-// OnlinePolicy describes the host's verified capability and configuration policy.
-// It deliberately has no plugin display identity; only a worker may supply it.
+// OnlinePolicy 提供平台无关的空描述符；能力和资料策略必须由插件补充。
 func OnlinePolicy(platform string) OnlineDescriptor {
-	auth := "platformAccountRequired"
-	if platform == online.Bilibili {
-		auth = "anonymous"
-	}
 	return OnlineDescriptor{
-		Platform: platform, SourceType: SourceNetwork, Authentication: auth, Capabilities: online.Capabilities(platform), SchemaRevision: OnlineRevision,
+		Platform: platform, SourceType: SourceNetwork, Authentication: "platformAccountRequired", Capabilities: []online.Capability{}, SchemaRevision: OnlineRevision,
 		ConfigSchema: map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{}}, ConfigDefaults: map[string]any{},
 	}
 }
@@ -90,26 +86,22 @@ func (d OnlineDescriptor) Validate(platform string) error {
 	if !slices.Contains(d.Plugin.Features, "music-source") {
 		return Failure("PROTOCOL_MISMATCH", "Online plugin must declare the music-source feature")
 	}
-	// Identity and explanatory text belong to the plugin; permissions remain
-	// bounded by the host's verified policy for this platform.
-	if err := validateOnlineCapabilities(platform, d.Capabilities); err != nil {
+	if err := validateOnlineCapabilities(d.Capabilities); err != nil {
 		return err
 	}
-	d.Plugin = nil
-	d.Capabilities = nil
-	policy := OnlinePolicy(platform)
-	policy.Capabilities = nil
-	want, _ := json.Marshal(policy)
-	actual, err := json.Marshal(d)
-	if err != nil || !bytes.Equal(want, actual) {
-		return Failure("PROTOCOL_MISMATCH", "Online descriptor does not match the verified adapter revision")
+	if d.Platform != platform || d.SourceType != SourceNetwork || d.SchemaRevision != OnlineRevision || (d.Authentication != "anonymous" && d.Authentication != "platformAccountRequired") || d.Resources.Validate() != nil || d.Login.Validate() != nil {
+		return Failure("PROTOCOL_MISMATCH", "Invalid online descriptor")
 	}
-	return nil
+	if d.ConfigSchema == nil || d.ConfigDefaults == nil {
+		return Failure("PROTOCOL_MISMATCH", "Online configuration declaration is required")
+	}
+	return validateOnlineConfiguration(d)
 }
 
-func OnlineCapabilities(platform string) []string {
+// OnlineCapabilities 从插件声明导出实际启用能力，不维护任何平台能力上限。
+func OnlineCapabilities(descriptor OnlineDescriptor) []string {
 	result := []string{}
-	for _, c := range online.Capabilities(platform) {
+	for _, c := range descriptor.Capabilities {
 		if c.Supported {
 			result = append(result, c.Name)
 		}
@@ -118,7 +110,7 @@ func OnlineCapabilities(platform string) []string {
 }
 
 func ValidateOnlineManifest(m Manifest, platform string) error {
-	if m.Validate("provider") != nil || m.SourceType != SourceNetwork || OnlinePluginID(platform) == "" || !m.SupportsMultipleInstances || m.PluginID != OnlinePluginID(platform) || !ValidPluginVersion(m.PluginVersion) || !reflect.DeepEqual(m.Roles, []string{"provider"}) || !onlineCapabilitySubset(m.Capabilities, OnlineCapabilities(platform)) || m.Configuration != nil || m.MaxPageItems != online.MaxPageItems || m.MaxMessageBytes != MaxMessageBytes {
+	if m.Validate("provider") != nil || m.SourceType != SourceNetwork || OnlinePluginID(platform) == "" || !m.SupportsMultipleInstances || m.PluginID != OnlinePluginID(platform) || !ValidPluginVersion(m.PluginVersion) || !reflect.DeepEqual(m.Roles, []string{"provider"}) || !onlineCapabilitySubset(m.Capabilities, online.CapabilityNames()) || m.Configuration != nil || m.MaxPageItems != online.MaxPageItems || m.MaxMessageBytes != MaxMessageBytes {
 		return Failure("PROTOCOL_MISMATCH", "Online manifest does not match the expected platform")
 	}
 	return nil

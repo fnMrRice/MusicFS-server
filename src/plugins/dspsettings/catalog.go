@@ -4,18 +4,18 @@ import (
 	"math"
 	"sort"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/dsp/builtin"
+	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 )
 
-func catalog(cfg Config) []builtin.Descriptor {
+func catalog(cfg Config) []audio.Descriptor {
 	if cfg.DisableEffects {
-		return []builtin.Descriptor{}
+		return []audio.Descriptor{}
 	}
-	items := builtin.Catalog()
+	items := audio.Catalog()
 	if cfg.DisableChannelMix {
 		filtered := items[:0]
 		for _, item := range items {
-			if item.Name != "channelmix" {
+			if item.Capability != "channelConversion" {
 				filtered = append(filtered, item)
 			}
 		}
@@ -29,10 +29,6 @@ func catalog(cfg Config) []builtin.Descriptor {
 		}
 	}
 	for _, plugin := range cfg.Plugins {
-		if plugin.Name == "musicfs.dsp.gain" && plugin.Builtin {
-			items[0].Aliases = append(items[0].Aliases, plugin.Name)
-			continue
-		}
 		if known[plugin.Name] {
 			continue
 		}
@@ -49,14 +45,25 @@ func catalog(cfg Config) []builtin.Descriptor {
 			keys = append(keys, key)
 		}
 		sort.Strings(keys)
-		fields := []builtin.Parameter{}
+		fields := []audio.Parameter{}
 		for _, key := range keys {
-			fields = append(fields, builtin.Parameter{Key: key, Label: key, DefaultValue: parameters[key], Min: -math.MaxFloat64, Max: math.MaxFloat64, Step: 0.001})
+			fields = append(fields, audio.Parameter{Key: key, Label: key, DefaultValue: parameters[key], Min: -math.MaxFloat64, Max: math.MaxFloat64, Step: 0.001})
 		}
-		items = append(items, builtin.Descriptor{Name: plugin.Name, Version: 1, DisplayName: plugin.Name,
-			Description: "已由管理员配置的外部 DSP，仅支持双声道和不超过 4096 帧的缓冲区。",
-			Input:       builtin.Port{SampleFormat: "f32le", SampleRate: 48000, Layouts: []string{"stereo"}},
-			Output:      builtin.OutputPort{CanContinueDSP: true, SameAsInput: true, Layouts: []string{"stereo"}}, Parameters: fields})
+		items = append(items, audio.Descriptor{Name: plugin.Name, Version: 1, DisplayName: plugin.Name,
+			Description: "已由管理员配置的协议 DSP，仅支持双声道和不超过 4096 帧的缓冲区。",
+			Input:       audio.Port{SampleFormat: "f32le", SampleRate: 48000, Layouts: []string{"stereo"}},
+			Output:      audio.OutputPort{CanContinueDSP: true, SameAsInput: true, Layouts: []string{"stereo"}}, Parameters: fields})
 	}
 	return items
+}
+
+// WithoutChannelMixNodes 根据声明能力过滤声道转换节点，不绑定插件名称。
+func WithoutChannelMixNodes(chain []audio.NodeSpec) []audio.NodeSpec {
+	result := []audio.NodeSpec{}
+	for _, node := range chain {
+		if !audio.HasCapability(node.Name, "channelConversion") {
+			result = append(result, node)
+		}
+	}
+	return result
 }

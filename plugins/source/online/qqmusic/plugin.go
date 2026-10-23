@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/source/online/internal/adapter"
+	"github.com/fnMrRice/MusicFS-server/plugins/source/online/internal/policies"
 	"github.com/fnMrRice/MusicFS-server/plugins/source/online/qqmusic/driver"
 	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
@@ -16,6 +17,9 @@ type Options = adapter.Options
 
 func Plugin(options Options) provider.Plugin {
 	descriptor := pluginproto.OnlinePolicy(online.QQMusic)
+	descriptor.Resources = policies.Resources(online.QQMusic)
+	descriptor.Capabilities = policies.Capabilities(online.QQMusic)
+	descriptor.Login = &online.LoginDescriptor{Method: "qr", Validation: "liveAccountPending"}
 	descriptor.Plugin = &pluginproto.PluginIdentity{
 		ID: "musicfs.plugin.source.qqmusic", Name: "QQ Music",
 		LocalizedNames: map[string]string{"zh": "QQ 音乐", "zh-Hans": "QQ 音乐", "zh-Hant": "QQ 音樂"},

@@ -9,18 +9,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
-	"github.com/fnMrRice/MusicFS-server/plugins/scraper/local"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audioruntime"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
 type Runtime struct {
 	ID, Name, Owner string
-	Host            *scraperlocal.Host
+	Host            enrichment.Host
+	Descriptor      enrichment.Descriptor
 	// Enabled distinguishes configured dependencies that failed to start from
 	// intentionally disabled instances when resolving the default priority.
 	Enabled bool
@@ -29,7 +29,7 @@ type Runtime struct {
 }
 type Config struct {
 	MaxConcurrent int
-	NCMDecoder    *ncmdecoder.Processor
+	Decoder       audioruntime.Decoder
 	Automatic     enrichment.AutomaticPolicy
 }
 type runningTask struct {
@@ -66,6 +66,16 @@ func New(repo enrichment.Repository, lib *library.Service, content *mediastore.C
 	}
 	s := &Service{repo: repo, library: lib, content: content, runtimes: map[string]Runtime{}, config: config, running: map[string]runningTask{}}
 	for _, r := range runtimes {
+		if r.Host != nil {
+			if r.Descriptor.PluginID != "" && r.Descriptor.PluginID != r.Host.Descriptor().PluginID {
+				return nil, domain.Fail("CONFLICT", "Scraper factory returned a different plugin identity")
+			}
+			r.Descriptor = r.Host.Descriptor()
+		}
+		if err := r.Descriptor.Validate(); err != nil {
+			return nil, err
+		}
+		r.Descriptor.Fields = slices.Clone(r.Descriptor.Fields)
 		if r.ID == "" || len(r.ID) > 128 || r.Owner == "" {
 			return nil, domain.Fail("INVALID_ARGUMENT", "Invalid scraper runtime")
 		}
@@ -91,7 +101,7 @@ func (s *Service) Instances(_ context.Context, owner string) []enrichment.Instan
 		if r.Host != nil && r.Gate.Check(context.Background()) == nil {
 			state = "available"
 		}
-		result = append(result, enrichment.Instance{InstanceID: r.ID, Name: r.Name, PluginID: scraperlocal.PluginID, Availability: state, Fields: []string{"lyrics", "artwork"}, QueryCorrectionsSupported: false})
+		result = append(result, enrichment.Instance{InstanceID: r.ID, Name: r.Name, PluginID: r.Descriptor.PluginID, Availability: state, Fields: slices.Clone(r.Descriptor.Fields), QueryCorrectionsSupported: r.Descriptor.QueryCorrectionsSupported})
 	}
 	slices.SortFunc(result, func(a, b enrichment.Instance) int {
 		if a.InstanceID < b.InstanceID {
@@ -114,10 +124,7 @@ func (s *Service) submit(ctx context.Context, owner string, request enrichment.J
 	if err != nil {
 		return enrichment.Job{}, false, err
 	}
-	if request.Query != nil {
-		if request.Query.Title != "" || len(request.Query.Artists) > 0 {
-			return enrichment.Job{}, false, domain.Fail("UNSUPPORTED", "Local scrapers do not support query corrections")
-		}
+	if request.Query != nil && request.Query.Title == "" && len(request.Query.Artists) == 0 {
 		request.Query = nil
 	}
 	for _, id := range append(append([]string{}, request.InstanceIDs...), request.ExcludeInstanceIDs...) {
@@ -128,7 +135,7 @@ func (s *Service) submit(ctx context.Context, owner string, request enrichment.J
 	}
 	if len(request.InstanceIDs) == 0 {
 		for _, r := range s.runtimeSnapshot() {
-			if r.Owner == owner && r.Host != nil && r.Gate.Check(ctx) == nil && !slices.Contains(request.ExcludeInstanceIDs, r.ID) {
+			if r.Owner == owner && r.Host != nil && r.Gate.Check(ctx) == nil && !slices.Contains(request.ExcludeInstanceIDs, r.ID) && r.Descriptor.Supports(request.Fields, request.Query) {
 				request.InstanceIDs = append(request.InstanceIDs, r.ID)
 			}
 		}
@@ -140,6 +147,9 @@ func (s *Service) submit(ctx context.Context, owner string, request enrichment.J
 		r, _ := s.Runtime(id)
 		if r.Host == nil {
 			return enrichment.Job{}, false, domain.Fail("SOURCE_OFFLINE", "Selected scraper instance is offline")
+		}
+		if !r.Descriptor.Supports(request.Fields, request.Query) {
+			return enrichment.Job{}, false, domain.Fail("UNSUPPORTED", "Selected scraper does not support the requested fields or query corrections")
 		}
 		lease, err := r.Gate.AcquireEpoch(ctx, r.Epoch)
 		if err != nil {

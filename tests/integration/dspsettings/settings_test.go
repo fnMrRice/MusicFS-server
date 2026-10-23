@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
+	_ "github.com/fnMrRice/MusicFS-server/plugins/dsp/builtin"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/dspsettings"

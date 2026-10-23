@@ -2,6 +2,8 @@
 
 `musicfs.scraper.local` 默认编入 Server 主进程；只有显式配置 `execution: process` 才运行外部插件程序并校验其 SHA-256。宿主以 `Open` 创建最长 30 秒的任务会话。`Search` 返回候选描述，`Fetch` 返回经过宿主二次内容验证的正文；正文不进入控制协议、候选数据库字段或日志。调用方负责预览、人工选择与持久发布，必须保留来源稳定保护直到引用发布完成。
 
+本插件向 `enrichment` 注册工厂并实现公共 `Host/Session` 契约；`Descriptor` 声明本地身份、歌词/封面字段及不支持查询修正。任务输入使用公共 `enrichment.Input`，宿主业务层不引用本插件的具体 Host 或 Session。具体握手、本地资源来源校验和二进制通道仍由本插件维护。
+
 已支持的读取范围：
 
 - MP3 的 ID3v2.3/v2.4 `USLT` 歌词与 `APIC` 图片；不转换 `SYLT`，不处理压缩或加密帧。

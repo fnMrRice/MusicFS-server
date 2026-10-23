@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -14,6 +13,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library/musicdirs"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
 )
 
@@ -30,7 +30,7 @@ func InitializeLocalDirectories(ctx context.Context, c Config, discover func() [
 	probed := false
 	for pi := range c.Plugins {
 		p := &c.Plugins[pi]
-		if p.PluginID != "musicfs.plugin.source.localfiles" || !p.Enabled {
+		if !pluginconfig.SupportsDirectories(p.PluginID) || !p.Enabled {
 			continue
 		}
 		for ii := range p.Instances {
@@ -73,13 +73,9 @@ func InitializeLocalDirectories(ctx context.Context, c Config, discover func() [
 }
 
 func loadLocalDirectoryDefaults(ctx context.Context, c *Config) error {
-	_, statErr := os.Stat(PluginDatabasePath(*c))
-	if statErr != nil && !os.IsNotExist(statErr) {
-		return statErr
-	}
 	for pi := range c.Plugins {
 		p := &c.Plugins[pi]
-		if p.PluginID != "musicfs.plugin.source.localfiles" {
+		if !pluginconfig.SupportsDirectories(p.PluginID) {
 			continue
 		}
 		for ii := range p.Instances {
@@ -87,13 +83,9 @@ func loadLocalDirectoryDefaults(ctx context.Context, c *Config) error {
 			if i.Permissions != nil {
 				continue
 			}
-			var v pluginproto.StateValue
-			if statErr == nil {
-				var err error
-				v, err = plugindb.ReadBackend(ctx, PluginDatabaseBackend(*c), PluginDatabasePath(*c), p.PluginID, i.InstanceID, defaultDirectoriesKey)
-				if err != nil {
-					return err
-				}
+			v, err := plugindb.ReadBackend(ctx, PluginDatabaseBackend(*c), PluginDatabasePath(*c), p.PluginID, i.InstanceID, defaultDirectoriesKey)
+			if err != nil {
+				return err
 			}
 			if err := applyLocalDirectoryDefaults(i, v); err != nil {
 				return err
@@ -141,7 +133,7 @@ func applyLocalDirectoryDefaults(i *Instance, v pluginproto.StateValue) error {
 func localDirectoryRevision(c Config, revision string) string {
 	for _, p := range c.Plugins {
 		for _, i := range p.Instances {
-			if p.PluginID == "musicfs.plugin.source.localfiles" && i.defaultDirectoryRevision > 0 {
+			if pluginconfig.SupportsDirectories(p.PluginID) && i.defaultDirectoryRevision > 0 {
 				revision = fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s:%s:%d", revision, p.PluginID, i.InstanceID, defaultDirectoriesKey, i.defaultDirectoryRevision))))
 			}
 		}

@@ -7,8 +7,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	audioffmpeg "github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audioruntime"
 )
 
 const MaxPositionMs int64 = 24 * 60 * 60 * 1000
@@ -32,7 +32,7 @@ func (p Profile) Validate() error {
 
 // ValidOutputProfile 仅接受已经定义固定声道布局及编码参数的输出身份。
 func ValidOutputProfile(profile string) bool {
-	_, valid := audioffmpeg.ProfileByID(profile)
+	_, valid := audioruntime.LookupProfile(profile)
 	return valid
 }
 

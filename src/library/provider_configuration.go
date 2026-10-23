@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"sort"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/directoryidentity"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
@@ -33,7 +34,7 @@ func (s *Service) providerRoots(ctx context.Context, r Runtime) []ProviderRoot {
 	if ready != nil {
 		hasProbe = ready()
 	}
-	workerReady := r.Worker != nil && r.Gate.Check(ctx) == nil
+	workerReady := r.Worker != nil && r.Worker.Supports(directoryidentity.Capability) && r.Gate.Check(ctx) == nil
 	if workerReady {
 		select {
 		case <-r.Worker.Done():

@@ -41,6 +41,7 @@ func (client) Metadata(ctx context.Context, id string) (online.Track, error) {
 
 func main() {
 	descriptor := pluginproto.OnlinePolicy(online.Netease)
+	descriptor.Resources = online.ResourcePolicy{Tracks: []online.ReferenceRule{{IDPattern: `^([1-9][0-9]{0,19})$`, URLTemplate: "https://music.163.com/song?id=${1}"}}}
 	descriptor.Plugin = &pluginproto.PluginIdentity{
 		ID: pluginproto.OnlinePluginID(online.Netease), Name: "Offline SDK example",
 		LocalizedNames: map[string]string{"zh-CN": "离线 SDK 示例"}, Features: []string{"music-source"},

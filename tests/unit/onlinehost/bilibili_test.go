@@ -3,6 +3,8 @@ package onlinehost_test
 import (
 	"context"
 	"errors"
+	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"testing"
 	"time"
 
@@ -18,9 +20,13 @@ type anonymousBilibili struct {
 	calls int
 }
 
+func (p *anonymousBilibili) Descriptor() pluginproto.OnlineDescriptor {
+	return onlineplugins.Describe(online.Bilibili)
+}
+
 func (p *anonymousBilibili) Metadata(_ context.Context, id string) (online.Track, error) {
 	p.calls++
-	track := online.Track{ExternalID: id, Title: "Public fixture", Artists: []string{}, SourceURL: online.BilibiliTrackURL(id), PlaybackAvailability: "unknown"}
+	track := online.Track{ExternalID: id, Title: "Public fixture", Artists: []string{}, SourceURL: online.ReferenceURL(onlineplugins.Describe(online.Bilibili).Resources.Tracks, id), PlaybackAvailability: "unknown"}
 	track.MetadataDigest = online.Digest(track)
 	return track, nil
 }
@@ -33,7 +39,7 @@ func (p *anonymousBilibili) Search(ctx context.Context, request online.SearchReq
 func (p *anonymousBilibili) ObservePlaylist(_ context.Context, id string) (online.PlaylistObservation, error) {
 	p.calls++
 	count := int64(2)
-	item := online.Playlist{ExternalID: id, Title: "Public collection", SourceURL: online.BilibiliPlaylistURL(id), TrackCount: &count}
+	item := online.Playlist{ExternalID: id, Title: "Public collection", SourceURL: online.ReferenceURL(onlineplugins.Describe(online.Bilibili).Resources.Playlists, id), TrackCount: &count}
 	entries := []online.PlaylistEntry{{Position: 0, ExternalTrackID: "video:BV1xx411c7mD:11"}, {Position: 1, ExternalTrackID: "video:BV1xx411c7mD:12"}}
 	return online.PlaylistObservation{Playlist: item, Entries: entries, Complete: true, Consistency: online.Unversioned, ObservedAt: time.Now().UTC(), MetadataDigest: online.PlaylistDigest(item, entries)}, nil
 }

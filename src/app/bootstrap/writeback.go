@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/tags/flac"
+	"github.com/fnMrRice/MusicFS-server/sdk/directoryidentity"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
@@ -20,7 +21,7 @@ func writeBackPolicy(c config.Config, runtimes []library.Runtime, _ bool) writeb
 		r := &runtimes[i]
 		r.WriteBack = map[string]library.RootWriteBack{}
 		roots := map[string]sourceaccess.RootConfig{}
-		if r.Worker != nil {
+		if r.Worker != nil && r.Worker.Access != nil {
 			for _, root := range r.Worker.Access.Roots() {
 				roots[root.ID] = root
 			}
@@ -60,8 +61,8 @@ func writeBackPolicy(c config.Config, runtimes []library.Runtime, _ bool) writeb
 				if len(granted) > 0 {
 					policy.Roots = append(policy.Roots, grant)
 				}
-				if actual, err := writeback.InspectCapability(grant); err == nil {
-					cap.Available = actual.Available
+				if actual, err := writeback.InspectCapability(grant, flac.New()); err == nil {
+					cap.Available = actual.Available && r.Worker != nil && r.Worker.Supports(directoryidentity.Capability)
 					cap.Formats = actual.Formats
 					cap.Replacement = actual.Replacement
 					cap.Fields = append([]string{}, granted...)

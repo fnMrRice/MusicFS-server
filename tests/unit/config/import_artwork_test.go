@@ -46,7 +46,7 @@ func TestImportArtworkDefaultsOverridesAndMissingScraper(t *testing.T) {
 		root := instance.Config.MusicRoots[0]
 		reverse := !enabled
 		root.ImportDefaults = &pluginproto.ImportOverrides{ImportArtwork: &reverse}
-		options, err = config.EffectiveRootImportDefaults(instance, root)
+		options, err = config.EffectiveRootImportDefaults("musicfs.plugin.source.localfiles", instance, root)
 		if err != nil || options.ImportArtwork == enabled {
 			t.Fatal("root artwork override was ignored", options, err)
 		}

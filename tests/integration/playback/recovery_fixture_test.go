@@ -18,6 +18,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audioruntime"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
@@ -32,7 +33,7 @@ type recoveryFixture struct {
 	path      string
 }
 
-func recoverySetup(t *testing.T, processor *audioffmpeg.Processor, maxBytes int64) recoveryFixture {
+func recoverySetup(t *testing.T, processor audioruntime.Processor, maxBytes int64) recoveryFixture {
 	t.Helper()
 	old, repo, who, request, path := playbackService(t)
 	old.Close()

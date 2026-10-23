@@ -86,7 +86,7 @@ func (w *OnlineWorker) Search(ctx context.Context, r online.SearchRequest) (onli
 	}
 	page, err := onlineCall[online.SearchPage](ctx, w, "provider.online.search", scope, pluginproto.OnlineSearch{Context: scope, Kind: r.Kind, Query: r.Query, Limit: r.Limit, Cursor: r.Cursor})
 	if err == nil {
-		err = online.ValidateSearch(w.config.Platform, page, r.Limit)
+		err = online.ValidateSearch(w.descriptor.Resources, page, r.Limit)
 		want := r.Kind
 		if want == "" {
 			want = "tracks"
@@ -108,7 +108,7 @@ func (w *OnlineWorker) Metadata(ctx context.Context, id string) (online.Track, e
 	}
 	track, err := onlineCall[online.Track](ctx, w, "provider.online.metadata", scope, pluginproto.OnlineReference{Context: scope, ExternalID: id})
 	if err == nil {
-		err = online.ValidateTrack(w.config.Platform, track)
+		err = online.ValidateTrack(w.descriptor.Resources, track)
 		if err == nil && track.ExternalID != id {
 			err = domain.Fail("PROTOCOL_MISMATCH", "Online track identity mismatch")
 		}
@@ -126,7 +126,7 @@ func (w *OnlineWorker) ObservePlaylist(ctx context.Context, id string) (online.P
 	}
 	page, err := onlineCall[online.PlaylistObservation](ctx, w, "provider.online.playlist", scope, pluginproto.OnlineReference{Context: scope, ExternalID: id})
 	if err == nil {
-		err = online.ValidateObservation(w.config.Platform, page, id)
+		err = online.ValidateObservation(w.descriptor.Resources, page, id)
 	}
 	if err != nil {
 		return online.PlaylistObservation{}, err
@@ -141,7 +141,7 @@ func (w *OnlineWorker) PublicRecommendations(ctx context.Context, limit int) (on
 	}
 	page, err := onlineCall[online.RecommendationPage](ctx, w, "provider.online.recommendations", scope, pluginproto.OnlineRecommendations{Context: scope, Limit: limit})
 	if err == nil {
-		err = online.ValidateRecommendations(w.config.Platform, page, limit)
+		err = online.ValidateRecommendations(w.descriptor.Resources, page, limit)
 	}
 	if err != nil {
 		return online.RecommendationPage{}, err

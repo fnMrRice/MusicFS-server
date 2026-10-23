@@ -4,7 +4,6 @@ package dspsettings
 import (
 	"context"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/dsp/builtin"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio/dspworker"
 )
@@ -35,17 +34,17 @@ type Config struct {
 }
 
 type Page struct {
-	Scope             string               `json:"scope"`
-	UsesGlobal        bool                 `json:"usesGlobal"`
-	Revision          int64                `json:"revision"`
-	SchemaRevision    string               `json:"schemaRevision"`
-	Settings          Options              `json:"settings"`
-	Defaults          Options              `json:"defaults"`
-	Catalog           []builtin.Descriptor `json:"catalog"`
-	MaxNodes          int                  `json:"maxNodes"`
-	Available         bool                 `json:"available"`
-	UnavailableReason string               `json:"unavailableReason,omitempty"`
-	OutputLayouts     []string             `json:"outputLayouts"`
+	Scope             string             `json:"scope"`
+	UsesGlobal        bool               `json:"usesGlobal"`
+	Revision          int64              `json:"revision"`
+	SchemaRevision    string             `json:"schemaRevision"`
+	Settings          Options            `json:"settings"`
+	Defaults          Options            `json:"defaults"`
+	Catalog           []audio.Descriptor `json:"catalog"`
+	MaxNodes          int                `json:"maxNodes"`
+	Available         bool               `json:"available"`
+	UnavailableReason string             `json:"unavailableReason,omitempty"`
+	OutputLayouts     []string           `json:"outputLayouts"`
 }
 
 type Request struct {

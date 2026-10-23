@@ -4,22 +4,16 @@ import (
 	"context"
 	"slices"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
-	"github.com/fnMrRice/MusicFS-server/plugins/scraper/local"
 	"github.com/fnMrRice/MusicFS-server/sdk/audioformat"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/audiocodecs"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audioruntime"
 )
-
-// DecodeNCM 保留旧调用入口，实际由统一解码链处理插件识别的封装。
-func (h *ScrapeInput) DecodeNCM(ctx context.Context, decoder *ncmdecoder.Processor) error {
-	return h.DecodeAudio(ctx, decoder)
-}
 
 // DecodeAudio 在刮削前按插件优先级逐层准备原生音频。
 // 调用者提供独立后台实例，防止占满播放配额；失败仅移除嵌入音频并保留旁车。
-func (h *ScrapeInput) DecodeAudio(ctx context.Context, decoder *ncmdecoder.Processor) error {
+func (h *ScrapeInput) DecodeAudio(ctx context.Context, decoder audioruntime.Decoder) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if err := ctx.Err(); err != nil {
@@ -97,7 +91,7 @@ func (h *ScrapeInput) addContainerArtwork(attachments []audioformat.Attachment) 
 			continue
 		}
 		resourceBytes += attachment.Size
-		h.Inputs = append(h.Inputs, scraperlocal.Input{
+		h.Inputs = append(h.Inputs, enrichment.Input{
 			Resource: enrichment.Resource{ResourceRef: ref, Version: h.track.Version, Kind: "artwork", SizeBytes: attachment.Size, Match: "containerEmbedded"},
 			Reader:   attachment.Reader, Validate: h.Validate,
 		})

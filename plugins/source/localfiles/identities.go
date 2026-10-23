@@ -3,45 +3,36 @@ package localfiles
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/directoryidentity"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
-type identityAliases struct {
-	Paths map[string]string `json:"paths"`
-}
-
-// The mapping is independent of a scan's depth and currently visible aliases.
-// Known paths retain their own IDs even when a hard link is added or excluded.
+// 身份映射独立于扫描深度和当前可见别名；新增或排除硬链接不改变已知路径 ID。
 func (w *worker) identity(ctx context.Context, entry pluginproto.Entry) (string, error) {
 	if entry.FileIdentity == "" || entry.RelativePath == "" || entry.LinkCount == 0 {
 		return "", fmt.Errorf("RESOURCE_CHANGED: reliable file identity is unavailable")
 	}
 	w.identityMu.Lock()
 	defer w.identityMu.Unlock()
-	keyBytes := sha256.Sum256([]byte(entry.RootID + ":" + entry.FileIdentity))
-	key := "aliases-" + hex.EncodeToString(keyBytes[:])
+	key := directoryidentity.AliasKey(entry.RootID, entry.FileIdentity)
 	var state pluginproto.StateValue
 	if err := w.peer.Call(ctx, "host.state.get", pluginproto.StateRequest{Key: key}, &state); err != nil {
 		return "", err
 	}
-	aliases := identityAliases{Paths: map[string]string{}}
-	if len(state.Value) > 0 {
-		if err := json.Unmarshal(state.Value, &aliases); err != nil || aliases.Paths == nil {
-			return "", fmt.Errorf("RESOURCE_CHANGED: invalid source identity state")
-		}
+	aliases, err := directoryidentity.DecodeAliases(state)
+	if err != nil {
+		return "", err
 	}
 	if id := aliases.Paths[entry.RelativePath]; id != "" {
 		return id, nil
 	}
 	id := ""
 	if entry.LinkCount == 1 && len(aliases.Paths) == 1 {
-		// A sole observed alias and an actual single-link inode make a rename
-		// unambiguous. Multiple historical aliases never silently collapse.
+		// 单一历史别名与单硬链接文件才能确定重命名；多个历史别名不能自动合并。
 		for oldPath, previous := range aliases.Paths {
 			id = previous
 			delete(aliases.Paths, oldPath)

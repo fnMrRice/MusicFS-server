@@ -5,12 +5,14 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/directoryidentity"
 	"github.com/fnMrRice/MusicFS-server/sdk/tagformat"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
@@ -99,6 +101,11 @@ func (s *Service) Submit(ctx context.Context, owner string, request Request, key
 	if !s.cfg.Policy.Enabled {
 		return Job{}, false, domain.Fail("ACCESS_DENIED", "Source writeback is disabled")
 	}
+	for _, field := range r.Fields {
+		if !slices.Contains(s.cfg.TagFormat.Descriptor().Fields, field.Name) {
+			return Job{}, false, domain.Fail("UNSUPPORTED", "Tag format plugin does not support this field")
+		}
+	}
 	if s.cfg.Probe == nil {
 		return Job{}, false, domain.Fail("UNSUPPORTED", "Source writeback requires a metadata probe")
 	}
@@ -116,7 +123,7 @@ func (s *Service) Submit(ctx context.Context, owner string, request Request, key
 	if err != nil {
 		return Job{}, false, err
 	}
-	if _, err = writeback.InspectCapability(root); err != nil {
+	if _, err = writeback.InspectCapability(root, s.cfg.TagFormat); err != nil {
 		return Job{}, false, err
 	}
 	read, err := s.lib.HoldRead(ctx, owner, t.ProviderID)
@@ -138,6 +145,9 @@ func (s *Service) Submit(ctx context.Context, owner string, request Request, key
 	if w == nil {
 		return Job{}, false, domain.Fail("SOURCE_OFFLINE", "Writeback provider is offline")
 	}
+	if !w.Supports(directoryidentity.Capability) {
+		return Job{}, false, domain.Fail("UNSUPPORTED", "Writeback provider does not support stable path identity rebinding")
+	}
 	if _, err = s.boundRoot(owner, t.ProviderID, t.RootID, w.Access); err != nil {
 		return Job{}, false, err
 	}
@@ -145,8 +155,8 @@ func (s *Service) Submit(ctx context.Context, owner string, request Request, key
 	if err != nil {
 		return Job{}, false, domain.Fail("RESOURCE_CHANGED", "Writeback source is unavailable")
 	}
-	if entry.ObservedVersion != t.Version || entry.SizeBytes != t.Size || entry.LinkCount != 1 || !strings.HasSuffix(strings.ToLower(t.Path), ".flac") {
-		return Job{}, false, domain.Fail("UNSUPPORTED", "Source does not support safe FLAC writeback")
+	if entry.ObservedVersion != t.Version || entry.SizeBytes != t.Size || entry.LinkCount != 1 || !s.cfg.TagFormat.Descriptor().SupportsName(t.Path) {
+		return Job{}, false, domain.Fail("UNSUPPORTED", "Source does not support safe tag writeback")
 	}
 	target := writeback.Target{SourceTrackID: t.ID, AssetID: t.AssetID, AssetVersion: t.Version, InstanceID: t.ProviderID, RootID: t.RootID, RelativePath: t.Path, FileIdentity: entry.FileIdentity}
 	j, merged, err := s.repo.QueueWriteback(ctx, owner, r, target, key)

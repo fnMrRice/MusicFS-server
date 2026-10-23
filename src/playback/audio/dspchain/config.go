@@ -5,7 +5,6 @@ import (
 	"maps"
 	"math"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/dsp/builtin"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio/dspworker"
 )
@@ -26,7 +25,7 @@ func Validate(chain []audio.NodeSpec, plugins []dspworker.Config) error {
 		external[plugin.Name] = true
 	}
 	registry := audio.NewRegistry()
-	if err := builtin.Register(registry); err != nil {
+	if err := audio.RegisterDefinitions(registry); err != nil {
 		return err
 	}
 	for _, spec := range chain {

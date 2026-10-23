@@ -3,6 +3,7 @@ package workpackages
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 	"time"
 
@@ -71,7 +72,7 @@ func (s *Service) Sources(ctx context.Context, owner, workID string) ([]Source, 
 	}
 	result := []Source{}
 	for _, provider := range s.library.Providers(ctx, owner) {
-		if provider.Plugin == nil || provider.Plugin.ID != "musicfs.plugin.source.localfiles" || provider.Availability != "available" {
+		if !slices.Contains(provider.Capabilities, "library.packages") || provider.Availability != "available" {
 			continue
 		}
 		roots := []SourceRoot{}

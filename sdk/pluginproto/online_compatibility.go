@@ -30,10 +30,10 @@ func ValidateOnlineDescriptor(m Manifest, d OnlineDescriptor, platform string) e
 	return nil
 }
 
-func validateOnlineCapabilities(platform string, capabilities []online.Capability) error {
+func validateOnlineCapabilities(capabilities []online.Capability) error {
 	policy := map[string]bool{}
-	for _, capability := range online.Capabilities(platform) {
-		policy[capability.Name] = capability.Supported
+	for _, name := range online.CapabilityNames() {
+		policy[name] = true
 	}
 	seen := map[string]bool{}
 	if capabilities == nil || len(capabilities) > len(policy) {
@@ -42,7 +42,7 @@ func validateOnlineCapabilities(platform string, capabilities []online.Capabilit
 	for _, capability := range capabilities {
 		allowed, known := policy[capability.Name]
 		if !known || seen[capability.Name] || capability.Supported && !allowed || !utf8.ValidString(capability.Reason) || utf8.RuneCountInString(capability.Reason) < 1 || utf8.RuneCountInString(capability.Reason) > 2048 || strings.ContainsFunc(capability.Reason, unicode.IsControl) {
-			return Failure("PROTOCOL_MISMATCH", "Online capability exceeds verified host policy")
+			return Failure("PROTOCOL_MISMATCH", "Invalid online capability declaration")
 		}
 		seen[capability.Name] = true
 	}

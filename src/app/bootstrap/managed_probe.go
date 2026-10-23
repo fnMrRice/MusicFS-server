@@ -2,18 +2,18 @@ package bootstrap
 
 import (
 	"context"
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/audiocodecs"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audioruntime"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"io"
 	"sync"
 )
 
 type probeRuntime struct {
-	ffprobe              string
-	decoder              *ncmdecoder.Processor
+	ffprobe              audioruntime.Probe
+	decoder              audioruntime.Decoder
 	audioGate, ncmGate   *plugincontrol.Gate
 	audioEpoch, ncmEpoch uint64
 }
@@ -22,7 +22,7 @@ type managedProbe struct {
 	current probeRuntime
 }
 
-func (p *managedProbe) update(ffprobe string, decoder *ncmdecoder.Processor, audioGate, ncmGate *plugincontrol.Gate) {
+func (p *managedProbe) update(ffprobe audioruntime.Probe, decoder audioruntime.Decoder, audioGate, ncmGate *plugincontrol.Gate) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.current = probeRuntime{ffprobe: ffprobe, decoder: decoder, audioGate: audioGate, ncmGate: ncmGate, audioEpoch: audioGate.Epoch(), ncmEpoch: ncmGate.Epoch()}
@@ -46,7 +46,7 @@ func (p probeRuntime) admit(ctx context.Context, encrypted bool) (context.Contex
 		}
 		return nil
 	}
-	if p.ffprobe != "" {
+	if p.ffprobe != nil {
 		if err := add(p.audioGate, p.audioEpoch); err != nil {
 			closeAll()
 			return ctx, func() {}, err
@@ -66,7 +66,7 @@ func (p *managedProbe) probe(ctx context.Context, input io.ReadSeeker, size int6
 }
 func (p *managedProbe) writeProbe(ctx context.Context, input io.ReadSeeker, size int64) (library.Observation, error) {
 	runtime := p.snapshot()
-	if runtime.ffprobe == "" {
+	if runtime.ffprobe == nil {
 		return library.Observation{}, domain.Fail("UNSUPPORTED", "Write-back validation requires an available audio probe")
 	}
 	return runtime.probe(ctx, input, size)
@@ -105,13 +105,13 @@ func (p *managedProbe) session(ctx context.Context) (context.Context, library.Pr
 
 func (p *managedProbe) ready() bool {
 	r := p.snapshot()
-	return r.ffprobe != "" && r.audioGate.Check(context.Background()) == nil
+	return r.ffprobe != nil && r.audioGate.Check(context.Background()) == nil
 }
 
 // Write-back must reserve validation tools before touching any original bytes.
 func (p *managedProbe) writeSession(ctx context.Context) (context.Context, library.Probe, func(), error) {
 	r := p.snapshot()
-	if r.ffprobe == "" {
+	if r.ffprobe == nil {
 		return ctx, nil, func() {}, domain.Fail("UNSUPPORTED", "Write-back validation requires an available audio probe")
 	}
 	ctx, release, err := r.admit(ctx, false)

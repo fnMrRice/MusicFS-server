@@ -70,7 +70,8 @@ func TestMetadataHTTPPrivateJobsCandidatesAndInstances(t *testing.T) {
 	t.Cleanup(func() { files.Close() })
 	lib := library.New(store, jobs.New(store), nil, nil)
 	content := mediastore.NewContent(store, store, files, thumbnail.New())
-	service, err := enrichmentworker.New(store, lib, content, []enrichmentworker.Runtime{{ID: "fca57a71-9efe-57dc-b4b9-2094a8c5a3c9", Owner: "admin"}, {ID: "15f9b451-bef0-5f89-9d65-e208870fa2ae", Owner: "other"}}, enrichmentworker.Config{})
+	descriptor := enrichment.Descriptor{PluginID: "example.scraper.replacement", Fields: []string{"lyrics"}, QueryCorrectionsSupported: true}
+	service, err := enrichmentworker.New(store, lib, content, []enrichmentworker.Runtime{{ID: "fca57a71-9efe-57dc-b4b9-2094a8c5a3c9", Owner: "admin", Descriptor: descriptor}, {ID: "15f9b451-bef0-5f89-9d65-e208870fa2ae", Owner: "other", Descriptor: descriptor}}, enrichmentworker.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

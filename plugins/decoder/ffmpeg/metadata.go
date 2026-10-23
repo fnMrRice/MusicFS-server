@@ -16,32 +16,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/audiotypes"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 )
 
-type Metadata struct {
-	Codec         *string
-	Container     *string
-	DurationMs    *int64
-	BitrateBps    *int64
-	MIME          string
-	Title         *string
-	Artists       []string
-	Album         *string
-	Genre         *string
-	Year          *int64
-	SampleRateHz  *int64
-	Channels      int
-	Layout        string
-	BitrateOrigin string
-	ProbeVersion  string
-}
+type Metadata = audiotypes.Metadata
 
 func ProbeMetadata(ctx context.Context, ffprobePath string, input io.ReadSeeker, size int64) (metadata Metadata, probeErr error) {
 	ctx = pluginlog.Context(ctx, "musicfs.plugin.decoder.ffmpeg", "")
 	finish := pluginlog.Operation(ctx, "audio.metadata.probe")
 	defer func() { finish(probeErr) }()
-	var result Metadata
+	result := Metadata{ProbeAlgorithm: "ffprobe"}
 	if size <= 0 {
 		return result, fmt.Errorf("UNSUPPORTED: empty audio input")
 	}

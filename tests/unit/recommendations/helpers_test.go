@@ -3,6 +3,8 @@ package recommendations_test
 import (
 	"context"
 	"errors"
+	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"strconv"
 	"sync/atomic"
 	"testing"
@@ -16,6 +18,10 @@ import (
 type provider struct {
 	calls atomic.Int32
 	fn    func(context.Context, int, int32) (online.RecommendationPage, error)
+}
+
+func (*provider) Descriptor() pluginproto.OnlineDescriptor {
+	return onlineplugins.Describe(online.Netease)
 }
 
 func (p *provider) PublicRecommendations(ctx context.Context, limit int) (online.RecommendationPage, error) {

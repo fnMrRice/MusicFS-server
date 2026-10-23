@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	_ "github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 )
 
@@ -45,7 +46,7 @@ func (r *memory) ForgetProcessedCache(_ context.Context, id string) error {
 	return nil
 }
 func identity() processedcache.Identity {
-	return processedcache.Identity{Owner: "owner", ProviderID: "local", SourceTrackID: "track", AssetID: "asset", Version: "version", InputSHA256: strings.Repeat("1", 64), WorkerSHA256: strings.Repeat("2", 64), FFmpegSHA256: strings.Repeat("3", 64), PluginVersion: "0.1.0", PipelineRevision: "gain-v1", Profile: "mp3-128", PositionMs: 0}
+	return processedcache.Identity{Owner: "owner", ProviderID: "local", SourceTrackID: "track", AssetID: "asset", Version: "version", PluginID: "musicfs.plugin.decoder.ffmpeg", InputSHA256: strings.Repeat("1", 64), WorkerSHA256: strings.Repeat("2", 64), DecoderSHA256: strings.Repeat("3", 64), PluginVersion: "0.1.0", PipelineRevision: "gain-v1", Profile: "mp3-128", PositionMs: 0}
 }
 func setup(t *testing.T, limit int64) (*processedcache.Manager, *processedcache.Budget, *memory, string, *atomic.Int64) {
 	t.Helper()
@@ -96,7 +97,8 @@ func TestCompletedCacheIsolationAndReferenceGC(t *testing.T) {
 		func(i *processedcache.Identity) { i.Owner = "another" }, func(i *processedcache.Identity) { i.ProviderID = "another" },
 		func(i *processedcache.Identity) { i.AssetID = "other" }, func(i *processedcache.Identity) { i.Version = "other" },
 		func(i *processedcache.Identity) { i.InputSHA256 = strings.Repeat("4", 64) }, func(i *processedcache.Identity) { i.WorkerSHA256 = strings.Repeat("4", 64) },
-		func(i *processedcache.Identity) { i.FFmpegSHA256 = strings.Repeat("4", 64) }, func(i *processedcache.Identity) { i.PositionMs = 1000 },
+		func(i *processedcache.Identity) { i.DecoderSHA256 = strings.Repeat("4", 64) }, func(i *processedcache.Identity) { i.PositionMs = 1000 },
+		func(i *processedcache.Identity) { i.PluginID = "independent.decoder" },
 		func(i *processedcache.Identity) { i.GainDB = -6 }, func(i *processedcache.Identity) { i.PluginVersion = "0.2.0" },
 	} {
 		candidate := i
@@ -200,7 +202,7 @@ func TestFailedUnlinkRetainsQuotaUntilActualRemoval(t *testing.T) {
 	w.Write([]byte("12345678"))
 	var path string
 	_, err := w.Complete(context.Background(), func(_ context.Context, r processedcache.Record) error {
-		path = filepath.Join(root, r.ID+".mp3")
+		path = filepath.Join(root, r.ID+".audio")
 		if err := os.Remove(path); err != nil {
 			return err
 		}

@@ -6,11 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/directoryidentity"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
-// Call with stateStore.mu held. The durable intent itself is the restart
-// barrier: worker state requests are blocked until the host finishes recovery.
+// 调用时持有 stateStore.mu；持久化意图阻止重启后的状态访问，直到恢复完成。
 func (s *stateStore) intent() (*rebindIntent, pluginproto.StateValue, error) {
 	v, err := s.get(rebindKey)
 	if err != nil {
@@ -20,7 +20,7 @@ func (s *stateStore) intent() (*rebindIntent, pluginproto.StateValue, error) {
 		return nil, v, nil
 	}
 	var i rebindIntent
-	if json.Unmarshal(v.Value, &i) != nil || len(i.Changes) != 3 || !localJobID.MatchString(i.Request.JobID) {
+	if json.Unmarshal(v.Value, &i) != nil || !localJobID.MatchString(i.Request.JobID) || directoryidentity.ValidatePlan(i.Request, i.Observation, i.Changes) != nil {
 		return nil, v, fmt.Errorf("RESOURCE_CHANGED: invalid local mapping journal")
 	}
 	return &i, v, nil
@@ -31,6 +31,12 @@ func (s *stateStore) ready() error {
 	return s.readyLocked()
 }
 func (s *stateStore) readyLocked() error {
+	if !s.declarationReady {
+		return fmt.Errorf("ACCESS_DENIED: provider handshake is not complete")
+	}
+	if !s.rebindEnabled {
+		return nil
+	}
 	if s.rebindReady != nil {
 		if *s.rebindReady {
 			return nil
@@ -51,39 +57,11 @@ func (s *stateStore) readyLocked() error {
 	return nil
 }
 
-func (s *stateStore) checkCompleted(r LocalRebind) error {
-	n, err := s.get(aliasKey(r.RootID, r.NewIdentity))
-	if err != nil {
-		return err
-	}
-	a, err := decodeAliases(n)
-	if err != nil {
-		return err
-	}
-	o, err := s.get(aliasKey(r.RootID, r.OldIdentity))
-	if err != nil {
-		return err
-	}
-	b, err := decodeAliases(o)
-	if err != nil {
-		return err
-	}
-	t, err := s.get("track-" + r.ExternalID)
-	if err != nil {
-		return err
-	}
-	var observation pluginproto.Observation
-	if a.Paths[r.RelativePath] != r.ExternalID || b.Paths[r.RelativePath] != "" || json.Unmarshal(t.Value, &observation) != nil || observation.ExternalID != r.ExternalID || observation.RootID != r.RootID || observation.RelativePath != r.RelativePath || observation.ObservedVersion != r.NewVersion {
-		return fmt.Errorf("CONFLICT: completed local mapping changed")
-	}
-	return nil
-}
 func sameState(a, b pluginproto.StateValue) bool {
 	return a.Revision == b.Revision && bytes.Equal(a.Value, b.Value)
 }
 func (s *stateStore) applyRebind(ctx context.Context, i *rebindIntent, journal pluginproto.StateValue) error {
-	// Check every expected mapping before changing any of them. A previous
-	// partial run may have installed an exact After value; no other change wins.
+	// 写入前核对全部预期状态；中断恢复仅允许精确的 Before 或 After 值。
 	for _, change := range i.Changes {
 		current, err := s.get(change.Key)
 		if err != nil {

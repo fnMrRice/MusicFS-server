@@ -6,7 +6,6 @@ import (
 	"math"
 	"slices"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/dsp/builtin"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio/dspchain"
@@ -51,7 +50,7 @@ func validate(ctx context.Context, cfg Config, options Options) (Preview, error)
 			return Preview{}, domain.Fail("UNSUPPORTED", "Server channel mixing is disabled")
 		}
 		for _, node := range options.Chain {
-			if builtin.EffectName(node.Name) == "channelmix" {
+			if audio.HasCapability(node.Name, "channelConversion") {
 				return Preview{}, domain.Fail("UNSUPPORTED", "Server channel mixing is disabled")
 			}
 		}
@@ -68,7 +67,7 @@ func validate(ctx context.Context, cfg Config, options Options) (Preview, error)
 		}
 	}
 	registry := audio.NewRegistry()
-	if err := builtin.Register(registry); err != nil {
+	if err := audio.RegisterDefinitions(registry); err != nil {
 		return Preview{}, err
 	}
 	external := map[string]dspworker.Config{}
@@ -84,17 +83,14 @@ func validate(ctx context.Context, cfg Config, options Options) (Preview, error)
 		input := preview.Output.Format
 		var output audio.Output
 		var err error
-		if plugin, ok := external[spec.Name]; ok && !plugin.Builtin {
+		_, native := audio.Definition(spec.Name)
+		if plugin, ok := external[spec.Name]; ok && (!plugin.Builtin || !native) {
 			if input != audio.Canonical || options.BufferFrames > 4096 {
 				return Preview{}, domain.Fail("INVALID_ARGUMENT", "External DSP v1 requires stereo and bufferFrames at most 4096")
 			}
 			output = audio.Output{Format: input, CanContinueDSP: true}
 		} else {
-			selected := spec
-			if selected.Name == "musicfs.dsp.gain" {
-				selected.Name = "gain"
-			}
-			node, createErr := registry.CreateVersioned(selected)
+			node, createErr := registry.CreateVersioned(spec)
 			if createErr != nil {
 				return Preview{}, domain.Fail("INVALID_ARGUMENT", createErr.Error())
 			}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -34,9 +35,13 @@ type networkFixture struct {
 	opens atomic.Int32
 }
 
+func (*networkFixture) Descriptor() pluginproto.OnlineDescriptor {
+	return onlineplugins.Describe(online.Bilibili)
+}
+
 func (p *networkFixture) Metadata(_ context.Context, id string) (online.Track, error) {
 	duration := int64(6000)
-	t := online.Track{ExternalID: id, Title: "Network fixture", Artists: []string{}, DurationMs: &duration, SourceURL: online.BilibiliTrackURL(id), PlaybackAvailability: "unknown"}
+	t := online.Track{ExternalID: id, Title: "Network fixture", Artists: []string{}, DurationMs: &duration, SourceURL: online.ReferenceURL(onlineplugins.Describe(online.Bilibili).Resources.Tracks, id), PlaybackAvailability: "unknown"}
 	t.MetadataDigest = online.Digest(t)
 	return t, nil
 }

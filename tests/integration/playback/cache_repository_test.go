@@ -20,7 +20,7 @@ import (
 // synthetic cache record is not evidence that an audio processor was executed.
 func cacheRecord(f recoveryFixture, d playback.Description) (processedcache.Record, processedcache.Authorization) {
 	t := f.tracks[1]
-	i := processedcache.Identity{Owner: f.who.User.ID, ProviderID: t.ProviderID, SourceTrackID: t.ID, AssetID: t.AssetID, Version: t.Version, InputSHA256: strings.Repeat("1", 64), WorkerSHA256: strings.Repeat("2", 64), FFmpegSHA256: strings.Repeat("3", 64), PluginVersion: "0.1.0", PipelineRevision: "gain-v1", Profile: "mp3-128"}
+	i := processedcache.Identity{Owner: f.who.User.ID, ProviderID: t.ProviderID, SourceTrackID: t.ID, AssetID: t.AssetID, Version: t.Version, PluginID: "musicfs.plugin.decoder.ffmpeg", InputSHA256: strings.Repeat("1", 64), WorkerSHA256: strings.Repeat("2", 64), DecoderSHA256: strings.Repeat("3", 64), PluginVersion: "0.1.0", PipelineRevision: "gain-v1", Profile: "mp3-128"}
 	key, _ := i.Key()
 	now := time.Now().UTC()
 	r := processedcache.Record{ID: domain.NewID(), Key: key, Identity: i, Size: 8, SHA256: fmt.Sprintf("%x", sha256.Sum256([]byte("testonly"))), CreatedAt: now, LastUsedAt: now}

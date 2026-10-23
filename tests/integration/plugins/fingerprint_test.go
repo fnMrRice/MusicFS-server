@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -47,12 +48,15 @@ func fingerprintExtractor(t *testing.T, p *audioffmpeg.Processor, n fingerprint.
 	if !p.Capabilities.Normalization {
 		t.Skip("FFmpeg lacks the s16le normalization muxer or encoder")
 	}
+	if version := p.RuntimeCapabilities().Version; strings.TrimSpace(version) != version || strings.ContainsAny(version, "\x00\r\n") {
+		t.Fatalf("decoder version is not a canonical single-line identity: %q", version)
+	}
 	b, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	sum := sha256.Sum256(b)
-	e, err := chromaprint.New(context.Background(), chromaprint.Config{FpcalcPath: path, FpcalcSHA256: fmt.Sprintf("%x", sum), FFmpegSHA256: p.Capabilities.FFmpegSHA256, FFmpegVersion: p.Capabilities.Version}, n)
+	e, err := chromaprint.New(context.Background(), chromaprint.Config{FpcalcPath: path, FpcalcSHA256: fmt.Sprintf("%x", sum), DecoderSHA256: p.Capabilities.FFmpegSHA256, DecoderVersion: p.Capabilities.Version}, n)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +79,7 @@ func TestFingerprintActualWorkerRangesAndQuality(t *testing.T) {
 	if d.PCM.SampleCount != 32*11025 || d.Quality.Status != "available" || len(d.Values) < 100 {
 		t.Fatalf("invalid detail %+v", d.Quality)
 	}
-	if d.Identity.Fpcalc.SHA256 == "" || d.Identity.Decoder.SHA256 != p.Capabilities.FFmpegSHA256 || d.Identity.ConfigRevision != e.Revision() {
+	if d.Identity.Analyzer.SHA256 == "" || d.Identity.Decoder.SHA256 != p.Capabilities.FFmpegSHA256 || d.Identity.ConfigRevision != e.Revision() {
 		t.Fatal("tool identity missing")
 	}
 	if b, err := d.Encode(); err != nil || len(b) > fingerprint.MaxDetailBytes {

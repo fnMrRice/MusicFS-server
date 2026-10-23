@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/fingerprint"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/audioruntime"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
@@ -24,7 +24,7 @@ type Extractor interface {
 
 type Config struct {
 	MaxConcurrent int
-	NCMDecoder    *ncmdecoder.Processor
+	Decoder       audioruntime.Decoder
 	Timeout       time.Duration
 }
 
@@ -56,14 +56,15 @@ func New(repo identification.FingerprintRepository, source identification.Finger
 
 func (s *Service) Submit(ctx context.Context, owner, track, key string, startMs, durationMs int64) (identification.FingerprintJob, bool, error) {
 	extractor, _, gate, epoch := s.runtime()
-	if extractor == nil {
-		return identification.FingerprintJob{}, false, domain.Fail("PLUGIN_DISABLED", "Fingerprint audio dependency is unavailable")
-	}
 	lease, err := gate.AcquireEpoch(ctx, epoch)
 	if err != nil {
 		return identification.FingerprintJob{}, false, err
 	}
 	defer lease.Close()
+	// 停用和运行故障由依赖准入返回；正常音频实例缺少分析器是能力不可用。
+	if extractor == nil {
+		return identification.FingerprintJob{}, false, domain.Fail("UNSUPPORTED", "Fingerprint extraction is unavailable")
+	}
 	if lease != nil {
 		ctx = lease.Context()
 	}

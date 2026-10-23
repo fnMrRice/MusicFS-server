@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"unicode/utf8"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/dsp/builtin"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio/dspchain"
@@ -199,7 +198,7 @@ func (s *Service) update(ctx context.Context, owner, id, scope string, cfg Confi
 		selected.OutputLayout = "stereo"
 		chain := []audio.NodeSpec{}
 		for _, node := range selected.Chain {
-			if builtin.EffectName(node.Name) != "channelmix" {
+			if !audio.HasCapability(node.Name, "channelConversion") {
 				chain = append(chain, node)
 			}
 		}

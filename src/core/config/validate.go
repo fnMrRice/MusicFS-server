@@ -30,7 +30,7 @@ func (c Config) Validate() error {
 	if c.AudioDSP.Enabled && len(c.AudioDSP.Chain) > 0 || c.AudioChannels.RequiresProcessing() {
 		ready := false
 		for _, plugin := range c.Plugins {
-			if plugin.PluginID == "musicfs.plugin.decoder.ffmpeg" {
+			if pluginconfig.ProcessesAudio(plugin.PluginID) {
 				if c.AudioChannels.RequiresProcessing() && !plugin.InProcess() {
 					return errors.New("surround output requires builtin audio execution")
 				}
@@ -119,6 +119,7 @@ func (c Config) validatePlugins(writable []string) error {
 	plugins, instances := map[string]bool{}, map[string]bool{}
 	onlineInstances := 0
 	watchedInstances := 0
+	audioInstances, decoderInstances := 0, 0
 	for _, plugin := range c.Plugins {
 		role := pluginconfig.Role(plugin.PluginID)
 		if role == "" {
@@ -165,7 +166,7 @@ func (c Config) validatePlugins(writable []string) error {
 				return errors.New("ownerUserId requires an online plugin and a valid user identity")
 			}
 			if instance.Permissions != nil {
-				if plugin.PluginID != "musicfs.plugin.source.localfiles" || len(instance.Permissions.ReadDirectories) > 256 {
+				if !pluginconfig.SupportsDirectories(plugin.PluginID) || len(instance.Permissions.ReadDirectories) > 256 {
 					return errors.New("invalid filesystem permissions")
 				}
 				for _, path := range instance.Permissions.ReadDirectories {
@@ -178,7 +179,7 @@ func (c Config) validatePlugins(writable []string) error {
 				return err
 			}
 			for _, root := range instance.Config.MusicRoots {
-				if _, err := EffectiveRootImportDefaults(instance, root); err != nil {
+				if _, err := EffectiveRootImportDefaults(plugin.PluginID, instance, root); err != nil {
 					return err
 				}
 			}
@@ -188,6 +189,16 @@ func (c Config) validatePlugins(writable []string) error {
 			}
 			instances[identityKey] = true
 			enabled := plugin.CanStart(instance)
+			if enabled && role == "audio" {
+				if pluginconfig.ProcessesAudio(plugin.PluginID) {
+					audioInstances++
+				} else {
+					decoderInstances++
+				}
+				if audioInstances > 1 || decoderInstances > 1 {
+					return errors.New("at most one audio processor and one container decoder may be enabled")
+				}
+			}
 			if enabled && instance.Config.Watch != nil && instance.Config.Watch.Enabled {
 				watchedInstances++
 				if watchedInstances > MaxWatchedInstances {
@@ -219,7 +230,7 @@ func validConfigID(id string) bool {
 
 func validateSettings(plugin string, settings InstanceConfig, enabled bool, writable []string) error {
 	if settings.Watch != nil {
-		if plugin != "musicfs.plugin.source.localfiles" {
+		if !pluginconfig.SupportsDirectories(plugin) {
 			return errors.New("watch is available only for local files")
 		}
 		if err := settings.Watch.Validate(); err != nil {
@@ -232,13 +243,13 @@ func validateSettings(plugin string, settings InstanceConfig, enabled bool, writ
 	if strings.ContainsRune(settings.FFmpegPath, 0) || strings.ContainsRune(settings.FFprobePath, 0) {
 		return errors.New("invalid audio tool path")
 	}
-	if plugin != "musicfs.plugin.source.localfiles" && len(settings.MusicRoots) != 0 || plugin != "musicfs.plugin.decoder.ffmpeg" && (settings.FFmpegPath != "" || settings.FFprobePath != "") {
+	if !pluginconfig.SupportsDirectories(plugin) && len(settings.MusicRoots) != 0 || !pluginconfig.NeedsAudioTools(plugin) && (settings.FFmpegPath != "" || settings.FFprobePath != "") {
 		return errors.New("instance config does not match pluginId")
 	}
-	if enabled && plugin == "musicfs.plugin.decoder.ffmpeg" && (settings.FFmpegPath == "" || settings.FFprobePath == "") {
+	if enabled && pluginconfig.NeedsAudioTools(plugin) && (settings.FFmpegPath == "" || settings.FFprobePath == "") {
 		return errors.New("enabled audio instance requires ffmpegPath and ffprobePath")
 	}
-	if enabled && plugin == "musicfs.plugin.source.localfiles" && len(settings.MusicRoots) == 0 {
+	if enabled && pluginconfig.SupportsDirectories(plugin) && len(settings.MusicRoots) == 0 {
 		return errors.New("enabled local files instance requires musicRoots")
 	}
 	ids := map[string]bool{}

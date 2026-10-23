@@ -5,12 +5,12 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
 )
 
@@ -80,14 +80,9 @@ func validateRootAuthority(i Instance, roots []MusicRoot) error {
 }
 
 func loadPluginSettings(ctx context.Context, doc *Document) error {
-	if _, err := os.Stat(PluginDatabasePath(doc.Config)); os.IsNotExist(err) {
-		return nil
-	} else if err != nil {
-		return err
-	}
 	for pi := range doc.Config.Plugins {
 		p := &doc.Config.Plugins[pi]
-		if p.PluginID != "musicfs.plugin.source.localfiles" {
+		if !pluginconfig.SupportsDirectories(p.PluginID) {
 			continue
 		}
 		for ii := range p.Instances {

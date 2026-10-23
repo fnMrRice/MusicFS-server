@@ -51,11 +51,11 @@ QQ 和 Apple 对应 `musicfs.plugin.source.qqmusic`、`musicfs.plugin.source.app
 | GET `/online-instances/{id}/playlists/{externalId}` | 公开歌单编号 | 条目、`complete/consistency/metadataDigest/observedAt` |
 | GET `/online-instances/{id}/playlists/{externalId}/tracks` | limit默认20、1—50；可选cursor | 位置、来源ID、标题／歌手／时长等资料，缺失项保留；每页一次歌单观测和一次批量详情请求 |
 | POST `/source-refs/lookup` | `sources` 是1—50项个人歌单`SourceRef`；允许Origin和CSRF，无幂等键 | 本地`SourceTrack`或远程来源及资料；顺序、重复和单项错误保留，不遍历整个曲库 |
-| POST `/online-instances/{id}/tracks/{externalId}/resolve` | `{}`；另需允许Origin和CSRF，无幂等键 | 当前所有可用平台均415 UNSUPPORTED，不生成会话或返回音频地址 |
+| POST `/online-instances/{id}/tracks/{externalId}/resolve` | `{}`；另需允许Origin和CSRF，无幂等键 | 具备 `stream.resolve` 的来源返回用于播放的曲目身份；未实现的来源返回415 UNSUPPORTED，不返回上游音频地址 |
 
 搜索游标绑定用户、实例、平台账号、登录代次、kind、规范查询和 limit；有效期5分钟，过期返回 `CURSOR_EXPIRED`，进程重启后签名失效。伪造、跨实例或改查询使用返回 `INVALID_ARGUMENT`。游标不固定远端快照；调用方须检查 `nextCursor` 和 `truncated`。歌单曲目分页另绑定本次完整条目观测摘要；观测改变须刷新首屏，不拼接新旧结果。
 
-专辑和歌手外部身份必须与实例ID一起使用，不能仅按同名合并。歌单含可空创建者和封面；专辑含歌手、曲目数、封面，歌手含作品计数和头像。图像引用只保留平台`*.music.126.net`的HTTPS地址，Server不会据此后台抓取文件；Web需依据自己的CSP策略决定是否显示。专辑／歌手详情与关联作品的三条分页均已提供接口，仍不代表Web已经接入详情页面。专辑与歌单分页成员摘要忽略封面CDN域名轮换，避免同一观察被误判为集合变化。
+专辑和歌手外部身份必须与实例ID一起使用，不能仅按同名合并。歌单含可空创建者和封面；专辑含歌手、曲目数、封面，歌手含作品计数和头像。图像引用只保留插件 `resources.imageHosts` 声明主机的 HTTPS 地址，拒绝用户信息、端口、查询串和片段；Server 不会据此后台抓取文件。内置 Web 的 CSP 从受信任装配工厂的有效图片声明生成，远端 Worker 响应和 HTTP 请求不能扩大图片来源；独立部署的 Web 需同步自己的 CSP。专辑／歌手详情与关联作品的三条分页均已提供接口，仍不代表 Web 已经接入详情页面。专辑与歌单分页成员摘要忽略封面 CDN 域名轮换，避免同一观察被误判为集合变化。
 
 来源引用批量展示先按当前用户查询，未知和其他用户来源均为`NOT_FOUND`；在线条目按实例分组，一组一次批量调用，不逐首访问上游。在线离线、禁用、限流等错误保留在对应条目，不影响本地条目。资料是当前读取值，不声称与过去的个人歌单快照具有相同修订。本人歌单`GET /playlists?q=...`同时支持Unicode小写后的名称包含匹配；过滤作用于完整本人歌单集，沿用`after` ID键集分页，实时更新可能影响后续页，改变关键词时应从第一页开始。
 
@@ -64,6 +64,10 @@ QQ 和 Apple 对应 `musicfs.plugin.source.qqmusic`、`musicfs.plugin.source.app
 歌单最多10000条，按这次观测的 `position` 保留顺序和重复曲目。`complete=true` 仅说明返回数与本次申报总数相等；`consistency=unversioned` 明确没有远端固定版本。公开推荐和歌单查询不会导入个人曲库、创建媒体资产或据缺失条目删除本地数据；[显式导入和持久同步](../library/remote-playlists.md)使用独立操作。
 
 ## 资源与失败边界
+
+当前在线协议修订为 `online-declared-v4`，要求插件明确提供 `resources`，可选 `login`；旧修订 Worker 被拒绝。平台 ID 使用有界的小写标识，外部资源 ID 使用有界、不含路径或 URL 的不透明标识。资料规则把锚定正则捕获与固定 HTTPS 主机模板绑定，Host 核对每条结果的 ID、资料 URL、图像主机、摘要和数量；歌单占位条目只按声明保留，不能成为可播放曲目。JSON Schema 约束通用结构，跨字段与插件规则由 SDK 校验。新增已知协议能力、平台 ID 或 CDN 不需要修改通用校验代码。
+
+`login` 为空时账号选项返回 `method: none`、`configured: false`、`validation: notSupported`，Bilibili 不再显示二维码登录。其余选项通过有实例作用域的 `provider.online.accountOptions` 从插件取得，并与登录声明核对；HTTP 仍只允许实例所有者读取。界面需要实现相应登录方法才能提供交互，声明新方法不代表现有 Web 已支持该流程。
 
 宿主同时最多4个在线查询，每次最多10秒；超额返回429和秒单位的 `retryAfter/Retry-After`，不创建无界等待。每个工作进程另有2个RPC并发限制，以及复用的每秒一次平台网络准入。上游429/业务限流会维持冷却，不隐藏重试；调用方应按提示有界重试。断连或取消传递到工作进程请求。
 

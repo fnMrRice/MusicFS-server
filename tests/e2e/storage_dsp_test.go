@@ -73,8 +73,13 @@ func TestExternalStorageAndDSPServerRestartAndPortableRestore(t *testing.T) {
 	request := playback.CreateRequest{SourceTrackID: track.ID, Capabilities: playback.Capabilities{HTMLAudio: true, Formats: []playback.Format{{MIME: "audio/wav", CanPlay: "probably"}, {MIME: "audio/mpeg", CanPlay: "probably"}}}}
 	code, raw, _ := c.request(t, "POST", "/api/v1/playback/sessions", request, "external-storage-dsp-create")
 	var description playback.Description
-	if code != 201 || json.Unmarshal(raw, &description) != nil || description.DeliveryMode != "processed" || len(description.EffectiveProcessing) != 3 || description.EffectiveProcessing[0].Type != "channelMix" || description.EffectiveProcessing[2].Type != "musicfs.dsp.gain" {
+	if code != 201 || json.Unmarshal(raw, &description) != nil || description.DeliveryMode != "processed" || len(description.EffectiveProcessing) != 2 || description.EffectiveProcessing[0].Type != "gain" || description.EffectiveProcessing[1].Type != "musicfs.dsp.gain" {
 		t.Fatalf("external server did not apply DSP: status=%d %s", code, raw)
+	}
+	// 未启用声道转换时，处理链只包含请求增益和显式配置的 DSP 节点。
+	configuredGain := description.EffectiveProcessing[1]
+	if configuredGain.GainDB != -6 || configuredGain.Parameters["gainDB"] != -6 || configuredGain.Execution != "server" || configuredGain.Version != "1" {
+		t.Fatalf("external server lost the configured DSP parameters: %+v", configuredGain)
 	}
 	pcm := fetchYAMLAudioPCM(t, c, ffmpeg, description.StreamURL)
 	assertYAMLAudioDuration(t, pcm, 6000)
@@ -123,7 +128,7 @@ func TestExternalStorageAndDSPServerRestartAndPortableRestore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// A completed backup must be independently restorable after plugin removal.
+	// 完成后的备份必须能在插件移除后独立恢复。
 	if err = os.Rename(storageWorker, storageWorker+".disabled"); err != nil {
 		t.Fatal(err)
 	}

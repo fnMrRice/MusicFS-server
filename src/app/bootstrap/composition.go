@@ -13,7 +13,6 @@ import (
 	_ "github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/plugins/matching/standard"
 	"github.com/fnMrRice/MusicFS-server/plugins/transform/thumbnail"
-	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/src/app/api"
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
@@ -31,6 +30,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/playback"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/codecsettings"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/dspsettings"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
@@ -62,7 +62,8 @@ func expectedChecksum(configured, path string) string {
 // pluginChecksum 将内置实现版本纳入实例修订，避免依赖已经不执行的旧程序文件。
 func pluginChecksum(p config.Plugin) string {
 	if p.InProcess() {
-		return fmt.Sprintf("%x", sha256.Sum256([]byte(p.PluginID+"@"+bundledplugin.Version(p.PluginID)+"/builtin")))
+		declaration, _ := pluginconfig.Lookup(p.PluginID)
+		return fmt.Sprintf("%x", sha256.Sum256([]byte(p.PluginID+"@"+declaration.Version+"/builtin")))
 	}
 	return expectedChecksum(p.SHA256, p.Executable)
 }
@@ -138,9 +139,9 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 		cleanup()
 		return nil, nil, fmt.Errorf("Configured DSP pipeline is unavailable")
 	}
-	policy := writeBackPolicy(c, runtimes, ffprobe != "")
+	policy := writeBackPolicy(c, runtimes, ffprobe != nil)
 	probeState := &managedProbe{}
-	probeState.update(ffprobe, decoder, audioGate(pluginManager, "musicfs.plugin.decoder.ffmpeg"), audioGate(pluginManager, "musicfs.plugin.decoder.ncm"))
+	probeState.update(ffprobe, decoder, runtimeAudioGate(pluginManager, processor), runtimeAudioGate(pluginManager, decoder))
 	probe := library.Probe(probeState.probe)
 	lib := library.New(store, queue, runtimes, probe)
 	lib.SetProbeSession(probeState.session)
@@ -237,7 +238,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	handler.RegisterPluginSettings(settings.New(store, settingsProviders...))
 	beforeMatching := cleanup
 	cleanup = func() { matchingAutomation.Close(); beforeMatching() }
-	player, err := playback.New(ctx, store, lib, processor, playback.Config{CacheRoot: c.CacheRoot, MaxSessions: c.MaxSessions, MaxCacheBytes: c.MaxCacheBytes, NCMDecoder: decoder, RequireDSP: c.AudioDSP.Enabled && len(c.AudioDSP.Chain) > 0 || c.AudioChannels.RequiresProcessing(), DisableEffects: !c.AudioDSP.Enabled, DisableChannelMix: !c.AudioChannels.Enabled})
+	player, err := playback.New(ctx, store, lib, processor, playback.Config{CacheRoot: c.CacheRoot, MaxSessions: c.MaxSessions, MaxCacheBytes: c.MaxCacheBytes, Decoder: decoder, RequireDSP: c.AudioDSP.Enabled && len(c.AudioDSP.Chain) > 0 || c.AudioChannels.RequiresProcessing(), DisableEffects: !c.AudioDSP.Enabled, DisableChannelMix: !c.AudioChannels.Enabled})
 	if err != nil {
 		cleanup()
 		return nil, nil, err

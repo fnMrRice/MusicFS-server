@@ -1,6 +1,7 @@
 package driver
 
 import (
+	"github.com/fnMrRice/MusicFS-server/plugins/source/online/internal/policies"
 	"github.com/fnMrRice/MusicFS-server/sdk/fault"
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 )
@@ -33,7 +34,7 @@ type PlaylistObservation = online.PlaylistObservation
 func textValue(value string, limit int) (string, error) { return online.TextValue(value, limit) }
 func digest(value any) string                           { return online.Digest(value) }
 func upstreamInvalid() error                            { return online.UpstreamInvalid() }
-func imageURL(value string) (*string, error)            { return online.ImageURL(value) }
+func imageURL(value string) (*string, error)            { return policies.Netease().ImageURL(value) }
 func validCount(value *int64) bool                      { return online.ValidCount(value) }
 func playlistDigest(playlist Playlist, entries []PlaylistEntry) string {
 	return online.PlaylistDigest(playlist, entries)

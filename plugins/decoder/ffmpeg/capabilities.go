@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/audiotypes"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 )
 
@@ -27,17 +28,7 @@ type Capabilities struct {
 	DecodeOutputs    []string     `json:"decodeOutputs,omitempty"`
 	TranscodeFormats []string     `json:"transcodeFormats,omitempty"`
 }
-type Profile struct {
-	ID         string `json:"id"`
-	MIME       string `json:"mime"`
-	Codec      string `json:"codec"`
-	Container  string `json:"container"`
-	SampleRate int    `json:"sampleRate"`
-	Channels   int    `json:"channels"`
-	Layout     string `json:"layout"`
-	BitrateBps int    `json:"bitrateBps"`
-	SeekMode   string `json:"seekMode"`
-}
+type Profile = audiotypes.Profile
 type cappedBuffer struct {
 	b   []byte
 	max int
@@ -114,7 +105,8 @@ func Probe(ctx context.Context, ffmpeg, ffprobe string) (Capabilities, error) {
 	if !strings.HasPrefix(version, "ffmpeg version ") {
 		return c, fmt.Errorf("UNSUPPORTED: invalid FFmpeg version output")
 	}
-	c.Version = strings.Split(version, "\n")[0]
+	// Windows 工具输出使用 CRLF；版本身份不能携带行尾控制字符。
+	c.Version = strings.TrimSpace(strings.Split(version, "\n")[0])
 	c.Build = version
 	probe, err := toolOutput(ctx, ffprobe, "-version")
 	if err != nil || !strings.HasPrefix(probe, "ffprobe version ") {

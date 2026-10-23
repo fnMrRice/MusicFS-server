@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"reflect"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite/state"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginrpc"
 )
@@ -25,6 +24,8 @@ type Backend interface {
 
 type BackendConfig struct {
 	Name       string
+	DataRoot   string
+	Options    map[string]string
 	Executable string
 	SHA256     string
 	Args       []string
@@ -36,7 +37,15 @@ type OpenFactory func(context.Context, BackendConfig, string, string, string) (B
 // ReadFactory 由数据库驱动提供，在取得数据锁之前只读访问已有状态。
 type ReadFactory func(context.Context, BackendConfig, string, string, string, string) (pluginproto.StateValue, error)
 
-type stateOptions struct{ Path, Plugin, Instance string }
+type stateOptions struct {
+	Path, Plugin, Instance, DataRoot string
+	Options                          map[string]string
+}
+
+func (o stateOptions) backendConfig() BackendConfig {
+	return BackendConfig{DataRoot: o.DataRoot, Options: o.Options}
+}
+
 type remoteStore struct{ *pluginrpc.Process }
 
 func (r *remoteStore) Get(ctx context.Context, key string) (result pluginproto.StateValue, err error) {
@@ -50,10 +59,11 @@ func (r *remoteStore) CompareAndSet(ctx context.Context, request pluginproto.Sta
 
 func OpenBackend(ctx context.Context, cfg BackendConfig, path, plugin, instance string) (Backend, error) {
 	if cfg.Name != "plugin" {
-		if cfg.Name != "" && cfg.Name != "sqlite" {
-			return nil, fmt.Errorf("unsupported plugin state backend")
+		factory, err := lookup(cfg.Name)
+		if err != nil {
+			return nil, err
 		}
-		return state.Open(ctx, path, plugin, instance)
+		return factory.open(ctx, cfg, path, plugin, instance)
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return nil, err
@@ -63,10 +73,11 @@ func OpenBackend(ctx context.Context, cfg BackendConfig, path, plugin, instance 
 
 func ReadBackend(ctx context.Context, cfg BackendConfig, path, plugin, instance, key string) (pluginproto.StateValue, error) {
 	if cfg.Name != "plugin" {
-		if cfg.Name != "" && cfg.Name != "sqlite" {
-			return pluginproto.StateValue{}, fmt.Errorf("unsupported plugin state backend")
+		factory, err := lookup(cfg.Name)
+		if err != nil {
+			return pluginproto.StateValue{}, err
 		}
-		return state.Read(ctx, path, plugin, instance, key)
+		return factory.read(ctx, cfg, path, plugin, instance, key)
 	}
 	remote, err := openRemote(ctx, cfg, path, plugin, instance, "plugin-state-read")
 	if err != nil {
@@ -77,9 +88,14 @@ func ReadBackend(ctx context.Context, cfg BackendConfig, path, plugin, instance,
 }
 
 func openRemote(ctx context.Context, cfg BackendConfig, path, plugin, instance, mode string) (*remoteStore, error) {
+	workDir := filepath.Dir(path)
+	if mode == "plugin-state-read" {
+		// 首次启动的只读预加载不要求状态目录已存在，也不能创建目录。
+		workDir = filepath.Dir(cfg.Executable)
+	}
 	process, err := pluginrpc.Start(ctx, pluginrpc.ProcessConfig{
-		Executable: cfg.Executable, SHA256: cfg.SHA256, Args: cfg.Args, WorkDir: filepath.Dir(path),
-	}, reflect.TypeFor[Backend](), mode, stateOptions{path, plugin, instance})
+		Executable: cfg.Executable, SHA256: cfg.SHA256, Args: cfg.Args, WorkDir: workDir,
+	}, reflect.TypeFor[Backend](), mode, stateOptions{Path: path, Plugin: plugin, Instance: instance, DataRoot: cfg.DataRoot, Options: cfg.Options})
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +108,7 @@ type readStore struct {
 }
 
 func (r *readStore) Get(ctx context.Context, key string) (pluginproto.StateValue, error) {
-	return r.read(ctx, BackendConfig{}, r.options.Path, r.options.Plugin, r.options.Instance, key)
+	return r.read(ctx, r.options.backendConfig(), r.options.Path, r.options.Plugin, r.options.Instance, key)
 }
 func (r *readStore) CompareAndSet(context.Context, pluginproto.StateRequest) (pluginproto.StateValue, error) {
 	return pluginproto.StateValue{}, fmt.Errorf("plugin state is read-only before startup")
@@ -112,7 +128,7 @@ func WorkerFactory(ctx context.Context, mode string, raw json.RawMessage, open O
 		if open == nil {
 			return nil, nil, nil, fmt.Errorf("plugin state initialization is not supported")
 		}
-		store, err = open(ctx, BackendConfig{}, options.Path, options.Plugin, options.Instance)
+		store, err = open(ctx, options.backendConfig(), options.Path, options.Plugin, options.Instance)
 	case "plugin-state-read":
 		if read == nil {
 			return nil, nil, nil, fmt.Errorf("plugin state reads are not supported")

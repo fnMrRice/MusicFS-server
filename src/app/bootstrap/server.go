@@ -12,7 +12,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	audioffmpeg "github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/core/lifecycle"
@@ -61,7 +60,7 @@ func ServeWithOptions(ctx context.Context, c config.Config, log *slog.Logger, op
 		return errors.New("data directory is already in use")
 	}
 	// 独占目录后、装配任务前回收上次异常退出留下的解码临时文件。
-	if err = audioffmpeg.CleanupCodecOutputs(c.DataRoot); err != nil {
+	if err = cleanupAudioOutputs(c.DataRoot); err != nil {
 		return errors.New("cannot recover codec output storage")
 	}
 	var logs *logging.Manager

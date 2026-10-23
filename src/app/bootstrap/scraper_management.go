@@ -4,15 +4,15 @@ import (
 	"context"
 	"time"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/scraper/local"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichmentworker"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
 
 func registerScraperManagement(manager *plugincontrol.Manager, c config.Config, service *enrichmentworker.Service) error {
 	for _, p := range c.Plugins {
-		if p.PluginID == scraperlocal.PluginID {
+		if registration, registered := enrichment.Lookup(p.PluginID); registered {
 			for _, i := range p.Instances {
 				id := i.InstanceID
 				r, _ := service.Runtime(id)
@@ -22,7 +22,7 @@ func registerScraperManagement(manager *plugincontrol.Manager, c config.Config, 
 				}
 				hooks := plugincontrol.Hooks{
 					Ready:        func() bool { r, _ := service.Runtime(id); return r.Host != nil },
-					Capabilities: func() []string { return []string{"lyrics", "artwork"} },
+					Capabilities: func() []string { r, _ := service.Runtime(id); return append([]string{}, r.Descriptor.Fields...) },
 					PluginVersion: func() string {
 						r, _ := service.Runtime(id)
 						if r.Host == nil {
@@ -34,7 +34,7 @@ func registerScraperManagement(manager *plugincontrol.Manager, c config.Config, 
 						if err := ctx.Err(); err != nil {
 							return err
 						}
-						host, err := scraperlocal.NewHost(scraperlocal.Config{Builtin: p.InProcess(), WorkerPath: p.Executable, WorkerArgs: p.Args, WorkerSHA256: pluginChecksum(p), WorkDir: c.DataRoot, InstanceID: id, MaxConcurrent: 1})
+						host, err := registration.Open(enrichment.HostConfig{Builtin: p.InProcess(), WorkerPath: p.Executable, WorkerArgs: p.Args, WorkerSHA256: pluginChecksum(p), WorkDir: c.DataRoot, InstanceID: id, MaxConcurrent: 1})
 						if err != nil {
 							return err
 						}
