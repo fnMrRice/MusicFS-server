@@ -39,8 +39,13 @@ type Job struct {
 type Repository interface {
 	Enqueue(context.Context, string, string, pluginproto.ScanPlan, string) (Job, bool, error)
 	Claim(context.Context) (Job, error)
+	UpdateProgress(context.Context, Job, int) error
 	Finish(context.Context, Job, int, error) error
 	GetJob(context.Context, string, string) (Job, error)
+	ScanStatus(context.Context, string, string) (ScanStatus, error)
 	RecoverJobs(context.Context) error
+}
+type ScanStatus struct {
+	Job *Job `json:"job"`
 }
 type Handler func(context.Context, Job) (int, error)

@@ -85,5 +85,6 @@ type Repository interface {
 	Publish(context.Context, jobs.Job, ScanPublication) error
 	ListTracks(context.Context, string, string, string, int) (Page, error)
 	FindTrack(context.Context, string, string) (Track, error)
+	RootStatistics(context.Context, string, string) (RootStatistics, error)
 	ProviderScanState(context.Context, string, string) string
 }

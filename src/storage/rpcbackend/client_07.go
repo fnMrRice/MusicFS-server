@@ -6,15 +6,25 @@ import (
 	"context"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
+	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/sourcedisplay"
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
-	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) SelectContentGuarded(a0 context.Context, a1 string, a2 mediastore.SelectRequest, a3 string, a4 mediastore.Guard) (r0 mediastore.Selection, err error) {
+	err = c.Invoke(a0, "SelectContentGuarded", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SelectCover(a0 context.Context, a1 string, a2 albums.SelectCoverRequest, a3 string, a4 mediastore.Guard) (r0 albums.CoverSelection, err error) {
+	err = c.Invoke(a0, "SelectCover", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) SelectRecordingCover(a0 context.Context, a1 string, a2 library.SelectRecordingCoverRequest, a3 string) (r0 library.RecordingCover, err error) {
 	err = c.Invoke(a0, "SelectRecordingCover", []any{a1, a2, a3}, []any{&r0})
@@ -86,6 +96,11 @@ func (c *Client) UnlockCover(a0 context.Context, a1 string, a2 albums.UnlockCove
 	return r0, err
 }
 
+func (c *Client) UpdateProgress(a0 context.Context, a1 jobs.Job, a2 int) (err error) {
+	err = c.Invoke(a0, "UpdateProgress", []any{a1, a2}, []any{})
+	return err
+}
+
 func (c *Client) UpdateRelease(a0 context.Context, a1 string, a2 string, a3 albums.UpdateReleaseRequest, a4 string) (r0 albums.Release, err error) {
 	err = c.Invoke(a0, "UpdateRelease", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
@@ -119,14 +134,4 @@ func (c *Client) WorkPackages(a0 context.Context, a1 string, a2 string) (r0 []wo
 func (c *Client) Works(a0 context.Context, a1 string, a2 works.Query) (r0 []works.Work, err error) {
 	err = c.Invoke(a0, "Works", []any{a1, a2}, []any{&r0})
 	return r0, err
-}
-
-func (c *Client) WritebackWork(a0 context.Context, a1 string, a2 string) (r0 writebackhost.Work, err error) {
-	err = c.Invoke(a0, "WritebackWork", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) WrittenPublication(a0 context.Context, a1 string, a2 string, a3 mediastore.Object) (err error) {
-	err = c.Invoke(a0, "WrittenPublication", []any{a1, a2, a3}, []any{})
-	return err
 }

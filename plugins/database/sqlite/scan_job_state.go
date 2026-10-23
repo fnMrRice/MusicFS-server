@@ -87,6 +87,8 @@ func (s *Store) Finish(ctx context.Context, given jobs.Job, n int, failure error
 	if err != nil {
 		return err
 	}
+	// 已发现的分页可能尚未完成元数据读取，失败时也保留本轮已报告数量。
+	n = max(n, j.Progress.Observed)
 	var message, last, next any
 	complete := failure == nil
 	now := time.Now().UTC()

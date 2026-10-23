@@ -146,6 +146,9 @@ func TestRealPersistenceWorker(t *testing.T) {
 		if _, err = store.Claim(ctx); !errors.Is(err, sql.ErrNoRows) {
 			t.Fatalf("empty scan queue lost SQL sentinel: %v", err)
 		}
+		if status, err := store.ScanStatus(ctx, "admin", "rpc-fixture"); err != nil || status.Job != nil {
+			t.Fatalf("empty scan status RPC failed: %+v %v", status, err)
+		}
 		job, _, err := store.Enqueue(ctx, "admin", "rpc-fixture", testkit.ScanPlan("music"), "rpc-large-scan")
 		if err != nil {
 			t.Fatal(err)
@@ -153,6 +156,25 @@ func TestRealPersistenceWorker(t *testing.T) {
 		claimed, err := store.Claim(ctx)
 		if err != nil || claimed.Owner != job.Owner || claimed.PlanDigest == "" || claimed.Generation <= 0 || !reflect.DeepEqual(claimed.Plan, job.Plan) {
 			t.Fatalf("internal fields lost: %+v %v", claimed, err)
+		}
+		if err = store.UpdateProgress(ctx, claimed, 200); err != nil {
+			t.Fatal("running progress RPC failed", err)
+		}
+		progress, err := store.GetJob(ctx, "admin", claimed.ID)
+		if err != nil || progress.Status != "running" || progress.Complete || progress.Progress.Observed != 200 {
+			t.Fatalf("running progress RPC lost state: %+v %v", progress, err)
+		}
+		status, err := store.ScanStatus(ctx, "admin", "rpc-fixture")
+		if err != nil || status.Job == nil || status.Job.ID != claimed.ID || status.Job.Progress.Observed != 200 || status.Job.Generation != claimed.Generation || status.Job.PlanDigest != claimed.PlanDigest {
+			t.Fatalf("current scan status RPC lost state: %+v %v", status.Job, err)
+		}
+		if hidden, err := store.ScanStatus(ctx, "other", "rpc-fixture"); err != nil || hidden.Job != nil {
+			t.Fatalf("scan status RPC crossed owners: %+v %v", hidden, err)
+		}
+		stale := claimed
+		stale.Generation++
+		if err = store.UpdateProgress(ctx, stale, 201); err == nil {
+			t.Fatal("progress RPC accepted stale generation")
 		}
 		items := make([]library.Observation, 2100)
 		for i := range items {
@@ -166,6 +188,13 @@ func TestRealPersistenceWorker(t *testing.T) {
 		}
 		if err = store.Finish(ctx, claimed, len(items), nil); err != nil {
 			t.Fatalf("nil error argument failed: %v", err)
+		}
+		statistics, err := store.RootStatistics(ctx, "admin", "rpc-fixture")
+		if err != nil || len(statistics.Roots) != 1 || statistics.Roots[0].RootID != "music" || statistics.Roots[0].TrackCount != 2100 || statistics.Roots[0].SizeBytes != 210000 {
+			t.Fatalf("root statistics RPC lost totals: %+v %v", statistics, err)
+		}
+		if hidden, err := store.RootStatistics(ctx, "other", "rpc-fixture"); err != nil || len(hidden.Roots) != 0 {
+			t.Fatalf("root statistics RPC crossed owners: %+v %v", hidden, err)
 		}
 		if state := store.ProviderScanState(ctx, "admin", "rpc-fixture"); state != "succeeded" {
 			t.Fatalf("scan state: %q", state)

@@ -5,7 +5,9 @@ package rpcbackend
 import (
 	"context"
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
+	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
+	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
@@ -83,6 +85,11 @@ func (c *Client) RevokeTimeline(a0 context.Context, a1 string, a2 string, a3 int
 	return r0, err
 }
 
+func (c *Client) RootStatistics(a0 context.Context, a1 string, a2 string) (r0 library.RootStatistics, err error) {
+	err = c.Invoke(a0, "RootStatistics", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) SaveAuth(a0 context.Context, a1 auth.Session) (err error) {
 	err = c.Invoke(a0, "SaveAuth", []any{a1}, []any{})
 	return err
@@ -118,6 +125,11 @@ func (c *Client) ScanAutomationResults(a0 context.Context, a1 string, a2 string,
 	return r0, err
 }
 
+func (c *Client) ScanStatus(a0 context.Context, a1 string, a2 string) (r0 jobs.ScanStatus, err error) {
+	err = c.Invoke(a0, "ScanStatus", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) SearchPlaylists(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 []playlists.Playlist, err error) {
 	err = c.Invoke(a0, "SearchPlaylists", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
@@ -125,15 +137,5 @@ func (c *Client) SearchPlaylists(a0 context.Context, a1 string, a2 string, a3 st
 
 func (c *Client) SelectContent(a0 context.Context, a1 string, a2 mediastore.SelectRequest, a3 string) (r0 mediastore.Selection, err error) {
 	err = c.Invoke(a0, "SelectContent", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SelectContentGuarded(a0 context.Context, a1 string, a2 mediastore.SelectRequest, a3 string, a4 mediastore.Guard) (r0 mediastore.Selection, err error) {
-	err = c.Invoke(a0, "SelectContentGuarded", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SelectCover(a0 context.Context, a1 string, a2 albums.SelectCoverRequest, a3 string, a4 mediastore.Guard) (r0 albums.CoverSelection, err error) {
-	err = c.Invoke(a0, "SelectCover", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
 }

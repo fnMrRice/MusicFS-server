@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func (s *Service) logFinished(job Job, observed int, elapsed time.Duration) {
+func (s *Service) logFinished(job Job, elapsed time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	current, err := s.repo.GetJob(ctx, job.Owner, job.ID)
@@ -28,7 +28,7 @@ func (s *Service) logFinished(job Job, observed int, elapsed time.Duration) {
 	case "cancelled":
 		message = "Scan task cancelled"
 	}
-	attrs := []any{"jobId", job.ID, "instanceId", job.ProviderInstanceID, "state", current.Status, "observed", observed, "attempt", job.AttemptCount, "durationMs", elapsed.Milliseconds()}
+	attrs := []any{"jobId", job.ID, "instanceId", job.ProviderInstanceID, "state", current.Status, "observed", current.Progress.Observed, "attempt", job.AttemptCount, "durationMs", elapsed.Milliseconds()}
 	if current.Error != nil {
 		attrs = append(attrs, "errorCode", current.Error.Code)
 	}

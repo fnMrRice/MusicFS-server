@@ -47,6 +47,18 @@ func (s *Service) Get(ctx context.Context, user, id string) (Job, error) {
 	}
 	return j, err
 }
+func (s *Service) UpdateProgress(ctx context.Context, job Job, observed int) error {
+	return s.repo.UpdateProgress(ctx, job, observed)
+}
+func (s *Service) ScanStatus(ctx context.Context, user, provider string) (ScanStatus, error) {
+	status, err := s.repo.ScanStatus(ctx, user, provider)
+	if err == nil && status.Job != nil && !IsTerminal(status.Job.Status) {
+		if stopped := s.Err(); stopped != nil {
+			return ScanStatus{}, stopped
+		}
+	}
+	return status, err
+}
 func (s *Service) Start(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -97,7 +109,7 @@ func (s *Service) run(ctx context.Context) {
 			s.stopFailed()
 			return
 		}
-		s.logFinished(job, n, time.Since(started))
+		s.logFinished(job, time.Since(started))
 	}
 }
 

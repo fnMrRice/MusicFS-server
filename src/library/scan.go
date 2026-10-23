@@ -88,6 +88,9 @@ func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID st
 			return all, domain.Fail("RESOURCE_CHANGED", "Scan exclusions changed between pages")
 		}
 		expectedPage++
+		if len(all)+len(page.Items) > 50000 {
+			return all, domain.Fail("RATE_LIMITED", "Library entry limit exceeded")
+		}
 		for _, o := range page.Items {
 			if o.ExternalID == "" || o.ObservedVersion == "" || !coverage.Contains(o.RootID, o.RelativePath) || seenTracks[o.ExternalID] {
 				return all, domain.Fail("CONFLICT", "Scan contains an invalid or repeated track identity")
@@ -96,6 +99,14 @@ func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID st
 			if _, err := providerEvidence(o); err != nil {
 				return all, err
 			}
+		}
+		// 每页只持久化一次发现数量，耗时的元数据读取开始前即可供客户端查询。
+		if len(page.Items) > 0 {
+			if err := s.jobs.UpdateProgress(ctx, j, len(all)+len(page.Items)); err != nil {
+				return all, err
+			}
+		}
+		for _, o := range page.Items {
 			item := Observation{Observation: o, Artists: []string{}, ProviderObservation: &o}
 			if probe != nil {
 				item.ProbeStatus = "failed"
@@ -136,9 +147,6 @@ func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID st
 				}
 			}
 			all = append(all, item)
-			if len(all) > 50000 {
-				return all, domain.Fail("RATE_LIMITED", "Library entry limit exceeded")
-			}
 		}
 		if page.NextCursor == "" {
 			if !page.Complete {

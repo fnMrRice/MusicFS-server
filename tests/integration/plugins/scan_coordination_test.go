@@ -55,6 +55,24 @@ func (q *coordinatedScanQueue) GetJob(_ context.Context, owner, id string) (jobs
 	}
 	return q.job, nil
 }
+func (q *coordinatedScanQueue) UpdateProgress(_ context.Context, given jobs.Job, observed int) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if q.job.ID != given.ID || q.job.Owner != given.Owner || q.job.Generation != given.Generation || q.job.Status != "running" {
+		return domain.Fail("CONFLICT", "Scan task is no longer active")
+	}
+	q.job.Progress.Observed = observed
+	return nil
+}
+func (q *coordinatedScanQueue) ScanStatus(_ context.Context, owner, provider string) (jobs.ScanStatus, error) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if q.job.Owner != owner || q.job.ProviderInstanceID != provider {
+		return jobs.ScanStatus{}, nil
+	}
+	job := q.job
+	return jobs.ScanStatus{Job: &job}, nil
+}
 func (q *coordinatedScanQueue) Finish(_ context.Context, given jobs.Job, observed int, failure error) error {
 	q.mu.Lock()
 	if q.job.ID != given.ID || q.job.Owner != given.Owner || q.job.Generation != given.Generation || q.job.Status != "running" {

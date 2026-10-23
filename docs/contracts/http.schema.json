@@ -683,6 +683,9 @@
       "then": {"properties": {"mode": {"const": "full"}, "rootIds": {"maxItems": 1}}}
     },
     "ScanAccepted": {"type": "object", "required": ["jobId", "merged"], "properties": {"jobId": {"$ref": "#/$defs/ID"}, "merged": {"type": "boolean"}}},
+    "ScanStatus": {"type": "object", "additionalProperties": false, "required": ["job"], "properties": {"job": {"anyOf": [{"$ref": "#/$defs/ScanJob"}, {"type": "null"}]}}},
+    "RootStatistic": {"type": "object", "additionalProperties": false, "required": ["rootId", "trackCount", "sizeBytes"], "properties": {"rootId": {"type": "string", "minLength": 1, "maxLength": 128}, "trackCount": {"type": "integer", "minimum": 0}, "sizeBytes": {"type": "integer", "minimum": 0}}, "description": "已发布且可用的来源文件数量和原始文件总字节数；按文件统计，不按录音去重，不含缺失文件或封面歌词等附件。"},
+    "RootStatistics": {"type": "object", "additionalProperties": false, "required": ["roots"], "properties": {"roots": {"type": "array", "items": {"$ref": "#/$defs/RootStatistic"}}}},
     "ScanJob": {
       "type": "object",
       "required": [

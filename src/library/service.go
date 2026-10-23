@@ -94,6 +94,12 @@ func (s *Service) Scan(ctx context.Context, user, provider string, input ScanInp
 func (s *Service) Job(ctx context.Context, user, id string) (jobs.Job, error) {
 	return s.jobs.Get(ctx, user, id)
 }
+func (s *Service) ScanStatus(ctx context.Context, user, provider string) (jobs.ScanStatus, error) {
+	if err := s.AuthorizeProvider(ctx, user, provider); err != nil {
+		return jobs.ScanStatus{}, err
+	}
+	return s.jobs.ScanStatus(ctx, user, provider)
+}
 func (s *Service) List(ctx context.Context, user, provider, cursor string, limit int) (Page, error) {
 	if provider != "" {
 		r, ok := s.Runtime(provider)

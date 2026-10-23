@@ -12,6 +12,7 @@ import (
 
 func (s *Server) RegisterLibrary(service *library.Service) {
 	s.registerRecordingCovers(service)
+	s.registerRootStatistics(service)
 	s.Handle("GET /api/v1/source-tracks/{id}", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		// 显式来源引用不受普通音乐浏览范围影响，仍按当前账号验证所有者。
 		track, err := service.Track(r.Context(), session.User.ID, r.PathValue("id"))
@@ -31,6 +32,18 @@ func (s *Server) RegisterLibrary(service *library.Service) {
 		return WriteJSON(w, http.StatusOK, struct {
 			Items []library.Provider `json:"items"`
 		}{service.Providers(r.Context(), session.User.ID)})
+	})
+	s.Handle("GET /api/v1/provider-instances/{id}/scan-status", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
+		status, err := service.ScanStatus(r.Context(), session.User.ID, r.PathValue("id"))
+		if err != nil {
+			return err
+		}
+		if status.Job != nil && status.Job.Error != nil {
+			failure := *status.Job.Error
+			failure.RequestID = RequestID(r)
+			status.Job.Error = &failure
+		}
+		return WriteJSON(w, http.StatusOK, status)
 	})
 	s.Handle("POST /api/v1/provider-instances/{id}/scan-jobs", true, true, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		var request struct {
