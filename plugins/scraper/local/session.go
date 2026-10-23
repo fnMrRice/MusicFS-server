@@ -25,7 +25,7 @@ func (s *Session) Search(ctx context.Context, fields, languages []string, query 
 		return enrichment.SearchResult{}, err
 	}
 	request := enrichment.SearchRequest{Context: s.scope, Target: s.target, Fields: fields, Languages: append([]string{}, languages...), Query: query, Resources: s.resources}
-	// Only selected sidecar fields are granted to this search.
+	// 仅授权本次搜索所选字段的附件资源。
 	request.Resources = nil
 	for _, r := range s.resources {
 		if r.Kind == "audio" || contains(fields, r.Kind) {
@@ -85,8 +85,14 @@ func (s *Session) validateResult(result enrichment.SearchResult, resources []enr
 			if candidate.Origin != "embedded" {
 				return fmt.Errorf("PROTOCOL_MISMATCH: invalid embedded provenance")
 			}
-		} else if candidate.Origin != "sidecar" || candidate.Field != r.Kind || candidate.Basis != r.Match {
-			return fmt.Errorf("PROTOCOL_MISMATCH: invalid sidecar provenance")
+		} else {
+			origin := "sidecar"
+			if r.Kind == "artwork" && r.Match == "containerEmbedded" {
+				origin = "container"
+			}
+			if candidate.Origin != origin || candidate.Field != r.Kind || candidate.Basis != r.Match {
+				return fmt.Errorf("PROTOCOL_MISMATCH: invalid attachment provenance")
+			}
 		}
 		if candidate.Status == "unavailable" {
 			if candidate.FailureCode == nil || *candidate.FailureCode != "UNSUPPORTED" || candidate.SizeBytes != 0 || candidate.SHA256 != "" || candidate.Format != "" || candidate.MIME != "" {

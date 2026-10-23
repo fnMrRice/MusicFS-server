@@ -115,7 +115,7 @@
       "parameters": [{"$ref": "#/components/parameters/ID"}],
       "get": {
         "operationId": "getScanMetadataResults",
-        "description": "逐来源查看成功扫描所触发的歌词导入或自动补齐，保留各项状态及人工锁/歧义等跳过原因。扫描结束不代表歌词补齐已结束。只返回当前用户的扫描结果。",
+        "description": "逐来源查看成功扫描所触发的歌词/封面导入、自动补齐或 refreshMetadata 元数据刷新，保留各项状态及人工锁/歧义等跳过原因。扫描结束不代表元数据处理已结束。只返回当前用户的扫描结果。",
         "parameters": [{"name": "cursor", "in": "query", "schema": {"type": "string", "maxLength": 256}}, {"name": "limit", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50}}],
         "responses": {"200": {"description": "有界自动补齐结果页", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/MetadataAutomationPage"}}}}, "default": {"$ref": "#/components/responses/Error"}}
       }
@@ -135,7 +135,7 @@
     "/provider-instances": {"get": {"operationId": "listProviders", "description": "返回插件提供的导入配置声明、已合成的实例默认值与授权根编号/显示名；无路径、凭据或真实根身份。", "responses": {"200": {"$ref": "#/components/responses/Providers"}, "default": {"$ref": "#/components/responses/Error"}}}},
     "/provider-instances/{id}/scan-jobs": {
       "parameters": [{"$ref": "#/components/parameters/ID"}],
-      "post": {"operationId": "createScan", "description": "提交模式、当前 schemaRevision、显式 rootIds 与 options 部分覆盖。按有效范围/选项/版本合并；excludePatterns 整组覆盖并绑定范围，skipHidden/respectNoMedia 默认true；隐藏项及.nomedia动态排除由Host执行，排除的既有曲目保留；旧 schema 修订返回 CONFLICT；importLyrics=true 在扫描成功后独立触发歌词补缺，子任务状态从 metadata-results 查询。", "parameters": [{"$ref": "#/components/parameters/CSRF"}, {"$ref": "#/components/parameters/Idempotency"}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/ScanRequest"}}}}, "responses": {"202": {"$ref": "#/components/responses/ScanAccepted"}, "default": {"$ref": "#/components/responses/Error"}}}
+      "post": {"operationId": "createScan", "description": "提交模式、当前 schemaRevision、显式 rootIds 与 options 部分覆盖。按有效范围/选项/版本合并；excludePatterns 整组覆盖并绑定范围，skipHidden/respectNoMedia 默认true；隐藏项及.nomedia动态排除由Host执行，排除的既有曲目保留；旧 schema 修订返回 CONFLICT；importLyrics=true 在扫描成功后独立触发歌词补缺，子任务状态从 metadata-results 查询。options.refreshMetadata=true 仅用于单次本地目录刷新，要求 mode=full 且 rootIds 只含一个根目录；该指令不写入实例或目录导入配置，结果原因是 refreshMetadata。", "parameters": [{"$ref": "#/components/parameters/CSRF"}, {"$ref": "#/components/parameters/Idempotency"}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/ScanRequest"}}}}, "responses": {"202": {"$ref": "#/components/responses/ScanAccepted"}, "default": {"$ref": "#/components/responses/Error"}}}
     },
     "/scan-jobs/{id}": {
       "parameters": [{"$ref": "#/components/parameters/ID"}],

@@ -49,6 +49,7 @@ type Request struct {
 // Close 只释放本层创建的资源，不应关闭传入的上一层 Reader。
 type Output struct {
 	Input
+	Attachments   []Attachment
 	NeedsDecoding bool
 	Close         func() error
 }
@@ -87,9 +88,10 @@ func NewChain(decoders ...Decoder) (*Chain, error) {
 // Decoded 持有所有中间层；调用方使用完最终 Reader 后必须关闭它。
 type Decoded struct {
 	Input
-	Layers  []string
-	closers []func() error
-	mu      sync.Mutex
+	Attachments []Attachment
+	Layers      []string
+	closers     []func() error
+	mu          sync.Mutex
 }
 
 func (d *Decoded) Close() error {
@@ -158,6 +160,9 @@ func (c *Chain) Decode(ctx context.Context, request Request, input Input) (_ *De
 			return nil, fmt.Errorf("RATE_LIMITED: decoder output exceeds requested limit")
 		}
 		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		if err := result.appendAttachments(output.Attachments); err != nil {
 			return nil, err
 		}
 		result.Input = output.Input

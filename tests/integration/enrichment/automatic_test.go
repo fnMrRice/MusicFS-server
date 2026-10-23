@@ -41,9 +41,14 @@ func rescanAutomatic(t *testing.T, f fixture, lyrics bool) jobs.Job {
 
 func rescanAutomaticOptions(t *testing.T, f fixture, options pluginproto.ImportOptions) jobs.Job {
 	t.Helper()
-	ctx := context.Background()
 	p := testkit.ScanPlan("root")
 	p.Options = options
+	return rescanAutomaticPlan(t, f, p)
+}
+
+func rescanAutomaticPlan(t *testing.T, f fixture, p pluginproto.ScanPlan) jobs.Job {
+	t.Helper()
+	ctx := context.Background()
 	if _, _, err := f.store.Enqueue(ctx, "admin", "local", p, domain.NewID()); err != nil {
 		t.Fatal(err)
 	}

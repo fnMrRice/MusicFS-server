@@ -54,6 +54,21 @@ func TestAutomaticEligibilityRequiresTrackSpecificEvidence(t *testing.T) {
 	if enrichment.EligibleAutomatic(c, p) {
 		t.Fatal("directory cover proves no track identity")
 	}
+	c.Origin = "container"
+	c.Basis = "containerEmbedded"
+	if !enrichment.EligibleAutomatic(c, p) {
+		t.Fatal("container artwork evidence excluded")
+	}
+	c.Field = "lyrics"
+	if enrichment.EligibleAutomatic(c, p) {
+		t.Fatal("container artwork evidence reused for lyrics")
+	}
+	c.Field = "artwork"
+	c.Basis = "directoryCover"
+	if enrichment.EligibleAutomatic(c, p) {
+		t.Fatal("container origin without embedded basis admitted")
+	}
+	c.Origin = "sidecar"
 	c.Basis = "exactStem"
 	c.InstanceID = "other"
 	if enrichment.EligibleAutomatic(c, p) {

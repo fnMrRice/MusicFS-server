@@ -17,7 +17,7 @@ Server 的受信任组装层直接链接官方在线平台适配器，以便在�
 SDK 包入口：
 
 - `sdk/pluginsettings`：声明式设置页字段、按钮与可选本地化文案，宿主路由及持久化见[插件设置](settings.md)。
-- `sdk/audioformat`：插件提供格式探测、识别优先级及解码能力，宿主按注册顺序组合多层解码链；输出格式、终止和资源限制见[音频编解码插件](audio-codecs.md)。
+- `sdk/audioformat`：插件提供格式探测、识别优先级、解码能力与独立有界容器附件，宿主组合多层解码链并保留各层附件及生命周期；输出格式、终止和资源限制见[音频编解码插件](audio-codecs.md)。
 - `sdk/pluginproto`：现有 Provider 协议、Manifest、双向 RPC、帧处理、取消及配置声明校验。
 - `sdk/inprocess`：为受信任编译内函数创建独立内存双向管道，取消时关闭阻塞读写；`Peer.Wait` 等待请求退出。
 - `sdk/tagformat`、`sdk/contenttransform`：FLAC 标签处理与封面变换的最小能力契约，宿主控制授权和最终发布。

@@ -79,15 +79,19 @@ func (e *Engine) Search(ctx context.Context) (found enrichment.SearchResult, sea
 			err = e.embedded(ctx, resource, reader)
 		} else {
 			limit := content.MaxLyricsBytes
+			origin := "sidecar"
 			if resource.Kind == "artwork" {
 				limit = content.MaxArtworkBytes
+				if resource.Match == "containerEmbedded" {
+					origin = "container"
+				}
 			}
 			var body []byte
 			body, err = readBounded(ctx, reader, resource.SizeBytes, 0, resource.SizeBytes, limit)
 			if err == nil {
-				err = e.add(resource, resource.Kind, "und", "sidecar", resource.Match, body, nil)
+				err = e.add(resource, resource.Kind, "und", origin, resource.Match, body, nil)
 			} else {
-				_ = e.add(resource, resource.Kind, "und", "sidecar", resource.Match, nil, err)
+				_ = e.add(resource, resource.Kind, "und", origin, resource.Match, nil, err)
 			}
 		}
 		if err != nil {

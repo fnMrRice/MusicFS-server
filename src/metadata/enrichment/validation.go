@@ -43,7 +43,7 @@ func (r SearchRequest) Validate() error {
 		}
 	}
 	refs := map[string]bool{}
-	var sidecarBytes int64
+	var attachmentBytes int64
 	audioCount := 0
 	for _, resource := range r.Resources {
 		if !ValidRef(resource.ResourceRef) || refs[resource.ResourceRef] || !validText(resource.Version, 1024, true) || resource.SizeBytes <= 0 || resource.SizeBytes > 8<<40 {
@@ -56,12 +56,12 @@ func (r SearchRequest) Validate() error {
 				return fmt.Errorf("INVALID_ARGUMENT: invalid embedded resource")
 			}
 		} else {
-			if !fields[resource.Kind] || (resource.Match != "exactStem" && !(resource.Kind == "artwork" && resource.Match == "directoryCover")) {
-				return fmt.Errorf("ACCESS_DENIED: unauthorized sidecar resource")
+			if !fields[resource.Kind] || (resource.Match != "exactStem" && !(resource.Kind == "artwork" && (resource.Match == "directoryCover" || resource.Match == "containerEmbedded"))) {
+				return fmt.Errorf("ACCESS_DENIED: unauthorized attachment resource")
 			}
-			sidecarBytes += resource.SizeBytes
-			if sidecarBytes > 32<<20 {
-				return fmt.Errorf("RATE_LIMITED: sidecar input budget exceeded")
+			attachmentBytes += resource.SizeBytes
+			if attachmentBytes > 32<<20 {
+				return fmt.Errorf("RATE_LIMITED: attachment input budget exceeded")
 			}
 		}
 	}

@@ -41,6 +41,7 @@ type Processor struct {
 
 type Decoded struct {
 	reader   *channelReader
+	artwork  *channelReader
 	size     int64
 	metadata Metadata
 	cancel   context.CancelFunc
@@ -167,7 +168,7 @@ func (p *Processor) Open(ctx context.Context, taskID, assetID string, input io.R
 		go func() { _ = cmd.Wait(); _ = stderr.Close(); cancel(); _ = peer.Close(); close(processDone) }()
 	}
 	cleaned := make(chan struct{})
-	var remote *channelReader
+	var remote, artwork *channelReader
 	// Cleanup ownership moves to this goroutine before any fallible RPC calls.
 	release = false
 	leaseTransferred = true
@@ -180,6 +181,9 @@ func (p *Processor) Open(ctx context.Context, taskID, assetID string, input io.R
 		<-readyToClean
 		if remote != nil {
 			remote.Close()
+		}
+		if artwork != nil {
+			artwork.Close()
 		}
 		<-processDone
 		<-p.slots
@@ -217,12 +221,21 @@ func (p *Processor) Open(ctx context.Context, taskID, assetID string, input io.R
 	if err != nil {
 		return nil, err
 	}
+	if result.Artwork != nil {
+		if result.Artwork.Size <= 0 || result.Artwork.Size > MaxCoverBytes || result.Artwork.Size > size-result.Size {
+			return nil, fmt.Errorf("PROTOCOL_MISMATCH: invalid NCM artwork descriptor")
+		}
+		artwork, err = newChannelReader(ctx, result.Artwork.URL, nonce, "artwork", result.Artwork.Size)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if err = ctx.Err(); err != nil {
 		return nil, err
 	}
 	success = true
 	pluginlog.Logger(ctx).DebugContext(ctx, "NCM stream opened", "inputBytes", size, "outputBytes", result.Size, "format", result.Metadata.Format)
-	return &Decoded{reader: remote, size: result.Size, metadata: cloneMetadata(result.Metadata), cancel: cancel, closed: cleaned}, nil
+	return &Decoded{reader: remote, artwork: artwork, size: result.Size, metadata: cloneMetadata(result.Metadata), cancel: cancel, closed: cleaned}, nil
 }
 
 // PluginVersion returns only a release verified by a completed worker handshake.
@@ -236,6 +249,15 @@ func (p *Processor) PluginVersion() string {
 func (d *Decoded) ReadAt(dst []byte, offset int64) (int, error) { return d.reader.ReadAt(dst, offset) }
 func (d *Decoded) Size() int64                                  { return d.size }
 func (d *Decoded) Metadata() Metadata                           { return cloneMetadata(d.metadata) }
+
+// Artwork 的读取能力与解密音频共享任务生命周期，调用 Close 后不可继续读取。
+func (d *Decoded) Artwork() (io.ReaderAt, int64) {
+	if d.artwork == nil {
+		return nil, 0
+	}
+	return d.artwork, d.artwork.size
+}
+
 func (d *Decoded) Close() error {
 	d.cancel()
 	<-d.closed

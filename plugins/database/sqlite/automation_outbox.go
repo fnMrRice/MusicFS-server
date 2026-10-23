@@ -24,6 +24,10 @@ func enqueueScanAutomation(ctx context.Context, tx *sql.Tx, j jobs.Job, root, so
 	if options.ImportArtwork {
 		reasons = append(reasons, "importArtwork")
 	}
+	if j.Plan.RefreshMetadata {
+		// 显式刷新统一处理歌词和封面，避免与同次扫描的补缺任务重复执行。
+		reasons = []string{"refreshMetadata"}
+	}
 	for _, reason := range reasons {
 		_, err := tx.ExecContext(ctx, `INSERT INTO metadata_automation(id,owner,scan_job_id,scan_generation,plan_digest,root_id,source_id,asset_id,asset_version,reason,state,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,'queued',?) ON CONFLICT(scan_job_id,scan_generation,source_id,reason) DO NOTHING`, domain.NewID(), j.Owner, j.ID, j.Generation, j.PlanDigest, root, source, asset, version, reason, time.Now().UTC().Format(time.RFC3339Nano))
 		if err != nil {

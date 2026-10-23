@@ -8,14 +8,24 @@ import (
 
 // Reader 的字段初始化后不变；并发读取能力遵循底层 ReaderAt 的契约。
 type Reader struct {
-	input    io.ReaderAt
-	offset   int64
-	size     int64
-	stream   [256]byte
-	metadata Metadata
+	input         io.ReaderAt
+	offset        int64
+	size          int64
+	stream        [256]byte
+	metadata      Metadata
+	artworkOffset int64
+	artworkSize   int64
 }
 
 func (r *Reader) Size() int64 { return r.size }
+
+// Artwork 只暴露容器中有效的封面字节，不包含预留填充，也不检查图片格式。
+func (r *Reader) Artwork() (io.ReaderAt, int64) {
+	if r.artworkSize == 0 {
+		return nil, 0
+	}
+	return io.NewSectionReader(r.input, r.artworkOffset, r.artworkSize), r.artworkSize
+}
 
 func (r *Reader) ReadAt(dst []byte, offset int64) (int, error) {
 	if offset < 0 {

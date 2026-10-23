@@ -77,13 +77,33 @@ func (s *Service) applyAutomaticTarget(ctx context.Context, repo enrichment.Auto
 		if err != nil {
 			return err
 		}
+		if w.Reason == "refreshMetadata" {
+			for _, b := range selection.Bindings {
+				if b.Field != a.Field || b.Language != a.Language || b.ManualLocked || !b.Current || b.State != "available" {
+					continue
+				}
+				// 保留现有文件句柄，避免同内容优化沿用丢失或损坏的对象。
+				_, file, openErr := s.content.Open(ctx, w.Owner, b.ObjectID)
+				if openErr == nil {
+					defer file.Close()
+				} else if failureCode(openErr) != "RESOURCE_CHANGED" {
+					return openErr
+				} else {
+					selection, err = s.content.ContentSelection(ctx, w.Owner, w.SourceTrackID)
+					if err != nil {
+						return err
+					}
+				}
+				break
+			}
+		}
 		a.ExpectedRevision = selection.Revision
 		for _, b := range selection.Bindings {
 			if b.Field == a.Field && b.Language == a.Language {
 				if b.ManualLocked {
 					a.Status = "skipped"
 					a.Reason = "manualLocked"
-				} else if b.Current && b.State == "available" {
+				} else if b.Current && b.State == "available" && w.Reason != "refreshMetadata" {
 					a.Status = "skipped"
 					a.Reason = "existingContent"
 				}
@@ -109,6 +129,10 @@ func (s *Service) applyAutomaticTarget(ctx context.Context, repo enrichment.Auto
 		} else {
 			a.Status = "applied"
 			a.Reason = "selected"
+			if result.Revision == a.ExpectedRevision {
+				a.Status = "skipped"
+				a.Reason = "unchangedContent"
+			}
 			for _, b := range result.Bindings {
 				if b.Field == a.Field && b.Language == a.Language {
 					id := b.ID
@@ -167,7 +191,7 @@ func (s *Service) applyAutomaticCandidate(parent context.Context, repo enrichmen
 				}
 				return fileGuard(publish)
 			}
-			return repo.ApplyAutomaticEnrichment(ctx, w.Owner, c.CandidateID, *c.PreviewObjectID, a.ExpectedRevision, fmt.Sprintf("automatic-%x", digest), guard)
+			return repo.ApplyAutomaticEnrichment(ctx, w.Owner, c.CandidateID, *c.PreviewObjectID, a.ExpectedRevision, fmt.Sprintf("automatic-%x", digest), w.Reason == "refreshMetadata", guard)
 		})
 	}
 	if sourceErr != nil {

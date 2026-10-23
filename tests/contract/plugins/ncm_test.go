@@ -21,6 +21,10 @@ func TestNCMWireContract(t *testing.T) {
 	testkit.ValidatePlugin(t, "NCMMetadata", metadata)
 	testkit.ValidatePlugin(t, "NCMOpen", request())
 	testkit.ValidatePlugin(t, "NCMOpened", result())
+	withArtwork := result()
+	withArtwork["artwork"] = map[string]any{"url": "http://127.0.0.1:32124/" + nonce + "/artwork", "size": 256}
+	testkit.ValidatePlugin(t, "NCMOpened", withArtwork)
+	testkit.ValidatePlugin(t, "", map[string]any{"jsonrpc": "2.0", "id": "h-1", "result": withArtwork})
 	testkit.ValidatePlugin(t, "", map[string]any{"jsonrpc": "2.0", "id": "h-1", "method": "ncm.open", "params": request()})
 	testkit.ValidatePlugin(t, "", map[string]any{"jsonrpc": "2.0", "id": "h-1", "result": result()})
 	for _, mutate := range []func(map[string]any){
@@ -46,6 +50,21 @@ func TestNCMWireContract(t *testing.T) {
 		func(v map[string]any) { v["metadata"] = map[string]any{"format": "aac", "mime": "audio/aac"} },
 		func(v map[string]any) { v["outputUrl"] = "http://localhost:32124/" + nonce + "/output" },
 		func(v map[string]any) { v["cover"] = "forbidden image" },
+		func(v map[string]any) {
+			v["artwork"] = map[string]any{"url": "https://example.com/image.png", "size": 256}
+		},
+		func(v map[string]any) {
+			v["artwork"] = map[string]any{"url": "http://127.0.0.1:32124/" + nonce + "/output", "size": 256}
+		},
+		func(v map[string]any) {
+			v["artwork"] = map[string]any{"url": "http://127.0.0.1:32124/" + nonce + "/artwork", "size": 0}
+		},
+		func(v map[string]any) {
+			v["artwork"] = map[string]any{"url": "http://127.0.0.1:32124/" + nonce + "/artwork", "size": (64 << 20) + 1}
+		},
+		func(v map[string]any) {
+			v["artwork"] = map[string]any{"url": "http://127.0.0.1:32124/" + nonce + "/artwork", "size": 256, "body": "forbidden image"}
+		},
 	} {
 		value := result()
 		mutate(value)

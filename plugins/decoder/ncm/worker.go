@@ -16,12 +16,13 @@ import (
 )
 
 type ncmWorker struct {
-	mu     sync.Mutex
-	ctx    context.Context
-	hello  pluginproto.Hello
-	opened bool
-	input  *channelReader
-	output *dataChannel
+	mu      sync.Mutex
+	ctx     context.Context
+	hello   pluginproto.Hello
+	opened  bool
+	input   *channelReader
+	output  *dataChannel
+	artwork *dataChannel
 }
 
 func RunWorker(ctx context.Context, input io.ReadCloser, output io.WriteCloser) error {
@@ -34,6 +35,9 @@ func RunWorker(ctx context.Context, input io.ReadCloser, output io.WriteCloser) 
 	defer w.mu.Unlock()
 	if w.output != nil {
 		w.output.Close()
+	}
+	if w.artwork != nil {
+		w.artwork.Close()
 	}
 	if w.input != nil {
 		w.input.Close()
@@ -97,5 +101,14 @@ func (w *ncmWorker) handle(ctx context.Context, method string, raw json.RawMessa
 		return nil, err
 	}
 	w.output = channel
-	return openResult{TaskID: request.TaskID, AssetID: request.AssetID, Nonce: request.Nonce, OutputURL: channel.url, Size: decoded.Size(), Metadata: decoded.Metadata()}, nil
+	result := openResult{TaskID: request.TaskID, AssetID: request.AssetID, Nonce: request.Nonce, OutputURL: channel.url, Size: decoded.Size(), Metadata: decoded.Metadata()}
+	if artwork, size := decoded.Artwork(); artwork != nil {
+		w.artwork, err = newDataChannel(w.ctx, request.Nonce, "artwork", artwork, size)
+		if err != nil {
+			inputCancel()
+			return nil, err
+		}
+		result.Artwork = &artworkDescriptor{URL: w.artwork.url, Size: size}
+	}
+	return result, nil
 }

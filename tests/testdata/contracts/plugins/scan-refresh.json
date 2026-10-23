@@ -1,0 +1,5 @@
+[
+  {"name":"scan-refresh-rejects-saved-plugin-override-true","schema":"ImportOverrides","valid":false,"value":{"refreshMetadata":true}},
+  {"name":"scan-refresh-rejects-saved-plugin-override-false","schema":"ImportOverrides","valid":false,"value":{"refreshMetadata":false}},
+  {"name":"scan-refresh-rejects-saved-plugin-options","schema":"ImportOptions","valid":false,"value":{"recursive":true,"maxDepth":0,"importLyrics":false,"excludePatterns":[],"refreshMetadata":true}}
+]

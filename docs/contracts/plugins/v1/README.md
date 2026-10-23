@@ -72,13 +72,17 @@ Capabilities 的 `normalization` 明确报告是否具备指纹 PCM 规范化能
 
 ## NCM
 
-独立 NCM Worker 使用 `musicfs.plugin.decoder.ncm` 标识、`audio` 角色与 `audio.decrypt` 能力，不依赖 FFmpeg。`host.hello` 的 instanceId 为配置实例 UUID，configRevision 为 `1`；nonce 是 24 个随机字节的 48 位小写十六进制串。一个 Worker 只接受一次 `ncm.open`，绑定 taskId、assetId、nonce、inputUrl 和加密输入 size，拒绝重新绑定。返回同一任务身份、outputUrl、解密后的 size 与 metadata；format/MIME 由解密正文确认，仅支持 MP3/FLAC，未知标签省略，不下载封面或任何外部资源。请求中没有源路径、原始音频或密钥。
+NCM Worker 使用 `musicfs.plugin.decoder.ncm` 标识、`audio` 角色与 `audio.decrypt` 能力，默认在主进程运行，不依赖 FFmpeg。`host.hello` 的 instanceId 为配置实例 UUID，configRevision 为 `1`；nonce 是 24 个随机字节的 48 位小写十六进制串。一个 Worker 只接受一次 `ncm.open`，绑定 taskId、assetId、nonce、inputUrl 和加密输入 size，拒绝重新绑定。返回同一任务身份、outputUrl、解密后的 size 与 metadata；format/MIME 由解密正文确认，仅支持 MP3/FLAC，未知标签省略，不下载封面或任何外部资源。请求中没有源路径、原始音频或密钥。
 
-NCM 的 input/output 通道均只监听 `127.0.0.1` 随机端口，路径包含本次 nonce；接收方校验完整任务绑定及精确 URL。只允许单段显式 `bytes=start-end` GET，每段最多 64 KiB；返回必须为 `206` 且 Content-Range 的起止/总长、Content-Length 完全一致，禁止重定向、代理、压缩响应及其他地址。通道最多接受 8 个连接、4 个并发请求，设定标头、读写及空闲超时。内置实现固定于受信任 Server 构建；显式外部模式由 Host 校验 Worker SHA-256，每次打开也复核；默认同时最多 2 个任务，最多可配置 8 个。启动及打开共限 5 秒，单任务最长 2 分钟。上层须在生命周期内读取或拷贝解密内容；取消与 Close 回收控制管道、两个 HTTP 服务及任务上下文，只有显式外部模式回收插件进程，不保留可复用输入能力。
+外层有封面时，`ncm.open` 额外返回可选 `artwork: {url, size}`。封面服务使用独立的随机 loopback 端口，URL 必须为 `http://127.0.0.1:<port>/<nonce>/artwork`，固定本次任务的 nonce 和 artwork 路径；`size` 为有效 `coverLength`，不包含预留容量，缺少封面则省略整个字段。音频偏移仍按 `coverCapacity` 计算，封面通过独立 Range 读取器提供，不改写 MP3/FLAC。Host 将其转换为音频 SDK 的 `artwork` 附件，再交本地 Scraper 验证；NCM Worker 不生成图片候选或缩略图。内置与显式外部执行使用同一字段及通道约束。
+
+NCM 的 input、output 及可选 artwork 通道均只监听 `127.0.0.1` 随机端口，路径包含本次 nonce；接收方校验完整任务绑定及精确 URL。音频与封面只允许单段显式 `bytes=start-end` GET，每段最多 64 KiB；返回必须为 `206` 且 Content-Range 的起止/总长、Content-Length 完全一致，禁止重定向、代理、压缩响应及其他地址。每个通道最多接受 8 个连接、4 个并发请求，设定标头、读写及空闲超时。内置实现固定于受信任 Server 构建；显式外部模式由 Host 校验 Worker SHA-256，每次打开也复核；默认同时最多 2 个任务，最多可配置 8 个。启动及打开共限 5 秒，单任务最长 2 分钟。上层须在生命周期内读取或拷贝解密内容与附件；取消与 Close 一并回收音频、封面能力 URL、控制管道、所有任务 HTTP 服务及任务上下文，只有显式外部模式回收插件进程，不保留可复用输入能力。
 
 ## 本地 Scraper
 
-独立 `musicfs.scraper.local` 使用 `scraper` 角色和 `scrape.search/scrape.fetch/lyrics/artwork` 声明。专用 `host.hello` 固定实例、owner/task上下文、来源/资产版本、媒体修订及一次性 loopback baseUrl。一次会话最多30秒，只能搜索一次；`scrape.search` 接受已授权资源描述、字段、语言和可选查询信息，返回最多64个候选及问题。候选以字段、声明语言、格式、大小、SHA-256、embedded/sidecar来源依据和资源版本描述内容，不含正文。当前wire保留原声明语言，业务层将常见ID3别名规范为主语言，封面语言归空，并明确拒绝不支持的非空查询修正。
+独立 `musicfs.scraper.local` 使用 `scraper` 角色和 `scrape.search/scrape.fetch/lyrics/artwork` 声明。专用 `host.hello` 固定实例、owner/task上下文、来源/资产版本、媒体修订及一次性 loopback baseUrl。一次会话最多30秒，只能搜索一次；`scrape.search` 接受已授权资源描述、字段、语言和可选查询信息，返回最多64个候选及问题。候选以字段、声明语言、格式、大小、SHA-256、embedded/container/sidecar 来源依据和资源版本描述内容，不含正文。当前wire保留原声明语言，业务层将常见ID3别名规范为主语言，封面语言归空，并明确拒绝不支持的非空查询修正。
+
+容器封面使用 `Resource.kind=artwork`、`Resource.match=containerEmbedded`，与音频资源独立传入；正文读取仍受任务资源引用、大小和来源版本约束。Scraper 校验图片后返回 `origin=container`、`basis=containerEmbedded` 候选，不能将容器附件伪装成音频标签或同目录文件。附件由宿主从解码链汇集，Scraper 不连接 NCM 专用通道，也不需要解析 NCM。
 
 `scrape.fetch` 只能提取同会话已搜索的候选，目标及输出引用必须匹配。Host 提供最多32个资源，资源/输出引用均为48位小写随机十六进制标识，不是路径；旁置输入总预算32 MiB，音频仅通过受限读取器访问。正文走本次nonce限定的 `127.0.0.1` 二进制通道，每段读取最多64 KiB，不经控制JSON/Base64。禁止代理、重定向和插件指定路径，宿主二次校验实际格式、长度、摘要及源稳定状态。公开HTTP候选移除内部资源引用/版本，预览内容交由MediaStore权限管理；插件本身不能选择内容、写原文件或合并录音。
 

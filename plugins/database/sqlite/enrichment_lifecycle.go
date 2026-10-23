@@ -154,13 +154,15 @@ func enrichmentCode(code string) bool {
 
 func validateEnrichmentCandidate(ctx context.Context, tx *sql.Tx, w enrichment.Work, c enrichment.PreviewCandidate) error {
 	bad := func() error { return domain.Fail("INVALID_ARGUMENT", "Invalid metadata candidate") }
-	if !enrichment.ValidRef(c.CandidateID) || c.Target != w.Target || len(c.InstanceID) < 1 || len(c.InstanceID) > 128 || (c.Field != "lyrics" && c.Field != "artwork") || len(c.Language) > 35 || len(c.Basis) > 64 || (c.Origin != "embedded" && c.Origin != "sidecar") || c.ExpiresAt.Before(time.Now()) || c.ExpiresAt.After(time.Now().Add(enrichment.CandidateLifetime+time.Second)) {
+	if !enrichment.ValidRef(c.CandidateID) || c.Target != w.Target || len(c.InstanceID) < 1 || len(c.InstanceID) > 128 || (c.Field != "lyrics" && c.Field != "artwork") || len(c.Language) > 35 || len(c.Basis) > 64 || c.ExpiresAt.Before(time.Now()) || c.ExpiresAt.After(time.Now().Add(enrichment.CandidateLifetime+time.Second)) {
 		return bad()
 	}
 	if !slices.Contains(w.Request.InstanceIDs, c.InstanceID) || !slices.Contains(w.Request.Fields, c.Field) {
 		return bad()
 	}
-	validBasis := c.Origin == "sidecar" && (c.Basis == "exactStem" || c.Field == "artwork" && c.Basis == "directoryCover") || c.Origin == "embedded" && (c.Field == "lyrics" && slices.Contains([]string{"USLT", "LYRICS", "UNSYNCEDLYRICS"}, c.Basis) || c.Field == "artwork" && slices.Contains([]string{"APIC", "PICTURE"}, c.Basis))
+	validBasis := c.Origin == "sidecar" && (c.Basis == "exactStem" || c.Field == "artwork" && c.Basis == "directoryCover") ||
+		c.Origin == "embedded" && (c.Field == "lyrics" && slices.Contains([]string{"USLT", "LYRICS", "UNSYNCEDLYRICS"}, c.Basis) || c.Field == "artwork" && slices.Contains([]string{"APIC", "PICTURE"}, c.Basis)) ||
+		c.Origin == "container" && c.Field == "artwork" && c.Basis == "containerEmbedded"
 	if !validBasis {
 		return bad()
 	}

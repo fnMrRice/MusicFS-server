@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
@@ -10,14 +11,14 @@ import (
 )
 
 func (s *Store) ApplyEnrichment(ctx context.Context, owner, candidateID, expectedObjectID string, expected int64, key string, guard mediastore.Guard) (mediastore.Selection, error) {
-	return s.applyEnrichment(ctx, owner, candidateID, expectedObjectID, expected, key, guard, false)
+	return s.applyEnrichment(ctx, owner, candidateID, expectedObjectID, expected, key, guard, false, false)
 }
 
-func (s *Store) ApplyAutomaticEnrichment(ctx context.Context, owner, candidateID, expectedObjectID string, expected int64, key string, guard mediastore.Guard) (mediastore.Selection, error) {
-	return s.applyEnrichment(ctx, owner, candidateID, expectedObjectID, expected, key, guard, true)
+func (s *Store) ApplyAutomaticEnrichment(ctx context.Context, owner, candidateID, expectedObjectID string, expected int64, key string, refreshMetadata bool, guard mediastore.Guard) (mediastore.Selection, error) {
+	return s.applyEnrichment(ctx, owner, candidateID, expectedObjectID, expected, key, guard, true, refreshMetadata)
 }
 
-func (s *Store) applyEnrichment(ctx context.Context, owner, candidateID, expectedObjectID string, expected int64, key string, guard mediastore.Guard, automatic bool) (mediastore.Selection, error) {
+func (s *Store) applyEnrichment(ctx context.Context, owner, candidateID, expectedObjectID string, expected int64, key string, guard mediastore.Guard, automatic, refreshMetadata bool) (mediastore.Selection, error) {
 	var empty mediastore.Selection
 	if guard == nil {
 		return empty, domain.Fail("INVALID_ARGUMENT", "Metadata selection requires a file guard")
@@ -32,7 +33,8 @@ func (s *Store) applyEnrichment(ctx context.Context, owner, candidateID, expecte
 		CandidateID, ObjectID string
 		ExpectedRevision      int64
 		Automatic             bool
-	}{candidateID, expectedObjectID, expected, automatic}
+		RefreshMetadata       bool
+	}{candidateID, expectedObjectID, expected, automatic, refreshMetadata}
 	m, replay, err := s.beginContentMutation(ctx, owner, c.Target.SourceTrackID, "metadata-apply", key, expected, request)
 	if err != nil {
 		return empty, err
@@ -48,7 +50,7 @@ func (s *Store) applyEnrichment(ctx context.Context, owner, candidateID, expecte
 	if c.Status != "available" || c.PreviewObjectID == nil || *c.PreviewObjectID != expectedObjectID {
 		return empty, domain.Fail("CONFLICT", "Metadata candidate does not match this selection revision")
 	}
-	if automatic && c.Origin != "embedded" && (c.Origin != "sidecar" || c.Basis != "exactStem") {
+	if automatic && !enrichment.TrackSpecificCandidate(c) {
 		return empty, domain.Fail("UNSUPPORTED", "Automatic metadata requires a local track-specific candidate")
 	}
 	var jobState, targetState, expires string
@@ -74,11 +76,31 @@ func (s *Store) applyEnrichment(ctx context.Context, owner, candidateID, expecte
 	}
 	previous := ""
 	old, locked := contentSelectedSlot(m.result, c.Field, c.Language)
-	if automatic && (locked || (old != nil && old.Current && old.State == "available")) {
+	if automatic && (locked || (!refreshMetadata && old != nil && old.Current && old.State == "available")) {
 		return empty, domain.Fail("CONFLICT", "Automatic content cannot replace an existing or manually locked selection")
 	}
+	unchanged := false
 	if old != nil {
 		previous = old.ID
+		if automatic && c.Field == "artwork" {
+			var recordingLocked bool
+			err = m.tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM recording_cover_preferences p
+ JOIN recording_source_links l ON l.owner=p.owner AND l.recording_id=p.recording_id
+ WHERE p.owner=? AND p.object_id=? AND l.source_id=?)`, owner, old.ObjectID, target.SourceTrackID).Scan(&recordingLocked)
+			if err != nil {
+				return empty, err
+			}
+			if recordingLocked {
+				return empty, domain.Fail("CONFLICT", "Automatic content cannot replace a manually selected recording cover")
+			}
+		}
+		if refreshMetadata && old.Current && old.State == "available" {
+			selected, readErr := readContentObject(ctx, m.tx, owner, old.ObjectID)
+			if readErr != nil {
+				return empty, readErr
+			}
+			unchanged = selected.SHA256 == object.SHA256 && selected.Size == object.Size && selected.MIME == object.MIME && selected.Metadata.Format == object.Metadata.Format
+		}
 	}
 	var result mediastore.Selection
 	var publicationErr error
@@ -88,7 +110,11 @@ func (s *Store) applyEnrichment(ctx context.Context, owner, candidateID, expecte
 			return domain.Fail("CONFLICT", "Metadata candidate was already applied")
 		}
 		called = true
-		result, publicationErr = m.selectObject(ctx, mediastore.SelectRequest{Target: target, ExpectedRevision: expected, ObjectID: expectedObjectID, Automatic: automatic}, object, previous)
+		if unchanged {
+			result, publicationErr = m.finishUnchangedEnrichment(ctx)
+		} else {
+			result, publicationErr = m.selectObject(ctx, mediastore.SelectRequest{Target: target, ExpectedRevision: expected, ObjectID: expectedObjectID, Automatic: automatic}, object, previous)
+		}
 		return publicationErr
 	})
 	if err != nil {
@@ -98,4 +124,16 @@ func (s *Store) applyEnrichment(ctx context.Context, owner, candidateID, expecte
 		return empty, domain.Fail("CONFLICT", "Metadata selection guard did not publish")
 	}
 	return result, publicationErr
+}
+
+// 内容未改变时保留绑定和修订号，仍保存幂等结果并执行发布保护。
+func (m *contentMutation) finishUnchangedEnrichment(ctx context.Context) (mediastore.Selection, error) {
+	raw, err := json.Marshal(m.result)
+	if err != nil {
+		return mediastore.Selection{}, err
+	}
+	if err = saveContentIdempotency(ctx, m.tx, m.owner, m.route, m.key, m.digest, raw); err != nil {
+		return mediastore.Selection{}, err
+	}
+	return m.result, m.tx.Commit()
 }

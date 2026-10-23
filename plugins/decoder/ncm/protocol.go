@@ -20,12 +20,18 @@ type openRequest struct {
 }
 
 type openResult struct {
-	TaskID    string   `json:"taskId"`
-	AssetID   string   `json:"assetId"`
-	Nonce     string   `json:"nonce"`
-	OutputURL string   `json:"outputUrl"`
-	Size      int64    `json:"size"`
-	Metadata  Metadata `json:"metadata"`
+	TaskID    string             `json:"taskId"`
+	AssetID   string             `json:"assetId"`
+	Nonce     string             `json:"nonce"`
+	OutputURL string             `json:"outputUrl"`
+	Size      int64              `json:"size"`
+	Metadata  Metadata           `json:"metadata"`
+	Artwork   *artworkDescriptor `json:"artwork,omitempty"`
+}
+
+type artworkDescriptor struct {
+	URL  string `json:"url"`
+	Size int64  `json:"size"`
 }
 
 func validID(id string) bool {

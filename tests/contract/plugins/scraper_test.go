@@ -71,3 +71,35 @@ func assertScraperInvalid(t *testing.T, name string, value any) {
 		t.Fatalf("invalid scraper model accepted: %s", name)
 	}
 }
+
+func TestContainerArtworkWireProvenance(t *testing.T) {
+	resource := enrichment.Resource{ResourceRef: strings.Repeat("a", 48), Version: "source-version", Kind: "artwork", SizeBytes: 128, Match: "containerEmbedded"}
+	testkit.ValidatePlugin(t, "ScrapeResource", resource)
+	for _, kind := range []string{"audio", "lyrics"} {
+		invalid := resource
+		invalid.Kind = kind
+		assertScraperInvalid(t, "ScrapeResource", invalid)
+	}
+	candidate := enrichment.Candidate{
+		CandidateID: strings.Repeat("b", 48), Target: enrichment.Target{SourceTrackID: "source", AssetID: "asset", AssetVersion: "source-version"},
+		Field: "artwork", Language: "und", Format: "png", MIME: "image/png", SizeBytes: 128, SHA256: strings.Repeat("c", 64),
+		Origin: "container", ResourceRef: resource.ResourceRef, ResourceVersion: resource.Version, Basis: "containerEmbedded", Status: "available",
+	}
+	testkit.ValidatePlugin(t, "ScrapeCandidate", candidate)
+	for _, mutate := range []func(*enrichment.Candidate){
+		func(c *enrichment.Candidate) {
+			c.Field, c.Format, c.MIME = "lyrics", "text", "text/plain; charset=utf-8"
+		},
+		func(c *enrichment.Candidate) { c.Basis = "directoryCover" },
+		func(c *enrichment.Candidate) { c.Origin = "sidecar" },
+		func(c *enrichment.Candidate) { c.Origin = "embedded" },
+	} {
+		invalid := candidate
+		mutate(&invalid)
+		assertScraperInvalid(t, "ScrapeCandidate", invalid)
+	}
+	candidate.Status, candidate.Format, candidate.MIME, candidate.SHA256, candidate.SizeBytes = "unavailable", "", "", "", 0
+	code := "UNSUPPORTED"
+	candidate.FailureCode = &code
+	testkit.ValidatePlugin(t, "ScrapeCandidate", candidate)
+}

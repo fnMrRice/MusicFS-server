@@ -23,7 +23,7 @@ func TestMigrationBatchesUpgradeAcrossBatchBoundaries(t *testing.T) {
 	}
 	latest := steps[len(steps)-1].Version
 	var freshSchema []string
-	for _, version := range []int{0, 9, 19, 24} {
+	for _, version := range []int{0, 9, 19, 24, 27, 28, 31} {
 		t.Run(fmt.Sprintf("version_%03d", version), func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "library.sqlite")
 			if version > 0 {

@@ -39,15 +39,16 @@ type ScanRoot struct {
 }
 
 type ScanPlan struct {
-	PlanVersion    int                      `json:"planVersion"`
-	Mode           string                   `json:"mode"`
-	PluginID       string                   `json:"pluginId"`
-	PluginVersion  string                   `json:"pluginVersion"`
-	SchemaRevision string                   `json:"schemaRevision"`
-	ConfigRevision string                   `json:"configRevision"`
-	Roots          []ScanRoot               `json:"roots"`
-	Options        ImportOptions            `json:"options"`
-	RootOptions    map[string]ImportOptions `json:"rootOptions,omitempty"`
+	PlanVersion     int                      `json:"planVersion"`
+	Mode            string                   `json:"mode"`
+	PluginID        string                   `json:"pluginId"`
+	PluginVersion   string                   `json:"pluginVersion"`
+	SchemaRevision  string                   `json:"schemaRevision"`
+	ConfigRevision  string                   `json:"configRevision"`
+	Roots           []ScanRoot               `json:"roots"`
+	Options         ImportOptions            `json:"options"`
+	RootOptions     map[string]ImportOptions `json:"rootOptions,omitempty"`
+	RefreshMetadata bool                     `json:"refreshMetadata,omitempty"`
 }
 
 type ScanScope struct {
@@ -74,6 +75,9 @@ func (s ScanScope) Validate() error {
 func (p ScanPlan) Canonical() (ScanPlan, error) {
 	if p.PlanVersion != ScanPlanVersion || (p.Mode != "full" && p.Mode != "incremental") || !scanLabel(p.PluginID) || !scanLabel(p.PluginVersion) || !scanLabel(p.SchemaRevision) || !scanLabel(p.ConfigRevision) || len(p.Roots) == 0 || len(p.Roots) > 256 {
 		return ScanPlan{}, fault.Fail("INVALID_ARGUMENT", "Invalid scan plan")
+	}
+	if p.RefreshMetadata && (p.Mode != "full" || len(p.Roots) != 1) {
+		return ScanPlan{}, fault.Fail("INVALID_ARGUMENT", "Metadata refresh requires one complete directory scan")
 	}
 	if err := p.Options.Validate(); err != nil {
 		return ScanPlan{}, err

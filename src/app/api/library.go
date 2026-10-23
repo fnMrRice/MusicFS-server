@@ -34,10 +34,10 @@ func (s *Server) RegisterLibrary(service *library.Service) {
 	})
 	s.Handle("POST /api/v1/provider-instances/{id}/scan-jobs", true, true, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		var request struct {
-			Mode           string                       `json:"mode"`
-			SchemaRevision string                       `json:"schemaRevision"`
-			RootIDs        []string                     `json:"rootIds"`
-			Options        *pluginproto.ImportOverrides `json:"options"`
+			Mode           string                     `json:"mode"`
+			SchemaRevision string                     `json:"schemaRevision"`
+			RootIDs        []string                   `json:"rootIds"`
+			Options        *pluginproto.ScanOverrides `json:"options"`
 		}
 		if err := DecodeJSON(w, r, &request); err != nil {
 			return err
@@ -45,7 +45,7 @@ func (s *Server) RegisterLibrary(service *library.Service) {
 		if request.Mode != "full" && request.Mode != "incremental" || request.SchemaRevision == "" || len(request.RootIDs) == 0 || len(request.RootIDs) > 256 || request.Options == nil {
 			return domain.Fail("INVALID_ARGUMENT", "Scan mode, schema revision, roots and options are required")
 		}
-		input := library.ScanInput{Mode: request.Mode, SchemaRevision: request.SchemaRevision, RootIDs: request.RootIDs, Options: *request.Options}
+		input := library.ScanInput{Mode: request.Mode, SchemaRevision: request.SchemaRevision, RootIDs: request.RootIDs, Options: request.Options.ImportOverrides, RefreshMetadata: request.Options.RefreshMetadata}
 		job, merged, err := service.Scan(r.Context(), session.User.ID, r.PathValue("id"), input, r.Header.Get("Idempotency-Key"))
 		if err != nil {
 			return err

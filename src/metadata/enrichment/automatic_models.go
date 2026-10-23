@@ -84,11 +84,17 @@ type AutomationRepository interface {
 	AutomationAction(context.Context, string, AutomationAction) (AutomationAction, error)
 	FinishAutomationAction(context.Context, string, AutomationAction) error
 	ScanAutomationResults(context.Context, string, string, string, int) (AutomationPage, error)
-	ApplyAutomaticEnrichment(context.Context, string, string, string, int64, string, mediastore.Guard) (mediastore.Selection, error)
+	ApplyAutomaticEnrichment(context.Context, string, string, string, int64, string, bool, mediastore.Guard) (mediastore.Selection, error)
 }
 
-// EligibleAutomatic never treats a directory-wide image as track identity.
+// EligibleAutomatic 仅自动选用带单曲归属证据的候选，不接受目录级封面。
 func EligibleAutomatic(c PreviewCandidate, p AutomaticPolicy) bool {
 	return c.Status == "available" && c.PreviewObjectID != nil && slices.Contains(p.Fields, c.Field) &&
-		slices.Contains(p.InstancePriority, c.InstanceID) && (c.Origin == "embedded" || (c.Origin == "sidecar" && c.Basis == "exactStem"))
+		slices.Contains(p.InstancePriority, c.InstanceID) && TrackSpecificCandidate(c)
+}
+
+// TrackSpecificCandidate 判断候选是否来自单曲本身或同名旁车资源。
+func TrackSpecificCandidate(c PreviewCandidate) bool {
+	return c.Origin == "embedded" || c.Origin == "sidecar" && c.Basis == "exactStem" ||
+		c.Origin == "container" && c.Field == "artwork" && c.Basis == "containerEmbedded"
 }

@@ -59,7 +59,8 @@ func TestActualNCMChannelValidation(t *testing.T) {
 	nonce := strings.Repeat("b", 48)
 	// A valid MP3 frame prefix is sufficient for transport-specific checks.
 	plain := append([]byte{0xff, 0xfb, 0x90, 0}, bytes.Repeat([]byte{0x55}, 150000)...)
-	encrypted, err := testkit.BuildNCM(plain, nil)
+	cover := bytes.Repeat([]byte{0x71}, 2048)
+	encrypted, err := testkit.BuildNCMWithOptions(plain, nil, testkit.NCMOptions{Cover: cover, CoverPadding: 4096})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,6 +121,11 @@ func TestActualNCMChannelValidation(t *testing.T) {
 				}
 				testkit.ValidatePlugin(t, "NCMOpened", result)
 				checkNCMOutputRequests(t, result["outputUrl"].(string), plain)
+				artwork, ok := result["artwork"].(map[string]any)
+				if !ok || artwork["size"] != float64(len(cover)) {
+					t.Fatalf("invalid artwork descriptor: %+v", result["artwork"])
+				}
+				checkNCMOutputRequests(t, artwork["url"].(string), cover)
 			} else if err == nil {
 				t.Fatalf("unsafe channel accepted for mode %s", mode)
 			}
@@ -131,6 +137,11 @@ func TestActualNCMChannelValidation(t *testing.T) {
 			}
 			if err := peer.Call(ctx, "ncm.open", request, nil); err == nil || !strings.HasPrefix(err.Error(), "CONFLICT") {
 				t.Fatalf("second input binding was accepted: %v", err)
+			}
+			if mode == "valid" {
+				_ = peer.Close()
+				checkNCMChannelClosed(t, result["outputUrl"].(string))
+				checkNCMChannelClosed(t, result["artwork"].(map[string]any)["url"].(string))
 			}
 		})
 	}
@@ -148,6 +159,7 @@ func checkNCMOutputRequests(t *testing.T, rawURL string, plain []byte) {
 		{http.MethodGet, "", "", "", http.StatusRequestedRangeNotSatisfiable},
 		{http.MethodGet, "", "bytes=0-65536", "", http.StatusRequestedRangeNotSatisfiable},
 		{http.MethodGet, "", "bytes=0-1,3-4", "", http.StatusRequestedRangeNotSatisfiable},
+		{http.MethodGet, "", fmt.Sprintf("bytes=0-%d", len(plain)), "", http.StatusRequestedRangeNotSatisfiable},
 		{http.MethodGet, "?other=1", "bytes=0-1", "", http.StatusForbidden},
 		{http.MethodGet, "", "bytes=0-1", "other-host", http.StatusForbidden},
 		{http.MethodHead, "", "bytes=0-1", "", http.StatusForbidden},
@@ -173,4 +185,25 @@ func checkNCMOutputRequests(t *testing.T, rawURL string, plain []byte) {
 			t.Fatal("output range content mismatch")
 		}
 	}
+}
+
+func checkNCMChannelClosed(t *testing.T, rawURL string) {
+	t.Helper()
+	client := &http.Client{Timeout: time.Second}
+	defer client.CloseIdleConnections()
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		request, err := http.NewRequest(http.MethodGet, rawURL, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		request.Header.Set("Range", "bytes=0-0")
+		response, err := client.Do(request)
+		if err != nil {
+			return
+		}
+		_ = response.Body.Close()
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("closed NCM worker left its data channel reachable")
 }

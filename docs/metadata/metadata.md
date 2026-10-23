@@ -21,7 +21,7 @@ Linux 使用 `../build/linux/musicfs-plugins`，保留相同 `args`。可选 `sh
 
 `GET /api/v1/scraper-instances` 返回本人实例的编号、显示名、字段和可用状态，不包含执行路径。`available` 表示已启用且程序通过本地校验，不保证每个源都支持提取。`queryCorrectionsSupported=false`：当前本地插件不进行在线搜索，提交非空标题/艺人修正返回415 `UNSUPPORTED`。
 
-支持的格式和限制见[插件说明](../../plugins/scraper/local/README.md)：MP3 ID3v2.3/v2.4 的 USLT/APIC、原生 FLAC 的歌词注释/PICTURE，以及授权的同名歌词/图片和目录封面。NCM 由独立后台解密通道提供 MP3/FLAC 字节，不把 NCM 外层图片或不可靠元数据当作已验证内容。不支持的内嵌内容保留问题说明，仍可使用有效旁置内容。
+支持的格式和限制见[插件说明](../../plugins/scraper/local/README.md)：MP3 ID3v2.3/v2.4 的 USLT/APIC、原生 FLAC 的歌词注释/PICTURE，以及授权的同名歌词/图片和目录封面。NCM 由独立后台解密通道提供 MP3/FLAC 字节及外层封面附件，宿主将附件作为独立资源交本地 Scraper 验证，不将其重写进音频标签。容器元数据中的封面 URL 不下载；图片经过与其他封面相同的类型、尺寸和内容检查后才成为可用候选。不支持的内嵌内容保留问题说明，仍可使用有效旁置内容。
 
 ## 搜索和预览
 
@@ -40,7 +40,7 @@ Content-Type: application/json
 
 返回202 `{jobId,merged}`；`GET /api/v1/metadata-jobs/{jobId}` 读取状态及逐目标结果。状态为 `queued/running/completed/failed/cancelled`。有部分目标成功时总任务可为 `completed`，必须查看每个目标的状态、`failureCode` 和 `issues`；搜索成功但没有候选也是 completed，不代表已找到内容。重新尝试失败项时，用这些来源编号、新幂等键及需要的实例/排除列表创建新任务。
 
-候选包含来源/资产版本、搜索时修订、实例、字段、语言、格式、大小、摘要、来源依据和有效期，不含正文、路径或任务资源票据。`origin=embedded|sidecar`，`basis` 如 USLT、PICTURE、exactStem、directoryCover，说明候选来自哪里，不是歌曲匹配置信度。可用候选携带 `previewObjectId`，通过已有 `GET /media/{id}` 和 `/info` 授权预览；失败候选的预览编号为 null。搜索不会更新当前选择。
+候选包含来源/资产版本、搜索时修订、实例、字段、语言、格式、大小、摘要、来源依据和有效期，不含正文、路径或任务资源票据。`origin=embedded|container|sidecar`，`basis` 如 USLT、PICTURE、containerEmbedded、exactStem、directoryCover，说明候选来自哪里，不是歌曲匹配置信度。NCM 外层封面使用 `origin=container`、`basis=containerEmbedded`，与内部音频标签中的封面分别保留来源。可用候选携带 `previewObjectId`，通过已有 `GET /media/{id}` 和 `/info` 授权预览；失败候选的预览编号为 null。搜索不会更新当前选择。
 
 后台默认1个目标并发，每个目标总期限30秒。每目标最多64候选、每任务最多256候选和32 MiB预览预算；单份内容仍遵守歌词1 MiB、图片8 MiB和解码限制。原音频、旁置内容及任务代次在发布前复核，晚完成结果不能绕过取消或版本变更。独立 NCM 后台槽不占播放或指纹的 NCM 准入槽。
 
@@ -75,7 +75,7 @@ Local Files 的当前配置声明为 `local-import-v6`，支持 `importLyrics=tr
 
 每项 action 说明字段/语言、applied/skipped/failed 等状态及原因，成功时给出 bindingId；不泄漏源路径、内部策略、资源票据或内部修订。completed 仍可能包含跳过或失败的 action，不能仅看总状态。常见跳过原因：manualLocked（人工锁）、existingContent（已有可用内容）、ambiguous（同优先实例的同槽候选摘要冲突）、noEligibleCandidate（没有明确属于当前来源的候选）。
 
-自动选用仅接受本地内嵌内容或同名旁置内容，不自动选目录通用封面。封面优先像素面积较大的图片，面积相同时优先短边较大的图片，再按稳定候选编号决定；尺寸由服务端验证图片正文取得。歌词仍按实例顺序选择，同级内容歧义时跳过。只补空或不可用且未锁定的字段/语言，不覆盖现有可用内容，也不自动加人工锁。人工选用后再扫描，即使旁置文件变化，也保留已选对象和人工锁。任务发布复核资产、候选与文件状态，重启不会把已成功选用重复执行成新修订。源音频和旁置文件始终只读。
+自动选用仅接受本地音频标签、容器内嵌封面或同名旁置内容，不自动选目录通用封面。容器候选须满足 `origin=container`、`basis=containerEmbedded` 且字段为 artwork，仍绑定当前资产版本。封面优先像素面积较大的图片，面积相同时优先短边较大的图片，再按稳定候选编号决定；尺寸由服务端验证图片正文取得。歌词仍按实例顺序选择，同级内容歧义时跳过。只补空或不可用且未锁定的字段/语言，不覆盖现有可用内容，也不自动加人工锁。人工选用后再扫描，即使旁置文件变化，也保留已选对象和人工锁。任务发布复核资产、候选与文件状态，重启不会把已成功选用重复执行成新修订。源音频和旁置文件始终只读。
 
 合并版本的 Recording 封面通过 `GET/PUT /api/v1/recordings/{id}/cover` 读取和选择。默认在当前成员有效封面中按像素面积、短边降序及对象编号升序选择，历史未知尺寸排在已知尺寸之后。Web 可预览各来源图片及尺寸并人工选用，`objectId:null` 恢复自动。人工偏好独立保存，不修改来源图片绑定或默认播放来源；被选图片失效或移出后暂时回退自动结果，偏好编号仍保留。写入须携带当前封面修订、CSRF 和幂等键。
 

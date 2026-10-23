@@ -8,10 +8,11 @@ import (
 )
 
 type ScanInput struct {
-	Mode           string                      `json:"mode"`
-	SchemaRevision string                      `json:"schemaRevision"`
-	RootIDs        []string                    `json:"rootIds"`
-	Options        pluginproto.ImportOverrides `json:"options"`
+	Mode            string                      `json:"mode"`
+	SchemaRevision  string                      `json:"schemaRevision"`
+	RootIDs         []string                    `json:"rootIds"`
+	Options         pluginproto.ImportOverrides `json:"options"`
+	RefreshMetadata bool                        `json:"refreshMetadata,omitempty"`
 }
 
 // ScanPublication certifies that every requested root scope completed. Partial
@@ -46,6 +47,14 @@ func (s *Service) BuildScanPlan(ctx context.Context, owner, provider string, inp
 	if r.Configuration == nil || input.SchemaRevision != r.Configuration.SchemaRevision {
 		return pluginproto.ScanPlan{}, domain.Fail("CONFLICT", "Import configuration has changed; refresh the provider")
 	}
+	if input.RefreshMetadata {
+		if input.Mode != "full" || len(input.RootIDs) != 1 {
+			return pluginproto.ScanPlan{}, domain.Fail("INVALID_ARGUMENT", "Metadata refresh requires one complete directory scan")
+		}
+		// 仅覆盖本次任务，实例与目录保存的默认设置保持原值。
+		enabled := true
+		input.Options.ImportLyrics, input.Options.ImportArtwork = &enabled, &enabled
+	}
 	options, defaultErr := pluginproto.MergeImportOptions(r.ImportDefaults, input.Options)
 	if defaultErr == nil {
 		defaultErr = r.Configuration.ValidateOptions(options)
@@ -56,6 +65,7 @@ func (s *Service) BuildScanPlan(ctx context.Context, owner, provider string, inp
 	}
 	plan := pluginproto.ScanPlan{PlanVersion: pluginproto.ScanPlanVersion, Mode: input.Mode, PluginID: r.Worker.Manifest.PluginID, PluginVersion: r.Worker.Manifest.PluginVersion, SchemaRevision: input.SchemaRevision, ConfigRevision: r.ConfigRevision, Options: options}
 	plan.RootOptions = map[string]pluginproto.ImportOptions{}
+	plan.RefreshMetadata = input.RefreshMetadata
 	for _, id := range input.RootIDs {
 		identity, ok := roots[id]
 		if !ok {

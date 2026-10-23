@@ -38,6 +38,7 @@ type ScrapeInput struct {
 	mu           sync.Mutex
 	closed       bool
 	tried        bool
+	fields       []string
 }
 
 // OpenScrape grants only the current owner's audio and exact selected siblings.
@@ -61,7 +62,7 @@ func (s *Service) OpenScrape(ctx context.Context, owner, task, trackID string, f
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	h := &ScrapeInput{Target: enrichment.Target{SourceTrackID: t.ID, AssetID: t.AssetID, AssetVersion: t.Version},
 		Inputs: []scraperlocal.Input{}, Issues: []enrichment.Issue{}, service: s, track: t, task: task, ctx: ctx, cancel: cancel,
-		Query: enrichment.Query{Artists: append([]string{}, t.Artists...)}}
+		Query: enrichment.Query{Artists: append([]string{}, t.Artists...)}, fields: slices.Clone(fields)}
 	if t.Title != nil {
 		h.Query.Title = *t.Title
 	}

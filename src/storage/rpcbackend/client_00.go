@@ -21,8 +21,8 @@ func (c *Client) AlbumChanges(a0 context.Context, a1 string, a2 albums.Target, a
 	return r0, err
 }
 
-func (c *Client) ApplyAutomaticEnrichment(a0 context.Context, a1 string, a2 string, a3 string, a4 int64, a5 string, a6 mediastore.Guard) (r0 mediastore.Selection, err error) {
-	err = c.Invoke(a0, "ApplyAutomaticEnrichment", []any{a1, a2, a3, a4, a5, a6}, []any{&r0})
+func (c *Client) ApplyAutomaticEnrichment(a0 context.Context, a1 string, a2 string, a3 string, a4 int64, a5 string, a6 bool, a7 mediastore.Guard) (r0 mediastore.Selection, err error) {
+	err = c.Invoke(a0, "ApplyAutomaticEnrichment", []any{a1, a2, a3, a4, a5, a6, a7}, []any{&r0})
 	return r0, err
 }
 

@@ -1,0 +1,18 @@
+[
+  {"name":"scan-refresh-single-full","schema":"ScanRequest","valid":true,"value":{"mode":"full","schemaRevision":"local-import-v3","rootIds":["music"],"options":{"refreshMetadata":true,"recursive":true,"maxDepth":0,"importArtwork":true,"importLyrics":false,"skipHidden":true,"respectNoMedia":true,"excludePatterns":["**/cache"]}}},
+  {"name":"scan-refresh-false-keeps-incremental-multiple-roots","schema":"ScanRequest","valid":true,"value":{"mode":"incremental","schemaRevision":"local-import-v3","rootIds":["music","voice"],"options":{"refreshMetadata":false}}},
+  {"name":"scan-refresh-omitted-keeps-incremental-multiple-roots","schema":"ScanRequest","valid":true,"value":{"mode":"incremental","schemaRevision":"local-import-v3","rootIds":["music","voice"],"options":{}}},
+  {"name":"scan-refresh-rejects-incremental","schema":"ScanRequest","valid":false,"value":{"mode":"incremental","schemaRevision":"local-import-v3","rootIds":["music"],"options":{"refreshMetadata":true}}},
+  {"name":"scan-refresh-rejects-multiple-roots","schema":"ScanRequest","valid":false,"value":{"mode":"full","schemaRevision":"local-import-v3","rootIds":["music","voice"],"options":{"refreshMetadata":true}}},
+  {"name":"scan-refresh-rejects-no-roots","schema":"ScanRequest","valid":false,"value":{"mode":"full","schemaRevision":"local-import-v3","rootIds":[],"options":{"refreshMetadata":true}}},
+  {"name":"scan-refresh-rejects-null","schema":"ScanRequest","valid":false,"value":{"mode":"full","schemaRevision":"local-import-v3","rootIds":["music"],"options":{"refreshMetadata":null}}},
+  {"name":"scan-refresh-rejects-string","schema":"ScanRequest","valid":false,"value":{"mode":"full","schemaRevision":"local-import-v3","rootIds":["music"],"options":{"refreshMetadata":"true"}}},
+  {"name":"scan-refresh-rejects-unknown-option","schema":"ScanRequest","valid":false,"value":{"mode":"full","schemaRevision":"local-import-v3","rootIds":["music"],"options":{"refreshMetadata":true,"force":true}}},
+  {"name":"scan-refresh-preserves-depth-validation","schema":"ScanRequest","valid":false,"value":{"mode":"full","schemaRevision":"local-import-v3","rootIds":["music"],"options":{"refreshMetadata":true,"recursive":false,"maxDepth":1}}},
+  {"name":"scan-refresh-rejects-saved-override-true","schema":"ImportOverrides","valid":false,"value":{"refreshMetadata":true}},
+  {"name":"scan-refresh-rejects-saved-override-false","schema":"ImportOverrides","valid":false,"value":{"refreshMetadata":false}},
+  {"name":"scan-refresh-rejects-saved-options","schema":"ImportOptions","valid":false,"value":{"recursive":true,"maxDepth":0,"importLyrics":false,"excludePatterns":[],"refreshMetadata":true}},
+  {"name":"scan-refresh-result","schema":"MetadataAutomationResult","valid":true,"value":{"triggerId":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","scanJobId":"scan-1","sourceTrackId":"source-1","assetId":"asset-1","assetVersion":"version-1","reason":"refreshMetadata","state":"completed","jobId":"metadata-1","failureCode":null,"actions":[]}},
+  {"name":"scan-refresh-unchanged-content-action","schema":"MetadataAutomationAction","valid":true,"value":{"field":"artwork","language":"","status":"skipped","reason":"unchangedContent","candidateId":null,"bindingId":null}},
+  {"name":"scan-refresh-manual-recording-cover-action","schema":"MetadataAutomationAction","valid":true,"value":{"field":"artwork","language":"","status":"skipped","reason":"manualRecordingCover","candidateId":null,"bindingId":null}}
+]

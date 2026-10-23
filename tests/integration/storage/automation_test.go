@@ -121,21 +121,21 @@ func TestAutomaticApplyPreservesLocksAndSuccessfulReplay(t *testing.T) {
 	ctx := context.Background()
 	j, c := enrichmentPreview(t, s, tracks[0])
 	guard := func(publish func() error) error { return publish() }
-	first, err := s.ApplyAutomaticEnrichment(ctx, "admin", c.CandidateID, *c.PreviewObjectID, 0, "automatic-apply-test", guard)
+	first, err := s.ApplyAutomaticEnrichment(ctx, "admin", c.CandidateID, *c.PreviewObjectID, 0, "automatic-apply-test", false, guard)
 	if err != nil || first.Revision != 1 || first.Bindings[0].ManualLocked {
 		t.Fatal(first, err)
 	}
 	if _, err = s.ApplyEnrichment(ctx, "admin", c.CandidateID, *c.PreviewObjectID, 1, "manual-change-test", guard); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = s.ApplyAutomaticEnrichment(ctx, "admin", c.CandidateID, *c.PreviewObjectID, 2, "new-auto-apply-test", guard); err == nil {
+	if _, err = s.ApplyAutomaticEnrichment(ctx, "admin", c.CandidateID, *c.PreviewObjectID, 2, "new-auto-apply-test", false, guard); err == nil {
 		t.Fatal("manual lock replaced")
 	}
 	if _, err = s.CancelEnrichment(ctx, "admin", j.JobID); err != nil {
 		t.Fatal(err)
 	}
 	called := false
-	replay, err := s.ApplyAutomaticEnrichment(ctx, "admin", c.CandidateID, *c.PreviewObjectID, 0, "automatic-apply-test", func(publish func() error) error { called = true; return publish() })
+	replay, err := s.ApplyAutomaticEnrichment(ctx, "admin", c.CandidateID, *c.PreviewObjectID, 0, "automatic-apply-test", false, func(publish func() error) error { called = true; return publish() })
 	if err != nil || called || replay.Revision != 1 {
 		t.Fatal("automatic success did not replay", err)
 	}

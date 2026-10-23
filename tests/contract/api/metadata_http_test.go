@@ -130,3 +130,33 @@ func TestMetadataHTTPPrivateJobsCandidatesAndInstances(t *testing.T) {
 		}
 	}
 }
+
+func TestMetadataContainerArtworkCandidateContract(t *testing.T) {
+	candidate := enrichment.PreviewCandidate{
+		CandidateID: strings.Repeat("a", 48), Target: enrichment.Target{SourceTrackID: "source", AssetID: "asset", AssetVersion: "version"},
+		InstanceID: "15f9b451-bef0-5f89-9d65-e208870fa2ae", Field: "artwork", Language: "und", Origin: "container", Basis: "containerEmbedded",
+		Status: "unavailable", ExpiresAt: time.Now().UTC().Add(10 * time.Minute),
+	}
+	unsupported := "UNSUPPORTED"
+	candidate.FailureCode = &unsupported
+	body, err := json.Marshal(candidate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testkit.ValidateHTTP(t, "MetadataCandidate", body)
+	for _, mutate := range []func(*enrichment.PreviewCandidate){
+		func(c *enrichment.PreviewCandidate) { c.Field = "lyrics" },
+		func(c *enrichment.PreviewCandidate) { c.Basis = "exactStem" },
+		func(c *enrichment.PreviewCandidate) { c.Origin = "sidecar" },
+	} {
+		invalid := candidate
+		mutate(&invalid)
+		body, err := json.Marshal(invalid)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if testkit.ContractSchema(t, "http", "MetadataCandidate").Validate(testkit.DecodeJSON(t, body)) == nil {
+			t.Fatalf("invalid container provenance accepted: %s", body)
+		}
+	}
+}

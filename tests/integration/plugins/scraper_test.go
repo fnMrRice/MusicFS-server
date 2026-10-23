@@ -73,6 +73,10 @@ func TestActualScraperWorkerSearchFetchAndVersionGuards(t *testing.T) {
 	embedded := testkit.ScraperID3(4, testkit.ScraperFrame{ID: "USLT", Body: append([]byte{3, 'z', 'h', 'o', 0}, lyrics...)}, testkit.ScraperFrame{ID: "APIC", Body: linked})
 	before := sha512.Sum512(embedded)
 	inputs := []scraperlocal.Input{scraperInput("a", "audio", embedded), scraperInput("b", "lyrics", []byte("Second candidate")), scraperInput("c", "artwork", testkit.ScraperPNG())}
+	for _, input := range []scraperlocal.Input{scraperInput("d", "artwork", testkit.ScraperPNG()), scraperInput("e", "artwork", []byte("damaged container image"))} {
+		input.Resource.Match = "containerEmbedded"
+		inputs = append(inputs, input)
+	}
 	var changed atomic.Bool
 	inputs[0].Validate = func() error {
 		if changed.Load() {
@@ -89,8 +93,14 @@ func TestActualScraperWorkerSearchFetchAndVersionGuards(t *testing.T) {
 		t.Fatal("verified scraper worker version was not retained", host.PluginVersion())
 	}
 	result, err := session.Search(context.Background(), []string{"lyrics", "artwork"}, []string{"zho"}, nil)
-	if err != nil || len(result.Candidates) != 4 {
+	if err != nil || len(result.Candidates) != 6 {
 		t.Fatalf("actual scraper search: %+v %v", result, err)
+	}
+	for i, status := range []string{"available", "unavailable"} {
+		candidate := result.Candidates[i+4]
+		if candidate.Origin != "container" || candidate.Basis != "containerEmbedded" || candidate.Status != status || candidate.ResourceRef != inputs[i+3].Resource.ResourceRef {
+			t.Fatalf("container provenance was not retained across worker boundary: %+v", candidate)
+		}
 	}
 	for _, candidate := range result.Candidates {
 		if candidate.Status == "unavailable" {

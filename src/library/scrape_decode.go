@@ -2,8 +2,10 @@ package library
 
 import (
 	"context"
+	"slices"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
+	"github.com/fnMrRice/MusicFS-server/plugins/scraper/local"
 	"github.com/fnMrRice/MusicFS-server/sdk/audioformat"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
@@ -52,6 +54,9 @@ func (h *ScrapeInput) DecodeAudio(ctx context.Context, decoder *ncmdecoder.Proce
 		h.decodeCancel = cancel
 		h.Inputs[index].Reader = decoded.Reader
 		h.Inputs[index].Resource.SizeBytes = decoded.Size
+		if err := h.addContainerArtwork(decoded.Attachments); err != nil {
+			return err
+		}
 		// 中间输出保留到整个刮削任务关闭或超时。
 		return h.Validate()
 	}
@@ -64,5 +69,38 @@ func (h *ScrapeInput) DecodeAudio(ctx context.Context, decoder *ncmdecoder.Proce
 	}
 	h.Inputs = append(h.Inputs[:index], h.Inputs[index+1:]...)
 	h.Issues = append(h.Issues, enrichment.Issue{ResourceRef: input.Resource.ResourceRef, Code: "UNSUPPORTED"})
+	return nil
+}
+
+// addContainerArtwork 只授权本次请求的附件，并沿用原始资产的稳定保护。
+// 超出资源预算的图片不阻断音频、歌词或其他封面候选。
+func (h *ScrapeInput) addContainerArtwork(attachments []audioformat.Attachment) error {
+	if !slices.Contains(h.fields, "artwork") {
+		return nil
+	}
+	var resourceBytes int64
+	for _, input := range h.Inputs {
+		if input.Resource.Kind != "audio" {
+			resourceBytes += input.Resource.SizeBytes
+		}
+	}
+	for _, attachment := range attachments {
+		if attachment.Kind != "artwork" {
+			continue
+		}
+		ref, err := newScrapeRef()
+		if err != nil {
+			return err
+		}
+		if len(h.Inputs) >= enrichment.MaxResources || attachment.Size > (32<<20)-resourceBytes {
+			h.Issues = append(h.Issues, enrichment.Issue{ResourceRef: ref, Code: "UNSUPPORTED"})
+			continue
+		}
+		resourceBytes += attachment.Size
+		h.Inputs = append(h.Inputs, scraperlocal.Input{
+			Resource: enrichment.Resource{ResourceRef: ref, Version: h.track.Version, Kind: "artwork", SizeBytes: attachment.Size, Match: "containerEmbedded"},
+			Reader:   attachment.Reader, Validate: h.Validate,
+		})
+	}
 	return nil
 }

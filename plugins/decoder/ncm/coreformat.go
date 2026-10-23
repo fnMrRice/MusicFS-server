@@ -113,11 +113,12 @@ func NewReader(input io.ReaderAt, size int64) (*Reader, error) {
 	if coverCapacity > size-h.offset {
 		return nil, fmt.Errorf("UNSUPPORTED: truncated NCM cover: %w", io.ErrUnexpectedEOF)
 	}
+	coverOffset := h.offset
 	h.offset += coverCapacity
 	if size-h.offset < 4 {
 		return nil, fmt.Errorf("UNSUPPORTED: missing NCM audio payload")
 	}
-	r := &Reader{input: input, offset: h.offset, size: size - h.offset, stream: stream, metadata: metadata}
+	r := &Reader{input: input, offset: h.offset, size: size - h.offset, stream: stream, metadata: metadata, artworkOffset: coverOffset, artworkSize: coverLength}
 	var last [1]byte
 	if err = readExactAt(input, last[:], size-1); err != nil {
 		return nil, err

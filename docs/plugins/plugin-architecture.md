@@ -12,9 +12,9 @@ Server 保持 Go 模块化单体，官方内置插件运行于 Server 主进程�
 | --- | --- | --- |
 | `local` | 本地文件及已挂载 NAS 的观测、元数据、受限资源解析 | 通用 `provider`；根授权、稳定身份、扫描发布由宿主执行 |
 | `netease`、`qqmusic`、`applemusic` | 各平台账号控制及已声明的资料能力 | 通用 `provider`；业务要求已校验账号，真实账号验收与能力范围见[平台登录](../providers/platform-login.md) |
-| `scraper-local` | 本地内嵌及旁置歌词、封面候选 | 通用 `scraper`；不选用内容、不写原件，正文走任务二进制通道 |
+| `scraper-local` | 音频标签、容器附件及旁置文件中的歌词、封面候选 | 通用 `scraper`；不选用内容、不写原件，正文走任务二进制通道 |
 | `audio-ffmpeg` | 探测、解码、编码、规范化及有序 DSP 链 | 通用 `audio`；固定任务和受控输入/输出，见[音频处理](../playback/audio-processing.md) |
-| `ncm` | 解密 NCM 外层容器，保留 MP3/FLAC 编码字节 | 通用 `audio`；源资产与解密表示分离，见[NCM](../playback/ncm.md) |
+| `ncm` | 解密 NCM 外层容器，保留 MP3/FLAC 编码字节并提供独立封面附件 | 通用 `audio`；宿主将附件交 Scraper 验证，源资产与解密表示分离，见[NCM](../playback/ncm.md) |
 | `dsp-gain` | 无状态、保持帧数和时标的 PCM 增益 | [DSP v1](dsp-plugins.md) 专用协议；零延迟、无尾音 |
 | `storage-sqlite` | 主库与实例状态库的建库、Schema、迁移、原子业务操作与快照 | [持久化专用协议](storage-plugins.md)；SQLite 必需，不能停用 |
 | `analysis.chromaprint` | 规范化音频的 Chromaprint 指纹提取 | 内置分析接口；仍需校验 `fpcalc` 工具，不新增 BPM 或调性算法 |
