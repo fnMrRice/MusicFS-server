@@ -24,6 +24,7 @@ const pluginYAML = `plugins:
     instances:
       - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51
         enabled: true
+        importDefaults: {importLyrics: false}
         config:
           musicRoots:
             - id: root

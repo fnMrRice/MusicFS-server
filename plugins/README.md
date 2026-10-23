@@ -1,6 +1,6 @@
 # 插件目录
 
-插件按用途归类；目录分类与 Go module 边界分别表达。管理界面的功能分类由 `plugin.features` 声明：`transform/thumbnail`、`tags/*` 与 `scraper/*` 统一归入 `metadata`（元数据），保留各自源码目录、插件 ID 和接口职责。
+插件按用途归类；目录分类与 Go module 边界分别表达。管理界面的功能分类由 `plugin.features` 声明：`transform/thumbnail`、`tags/*` 与 `scraper/*` 统一归入 `metadata`（元数据）；`analysis/chromaprint` 与 `matching/standard` 统一归入 `audio-analysis`（音频分析），保留各自源码目录、插件 ID 和接口职责。
 
 ```text
 plugins/

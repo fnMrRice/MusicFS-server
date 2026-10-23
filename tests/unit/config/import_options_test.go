@@ -63,9 +63,9 @@ func TestImportOverridesNormalizeEachLayer(t *testing.T) {
 
 func TestInstanceImportDefaultsStrictAndCloned(t *testing.T) {
 	withDefaults := func(value string) string {
-		return strings.Replace(minimalYAML+pluginYAML, "      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n", "      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n        importDefaults: "+value+"\n", 1)
+		return strings.Replace(minimalYAML+pluginYAML, "importDefaults: {importLyrics: false}", "importDefaults: "+value, 1)
 	}
-	for _, value := range []string{"{recursive: false}", "{recursive: true, maxDepth: 0}", "{recursive: true, maxDepth: 1}", "{maxDepth: 0}", "{maxDepth: 64}", "{}"} {
+	for _, value := range []string{"{importLyrics: false, recursive: false}", "{importLyrics: false, recursive: true, maxDepth: 0}", "{importLyrics: false, recursive: true, maxDepth: 1}", "{importLyrics: false, maxDepth: 0}", "{importLyrics: false, maxDepth: 64}", "{importLyrics: false}"} {
 		doc, err := parse(t, withDefaults(value))
 		if err != nil {
 			t.Fatal(err)
@@ -85,7 +85,7 @@ func TestInstanceImportDefaultsStrictAndCloned(t *testing.T) {
 		t.Fatal("audio plugin accepted import defaults")
 	}
 	path := filepath.Join(t.TempDir(), "config.yaml")
-	if err := os.WriteFile(path, []byte(withDefaults("{recursive: false}")), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(withDefaults("{importLyrics: false, recursive: false}")), 0600); err != nil {
 		t.Fatal(err)
 	}
 	store, err := config.OpenStore(context.Background(), path, map[string]string{"ADMIN_TOKEN": "test-credential-at-least-24-characters"}, nil)

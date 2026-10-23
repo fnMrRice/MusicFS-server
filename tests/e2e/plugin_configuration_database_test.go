@@ -20,6 +20,7 @@ func TestDatabaseConfiguredLocalDirectoryWorkflow(t *testing.T) {
 	}
 	cfg, base := yamlServiceConfig(t)
 	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: build(t, "musicfs-plugin-local"), Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Permissions: &config.Permissions{ReadDirectories: []string{music}}}}}}
+	disableLocalLyricsImport(&cfg)
 	path := writeYAMLConfiguration(t, cfg)
 	original, err := os.ReadFile(path)
 	if err != nil {

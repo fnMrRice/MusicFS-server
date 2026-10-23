@@ -38,6 +38,14 @@ func TestBuiltinAlgorithmInventoryDescribesConfigurationWithoutRuntimeClaims(t *
 				t.Fatalf("metadata inventory lost its classification or specific capability: %+v", p)
 			}
 		}
+		if capability := map[string]string{
+			"musicfs.plugin.analysis.chromaprint": "fingerprint.chromaprint",
+			"musicfs.plugin.matching.standard":    "matching.candidates",
+		}[id]; capability != "" {
+			if len(p.Plugin.Features) != 1 || p.Plugin.Features[0] != "audio-analysis" || p.Builtin.Capabilities[0] != capability {
+				t.Fatalf("audio analysis inventory lost its classification or specific capability: %+v", p)
+			}
+		}
 		encoded, err := json.Marshal(p)
 		if err != nil {
 			t.Fatal(err)

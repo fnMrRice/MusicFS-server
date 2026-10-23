@@ -44,6 +44,7 @@ func TestYAMLSurroundDSPPlaybackAndRestart(t *testing.T) {
 		{PluginID: "musicfs.plugin.source.localfiles", Execution: "builtin", Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Music", Path: music}}}}}},
 		{PluginID: "musicfs.plugin.decoder.ffmpeg", Execution: "builtin", Enabled: true, Instances: []config.Instance{{InstanceID: "16b003e5-1bab-52bb-be10-0e83ec1c40ea", Enabled: true, Config: config.InstanceConfig{FFmpegPath: ffmpeg, FFprobePath: ffprobe}}}},
 	}
+	disableLocalLyricsImport(&cfg)
 	path := writeYAMLConfiguration(t, cfg)
 	originalYAML, err := os.ReadFile(path)
 	if err != nil {

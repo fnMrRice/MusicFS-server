@@ -43,6 +43,7 @@ func TestActualTLSCookieCSRFRangeAndRevocation(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: build(t, "musicfs-plugin-local"), Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Synthetic", Path: music}}}}}}}
+	disableLocalLyricsImport(&cfg)
 	loaded, err := config.Load(writeYAMLConfiguration(t, cfg), map[string]string{"ADMIN_TOKEN": cfg.AdminToken})
 	if err != nil {
 		t.Fatal(err)

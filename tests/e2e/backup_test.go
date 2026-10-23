@@ -33,6 +33,7 @@ func TestBackupCLIStopsLiveAccessAndRestoresActualServer(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Synthetic music", Path: music}}}}}}}
+	disableLocalLyricsImport(&cfg)
 	configPath := writeYAMLConfiguration(t, cfg)
 	parent := t.TempDir()
 	cli := func(args ...string) ([]byte, error) {

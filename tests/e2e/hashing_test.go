@@ -101,6 +101,7 @@ func TestYAMLHashJobsOriginalBytesCancelAndPlayback(t *testing.T) {
 	cfg.Hashing.BytesPerSecond = 1 << 20
 	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true,
 		Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "music", Name: "Hash fixtures", Path: music}}}}}}}
+	disableLocalLyricsImport(&cfg)
 	startNCMServer(t, cfg, base)
 	c := login(t, base, cfg.AdminToken)
 	tracks := scanNCM(t, c)

@@ -26,6 +26,8 @@ Server 保持 Go 模块化单体，官方内置插件运行于 Server 主进程�
 
 插件管理的功能分类同样独立于上述角色和接口：`plugins/transform/thumbnail`、`plugins/tags/*`、`plugins/scraper/*` 统一声明 `plugin.features=["metadata"]`，显示为“元数据”。本地刮削仍保留 `scraper` 角色及歌词、封面的业务能力，标签重写与缩略图仍使用各自的进程内接口；插件 ID 和源码目录保持稳定。
 
+Chromaprint 指纹提取与标准录音匹配统一声明 `plugin.features=["audio-analysis"]`，显示为“音频分析”；两者仍分别使用分析和评分接口，录音匹配的显示名、候选能力与设置页面保持原有职责。
+
 算法管理清单由可信装配通过 `plugincontrol.RegisterBuiltin` 声明身份、发行版本、能力及业务开关；默认构建在 `builtinplugins` 集中注册四种官方算法。替代构建使用 `NewWithBuiltins` 注入实际算法清单，管理器不会补回 Chromaprint 或 FLAC。声明只反映装配与配置，不宣称工具可用或任务正在运行；算法仍通过各自的业务接口执行。
 
 普通插件通过可信装配注册身份、角色、版本、配置和运行工厂；未注册 ID、未知角色和方法仍被拒绝。目录、音频处理和在线平台能力不再由业务层的官方 ID 分支决定。Worker 声明不能授予额外文件、网络或凭据权限。当前没有任意第三方自动发现、下载、安装、升级回滚或管理 CLI。

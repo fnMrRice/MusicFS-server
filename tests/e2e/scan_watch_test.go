@@ -33,6 +33,7 @@ func TestYAMLWatchRealEventsScopeRestartAndDefaultOff(t *testing.T) {
 	cfg, base := yamlServiceConfig(t)
 	depth, rules := 1, []string{"private"}
 	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: worker, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Name: "Local", Enabled: true, ImportDefaults: &pluginproto.ImportOverrides{MaxDepth: &depth, ExcludePatterns: &rules}, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "root", Name: "Music", Path: music}}}}}}}
+	disableLocalLyricsImport(&cfg)
 	t.Run("default-off", func(t *testing.T) {
 		startNCMServer(t, cfg, base)
 		c := login(t, base, cfg.AdminToken)

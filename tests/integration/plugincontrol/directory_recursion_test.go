@@ -34,7 +34,7 @@ func TestDirectoryManagementSavesRecursiveDefaults(t *testing.T) {
 		if err := json.Unmarshal(w.Body.Bytes(), &view); err != nil {
 			t.Fatal(err)
 		}
-		if view.ImportOptions == nil || view.ImportOptions.SchemaRevision != "local-import-v6" {
+		if view.ImportOptions == nil || view.ImportOptions.SchemaRevision != "local-import-v7" {
 			t.Fatal("new recursion declaration missing")
 		}
 		actual := view.ImportOptions.ImportDefaults

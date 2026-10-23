@@ -12,7 +12,7 @@ import (
 
 func TestExclusionYAMLValidationAndSnapshotIsolation(t *testing.T) {
 	withRules := func(value string) string {
-		return strings.Replace(minimalYAML+pluginYAML, "      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n", "      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n        importDefaults: {excludePatterns: "+value+"}\n", 1)
+		return strings.Replace(minimalYAML+pluginYAML, "importDefaults: {importLyrics: false}", "importDefaults: {importLyrics: false, excludePatterns: "+value+"}", 1)
 	}
 	for _, value := range []string{`['**/cache', '*.tmp']`, `[]`} {
 		doc, err := parse(t, withRules(value))

@@ -8,7 +8,7 @@ importDefaults:
   maxDepth: 0
   skipHidden: true
   respectNoMedia: true
-  importLyrics: false
+  importLyrics: true
   excludePatterns: ['**/cache', '**/*.tmp']
 ```
 

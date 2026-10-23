@@ -30,6 +30,7 @@ func TestRealVBRMetadataEvidenceDoesNotBlockOriginalPlayback(t *testing.T) {
 		{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "music", Name: "Music", Path: music}}}}}},
 		{PluginID: "musicfs.plugin.decoder.ffmpeg", Executable: audio, Enabled: true, Instances: []config.Instance{{InstanceID: "7edbaa88-7094-5657-ac43-37c118ef4f77", Enabled: true, Config: config.InstanceConfig{FFmpegPath: ffmpeg, FFprobePath: ffprobe}}}},
 	}
+	disableLocalLyricsImport(&cfg)
 	startNCMServer(t, cfg, base)
 	c := login(t, base, cfg.AdminToken)
 	track := scanNCM(t, c)["VBR 中文.mp3"]

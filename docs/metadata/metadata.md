@@ -69,7 +69,7 @@ Content-Type: application/json
 
 ## 导入歌词与自动补缺
 
-Local Files 的当前配置声明为 `local-import-v6`，支持 `importLyrics=true` 和默认开启的 `importArtwork=true`。可设在实例或目录的 `importDefaults`，也可在本次扫描的 `options` 覆盖。扫描只为本轮授权范围内成功观察的来源创建持久触发记录，绑定扫描代次、来源和资产版本；失败或取消不触发成功导入。
+Local Files 的当前配置声明为 `local-import-v7`，默认开启 `importLyrics=true` 和 `importArtwork=true`。未显式覆盖时，新目录扫描成功后会导入同名旁置 LRC 或内嵌歌词；可设在实例或目录的 `importDefaults`，也可在本次扫描的 `options` 覆盖。已有实例或目录显式保存的 `importLyrics=false` 继续生效，不自动迁移为开启；需要补齐时可使用目录「刷新元数据」。扫描只为本轮授权范围内成功观察的来源创建持久触发记录，绑定扫描代次、来源和资产版本；失败或取消不触发成功导入。
 
 歌词导入只补歌词，封面导入只补封面，全局 `metadata.automatic.enabled=false` 时两者仍按扫描选项执行；全局自动策略可另行选择歌词、封面、语言和实例顺序。具体配置见[配置说明](../operations/configuration.md#自动补齐策略)。三种原因分别记录为 `importLyrics`、`importArtwork` 和 `automatic`；全局关闭仅使 `automatic` 记录为 skipped。
 

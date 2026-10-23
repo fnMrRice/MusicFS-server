@@ -86,7 +86,7 @@ func TestYAMLPluginImportOptionsHTTPAndScopedLibrary(t *testing.T) {
 	}
 	disabled := false
 	cfg, base := yamlServiceConfig(t)
-	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Name: "Safe display name", Enabled: true, ImportDefaults: &pluginproto.ImportOverrides{Recursive: &disabled}, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "one", Name: "第一目录", Path: first}, {ID: "two", Name: "第二目录", Path: second}}}}}}}
+	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Name: "Safe display name", Enabled: true, ImportDefaults: &pluginproto.ImportOverrides{Recursive: &disabled, ImportLyrics: &disabled}, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "one", Name: "第一目录", Path: first}, {ID: "two", Name: "第二目录", Path: second}}}}}}}
 	startNCMServer(t, cfg, base)
 	c := login(t, base, cfg.AdminToken)
 	request := providerScanRequest(t, c, "b1548e96-3081-5c9c-8376-bf290e369d51")
@@ -101,7 +101,7 @@ func TestYAMLPluginImportOptionsHTTPAndScopedLibrary(t *testing.T) {
 		Items []library.Provider `json:"items"`
 	}
 	_ = json.Unmarshal(raw, &descriptor)
-	if descriptor.Items[0].Configuration.ImportDefaults.Recursive || descriptor.Items[0].Configuration.ImportDefaults.MaxDepth != 0 || !descriptor.Items[0].Configuration.ImportDefaults.ImportArtwork || descriptor.Items[0].Configuration.SchemaRevision != "local-import-v6" || len(descriptor.Items[0].Configuration.UnavailableOptions) != 0 {
+	if descriptor.Items[0].Configuration.ImportDefaults.Recursive || descriptor.Items[0].Configuration.ImportDefaults.MaxDepth != 0 || !descriptor.Items[0].Configuration.ImportDefaults.ImportArtwork || descriptor.Items[0].Configuration.SchemaRevision != "local-import-v7" || len(descriptor.Items[0].Configuration.UnavailableOptions) != 0 {
 		t.Fatalf("wrong loaded defaults: %s", raw)
 	}
 	sequence := 0

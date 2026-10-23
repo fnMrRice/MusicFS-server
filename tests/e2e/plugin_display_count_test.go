@@ -36,6 +36,7 @@ func TestPluginDisplayCountsFollowDirectoriesAndAccountLifecycle(t *testing.T) {
 			Instances: []config.Instance{{InstanceID: localID, Enabled: true, Permissions: &config.Permissions{ReadDirectories: []string{roots[0].Path, roots[1].Path}}, Config: config.InstanceConfig{MusicRoots: roots}}}},
 		onlinePlugin("netease", managedOnlineFixture(t), onlineID),
 	}
+	disableLocalLyricsImport(&cfg)
 	path := writeYAMLConfiguration(t, cfg)
 	stop := startAudioYAMLServer(t, path, cfg, base)
 	defer stop()

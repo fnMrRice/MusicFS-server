@@ -44,6 +44,7 @@ func TestCodecSettingsApplyToPlainAndNCMPlaybackAfterRestart(t *testing.T) {
 		{PluginID: codecsettings.FFmpegID, Execution: "builtin", Enabled: true, Instances: []config.Instance{{InstanceID: "16b003e5-1bab-52bb-be10-0e83ec1c40ea", Enabled: true, Config: config.InstanceConfig{FFmpegPath: ffmpeg, FFprobePath: ffprobe}}}},
 		{PluginID: codecsettings.NCMID, Execution: "builtin", Enabled: true, Instances: []config.Instance{{InstanceID: "96412f52-9ff4-5a82-9eaa-7644a5837cda", Enabled: true}}},
 	}
+	disableLocalLyricsImport(&cfg)
 	path := writeYAMLConfiguration(t, cfg)
 	stop := startAudioYAMLServer(t, path, cfg, base)
 	c := login(t, base, cfg.AdminToken)

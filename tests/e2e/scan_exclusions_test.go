@@ -34,6 +34,7 @@ func TestYAMLScanExclusionsRealWorkerAndSafeReconciliation(t *testing.T) {
 	rules := []string{"private", "**/skip?.wav"}
 	cfg, base := yamlServiceConfig(t)
 	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: worker, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Name: "Local", Enabled: true, ImportDefaults: &pluginproto.ImportOverrides{ExcludePatterns: &rules}, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "root", Name: "Music", Path: music}}}}}}}
+	disableLocalLyricsImport(&cfg)
 	var before map[string]library.Track
 	t.Run("scan", func(t *testing.T) {
 		startNCMServer(t, cfg, base)

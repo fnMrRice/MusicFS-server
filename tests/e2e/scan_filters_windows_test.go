@@ -43,6 +43,7 @@ func TestWindowsScanHiddenAndNoMediaKeepExcludedLibraryEntries(t *testing.T) {
 	}
 	cfg, base := yamlServiceConfig(t)
 	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: worker, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "root", Name: "Music", Path: root}}}}}}}
+	disableLocalLyricsImport(&cfg)
 	startNCMServer(t, cfg, base)
 	c := login(t, base, cfg.AdminToken)
 	submit := func(key string, options map[string]any) {
@@ -119,6 +120,7 @@ func TestWindowsWatchNoMediaMarkerRemovalAndPreservedLibrary(t *testing.T) {
 	watch.Enabled, watch.DebounceMs, watch.MaxDelayMs, watch.FullRescanSeconds = true, 100, 300, 30
 	cfg, base := yamlServiceConfig(t)
 	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: worker, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{Watch: &watch, MusicRoots: []config.MusicRoot{{ID: "root", Name: "Music", Path: root}}}}}}}
+	disableLocalLyricsImport(&cfg)
 	startNCMServer(t, cfg, base)
 	c := login(t, base, cfg.AdminToken)
 	if err := os.Remove(marker); err != nil {

@@ -12,7 +12,7 @@ import (
 
 func TestImportArtworkDefaultsOverridesAndMissingScraper(t *testing.T) {
 	declaration := pluginconfig.LocalFiles()
-	if !declaration.ImportDefaults.ImportArtwork || declaration.SchemaRevision != "local-import-v6" {
+	if !declaration.ImportDefaults.ImportArtwork || declaration.SchemaRevision != "local-import-v7" {
 		t.Fatal("artwork import must default to enabled")
 	}
 	if err := declaration.Validate(); err != nil {
@@ -33,7 +33,7 @@ func TestImportArtworkDefaultsOverridesAndMissingScraper(t *testing.T) {
 		if enabled {
 			value = "true"
 		}
-		raw := strings.Replace(minimalYAML+pluginYAML, "      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n", "      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n        importDefaults: {importArtwork: "+value+"}\n", 1)
+		raw := strings.Replace(minimalYAML+pluginYAML, "importDefaults: {importLyrics: false}", "importDefaults: {importLyrics: false, importArtwork: "+value+"}", 1)
 		doc, err := parse(t, raw)
 		if err != nil {
 			t.Fatalf("artwork import rejected configuration without scraper: %v", err)

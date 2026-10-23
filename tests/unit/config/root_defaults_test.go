@@ -12,7 +12,7 @@ import (
 
 func TestRootImportDefaultsYAMLValidationInheritanceAndClone(t *testing.T) {
 	withRoot := func(value string) string {
-		source := strings.Replace(minimalYAML+pluginYAML, "        enabled: true", "        enabled: true\n        importDefaults: {recursive: false, skipHidden: false}", 1)
+		source := strings.Replace(minimalYAML+pluginYAML, "importDefaults: {importLyrics: false}", "importDefaults: {importLyrics: false, recursive: false, skipHidden: false}", 1)
 		return strings.Replace(source, "              name: 中文音乐", "              name: 中文音乐\n              importDefaults: "+value, 1)
 	}
 	valid := withRoot("{recursive: true, maxDepth: 2, excludePatterns: ['cache']}")

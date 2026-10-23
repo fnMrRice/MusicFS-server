@@ -41,6 +41,7 @@ func TestPlaylistsActualServerLocalRemoteHiddenMatchingAndRestart(t *testing.T) 
 	}
 	cfg, base := yamlServiceConfig(t)
 	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Synthetic playlist", Path: music}}}}}}, onlinePlugin(online.Netease, program, "7fe223d0-a3bd-5e87-87f8-305dc26d9041")}
+	disableLocalLyricsImport(&cfg)
 	var parent playlists.Playlist
 	var first playlists.AggregatePage
 	var sourceIDs []string

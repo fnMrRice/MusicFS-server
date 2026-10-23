@@ -96,22 +96,22 @@ Local Files 实例可在 `config` 同级声明 `importDefaults`，每个 `config
 importDefaults:
   recursive: true
   maxDepth: 0
-  importLyrics: false
+  importLyrics: true
   importArtwork: true
   skipHidden: true
   respectNoMedia: true
   excludePatterns: ['**/cache', '*.tmp']
 ```
 
-插件默认递归、深度和歌词导入值为 `true/0/false`，然后依次叠加实例默认、目录默认与单次扫描请求的部分覆盖。根目录中的文件深度为 0：关闭递归且未给深度时规范为 0，只查找当前目录；显式 `recursive: false` 搭配非 0 深度拒绝。从关闭切到开启且本层未给深度时恢复 0。开启递归时，0 表示查找全部子目录、不设深度上限；1—64 表示最多进入的子目录层数，例如 1 包含直接子目录。只覆盖深度会保留继承的递归开关，矛盾时拒绝；null、未知选项、数值字符串均拒绝。
+插件默认递归、深度和歌词导入值为 `true/0/true`，然后依次叠加实例默认、目录默认与单次扫描请求的部分覆盖。根目录中的文件深度为 0：关闭递归且未给深度时规范为 0，只查找当前目录；显式 `recursive: false` 搭配非 0 深度拒绝。从关闭切到开启且本层未给深度时恢复 0。开启递归时，0 表示查找全部子目录、不设深度上限；1—64 表示最多进入的子目录层数，例如 1 包含直接子目录。只覆盖深度会保留继承的递归开关，矛盾时拒绝；null、未知选项、数值字符串均拒绝。
 
-Local Files当前声明 `schemaRevision=local-import-v6`，插件版本0.3.0。封面导入默认 `importArtwork:true`，可按目录或本次扫描关闭。高级选项默认 `skipHidden:true/respectNoMedia:true`：跳过点开头文件、目录以及 Windows 隐藏属性条目，遵循 `.nomedia` 标记，跳过其所在目录及子树；不读取标记文件的内容。Web 的「包含隐藏文件和目录」对应 `skipHidden:false`。目录树仍展示授权范围，筛选控制实际导入。关闭某项只取消对应筛选，不扩大访问授权。
+Local Files当前声明 `schemaRevision=local-import-v7`，插件版本0.3.0。歌词和封面导入默认 `importLyrics:true/importArtwork:true`，可按目录或本次扫描关闭。已有显式 `importLyrics:false` 保持关闭，不修改已保存的用户选择。高级选项默认 `skipHidden:true/respectNoMedia:true`：跳过点开头文件、目录以及 Windows 隐藏属性条目，遵循 `.nomedia` 标记，跳过其所在目录及子树；不读取标记文件的内容。Web 的「包含隐藏文件和目录」对应 `skipHidden:false`。目录树仍展示授权范围，筛选控制实际导入。关闭某项只取消对应筛选，不扩大访问授权。
 
 `excludePatterns` 默认空数组；实例与每次请求可整组替换，显式 `[]` 清除继承规则，不是追加。规则排序后写入有效计划和幂等摘要，换规则的同键请求冲突；只有本轮完整覆盖的非排除范围可推断缺失，排除范围内既有曲目/资产/证据保持原状。隐藏项和 `.nomedia` 的实际排除范围由宿主记录，也不会把既有曲目标记缺失。它是扫描范围设置，不是撤销读取授权或删除曲库的操作。
 
 每实例/请求最多32条、每条UTF-8最多256字节。规则是根相对路径、用 `/` 分隔且始终大小写敏感：`*` 匹配一层内任意字符，`?` 匹配一个Unicode字符，独立段 `**` 匹配零或多层。`*.tmp` 只匹配根本层，`**/*.tmp` 匹配任意深度，`**/cache` 匹配任意层名为cache的目录及整支内容。不支持绝对/盘符路径、反斜线、空/点路径段、字符类、花括号或否定；重复规则和null拒绝。实际排除/递归/根授权由宿主执行，不能由worker跳过后冒称完整扫描；详细说明与例子见[扫描范围](../library/scanning.md)。
 
-`importLyrics=true` 在成功扫描后创建独立歌词补齐任务，只处理该扫描实际观察到的来源及资产版本；全局自动补齐关闭也可显式导入歌词。实例或目录默认开启时须配置本地 Scraper；依赖暂时禁用不使 YAML 失效，运行任务按来源明确报告不可用。扫描成功不等于歌词完成，见[补全说明](../metadata/metadata.md#导入歌词与自动补缺)。音频/NCM/Scraper 实例不接受 `importDefaults`。本地实例设置可通过管理接口保存到数据库并排空重建，不回写 YAML；Web 在本地音乐标题右侧提供「添加本地目录」，下方列出已添加目录并逐项编辑或删除。查找选项按目录保存，Web 在添加或编辑配置应用成功后自动扫描；直接调用配置 API 不触发扫描。插件管理摘要独立统计允许访问的根目录数量，详见[目录配置](../plugins/plugin-configuration.md)。
+`importLyrics=true` 在成功扫描后创建独立歌词补齐任务，只处理该扫描实际观察到的来源及资产版本；全局自动补齐关闭也按此选项导入歌词。实例或目录默认开启时须配置本地 Scraper；仅装配本地来源且不需要刮削时应显式设置 `importLyrics:false`。依赖暂时禁用不使 YAML 失效，运行任务按来源明确报告不可用。扫描成功不等于歌词完成，见[补全说明](../metadata/metadata.md#导入歌词与自动补缺)。音频/NCM/Scraper 实例不接受 `importDefaults`。本地实例设置可通过管理接口保存到数据库并排空重建，不回写 YAML；Web 在本地音乐标题右侧提供「添加本地目录」，下方列出已添加目录并逐项编辑或删除。查找选项按目录保存，Web 在添加或编辑配置应用成功后自动扫描；直接调用配置 API 不触发扫描。插件管理摘要独立统计允许访问的根目录数量，详见[目录配置](../plugins/plugin-configuration.md)。
 
 ### 自动补齐策略
 

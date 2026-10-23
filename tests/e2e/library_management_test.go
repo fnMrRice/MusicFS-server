@@ -104,6 +104,7 @@ func TestManagedLocalDisableRequiresRestartAndSettingsRebuildWatch(t *testing.T)
 	cfg, base := yamlServiceConfig(t)
 	watch := &config.WatchConfig{Enabled: true, DebounceMs: 100, MaxDelayMs: 300, FullRescanSeconds: 30}
 	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Enabled: true, Executable: provider, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Name: "Music", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "music", Name: "Music", Path: music}}, Watch: watch}}}}}
+	disableLocalLyricsImport(&cfg)
 	path := writeYAMLConfiguration(t, cfg)
 	stop := startAudioYAMLServer(t, path, cfg, base)
 	defer func() { stop() }()

@@ -24,7 +24,7 @@ func builtinIdentity(pluginID string) *pluginproto.PluginIdentity {
 	case "musicfs.plugin.matching.standard":
 		identity.Name = "Standard Recording Matching"
 		identity.LocalizedNames = map[string]string{"zh": "标准录音匹配", "zh-Hans": "标准录音匹配", "zh-Hant": "標準錄音匹配"}
-		identity.Features = []string{"matching"}
+		identity.Features = []string{"audio-analysis"}
 	case "musicfs.plugin.transform.thumbnail":
 		identity.Name = "Artwork Thumbnail"
 		identity.LocalizedNames = map[string]string{"zh": "封面缩略图", "zh-Hans": "封面缩略图", "zh-Hant": "封面縮圖"}

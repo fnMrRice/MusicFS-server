@@ -90,6 +90,7 @@ func TestYAMLFingerprintsActualToolsMediaAuthorizationAndPlayback(t *testing.T) 
 			{PluginID: "musicfs.plugin.decoder.ncm", Executable: ncm, Enabled: true, Instances: []config.Instance{{InstanceID: "96412f52-9ff4-5a82-9eaa-7644a5837cda", Enabled: true}}},
 		}
 		cfg.Fingerprinting = config.FingerprintingConfig{Enabled: true, FpcalcPath: fpcalc, FpcalcSHA256: pin, MaxConcurrent: 1, TimeoutSeconds: 30}
+		disableLocalLyricsImport(&cfg)
 		return cfg, base
 	}
 	t.Run("enabled", func(t *testing.T) {

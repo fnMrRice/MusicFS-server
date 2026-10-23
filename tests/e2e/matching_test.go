@@ -29,6 +29,7 @@ func TestMatchingActualServerManualRoundTripRestartAndPlayback(t *testing.T) {
 	}
 	cfg, base := yamlServiceConfig(t)
 	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Matching fixture", Path: music}}}}}}}
+	disableLocalLyricsImport(&cfg)
 	var sources []string
 	var originalRecording, newRecording, linkOperation string
 	t.Run("manual-round-trip", func(t *testing.T) {

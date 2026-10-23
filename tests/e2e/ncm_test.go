@@ -74,6 +74,7 @@ func TestNCMServerRoundTripAndDisabledPlugin(t *testing.T) {
 					{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Name: "NCM test", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "NCM test", Path: music}}}}}},
 					{PluginID: "musicfs.plugin.decoder.ncm", Executable: decoder, Enabled: enabled, Instances: []config.Instance{{InstanceID: "96412f52-9ff4-5a82-9eaa-7644a5837cda", Enabled: true}}},
 				}}
+			disableLocalLyricsImport(&cfg)
 			startNCMServer(t, cfg, base)
 			c := login(t, base, cfg.AdminToken)
 			tracks := scanNCM(t, c)

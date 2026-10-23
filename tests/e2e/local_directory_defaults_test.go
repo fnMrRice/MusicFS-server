@@ -43,6 +43,7 @@ func TestDefaultLocalDirectoryPermissionWorkflow(t *testing.T) {
 	if err != nil || closeErr != nil {
 		t.Fatalf("initialize isolated directory discovery: %v, %v", err, closeErr)
 	}
+	disableLocalLyricsImport(&cfg)
 	path := writeYAMLConfiguration(t, cfg)
 	original, err := os.ReadFile(path)
 	if err != nil {

@@ -19,7 +19,7 @@ func TestLocalSettingsDatabaseAndDirectoryAuthority(t *testing.T) {
 	ctx := context.Background()
 	dir, music := t.TempDir(), t.TempDir()
 	path := filepath.Join(dir, "server.yaml")
-	raw := "configVersion: 1\nallowLoopbackHttp: true\nallowedOrigins: ['http://127.0.0.1:8080']\npluginBundle: ''\nplugins:\n  - pluginId: musicfs.plugin.source.localfiles\n    executable: './worker'\n    enabled: true\n    instances:\n      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n        name: Plugin instance\n        enabled: true\n        permissions:\n          readDirectories: [" + strconv.Quote(music) + "]\n        config: {}\n"
+	raw := "configVersion: 1\nallowLoopbackHttp: true\nallowedOrigins: ['http://127.0.0.1:8080']\npluginBundle: ''\nplugins:\n  - pluginId: musicfs.plugin.source.localfiles\n    executable: './worker'\n    enabled: true\n    instances:\n      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n        name: Plugin instance\n        enabled: true\n        importDefaults: {importLyrics: false}\n        permissions:\n          readDirectories: [" + strconv.Quote(music) + "]\n        config: {}\n"
 	if err := os.WriteFile(path, []byte(raw), 0600); err != nil {
 		t.Fatal(err)
 	}

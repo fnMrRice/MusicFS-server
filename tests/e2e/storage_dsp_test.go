@@ -57,6 +57,7 @@ func TestExternalStorageAndDSPServerRestartAndPortableRestore(t *testing.T) {
 		{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: instance, Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Music", Path: music}}}}}},
 		{PluginID: "musicfs.plugin.decoder.ffmpeg", Executable: decoder, Enabled: true, Instances: []config.Instance{{InstanceID: "16b003e5-1bab-52bb-be10-0e83ec1c40ea", Enabled: true, Config: config.InstanceConfig{FFmpegPath: ffmpeg, FFprobePath: ffprobe}}}},
 	}
+	disableLocalLyricsImport(&cfg)
 	path := writeYAMLConfiguration(t, cfg)
 	if _, err = config.Load(path, map[string]string{"ADMIN_TOKEN": cfg.AdminToken}); err != nil {
 		t.Fatal(err)

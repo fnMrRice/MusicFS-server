@@ -73,7 +73,7 @@ func TestAutomaticMetadataDependenciesAndSnapshotIsolation(t *testing.T) {
 		"wrong-priority":          combined + strings.Replace(policy, "[d248bf34-1780-59d3-a557-9cf5d889e977]", "[local]", 1),
 		"unknown-priority":        combined + strings.Replace(policy, "[d248bf34-1780-59d3-a557-9cf5d889e977]", "[missing]", 1),
 		"case-duplicate-language": combined + strings.Replace(policy, "[ZH, und]", "[ZH, zh]", 1),
-		"import-without-scraper":  strings.Replace(minimalYAML+pluginYAML, "instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n", "instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n        importDefaults: {importLyrics: true}\n", 1),
+		"import-without-scraper":  strings.Replace(minimalYAML+pluginYAML, "importLyrics: false", "importLyrics: true", 1),
 	} {
 		t.Run(name, func(t *testing.T) {
 			if _, err := parse(t, raw); err == nil {
@@ -81,7 +81,7 @@ func TestAutomaticMetadataDependenciesAndSnapshotIsolation(t *testing.T) {
 			}
 		})
 	}
-	importOnly := strings.Replace(combined, "instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n", "instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n        importDefaults: {importLyrics: true}\n", 1)
+	importOnly := strings.Replace(combined, "importLyrics: false", "importLyrics: true", 1)
 	if _, err := parse(t, importOnly); err != nil {
 		t.Fatalf("explicit lyrics import requires no global automatic switch: %v", err)
 	}

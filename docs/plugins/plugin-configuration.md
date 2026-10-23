@@ -52,7 +52,7 @@ Windows 上，使用默认权限的实例首次启用并启动 Server 时，宿�
   "importDefaults": {
     "recursive": true,
     "maxDepth": 0,
-    "importLyrics": false,
+    "importLyrics": true,
     "skipHidden": true,
     "respectNoMedia": true,
     "excludePatterns": []

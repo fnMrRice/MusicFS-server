@@ -119,6 +119,7 @@ func TestYAMLAudioPluginEnableBoundaries(t *testing.T) {
 				{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true, Instances: []config.Instance{{InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51", Enabled: true, Config: config.InstanceConfig{MusicRoots: []config.MusicRoot{{ID: "local", Name: "Music", Path: music}}}}}},
 				{PluginID: "musicfs.plugin.decoder.ffmpeg", Executable: audio, Enabled: test.plugin, Instances: []config.Instance{{InstanceID: "16b003e5-1bab-52bb-be10-0e83ec1c40ea", Enabled: test.instance, Config: config.InstanceConfig{FFmpegPath: ffmpeg, FFprobePath: ffprobe}}}},
 			}
+			disableLocalLyricsImport(&cfg)
 			startNCMServer(t, cfg, base)
 			c := login(t, base, cfg.AdminToken)
 			tracks := scanNCM(t, c)
@@ -180,7 +181,8 @@ func TestYAMLProviderSingleInstanceWithMultipleRoots(t *testing.T) {
 	const id = "b1548e96-3081-5c9c-8376-bf290e369d51"
 	cfg.Plugins = []config.Plugin{{PluginID: "musicfs.plugin.source.localfiles", Executable: provider, Enabled: true,
 		Instances: []config.Instance{{InstanceID: id, Enabled: true, Config: config.InstanceConfig{MusicRoots: roots}}}}}
-	// Even a disabled second instance violates the plugin declaration.
+	disableLocalLyricsImport(&cfg)
+	// 即使第二个实例被禁用，也违反插件的单实例声明。
 	duplicate := cfg
 	duplicate.Plugins = append([]config.Plugin{}, cfg.Plugins...)
 	duplicate.Plugins[0].Instances = append(append([]config.Instance{}, cfg.Plugins[0].Instances...), config.Instance{InstanceID: "c6007445-c664-49bd-b697-c8af9b606d04"})

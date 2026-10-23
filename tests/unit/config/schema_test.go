@@ -41,9 +41,9 @@ func TestConfigurationSchema(t *testing.T) {
 	}{
 		"minimal":                     {minimalYAML, true},
 		"plugins":                     {minimalYAML + pluginYAML, true},
-		"unlimited recursion":         {strings.Replace(minimalYAML+pluginYAML, "      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n", "      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n        importDefaults: {recursive: true, maxDepth: 0}\n", 1), true},
-		"flat recursion":              {strings.Replace(minimalYAML+pluginYAML, "      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n", "      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n        importDefaults: {recursive: false, maxDepth: 0}\n", 1), true},
-		"contradictory recursion":     {strings.Replace(minimalYAML+pluginYAML, "      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n", "      - instanceId: b1548e96-3081-5c9c-8376-bf290e369d51\n        importDefaults: {recursive: false, maxDepth: 1}\n", 1), false},
+		"unlimited recursion":         {strings.Replace(minimalYAML+pluginYAML, "importDefaults: {importLyrics: false}", "importDefaults: {importLyrics: false, recursive: true, maxDepth: 0}", 1), true},
+		"flat recursion":              {strings.Replace(minimalYAML+pluginYAML, "importDefaults: {importLyrics: false}", "importDefaults: {importLyrics: false, recursive: false, maxDepth: 0}", 1), true},
+		"contradictory recursion":     {strings.Replace(minimalYAML+pluginYAML, "importDefaults: {importLyrics: false}", "importDefaults: {importLyrics: false, recursive: false, maxDepth: 1}", 1), false},
 		"unknown top":                 {minimalYAML + "pluginPath: legacy", false},
 		"secret":                      {minimalYAML + "adminToken: private", false},
 		"version":                     {strings.Replace(minimalYAML, "Version: 1", "Version: 2", 1), false},
