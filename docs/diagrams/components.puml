@@ -6,7 +6,7 @@ skinparam shadowing false
 
 actor "Web / Client" as UI
 package "Server 主进程" {
-  component "app\n程序入口 / 组装 / HTTP API" as App
+  component "app\n程序入口 / 组装 / HTTP API / WS 控制" as App
   component "core\n鉴权 / 配置 / 生命周期" as Core
   component "library\n来源 / 扫描 / 查询 / 歌单" as Library
   component "metadata\n识别 / 关联 / 补全 / 写回" as Metadata
@@ -30,7 +30,7 @@ folder "Media Store\n歌词 / 封面 / 指纹等正文" as Media
 folder "可重建音频缓存" as Cache
 folder "按实例保护的平台凭据" as Credentials
 
-UI --> App : 版本化 HTTP / SSE
+UI --> App : HTTP 查询 / 音频\nWS 控制 / 租约 / 心跳与状态
 App --> Core
 App --> Library
 App --> Metadata

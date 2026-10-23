@@ -59,7 +59,7 @@ Server 提供插件/实例状态查询、开关与设置管理，要求管理员
 | GET /admin/plugin-operations/{id} | applying/draining/succeeded/failed/superseded、restartRequired 及脱敏错误码 |
 | GET/PUT /admin/plugin-instances/{id}/configuration | 配置声明与安全投影；按声明校验写入并排空重建 |
 | GET /admin/plugin-instances/{id}/directories | 管理员浏览 Local Files 允许根及直接子目录，待配置时也可使用 |
-| GET /events | 登录用户的 SSE 失效通知，不包含管理员配置 |
+| GET /control | 登录用户的 WebSocket 控制与失效通知，不包含管理员配置 |
 
 修改要求 `If-Match` 配置修订及 `Idempotency-Key`。同键同参数返回原操作，换参数复用键报冲突；修订不符返回 412。所有修改继续校验 Cookie、允许的 Origin 与 CSRF，不把令牌放入 URL。管理 CLI `musicfs plugins list/status/enable/disable` 仍为后续计划。
 
@@ -67,6 +67,6 @@ Server 提供插件/实例状态查询、开关与设置管理，要求管理员
 
 配置投影不返回音乐根路径、工具路径、程序路径或凭据；路径为 write-only。省略已有根路径保留原绑定，已有根 ID 不能改绑目录；新增目录使用新 ID。`musicRoots/watch/importDefaults` 整组替换，未提供的顶层字段保持不变；`musicRoots[]` 中已有根省略 `importDefaults` 时保留该根原有覆盖，避免旧客户端写入抹除逐目录设置。改配置的排空与停用保存是不同操作。
 
-保存修订及运行状态变化可触发 `capabilities.changed`，数据仍仅为 `{revision,sequence}`。每次 SSE 首连/重连发送当前通知，客户端重新读取授权列表；通知不意味着能力已经停用。每个登录会话最多 8 条连接，15 秒心跳复核登录，30 分钟重连。
+保存修订及运行状态变化可触发 WebSocket `capabilities.changed`，数据仍仅为 `{revision,sequence}`。每次首连/重连发送当前通知，客户端重新读取授权列表；通知不意味着能力已经停用。`/control` 使用 `musicfs.control.v1`，Cookie/Origin 升级检查及首帧 CSRF 鉴权；每个登录会话最多 8 条连接，建议 10 秒心跳，30 秒无客户端消息关闭，每次心跳和命令复核登录。原 `/events` SSE 已由该通道替代，完整格式与重连语义见[控制通道](../contracts/control-channel.md)。
 
 客户端须区分保存开关、运行状态和重启提示；仅凭 `configuredEnabled=false` 或操作 `succeeded` 显示“已停用”会误报。实例列表用 `reason`、全局页用快照 `restartRequired` 提示，操作标志只代表保存当时的状态。

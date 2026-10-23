@@ -5,6 +5,7 @@ go 1.26.0
 toolchain go1.26.9
 
 require (
+	github.com/coder/websocket v1.8.15
 	github.com/fnMrRice/MusicFS-server/plugins/source/online v0.1.0
 	github.com/fnMrRice/MusicFS-server/sdk v0.1.0
 	github.com/google/uuid v1.6.0

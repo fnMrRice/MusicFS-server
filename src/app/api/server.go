@@ -29,6 +29,7 @@ type Handler func(http.ResponseWriter, *http.Request, auth.Session) error
 type Server struct {
 	mux     *http.ServeMux
 	options Options
+	control controlHub
 }
 
 type requestIDKey struct{}
@@ -43,6 +44,8 @@ func New(options Options) *Server {
 		options.ControlTimeout = 15 * time.Second
 	}
 	s := &Server{mux: http.NewServeMux(), options: options}
+	s.control.connections = map[*controlConnection]string{}
+	s.HandleStream("GET /api/v1/control", s.openControl)
 	s.Handle("GET /api/v1/health/live", false, false, s.health)
 	s.Handle("GET /api/v1/health/ready", false, false, s.health)
 	s.Handle("POST /api/v1/auth/session", false, false, s.login)

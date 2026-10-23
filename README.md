@@ -6,7 +6,7 @@ MusicFS 的服务端与插件仓库，负责来源与曲库、歌单、资料补
 - [开始运行](docs/operations/running.md)：构建、配置、启动与扫描。
 - [Server 架构](docs/architecture.md)与[总体架构](../docs/architecture.md)：内部职责及跨端约束。
 - [开发与检查](docs/development/README.md)、[源码导航](src/README.md)：三个 Go 模块、测试入口与代码职责。
-- [协议](docs/contracts/README.md)：HTTP、事件和插件契约。
+- [协议](docs/contracts/README.md)：HTTP、WebSocket 控制/状态和插件契约；音频仍通过 HTTP 流交付。
 - [待验收清单](docs/validation/README.md)：仍需验证的能力与环境。
 - [工作约定](AGENTS.md)：仓库维护规则。
 

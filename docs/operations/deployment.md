@@ -75,6 +75,8 @@ data/media/cache 分别为持久卷，配置为持久挂载，音乐默认 `ro`�
 
 Server 对非 loopback 监听要求直接配置 TLS，不根据 `X-Forwarded-*` 推断安全性或授权。反向代理与 Server 之间也使用验证证书的 HTTPS；`deploy/nginx.example.conf` 是待替换域名/证书路径的样例。将页面实际 Origin 明确加入 Server 的 `allowedOrigins`，保持页面和 API 同源；不要添加通配来源。
 
-代理关闭响应和请求缓冲，读/写空闲超时为 120 秒，上传外层限额为 16 MiB，Server 各接口仍执行自身限制。配置依据 [Nginx 代理文档](https://nginx.org/en/docs/http/ngx_http_proxy_module.html)，实际 Nginx/TLS 与浏览器联调仍待验收。远程启用前验证证书、Cookie、Origin/CSRF、长音频流、seek 和停止，健康检查不能代替播放验收。
+代理关闭响应和请求缓冲，读/写空闲超时为 120 秒，上传外层限额为 16 MiB，Server 各接口仍执行自身限制。`/api/v1/control` 必须转发 HTTP/1.1 的 Upgrade/Connection 头，支持 `musicfs.control.v1` WebSocket；HTTPS 页面使用 WSS，CSP 的 connect-src 需允许对应受信任来源，不能用通配来源代替。连接鉴权、10 秒心跳及 30 秒超时见[控制协议](../contracts/control-channel.md)，本机生命周期仍检查实际 loopback 连接。
+
+音频保持独立 HTTP 流，不经 WS；反向代理不能缓冲完整处理音频后才发送。配置依据 [Nginx 代理文档](https://nginx.org/en/docs/http/ngx_http_proxy_module.html)，实际 Nginx/TLS 与浏览器联调仍待验收。远程启用前验证证书、Cookie、Origin/首帧 CSRF、WS 升级/重连/登录撤销、长音频流、seek 和停止，健康检查不能代替播放验收。
 
 升级、完整备份、新目录恢复和回滚见[备份恢复](backup.md)。对应制品和音乐原件应独立保存，不能仅复制数据库后丢弃人工媒体与恢复记录。

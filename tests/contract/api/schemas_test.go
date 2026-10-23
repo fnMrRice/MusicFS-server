@@ -84,6 +84,7 @@ func TestOpenAPIReferencesAndOperations(t *testing.T) {
 	}
 	models := testkit.ReadJSON(t, "docs/contracts/http.schema.json").(map[string]any)["$defs"].(map[string]any)
 	accountModels := testkit.ReadJSON(t, "docs/contracts/platform-account.schema.json").(map[string]any)["$defs"].(map[string]any)
+	controlModels := testkit.ReadJSON(t, "docs/contracts/control.schema.json").(map[string]any)["$defs"].(map[string]any)
 	var walk func(any)
 	walk = func(value any) {
 		switch v := value.(type) {
@@ -100,6 +101,10 @@ func TestOpenAPIReferencesAndOperations(t *testing.T) {
 				} else if strings.HasPrefix(ref, "./platform-account.schema.json#/$defs/") {
 					if accountModels[strings.TrimPrefix(ref, "./platform-account.schema.json#/$defs/")] == nil {
 						t.Errorf("unresolved platform account reference: %s", ref)
+					}
+				} else if strings.HasPrefix(ref, "./control.schema.json#/$defs/") {
+					if controlModels[strings.TrimPrefix(ref, "./control.schema.json#/$defs/")] == nil {
+						t.Errorf("unresolved control channel reference: %s", ref)
 					}
 				} else if strings.HasPrefix(ref, "#/") {
 					var current any = doc

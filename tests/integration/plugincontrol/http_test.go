@@ -1,7 +1,6 @@
 package plugincontrol_test
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"io"
@@ -285,85 +284,4 @@ func TestPluginManagementHTTPConfigurationSchemaAndWriteOnlyPaths(t *testing.T) 
 	w = managementRequest(server, cookies["admin"], "GET", "/admin/plugins", "", "", "")
 	requireHTTP(t, w, 200, "")
 	testkit.ValidateHTTP(t, "PluginManagementSnapshot", w.Body.Bytes())
-}
-
-func openEvents(t *testing.T, client *http.Client, endpoint string, cookie *http.Cookie) (*http.Response, *bufio.Reader, context.CancelFunc) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	r, _ := http.NewRequestWithContext(ctx, "GET", endpoint+"/api/v1/events", nil)
-	if cookie != nil {
-		r.AddCookie(cookie)
-	}
-	response, err := client.Do(r)
-	if err != nil {
-		cancel()
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { cancel(); response.Body.Close() })
-	return response, bufio.NewReader(response.Body), cancel
-}
-
-func readCapabilityEvent(t *testing.T, reader *bufio.Reader) plugincontrol.Event {
-	t.Helper()
-	name, err := reader.ReadString('\n')
-	if err != nil || name != "event: capabilities.changed\n" {
-		t.Fatal("missing capability event", name, err)
-	}
-	data, err := reader.ReadString('\n')
-	if err != nil || !strings.HasPrefix(data, "data: ") {
-		t.Fatal("missing event data", data, err)
-	}
-	blank, err := reader.ReadString('\n')
-	if err != nil || blank != "\n" {
-		t.Fatal("invalid event frame", blank, err)
-	}
-	var event plugincontrol.Event
-	var fields map[string]any
-	raw := []byte(strings.TrimPrefix(data, "data: "))
-	testkit.ValidateHTTP(t, "CapabilitiesChangedEvent", raw)
-	if json.Unmarshal(raw, &event) != nil || json.Unmarshal(raw, &fields) != nil || len(fields) != 2 || event.Revision == "" {
-		t.Fatal("event must expose only revision and sequence", data)
-	}
-	return event
-}
-
-func TestPluginCapabilitySSEAuthenticationInitialUpdateAndReconnect(t *testing.T) {
-	h := setup(t)
-	server, cookies := managementHTTP(t, h.manager)
-	httpServer := httptest.NewServer(server)
-	defer httpServer.Close()
-	unauthorized, _, cancelUnauthorized := openEvents(t, httpServer.Client(), httpServer.URL, nil)
-	if unauthorized.StatusCode != 401 {
-		t.Fatal("anonymous event stream accepted")
-	}
-	cancelUnauthorized()
-	response, reader, cancel := openEvents(t, httpServer.Client(), httpServer.URL, cookies["user"])
-	defer cancel()
-	if response.StatusCode != 200 || response.Header.Get("Content-Type") != "text/event-stream" || response.Header.Get("Cache-Control") != "no-store" {
-		t.Fatal("invalid event stream response", response.StatusCode, response.Header)
-	}
-	initial := readCapabilityEvent(t, reader)
-	if initial.Revision != h.manager.Snapshot().Revision {
-		t.Fatal("initial snapshot revision is stale")
-	}
-	op := change(t, h, "sse-state-change", false, "drain")
-	updated := readCapabilityEvent(t, reader)
-	for updated.Revision != op.Revision {
-		if updated.Sequence <= initial.Sequence {
-			t.Fatal("capability event sequence did not advance", initial, updated)
-		}
-		initial = updated
-		updated = readCapabilityEvent(t, reader)
-	}
-	if updated.Sequence <= initial.Sequence || updated.Revision == initial.Revision {
-		t.Fatal("configuration change was not emitted", initial, updated)
-	}
-	waitStatus(t, h, op, "succeeded")
-	cancel()
-	_, reconnected, closeReconnect := openEvents(t, httpServer.Client(), httpServer.URL, cookies["user"])
-	defer closeReconnect()
-	latest := readCapabilityEvent(t, reconnected)
-	if latest.Revision != h.manager.Snapshot().Revision || latest.Sequence < updated.Sequence {
-		t.Fatal("reconnect did not receive current capability state", latest)
-	}
 }

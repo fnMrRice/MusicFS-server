@@ -88,6 +88,8 @@ SQLite WAL 放本地文件系统；备份同时保存数据库及被引用的媒
 
 ## 播放与生命周期
 
+客户端通过 `/api/v1/control` 的 `musicfs.control.v1` WebSocket 发送播放控制、显式租约续期及连接心跳，接收能力和本机生命周期状态；Cookie/Origin 与首帧 CSRF 完成鉴权。音频保持 HTTP 流交付，HTTP 控制端点保留为管理入口；协议与边界见[控制通道](contracts/control-channel.md)。
+
 每次播放固定来源资产与输出表示。原流或 NCM 解密表示使用自身长度和验证器；处理输出不继承输入 Range。timeRestart 按曲目时间生成新尝试，客户端使用返回地址和起点映射；处理链进入表示、缓存与恢复身份，见[音频处理](playback/audio-processing.md)。
 
 恢复限制次数、目标来源和总时长。跨源继续须同时满足同一 Recording、双方资产上的有效独立时间映射及可定位的目标输出；否则提示从头播放，不凭指纹猜偏移，见[播放恢复](playback/recovery.md)。

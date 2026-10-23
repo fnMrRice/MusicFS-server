@@ -25,6 +25,7 @@ func lifecycleLoopback(r *http.Request) error {
 	return nil
 }
 func (s *Server) RegisterLifecycle(manager *lifecycle.Manager) {
+	s.control.lifecycle = manager
 	s.Handle("GET /api/v1/lifecycle", true, false, func(w http.ResponseWriter, r *http.Request, _ auth.Session) error {
 		if err := lifecycleLoopback(r); err != nil {
 			return err

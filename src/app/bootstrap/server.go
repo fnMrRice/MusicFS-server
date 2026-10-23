@@ -113,12 +113,17 @@ func ServeWithOptions(ctx context.Context, c config.Config, log *slog.Logger, op
 		handler.RegisterLogging(logs)
 	}
 	server := &http.Server{ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 32 << 10, BaseContext: func(net.Listener) context.Context { return runCtx }}
-	closeAll := cleanup
+	closeAll := func() {
+		// HTTP Shutdown 不等待已升级的连接；先等待控制命令退出再关闭存储。
+		handler.WaitControl()
+		cleanup()
+	}
 	defer func() {
 		ready.Store(false)
 		manager.BeginDrain("shutdown")
 		log.Info("server draining", "instanceId", instance)
 		cancelRun()
+		handler.CloseControl()
 		lockOwned = false
 		logsOwned = false
 		afterCleanup := func() { log.Info("server stopped", "instanceId", instance); closeLogs() }
@@ -137,6 +142,7 @@ func ServeWithOptions(ctx context.Context, c config.Config, log *slog.Logger, op
 		closeAll = func() { previous(); _ = root.Close() }
 		web = http.FileServerFS(root.FS())
 	}
+	webPolicy := webContentPolicy(c.AllowedOrigins)
 	router := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api") {
 			handler.ServeHTTP(w, r)
@@ -146,7 +152,7 @@ func ServeWithOptions(ctx context.Context, c config.Config, log *slog.Logger, op
 			http.NotFound(w, r)
 			return
 		}
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; img-src 'self' data: blob: https://p1.music.126.net https://p2.music.126.net https://p3.music.126.net https://p4.music.126.net; media-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
+		w.Header().Set("Content-Security-Policy", webPolicy)
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		web.ServeHTTP(w, r)
 	})

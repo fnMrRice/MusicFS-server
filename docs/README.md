@@ -21,6 +21,7 @@
 | [开发与检查](development/README.md) | 三个 Go 模块、测试布局及检查入口 |
 | [依赖与工具](development/dependencies.md) | 当前依赖用途与工具版本 |
 | [协议导航](contracts/README.md) | OpenAPI、HTTP 模型、事件及插件 Schema |
+| [控制通道](contracts/control-channel.md) | WebSocket 鉴权、心跳、播放控制、租约和状态通知；音频仍走 HTTP |
 | [Web 接入](contracts/web-integration.md) | 接口场景索引和前端必须保留的语义 |
 | [插件协议](contracts/plugins/v1/README.md) | 握手、角色、资源、扫描与配置协议 |
 | [平台账号协议](contracts/plugins/v1/account.md) | 登录挑战、账号状态和凭据边界 |
@@ -32,7 +33,7 @@
 | [插件架构](plugins/plugin-architecture.md) | 当前能力、宿主责任与扩展前置条件 |
 | [SDK](plugins/plugin-sdk.md) | 公共模块、协议版本及发布兼容 |
 | [身份与名称](plugins/plugin-identity.md) | 插件 ID、实例 UUID、显示名与多实例声明 |
-| [管理](plugins/plugin-management.md) | 状态、操作、启用、重启停用和 SSE |
+| [管理](plugins/plugin-management.md) | 状态、操作、启用、重启停用和 WS 能力通知 |
 | [实例配置与目录](plugins/plugin-configuration.md) | 插件配置数据库、目录授权与管理 API |
 | [声明式设置页面](plugins/settings.md) | 插件字段、按钮、值校验与持久化 |
 | [DSP](plugins/dsp-plugins.md) | 有序处理链、PCM Worker 与定位限制 |

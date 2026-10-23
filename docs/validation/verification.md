@@ -72,7 +72,7 @@ go test -mod=readonly -count=1 -v ./tests/integration/resources -run '^TestResou
 
 1. 核对完整清单、校验和、许可证、外部工具依赖和默认配置，再复制到干净机器的新目录运行。
 2. 验证静态 Web、鉴权、扫描、原流/NCM/处理流、定位、SQLite/DSP、备份恢复和最后租约释放后的退出；按当前配置确认待配置、启用、保存停用与重启后状态。
-3. Docker/Compose 使用实际引擎运行，检查只读音乐与持久目录；Nginx/TLS 使用真实代理和远程浏览器，检验证书、Cookie、Origin/CSRF、Range、SSE 和无整曲缓冲的流式输出。
+3. Docker/Compose 使用实际引擎运行，检查只读音乐与持久目录；Nginx/TLS 使用真实代理和远程浏览器，检验证书、Cookie、Origin/首帧 CSRF、WS 升级/心跳/重连、HTTP Range 和无整曲缓冲的流式输出。
 4. 升级前固定备份，验证多客户端协调、迁移失败和恢复入口。独立部署的 Server 不能被客户端自动接管；恢复平台账号后重新校验，失效时重新授权。
 
 具体操作以[部署](../operations/deployment.md)、[备份](../operations/backup.md)和[生命周期](../operations/lifecycle.md)为准；测试成功后只删除相应环境与能力的待验项。
