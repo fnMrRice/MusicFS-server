@@ -104,7 +104,7 @@ func (s *Store) CommitWriteback(ctx context.Context, owner, id string, result wr
 			track.Title = o.Title
 		}
 		if o.Artists != nil {
-			track.Artists = o.Artists
+			track.Artists = library.NormalizeArtists(o.Artists)
 		}
 		if o.DisplayName != "" {
 			track.DisplayName = o.DisplayName

@@ -77,10 +77,7 @@ func (s *Store) Publish(ctx context.Context, supplied jobs.Job, publication libr
 			return err
 		}
 		asset = current.ID
-		artists := o.Artists
-		if artists == nil {
-			artists = []string{}
-		}
+		artists := library.NormalizeArtists(o.Artists)
 		t := library.Track{ID: id, ProviderID: j.ProviderInstanceID, DisplayName: o.DisplayName, Title: o.Title, Artists: artists, DurationMs: o.DurationMs, Codec: o.Codec, Container: o.Container, BitrateBps: current.BitrateBps, Availability: "available", AssetID: asset, Asset: &current}
 		t.Album, t.Genre, t.Year, t.SampleRateHz = o.Album, o.Genre, o.Year, o.SampleRateHz
 		raw, _ := json.Marshal(t)

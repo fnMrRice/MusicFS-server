@@ -35,6 +35,7 @@ func TestWritebackCommitAtomicallyRebindsContentAndInvalidatesEvidence(t *testin
 		t.Fatal(err)
 	}
 	r, o := f.result(j, true)
+	o.Artists = []string{" 甲 /乙 ", "甲", " /丙/ "}
 	wrong := o
 	wrong.RelativePath = "other.mp3"
 	if _, err = f.s.CommitWriteback(ctx, "admin", j.ID, r, wrong); err == nil {
@@ -55,6 +56,9 @@ func TestWritebackCommitAtomicallyRebindsContentAndInvalidatesEvidence(t *testin
 	fresh, err := f.s.FindTrack(ctx, "admin", f.track.ID)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(fresh.Artists, []string{"甲", "乙", "丙"}) {
+		t.Fatalf("writeback artists were not normalized: %v", fresh.Artists)
 	}
 	if fresh.ID != f.track.ID || fresh.ExternalID != f.track.ExternalID || fresh.AssetID != out.AssetID || fresh.Version != r.New.Version || fresh.Size != r.New.Size || fresh.Asset.FileSHA512 == nil || *fresh.Asset.FileSHA512 != r.New.SHA512 || fresh.Asset.HashStatus != "verified" {
 		t.Fatalf("new source projection invalid: %+v", fresh)

@@ -13,6 +13,7 @@ import (
 func TestPackageTreeTracksAttachmentsPersistAndReplayAfterRestart(t *testing.T) {
 	store, work, filename := fixture(t)
 	input := publication(work.ID)
+	input.Observations[0].Artists = []string{" 甲 /乙 ", "甲", " /丙/ "}
 	input.Package.Kind = "cd_dump"
 	p, err := store.PublishWorkPackage(t.Context(), "alice", input, "preview-one", "import-once")
 	if err != nil {
@@ -35,6 +36,9 @@ func TestPackageTreeTracksAttachmentsPersistAndReplayAfterRestart(t *testing.T) 
 	track, err := store.FindTrack(t.Context(), "alice", audio.SourceTrackID)
 	if err != nil || track.AssetID != audio.AssetID || track.ProviderID != p.ProviderID || track.Path != audio.SourcePath || track.Version != audio.Version {
 		t.Fatal("invalid source binding", err)
+	}
+	if !reflect.DeepEqual(track.Artists, []string{"甲", "乙", "丙"}) {
+		t.Fatalf("package track artists were not normalized: %v", track.Artists)
 	}
 	for _, name := range []string{"資料/脚本.txt", "cover.jpg", "空目录"} {
 		node := nodeAt(t, p, name)

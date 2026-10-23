@@ -70,7 +70,7 @@ func TestMatchingBulkMergeTitleArtistPreservesGroupsAndReplays(t *testing.T) {
 }
 
 func TestMatchingBulkMergeTitleArtistUsesCompleteLabels(t *testing.T) {
-	s, _, tracks := bulkMergeFixture(t, 8, func(i int, item *library.Observation) {
+	s, _, tracks := bulkMergeFixture(t, 9, func(i int, item *library.Observation) {
 		title := "Song Name"
 		item.Title, item.Artists = &title, []string{"Artist A", "Artist B"}
 		switch i {
@@ -84,7 +84,8 @@ func TestMatchingBulkMergeTitleArtistUsesCompleteLabels(t *testing.T) {
 		case 2:
 			item.Artists = []string{"Artist A"}
 		case 3:
-			item.Artists = []string{"Artist A", "Artist B", "  "}
+			// 入库先拆分并丢弃空项，清理后的完整署名集合应参与匹配。
+			item.Artists = []string{"Artist A / Artist B", " / "}
 		case 4:
 			title = "Song Name (Live)"
 		case 5:
@@ -93,15 +94,17 @@ func TestMatchingBulkMergeTitleArtistUsesCompleteLabels(t *testing.T) {
 			item.Artists = nil
 		case 7:
 			title = " \u3000 "
+		case 8:
+			item.Artists = []string{" / ", "  "}
 		}
 	})
 	result, err := s.BulkMerge(t.Context(), "admin", matching.BulkMergeRequest{Mode: "title_artist"}, "bulk-label-normalization")
-	if err != nil || result.MergedGroups != 1 || result.MergedSources != 2 || result.Revision != 1 {
+	if err != nil || result.MergedGroups != 1 || result.MergedSources != 3 || result.Revision != 1 {
 		t.Fatalf("incorrect metadata grouping: %+v %v", result, err)
 	}
 	for i, track := range tracks {
 		link, err := s.GetLink(t.Context(), "admin", track.ID)
-		if err != nil || (link.RecordingID != nil) != (i < 2) {
+		if err != nil || (link.RecordingID != nil) != (i < 2 || i == 3) {
 			t.Fatalf("incorrect metadata membership %d: %+v %v", i, link, err)
 		}
 	}
