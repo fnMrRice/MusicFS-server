@@ -4,18 +4,29 @@ package rpcbackend
 
 import (
 	"context"
-	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
-	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
-	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/candidates"
-	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 )
+
+func (c *Client) RecordingCover(a0 context.Context, a1 string, a2 string) (r0 library.RecordingCover, err error) {
+	err = c.Invoke(a0, "RecordingCover", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) RecoverEnrichment(a0 context.Context) (err error) {
+	err = c.Invoke(a0, "RecoverEnrichment", []any{}, []any{})
+	return err
+}
+
+func (c *Client) RecoverFingerprints(a0 context.Context) (err error) {
+	err = c.Invoke(a0, "RecoverFingerprints", []any{}, []any{})
+	return err
+}
 
 func (c *Client) RecoverHashes(a0 context.Context) (err error) {
 	err = c.Invoke(a0, "RecoverHashes", []any{}, []any{})
@@ -102,6 +113,11 @@ func (c *Client) ReserveEnrichmentPreview(a0 context.Context, a1 enrichment.Work
 	return err
 }
 
+func (c *Client) ResolveTrackSelection(a0 context.Context, a1 string, a2 library.TrackSelection) (r0 library.TrackSelectionResult, err error) {
+	err = c.Invoke(a0, "ResolveTrackSelection", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) Result(a0 context.Context, a1 string, a2 string, a3 string, a4 string) (r0 []uint8, err error) {
 	err = c.Invoke(a0, "Result", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
@@ -114,25 +130,5 @@ func (c *Client) RevokeTimeline(a0 context.Context, a1 string, a2 string, a3 int
 
 func (c *Client) RootStatistics(a0 context.Context, a1 string, a2 string) (r0 library.RootStatistics, err error) {
 	err = c.Invoke(a0, "RootStatistics", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SaveAuth(a0 context.Context, a1 auth.Session) (err error) {
-	err = c.Invoke(a0, "SaveAuth", []any{a1}, []any{})
-	return err
-}
-
-func (c *Client) SaveCandidates(a0 context.Context, a1 string, a2 matching.Snapshot, a3 []candidates.Candidate) (r0 matching.CandidatePage, err error) {
-	err = c.Invoke(a0, "SaveCandidates", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SaveMatchingRun(a0 context.Context, a1 matching.Run) (err error) {
-	err = c.Invoke(a0, "SaveMatchingRun", []any{a1}, []any{})
-	return err
-}
-
-func (c *Client) SavePersonalProfile(a0 context.Context, a1 string, a2 *string) (r0 personal.Profile, err error) {
-	err = c.Invoke(a0, "SavePersonalProfile", []any{a1, a2}, []any{&r0})
 	return r0, err
 }

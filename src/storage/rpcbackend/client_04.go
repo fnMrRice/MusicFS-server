@@ -18,6 +18,16 @@ import (
 	"time"
 )
 
+func (c *Client) InvalidateDerived(a0 context.Context, a1 string, a2 string) (err error) {
+	err = c.Invoke(a0, "InvalidateDerived", []any{a1, a2}, []any{})
+	return err
+}
+
+func (c *Client) InvalidateFingerprint(a0 context.Context, a1 string, a2 string) (err error) {
+	err = c.Invoke(a0, "InvalidateFingerprint", []any{a1, a2}, []any{})
+	return err
+}
+
 func (c *Client) InvalidatePublication(a0 context.Context, a1 string, a2 string, a3 string) (err error) {
 	err = c.Invoke(a0, "InvalidatePublication", []any{a1, a2, a3}, []any{})
 	return err
@@ -125,15 +135,5 @@ func (c *Client) PlaybackSave(a0 context.Context, a1 string, a2 string, a3 strin
 
 func (c *Client) Playlist(a0 context.Context, a1 string, a2 string) (r0 playlists.Playlist, err error) {
 	err = c.Invoke(a0, "Playlist", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) PlaylistChanges(a0 context.Context, a1 string, a2 string, a3 int64, a4 int) (r0 []playlists.PlaylistChange, err error) {
-	err = c.Invoke(a0, "PlaylistChanges", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) PlaylistSnapshot(a0 context.Context, a1 string, a2 string, a3 int64) (r0 playlists.AggregateSnapshot, err error) {
-	err = c.Invoke(a0, "PlaylistSnapshot", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
 }

@@ -3,6 +3,8 @@ package playlists
 import (
 	"context"
 	"time"
+
+	"github.com/fnMrRice/MusicFS-server/src/library"
 )
 
 const MaxBindings = 128
@@ -38,6 +40,22 @@ type Playlist struct {
 type CreatePlaylistRequest struct {
 	Name     string            `json:"name"`
 	Bindings []PlaylistBinding `json:"bindings"`
+}
+
+type CreateSelectionRequest struct {
+	Name      string                 `json:"name"`
+	Selection library.TrackSelection `json:"selection"`
+}
+
+type AppendSelectionRequest struct {
+	ExpectedRevision int64                  `json:"expectedRevision"`
+	Selection        library.TrackSelection `json:"selection"`
+}
+
+type SelectionResult struct {
+	PlaylistID   string `json:"playlistId"`
+	RuleRevision int64  `json:"ruleRevision"`
+	Count        int    `json:"count"`
 }
 type EditPlaylistRequest struct {
 	ExpectedRevision int64             `json:"expectedRevision"`
@@ -131,6 +149,8 @@ type PlaylistChange struct {
 	CreatedAt    time.Time `json:"createdAt"`
 }
 type AggregateRepository interface {
+	CreatePlaylistSelection(context.Context, string, CreateSelectionRequest, string) (SelectionResult, error)
+	AppendPlaylistSelection(context.Context, string, string, AppendSelectionRequest, string) (SelectionResult, error)
 	CreatePlaylist(context.Context, string, CreatePlaylistRequest, string) (Playlist, error)
 	EditPlaylist(context.Context, string, string, EditPlaylistRequest, string) (Playlist, error)
 	Playlist(context.Context, string, string) (Playlist, error)

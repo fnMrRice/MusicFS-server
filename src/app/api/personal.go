@@ -7,10 +7,28 @@ import (
 	"strconv"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
+	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 )
 
 func (s *Server) RegisterPersonal(service *personal.Service) {
+	s.Handle("POST /api/v1/me/favorites/batch", true, true, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
+		var input struct {
+			Selection *library.TrackSelection `json:"selection"`
+			Favorite  *bool                   `json:"favorite"`
+		}
+		if err := DecodeJSON(w, r, &input); err != nil {
+			return err
+		}
+		if input.Selection == nil || input.Favorite == nil {
+			return personal.Invalid()
+		}
+		result, err := service.SetFavoritesSelection(r.Context(), a.User.ID, *input.Selection, *input.Favorite)
+		if err != nil {
+			return err
+		}
+		return WriteJSON(w, http.StatusOK, result)
+	})
 	s.Handle("GET /api/v1/me/profile", true, false, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
 		p, err := service.PersonalProfile(r.Context(), a.User.ID)
 		if err != nil {

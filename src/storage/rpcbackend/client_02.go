@@ -19,6 +19,16 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
+func (c *Client) CreateRelease(a0 context.Context, a1 string, a2 albums.CreateReleaseRequest, a3 string) (r0 albums.Release, err error) {
+	err = c.Invoke(a0, "CreateRelease", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) CreateSourceAlbum(a0 context.Context, a1 string, a2 albums.CreateSourceAlbumRequest, a3 string) (r0 albums.SourceAlbum, err error) {
+	err = c.Invoke(a0, "CreateSourceAlbum", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) CreateTimeline(a0 context.Context, a1 string, a2 timeline.Request, a3 string) (r0 timeline.Evidence, err error) {
 	err = c.Invoke(a0, "CreateTimeline", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
@@ -127,14 +137,4 @@ func (c *Client) FingerprintIndex(a0 context.Context, a1 string, a2 string) (r0 
 func (c *Client) FingerprintIndexes(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 []identification.FingerprintIndex, err error) {
 	err = c.Invoke(a0, "FingerprintIndexes", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
-}
-
-func (c *Client) Finish(a0 context.Context, a1 jobs.Job, a2 int, a3 error) (err error) {
-	err = c.Invoke(a0, "Finish", []any{a1, a2, a3}, []any{})
-	return err
-}
-
-func (c *Client) FinishAutomation(a0 context.Context, a1 string, a2 string, a3 *string) (err error) {
-	err = c.Invoke(a0, "FinishAutomation", []any{a1, a2, a3}, []any{})
-	return err
 }

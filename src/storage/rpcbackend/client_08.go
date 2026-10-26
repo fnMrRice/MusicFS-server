@@ -5,11 +5,38 @@ package rpcbackend
 import (
 	"context"
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
+	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) Unlink(a0 context.Context, a1 string, a2 matching.UnlinkRequest, a3 string) (r0 matching.Mutation, err error) {
+	err = c.Invoke(a0, "Unlink", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) UnlockContent(a0 context.Context, a1 string, a2 mediastore.UnlockRequest, a3 string) (r0 mediastore.Selection, err error) {
+	err = c.Invoke(a0, "UnlockContent", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) UnlockCover(a0 context.Context, a1 string, a2 albums.UnlockCoverRequest, a3 string) (r0 albums.CoverSelection, err error) {
+	err = c.Invoke(a0, "UnlockCover", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) UpdateProgress(a0 context.Context, a1 jobs.Job, a2 int) (err error) {
+	err = c.Invoke(a0, "UpdateProgress", []any{a1, a2}, []any{})
+	return err
+}
+
+func (c *Client) UpdateRelease(a0 context.Context, a1 string, a2 string, a3 albums.UpdateReleaseRequest, a4 string) (r0 albums.Release, err error) {
+	err = c.Invoke(a0, "UpdateRelease", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) UpdateSourceAlbum(a0 context.Context, a1 string, a2 string, a3 albums.UpdateSourceAlbumRequest, a4 string) (r0 albums.SourceAlbum, err error) {
 	err = c.Invoke(a0, "UpdateSourceAlbum", []any{a1, a2, a3, a4}, []any{&r0})

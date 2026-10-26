@@ -11,6 +11,7 @@ import (
 )
 
 func (s *Server) RegisterLibrary(service *library.Service) {
+	s.registerTrackSelection(service)
 	s.registerRecordingCovers(service)
 	s.registerRootStatistics(service)
 	s.Handle("GET /api/v1/source-tracks/{id}", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {

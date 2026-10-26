@@ -10,6 +10,7 @@ import (
 )
 
 func (s *Server) RegisterPlaylists(service *playlists.AggregateService) {
+	s.registerPlaylistSelection(service)
 	s.Handle("POST /api/v1/playlists", true, true, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		var input playlistInput
 		if err := DecodeJSON(w, r, &input); err != nil {

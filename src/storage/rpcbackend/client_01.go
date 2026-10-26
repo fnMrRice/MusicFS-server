@@ -20,6 +20,11 @@ import (
 	"time"
 )
 
+func (c *Client) CatalogFacets(a0 context.Context, a1 string, a2 string) (r0 catalog.Facets, err error) {
+	err = c.Invoke(a0, "CatalogFacets", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) CatalogQueryPage(a0 context.Context, a1 string, a2 string, a3 string, a4 int, a5 *catalog.Query) (r0 catalog.Page, err error) {
 	err = c.Invoke(a0, "CatalogQueryPage", []any{a1, a2, a3, a4, a5}, []any{&r0})
 	return r0, err
@@ -130,12 +135,7 @@ func (c *Client) CreatePlaylist(a0 context.Context, a1 string, a2 playlists.Crea
 	return r0, err
 }
 
-func (c *Client) CreateRelease(a0 context.Context, a1 string, a2 albums.CreateReleaseRequest, a3 string) (r0 albums.Release, err error) {
-	err = c.Invoke(a0, "CreateRelease", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) CreateSourceAlbum(a0 context.Context, a1 string, a2 albums.CreateSourceAlbumRequest, a3 string) (r0 albums.SourceAlbum, err error) {
-	err = c.Invoke(a0, "CreateSourceAlbum", []any{a1, a2, a3}, []any{&r0})
+func (c *Client) CreatePlaylistSelection(a0 context.Context, a1 string, a2 playlists.CreateSelectionRequest, a3 string) (r0 playlists.SelectionResult, err error) {
+	err = c.Invoke(a0, "CreatePlaylistSelection", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
 }

@@ -4,6 +4,7 @@ package rpcbackend
 
 import (
 	"context"
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
@@ -19,6 +20,16 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) PlaylistChanges(a0 context.Context, a1 string, a2 string, a3 int64, a4 int) (r0 []playlists.PlaylistChange, err error) {
+	err = c.Invoke(a0, "PlaylistChanges", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) PlaylistSnapshot(a0 context.Context, a1 string, a2 string, a3 int64) (r0 playlists.AggregateSnapshot, err error) {
+	err = c.Invoke(a0, "PlaylistSnapshot", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) Playlists(a0 context.Context, a1 string, a2 string, a3 int) (r0 []playlists.Playlist, err error) {
 	err = c.Invoke(a0, "Playlists", []any{a1, a2, a3}, []any{&r0})
@@ -55,6 +66,11 @@ func (c *Client) Publish(a0 context.Context, a1 jobs.Job, a2 library.ScanPublica
 func (c *Client) PublishEvidence(a0 context.Context, a1 string, a2 identification.Ticket, a3 identification.Result) (err error) {
 	err = c.Invoke(a0, "PublishEvidence", []any{a1, a2, a3}, []any{})
 	return err
+}
+
+func (c *Client) PublishOnlineTrack(a0 context.Context, a1 string, a2 string, a3 online.Track) (r0 library.Track, err error) {
+	err = c.Invoke(a0, "PublishOnlineTrack", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
 }
 
 func (c *Client) PublishProcessedCache(a0 context.Context, a1 processedcache.Record, a2 processedcache.Authorization) (err error) {
@@ -125,19 +141,4 @@ func (c *Client) RecordPlaybackStarted(a0 context.Context, a1 auth.Session, a2 p
 func (c *Client) Recording(a0 context.Context, a1 string, a2 string) (r0 matching.Recording, err error) {
 	err = c.Invoke(a0, "Recording", []any{a1, a2}, []any{&r0})
 	return r0, err
-}
-
-func (c *Client) RecordingCover(a0 context.Context, a1 string, a2 string) (r0 library.RecordingCover, err error) {
-	err = c.Invoke(a0, "RecordingCover", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) RecoverEnrichment(a0 context.Context) (err error) {
-	err = c.Invoke(a0, "RecoverEnrichment", []any{}, []any{})
-	return err
-}
-
-func (c *Client) RecoverFingerprints(a0 context.Context) (err error) {
-	err = c.Invoke(a0, "RecoverFingerprints", []any{}, []any{})
-	return err
 }

@@ -40,11 +40,19 @@ func (m *matchingMutation) moveSources(ctx context.Context, operation string, so
 }
 
 func (s *Store) ManualLink(ctx context.Context, owner string, request matching.LinkRequest, key string) (matching.Mutation, error) {
-	ids, err := sourceIDs(request.SourceTrackIDs)
-	if err != nil {
-		return matching.Mutation{}, err
+	var ids []string
+	var err error
+	if request.Selection != nil {
+		if request.SourceTrackIDs != nil {
+			return matching.Mutation{}, domain.Fail("INVALID_ARGUMENT", "Selection and sourceTrackIds are mutually exclusive")
+		}
+	} else {
+		ids, err = sourceIDs(request.SourceTrackIDs)
+		if err != nil {
+			return matching.Mutation{}, err
+		}
+		request.SourceTrackIDs = ids
 	}
-	request.SourceTrackIDs = ids
 	if request.TargetRecordingID != nil && *request.TargetRecordingID == "" {
 		return matching.Mutation{}, domain.Fail("INVALID_ARGUMENT", "Target recording must be null or a nonempty ID")
 	}
@@ -55,6 +63,29 @@ func (s *Store) ManualLink(ctx context.Context, owner string, request matching.L
 	defer m.tx.Rollback()
 	if replayed {
 		return m.result, nil
+	}
+	if request.Selection != nil {
+		tracks, err := resolveTrackSelection(ctx, m.tx, owner, *request.Selection)
+		if err != nil {
+			return m.result, err
+		}
+		selected := map[string]bool{}
+		for _, track := range tracks {
+			selected[track.ID] = true
+			for _, version := range track.Versions {
+				selected[version.ID] = true
+			}
+		}
+		if len(selected) > matching.MaxSources {
+			return m.result, domain.Fail("RATE_LIMITED", "Recording member limit exceeded")
+		}
+		for id := range selected {
+			ids = append(ids, id)
+		}
+		ids, err = sourceIDs(ids)
+		if err != nil {
+			return m.result, err
+		}
 	}
 	if err = visibleSources(ctx, m.tx, owner, ids); err != nil {
 		return m.result, err
