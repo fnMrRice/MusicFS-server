@@ -32,6 +32,16 @@ func evidenceStore(t *testing.T) *sqlite.Store {
 
 func publishEvidenceTracks(t *testing.T, s *sqlite.Store, items ...library.Observation) []library.Track {
 	t.Helper()
+	publishEvidenceObservations(t, s, items...)
+	page, err := s.ListTracks(context.Background(), "admin", "local", "", 200)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return page.Items
+}
+
+func publishEvidenceObservations(t *testing.T, s *sqlite.Store, items ...library.Observation) {
+	t.Helper()
 	ctx := context.Background()
 	if _, _, err := s.Enqueue(ctx, "admin", "local", testkit.ScanPlan("music"), domain.NewID()); err != nil {
 		t.Fatal(err)
@@ -46,11 +56,6 @@ func publishEvidenceTracks(t *testing.T, s *sqlite.Store, items ...library.Obser
 	if err := s.Finish(ctx, j, len(items), nil); err != nil {
 		t.Fatal(err)
 	}
-	page, err := s.ListTracks(ctx, "admin", "local", "", 200)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return page.Items
 }
 
 func evidenceObservation(id, version string) library.Observation {

@@ -36,7 +36,16 @@ func TestFingerprintIdentityMigrationArchivesOldInputsAndAllowsRecompute(t *test
 	}
 	seedMigrationUser(t, db)
 	old := &sqlite.Store{DB: db}
-	track := publishEvidenceTracks(t, old, evidenceObservation("preserved-track", "v1"))[0]
+	// 在版本 033 的库上生成原始观测；普通曲目列表使用最新结构，升级后再验证。
+	publishEvidenceObservations(t, old, evidenceObservation("preserved-track", "v1"))
+	var sourceID string
+	if err := db.QueryRow("SELECT id FROM tracks WHERE external_id='preserved-track'").Scan(&sourceID); err != nil {
+		t.Fatal(err)
+	}
+	track, err := old.FindTrack(ctx, "admin", sourceID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	job := fpClaim(t, old, fpTarget(track))
 	publication, raw := fpPublication(t, job)
 	files := fpFiles(t, t.TempDir())
