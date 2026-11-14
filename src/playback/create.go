@@ -78,7 +78,7 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 	if err := checkKey(key); err != nil {
 		return Description{}, err
 	}
-	if r.SourceTrackID == "" || !r.Capabilities.HTMLAudio || len(r.Capabilities.Formats) > 32 || math.IsNaN(r.Preferences.GainDB) || r.Preferences.GainDB < -60 || r.Preferences.GainDB > 0 {
+	if r.SourceTrackID == "" || r.Capabilities.HTMLAudio == r.Capabilities.NativeHTTP || len(r.Capabilities.Formats) > 32 || math.IsNaN(r.Preferences.GainDB) || r.Preferences.GainDB < -60 || r.Preferences.GainDB > 0 {
 		return Description{}, domain.Fail("INVALID_ARGUMENT", "Invalid playback capabilities or preferences")
 	}
 	if r.Preferences.DSPExecution == "" {
@@ -182,7 +182,7 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 	if who.ExpiresAt.Before(expiry) {
 		expiry = who.ExpiresAt
 	}
-	d := prepared.describe(id, a.gain, expiry)
+	d := prepared.describe(id, a.gain, expiry, capabilities.transport())
 	a.description = d
 	s.nextAttempt(a, 0)
 	raw, _ := json.Marshal(a.description)

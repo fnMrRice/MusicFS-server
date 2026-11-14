@@ -111,6 +111,9 @@ func TestOriginalPlaybackChecksFormatOwnershipAndImmutableBytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if d.OutputProfile.Transport != "htmlAudio" {
+		t.Fatalf("unexpected browser transport: %s", d.OutputProfile.Transport)
+	}
 	if d.OutputProfile.Codec == nil || *d.OutputProfile.Codec != "pcm_s16le" || d.SeekableRange == nil || d.SeekableRange.EndMs != 6000 {
 		t.Fatal("WAV format was not validated without FFprobe")
 	}

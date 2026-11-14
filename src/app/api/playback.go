@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
@@ -95,8 +96,9 @@ func decodeCreate(w http.ResponseWriter, r *http.Request) (playback.CreateReques
 	var wire struct {
 		SourceTrackID string `json:"sourceTrackId"`
 		Capabilities  *struct {
-			HTMLAudio *bool `json:"htmlAudio"`
-			Formats   *[]struct {
+			HTMLAudio  json.RawMessage `json:"htmlAudio"`
+			NativeHTTP json.RawMessage `json:"nativeHttp"`
+			Formats    *[]struct {
 				MIME    string  `json:"mime"`
 				CanPlay *string `json:"canPlay"`
 			} `json:"formats"`
@@ -106,14 +108,22 @@ func decodeCreate(w http.ResponseWriter, r *http.Request) (playback.CreateReques
 	if err := DecodeJSON(w, r, &wire); err != nil {
 		return request, err
 	}
-	if wire.SourceTrackID == "" || wire.Capabilities == nil || wire.Capabilities.HTMLAudio == nil || !*wire.Capabilities.HTMLAudio || wire.Capabilities.Formats == nil || wire.Preferences == nil {
+	if wire.SourceTrackID == "" || wire.Capabilities == nil || wire.Capabilities.Formats == nil || wire.Preferences == nil {
 		return request, domain.Fail("INVALID_ARGUMENT", "sourceTrackId, capabilities, and preferences are required")
 	}
 	request.SourceTrackID, request.Preferences = wire.SourceTrackID, *wire.Preferences
 	if execution := request.Preferences.DSPExecution; execution != "" && execution != "server" && execution != "client" {
 		return request, domain.Fail("INVALID_ARGUMENT", "DSP execution must be server or client")
 	}
-	request.Capabilities.HTMLAudio = true
+	caps := wire.Capabilities
+	switch {
+	case string(caps.HTMLAudio) == "true" && caps.NativeHTTP == nil:
+		request.Capabilities.HTMLAudio = true
+	case string(caps.NativeHTTP) == "true" && caps.HTMLAudio == nil:
+		request.Capabilities.NativeHTTP = true
+	default:
+		return request, domain.Fail("INVALID_ARGUMENT", "Declare exactly one playback transport")
+	}
 	request.Capabilities.Formats = []playback.Format{}
 	if len(*wire.Capabilities.Formats) > 32 {
 		return request, domain.Fail("INVALID_ARGUMENT", "Too many audio format declarations")

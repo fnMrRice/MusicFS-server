@@ -214,12 +214,12 @@ func (r preparationReader) Read(p []byte) (int, error) {
 	}
 	return n, err
 }
-func (p *preparedInput) describe(id string, gain float64, expiry time.Time) Description {
+func (p *preparedInput) describe(id string, gain float64, expiry time.Time, transport string) Description {
 	t := p.track
 	if p.online {
-		return p.describeOnline(id, expiry)
+		return p.describeOnline(id, expiry, transport)
 	}
-	d := Description{SessionID: id, AssetID: t.AssetID, DeliveryMode: "proxy", OutputProfile: OutputProfile{MIME: t.MIME, Codec: t.Codec, Container: t.Container, Transport: "htmlAudio",
+	d := Description{SessionID: id, AssetID: t.AssetID, DeliveryMode: "proxy", OutputProfile: OutputProfile{MIME: t.MIME, Codec: t.Codec, Container: t.Container, Transport: transport,
 		SampleRate: p.profile.SampleRate, Channels: p.profile.Channels, Layout: p.profile.Layout, BitrateBps: p.profile.BitrateBps}, ExpiresAt: expiry, SeekMode: "byteRange", EffectiveProcessing: []Processing{}, ResumeDecision: "continue"}
 	d.DSPExecution = p.dspExecution
 	for _, step := range p.decodeProcessing {
@@ -231,7 +231,7 @@ func (p *preparedInput) describe(id string, gain float64, expiry time.Time) Desc
 	if p.processed {
 		profile := p.profile
 		d.DeliveryMode = "processed"
-		d.OutputProfile = OutputProfile{ID: profile.ID, MIME: profile.MIME, Codec: &profile.Codec, Container: &profile.Container, Transport: "htmlAudio",
+		d.OutputProfile = OutputProfile{ID: profile.ID, MIME: profile.MIME, Codec: &profile.Codec, Container: &profile.Container, Transport: transport,
 			SampleRate: profile.SampleRate, Channels: profile.Channels, Layout: profile.Layout, BitrateBps: profile.BitrateBps}
 		d.SeekMode = "none"
 		if t.DurationMs != nil {

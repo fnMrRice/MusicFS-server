@@ -49,6 +49,8 @@ Local Files 的允许目录与已选择音乐目录分开：权限数量由宿�
 
 `SourceAsset` 表示原始文件字节版本。Provider 申报、宿主探测、完整 SHA-512 和 DSP 前片段指纹分别记录，均不能单独证明跨源续播时间轴。NCM 解密产生独立表示，不改变原始资产身份。
 
+创建播放时，浏览器在 `capabilities` 声明 `htmlAudio: true`，Android 等原生 HTTP 播放器声明 `nativeHttp: true`。每次请求只能声明其中一项，并通过 `formats` 上报本机可播放的 MIME。响应的 `outputProfile.transport` 对应为 `htmlAudio` 或 `nativeHttp`。两类播放器均以当前登录会话的 Cookie 读取 `streamUrl`。
+
 创建播放固定资产、表示与 `attemptId`；seek/recover 串行处理，晚请求不能覆盖新尝试。表示或起点变化生成新 URL。`byteRange` 只用于稳定、可随机读取的表示；`timeRestart` 返回新片段及 `positionOriginMs`，不能沿用输入字节偏移。
 
 稳定文件流支持单范围及最多 16 段范围；非法语法、反向范围或超限返回 400 `INVALID_ARGUMENT`，有效但不可满足的范围返回 416。`If-Range` 不匹配可返回完整固定表示；处理中的流不继承输入长度、ETag 或 Range。

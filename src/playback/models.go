@@ -7,9 +7,18 @@ type Format struct {
 	CanPlay string `json:"canPlay"`
 }
 type Capabilities struct {
-	HTMLAudio bool     `json:"htmlAudio"`
-	Formats   []Format `json:"formats"`
+	HTMLAudio  bool     `json:"htmlAudio,omitempty"`
+	NativeHTTP bool     `json:"nativeHttp,omitempty"`
+	Formats    []Format `json:"formats"`
 }
+
+func (c Capabilities) transport() string {
+	if c.NativeHTTP {
+		return "nativeHttp"
+	}
+	return "htmlAudio"
+}
+
 type Preferences struct {
 	ForceProcessing bool    `json:"forceProcessing"`
 	GainDB          float64 `json:"gainDb"`

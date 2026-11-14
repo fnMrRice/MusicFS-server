@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -42,6 +43,28 @@ func TestTimelineAndCrossSourceRecoveryAuthenticatedHTTP(t *testing.T) {
 		server.ServeHTTP(w, req)
 		return w
 	}
+	t.Run("native HTTP stream", func(t *testing.T) {
+		request := f.request
+		request.SourceTrackID = f.tracks[0].ID
+		request.Preferences.ForceProcessing = false
+		request.Capabilities.HTMLAudio = false
+		request.Capabilities.NativeHTTP = true
+		response := call("POST", "/api/v1/playback/sessions", request, "native-http-create", true)
+		var description playback.Description
+		if response.Code != http.StatusCreated || json.Unmarshal(response.Body.Bytes(), &description) != nil ||
+			description.OutputProfile.Transport != "nativeHttp" {
+			t.Fatalf("native playback create: %d %s", response.Code, response.Body.String())
+		}
+		testkit.ValidateHTTP(t, "Playback", response.Body.Bytes())
+		expected, err := os.ReadFile(f.path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		audio := call("GET", description.StreamURL, nil, "", false)
+		if audio.Code != http.StatusOK || !bytes.Equal(audio.Body.Bytes(), expected) {
+			t.Fatalf("unexpected native stream: %d (%d bytes)", audio.Code, audio.Body.Len())
+		}
+	})
 	profileResponse := call("GET", "/api/v1/playback/recovery-profile", nil, "", false)
 	var profile timeline.Profile
 	if profileResponse.Code != 200 || json.Unmarshal(profileResponse.Body.Bytes(), &profile) != nil {

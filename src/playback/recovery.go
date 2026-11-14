@@ -154,7 +154,7 @@ func (s *Service) RecoverSource(ctx context.Context, who auth.Session, id string
 	}
 	commit := timeline.Commit{SessionID: id, AuthID: who.ID, Owner: who.User.ID, PreviousAttemptID: r.AttemptID, Check: check, Continue: prepared != nil, ExpiresAt: a.description.ExpiresAt, Route: "playback/" + id + "/recover-source", Key: key, Digest: requestDigest(r)}
 	if prepared != nil {
-		d := prepared.describe(id, gain, a.description.ExpiresAt)
+		d := prepared.describe(id, gain, a.description.ExpiresAt, a.capabilities.transport())
 		setAttempt(&d, position)
 		result.Playback = &d
 		commit.Description, _ = json.Marshal(d)

@@ -39,6 +39,24 @@ export MUSICFS_ADMIN_TOKEN="$(./build/linux/musicfs token)"
 
 默认 `info` 日志同时写控制台与 `dataRoot/logs/server.log`，插件各自写入 `dataRoot/logs/plugins/<pluginId>.log`。同一 UTC 日期的服务端与插件历史切片合并压缩为 `dataRoot/logs/logs-YYYY-MM-DD.tar.gz`，保留30天；临时排错可通过管理员接口开启 `debug/trace`，目录、等级配置与接口说明见[日志](logging.md)。
 
+## 在局域网发现 Server
+
+下面的部署片段让客户端在局域网找到监听 8443 端口的 Server。将示例域名替换为局域网 DNS 可解析的地址，配置与该名称匹配且客户端信任的证书。也可使用证书覆盖的局域网 IP 字面量，IPv6 Origin 写成 `https://[fd00::20]:8443`。
+
+```yaml
+listen: '0.0.0.0:8443'
+tlsCert: '/etc/musicfs/server.crt'
+tlsKey: '/etc/musicfs/server.key'
+allowedOrigins: ['https://music.home.example:8443']
+discovery:
+  enabled: true
+  origin: 'https://music.home.example:8443'
+```
+
+客户端在本地链路浏览 `_musicfs._tcp.local.`。SRV 记录包含当前监听器端口，TXT 提供 `api=1`、`scheme=https` 和选定的 `origin`。每块参与发布的网卡只通告自身监听地址。DNS-SD 记录公开可见，只帮助选定地址，登录仍需通过 HTTPS 校验证书、Server 身份和凭据。仅监听回环时跳过发布。没有匹配端口的允许 HTTPS Origin 时也跳过发布，并记录配置诊断；HTTP 服务正常运行。退出时撤销已发布的服务。
+
+允许同一链路的 mDNS 多播 UDP 5353 及所配置的 HTTPS TCP 端口。Wi-Fi 客户端隔离、组播过滤或跨网段时，可以手工输入相同的 HTTPS Origin。反向代理外的用户使用管理员提供的公开地址；本机广播使用 Server 实际监听端口。
+
 ## 选择音乐目录与扫描
 
 登录 http://127.0.0.1:8080，在“设置 → 音乐源”的“本地音乐”中添加授权根或其子目录。逐目录保存名称、递归深度、隐藏内容及 .nomedia 设置；默认递归、不限深度，跳过隐藏内容并遵循 .nomedia。Web 在添加或编辑配置应用成功后自动提交扫描。删除目录只移除配置，保留授权范围、磁盘文件和曲库记录，不触发扫描。

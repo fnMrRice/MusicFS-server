@@ -2,6 +2,9 @@
 configVersion: 1
 listen: '127.0.0.1:8080'
 allowLoopbackHttp: true
+# 非回环 HTTPS 监听可被同网段设备发现；可选 origin 取自下方 allowedOrigins。
+discovery:
+  enabled: true
 allowedOrigins:
   - 'http://127.0.0.1:8080'
   - 'http://127.0.0.1:5173'

@@ -51,6 +51,9 @@ func (c Config) Validate() error {
 	if err != nil || portErr != nil || number < 1 || number > 65535 {
 		return errors.New("invalid listen address")
 	}
+	if err := c.validateDiscovery(number); err != nil {
+		return err
+	}
 	ip := net.ParseIP(host)
 	loopback := ip != nil && ip.IsLoopback()
 	if len(c.AdminToken) < 24 {

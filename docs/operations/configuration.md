@@ -30,6 +30,8 @@
 | `logging.level` | 默认 `info`；支持小写 `trace/debug/info/warn/error` |
 | `logging.plugins` | 默认 `{}`；按插件 ID 覆盖等级，最多128项；未列出的插件继承全局等级 |
 | `allowedOrigins` | 必须显式列出页面完整Origin，无路径、查询、片段或用户信息 |
+| `discovery.enabled` | 默认为 true，在非回环 HTTPS 监听的支持多播的活动网卡发布 `_musicfs._tcp.local.`。关闭后仍可手工输入地址。 |
+| `discovery.origin` | 可选。指定管理员希望客户端连接的完整 HTTPS Origin，必须在 `allowedOrigins` 内、端口与监听端口相同，且单个 `origin=…` TXT 字段不超过 255 字节。省略时按 `allowedOrigins` 顺序选第一个满足条件的地址。 |
 | `allowLoopbackHttp` | 默认false；只有IP字面量loopback可显式使用HTTP，远程监听须TLS |
 | `tlsCert`、`tlsKey` | 同时配置；HTTPS部署还须匹配允许的Origin |
 | `maxSessions` | 默认8，范围1—128 |

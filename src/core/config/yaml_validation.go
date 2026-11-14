@@ -143,7 +143,8 @@ func validateDocumentShape(root *yaml.Node) error {
 		"enabled": boolShape, "instances": sequenceShape(instance),
 	}, "pluginId", "instances")
 	shape := mappingShape(map[string]fieldShape{
-		"storage": storageShape(), "audioDSP": audioDSPShape(), "audioChannels": audioChannelsShape(), "logging": loggingShape(),
+		"discovery": mappingShape(map[string]fieldShape{"enabled": boolShape, "origin": stringShape}),
+		"storage":   storageShape(), "audioDSP": audioDSPShape(), "audioChannels": audioChannelsShape(), "logging": loggingShape(),
 		"pluginBundle":  stringShape,
 		"configVersion": intShape, "listen": stringShape, "dataRoot": stringShape,
 		"mediaRoot": stringShape, "cacheRoot": stringShape, "webRoot": stringShape,

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
+	"github.com/fnMrRice/MusicFS-server/src/core/discovery"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/core/lifecycle"
 	"github.com/fnMrRice/MusicFS-server/src/core/logging"
@@ -168,6 +169,14 @@ func ServeWithOptions(ctx context.Context, c config.Config, log *slog.Logger, op
 			done <- server.Serve(listener)
 		}
 	}()
+	stopDiscovery, discoveryErr := discovery.Advertise(c, listener.Addr().(*net.TCPAddr), instance)
+	if discoveryErr != nil {
+		log.Warn("LAN discovery could not publish on all interfaces; manual connections remain available", "error", discoveryErr)
+	}
+	if stopDiscovery != nil {
+		defer stopDiscovery()
+		log.Info("LAN discovery started", "serviceType", discovery.ServiceType)
+	}
 	log.Info("server ready", "instanceId", instance, "startupMode", manager.Status().StartupMode)
 	tick := time.NewTicker(20 * time.Millisecond)
 	defer tick.Stop()

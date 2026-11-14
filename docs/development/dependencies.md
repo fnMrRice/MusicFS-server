@@ -7,6 +7,7 @@
 | Go | 工具链 1.26.9，语言版本 1.26.0 | 编译器与标准库 |
 | modernc.org/sqlite | 1.60.1 | SQLite 驱动 |
 | github.com/google/uuid | 1.6.0 | 插件实例及业务 UUID |
+| github.com/grandcat/zeroconf | 1.0.0 | 局域网 DNS-SD 发布、IPv4／IPv6 多播应答与停止通告 |
 | golang.org/x/sys | 0.49.0 | 文件锁、稳定读取和进程管理 |
 | golang.org/x/text | 0.43.0 | SDK 文本处理 |
 | go.yaml.in/yaml/v3 | 3.0.5 | YAML 语法树、校验和保留注释写入 |
