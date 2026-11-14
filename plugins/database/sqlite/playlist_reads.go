@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 )
 
@@ -113,6 +114,13 @@ func (s *Store) Playlist(ctx context.Context, owner, id string) (playlists.Playl
 		return playlists.Playlist{}, err
 	}
 	defer tx.Rollback()
+	if personal.ValidKind(id) {
+		p, err := specialPlaylist(ctx, tx, owner, id)
+		if err != nil {
+			return p, err
+		}
+		return p, tx.Commit()
+	}
 	p, err := readPersonalPlaylist(ctx, tx, owner, id)
 	if err != nil {
 		return p, err
@@ -201,6 +209,13 @@ func (s *Store) PlaylistSnapshot(ctx context.Context, owner, id string, revision
 		return empty, err
 	}
 	defer tx.Rollback()
+	if personal.ValidKind(id) {
+		snapshot, err := specialSnapshot(ctx, tx, owner, id, revision)
+		if err != nil {
+			return snapshot, err
+		}
+		return snapshot, tx.Commit()
+	}
 	snapshot, err := readPersonalSnapshot(ctx, tx, owner, id, revision)
 	if err != nil {
 		return empty, err

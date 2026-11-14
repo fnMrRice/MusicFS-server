@@ -26,7 +26,7 @@ type Repository interface {
 	PlaybackOwner(context.Context, string) (string, error)
 	Result(context.Context, string, string, string, string) ([]byte, error)
 	SaveResult(context.Context, string, string, string, string, []byte) error
-	CommitPlayback(context.Context, string, string, string, []byte, time.Time, string, string, string) error
+	CommitPlayback(context.Context, string, string, string, []byte, time.Time, string, string, string, string, string) error
 }
 type Config struct {
 	Decoder           audioruntime.Decoder
@@ -39,6 +39,7 @@ type Config struct {
 	DisableChannelMix bool
 }
 type session struct {
+	forcedSourceID          string
 	description             Description
 	owner, user, path, etag string
 	size                    int64

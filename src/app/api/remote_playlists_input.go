@@ -5,12 +5,14 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 )
 
 type remotePage struct {
 	after         string
 	query         string
+	kind          string
 	offset, limit int
 }
 
@@ -21,10 +23,15 @@ func remotePagination(r *http.Request, snapshot bool, searchable ...bool) (remot
 		return p, playlists.Invalid()
 	}
 	for key, values := range query {
-		if len(values) != 1 || (key != "limit" && !(snapshot && key == "offset") && !(!snapshot && key == "after") && !(len(searchable) > 0 && searchable[0] && key == "q")) {
+		if len(values) != 1 || (key != "limit" && !(snapshot && key == "offset") && !(!snapshot && key == "after") && !(len(searchable) > 0 && searchable[0] && (key == "q" || key == "kind"))) {
 			return p, playlists.Invalid()
 		}
 		switch key {
+		case "kind":
+			if values[0] != "user" && !personal.ValidKind(values[0]) {
+				return p, playlists.Invalid()
+			}
+			p.kind = values[0]
 		case "q":
 			p.query = values[0]
 		case "limit":

@@ -16,6 +16,19 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 )
 
+// 已停用的来源也保留实例归属，已入库的插件内编号仍引用原插件。
+func musicSourcePlugins(c config.Config) map[string]string {
+	providers := make(map[string]string)
+	for _, plugin := range c.Plugins {
+		if pluginconfig.Role(plugin.PluginID) == "provider" {
+			for _, instance := range plugin.Instances {
+				providers[instance.InstanceID] = plugin.PluginID
+			}
+		}
+	}
+	return providers
+}
+
 // 父插件和实例必须同时显式启用；禁用项只保留提供者身份，不检查运行依赖。
 func configurePlugins(ctx context.Context, c config.Config, log *slog.Logger) ([]library.Runtime, audioruntime.Processor, audioruntime.Decoder, audioruntime.Probe) {
 	var runtimes []library.Runtime

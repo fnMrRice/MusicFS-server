@@ -78,7 +78,7 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 	if err := checkKey(key); err != nil {
 		return Description{}, err
 	}
-	if r.SourceTrackID == "" || r.Capabilities.HTMLAudio == r.Capabilities.NativeHTTP || len(r.Capabilities.Formats) > 32 || math.IsNaN(r.Preferences.GainDB) || r.Preferences.GainDB < -60 || r.Preferences.GainDB > 0 {
+	if len(r.TrackID) > 128 || (r.ForcedSourceID != "" && (r.TrackID == "" || r.ForcedSourceID != r.SourceTrackID)) || r.SourceTrackID == "" || r.Capabilities.HTMLAudio == r.Capabilities.NativeHTTP || len(r.Capabilities.Formats) > 32 || math.IsNaN(r.Preferences.GainDB) || r.Preferences.GainDB < -60 || r.Preferences.GainDB > 0 {
 		return Description{}, domain.Fail("INVALID_ARGUMENT", "Invalid playback capabilities or preferences")
 	}
 	if r.Preferences.DSPExecution == "" {
@@ -175,7 +175,7 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 	}
 	capabilities := r.Capabilities
 	capabilities.Formats = append([]Format(nil), r.Capabilities.Formats...)
-	a := &session{owner: who.ID, user: who.User.ID, path: prepared.path, etag: prepared.etag, size: prepared.size, track: prepared.track, gain: prepared.gain, capabilities: capabilities, sourceLease: prepared.lease}
+	a := &session{forcedSourceID: r.ForcedSourceID, owner: who.ID, user: who.User.ID, path: prepared.path, etag: prepared.etag, size: prepared.size, track: prepared.track, gain: prepared.gain, capabilities: capabilities, sourceLease: prepared.lease}
 	a.online = prepared.online
 	s.installPluginLeases(a, prepared)
 	expiry := time.Now().UTC().Add(30 * time.Minute)
@@ -186,7 +186,7 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 	a.description = d
 	s.nextAttempt(a, 0)
 	raw, _ := json.Marshal(a.description)
-	if err = s.repo.CommitPlayback(ctx, id, who.ID, who.User.ID, raw, expiry, "playback/create", key, digest); err != nil {
+	if err = s.repo.CommitPlayback(ctx, id, who.ID, who.User.ID, raw, expiry, "playback/create", key, digest, r.TrackID, r.SourceTrackID); err != nil {
 		a.cancel()
 		a.releasePluginLeases()
 		return Description{}, err

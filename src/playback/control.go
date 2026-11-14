@@ -99,7 +99,7 @@ func (s *Service) Control(ctx context.Context, who auth.Session, id, operation s
 		}
 		err = repo.CommitRecovery(ctx, timeline.Commit{SessionID: id, AuthID: a.owner, Owner: a.user, PreviousAttemptID: r.AttemptID, Check: timeline.Check{From: target(a.track), To: target(a.track), PositionMs: r.PositionMs}, Continue: true, Description: raw, Result: raw, ExpiresAt: d.ExpiresAt, Route: route, Key: key, Digest: digest})
 	} else {
-		err = s.repo.CommitPlayback(ctx, id, a.owner, a.user, raw, d.ExpiresAt, route, key, digest)
+		err = s.repo.CommitPlayback(ctx, id, a.owner, a.user, raw, d.ExpiresAt, route, key, digest, "", "")
 	}
 	if err != nil {
 		return Description{}, err

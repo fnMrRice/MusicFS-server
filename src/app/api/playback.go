@@ -94,8 +94,10 @@ func decodeControl(w http.ResponseWriter, r *http.Request, operation string) (pl
 func decodeCreate(w http.ResponseWriter, r *http.Request) (playback.CreateRequest, error) {
 	var request playback.CreateRequest
 	var wire struct {
-		SourceTrackID string `json:"sourceTrackId"`
-		Capabilities  *struct {
+		TrackID        string `json:"trackId"`
+		ForcedSourceID string `json:"forcedSourceTrackId"`
+		SourceTrackID  string `json:"sourceTrackId"`
+		Capabilities   *struct {
 			HTMLAudio  json.RawMessage `json:"htmlAudio"`
 			NativeHTTP json.RawMessage `json:"nativeHttp"`
 			Formats    *[]struct {
@@ -111,6 +113,7 @@ func decodeCreate(w http.ResponseWriter, r *http.Request) (playback.CreateReques
 	if wire.SourceTrackID == "" || wire.Capabilities == nil || wire.Capabilities.Formats == nil || wire.Preferences == nil {
 		return request, domain.Fail("INVALID_ARGUMENT", "sourceTrackId, capabilities, and preferences are required")
 	}
+	request.TrackID, request.ForcedSourceID = wire.TrackID, wire.ForcedSourceID
 	request.SourceTrackID, request.Preferences = wire.SourceTrackID, *wire.Preferences
 	if execution := request.Preferences.DSPExecution; execution != "" && execution != "server" && execution != "client" {
 		return request, domain.Fail("INVALID_ARGUMENT", "DSP execution must be server or client")

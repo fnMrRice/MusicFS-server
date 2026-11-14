@@ -2,6 +2,7 @@
 package cdalbum
 
 import (
+	"github.com/fnMrRice/MusicFS-server/plugins/content/history"
 	"github.com/fnMrRice/MusicFS-server/plugins/content/music"
 	"github.com/fnMrRice/MusicFS-server/sdk/contenttype"
 )
@@ -15,8 +16,10 @@ func Descriptor() contenttype.Descriptor {
 	descriptor.PluginID = "musicfs.plugin.content.cd_album"
 	descriptor.Name = "CD专辑"
 	descriptor.Description = "管理 CD 专辑、各碟音轨与随碟资料，可将专辑曲目加入普通曲目列表。"
-	descriptor.Library = &contenttype.Library{Order: 10, Icon: "disc", TrackListOptional: true}
+	descriptor.Library = &contenttype.Library{Order: 10, Icon: "disc", TrackListOptional: true, SeparateHistory: true}
 	return descriptor
 }
 
 func PackageOrganizer() contenttype.PackageOrganizer { return contenttype.DirectoryOrganizer{} }
+
+func History(state contenttype.HistoryState) contenttype.History { return history.ByWork(state) }

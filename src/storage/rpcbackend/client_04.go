@@ -4,10 +4,8 @@ package rpcbackend
 
 import (
 	"context"
-	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/library/personal"
-	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/library/music"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
@@ -15,8 +13,17 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"github.com/fnMrRice/MusicFS-server/src/tasks"
-	"time"
 )
+
+func (c *Client) InvalidateDerived(a0 context.Context, a1 string, a2 string) (err error) {
+	err = c.Invoke(a0, "InvalidateDerived", []any{a1, a2}, []any{})
+	return err
+}
+
+func (c *Client) InvalidateFingerprint(a0 context.Context, a1 string, a2 string) (err error) {
+	err = c.Invoke(a0, "InvalidateFingerprint", []any{a1, a2}, []any{})
+	return err
+}
 
 func (c *Client) InvalidatePublication(a0 context.Context, a1 string, a2 string, a3 string) (err error) {
 	err = c.Invoke(a0, "InvalidatePublication", []any{a1, a2, a3}, []any{})
@@ -78,6 +85,46 @@ func (c *Client) MatchingRun(a0 context.Context, a1 string) (r0 matching.Run, er
 	return r0, err
 }
 
+func (c *Client) MusicAlbum(a0 context.Context, a1 string, a2 string) (r0 music.Album, err error) {
+	err = c.Invoke(a0, "MusicAlbum", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) MusicAlbums(a0 context.Context, a1 string, a2 music.Query) (r0 music.AlbumPage, err error) {
+	err = c.Invoke(a0, "MusicAlbums", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) MusicArtist(a0 context.Context, a1 string, a2 string) (r0 music.Artist, err error) {
+	err = c.Invoke(a0, "MusicArtist", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) MusicArtists(a0 context.Context, a1 string, a2 music.Query) (r0 music.ArtistPage, err error) {
+	err = c.Invoke(a0, "MusicArtists", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) MusicGenres(a0 context.Context, a1 string, a2 music.Query) (r0 music.GenrePage, err error) {
+	err = c.Invoke(a0, "MusicGenres", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) MusicTrack(a0 context.Context, a1 string, a2 string) (r0 music.Track, err error) {
+	err = c.Invoke(a0, "MusicTrack", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) MusicTrackForSource(a0 context.Context, a1 string, a2 string) (r0 music.Track, err error) {
+	err = c.Invoke(a0, "MusicTrackForSource", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) MusicTracks(a0 context.Context, a1 string, a2 music.Query) (r0 music.TrackPage, err error) {
+	err = c.Invoke(a0, "MusicTracks", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) NextAutomation(a0 context.Context) (r0 enrichment.AutomationWork, err error) {
 	err = c.Invoke(a0, "NextAutomation", []any{}, []any{&r0})
 	return r0, err
@@ -85,55 +132,5 @@ func (c *Client) NextAutomation(a0 context.Context) (r0 enrichment.AutomationWor
 
 func (c *Client) NextWriteback(a0 context.Context) (r0 writebackhost.Work, err error) {
 	err = c.Invoke(a0, "NextWriteback", []any{}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) PendingConfigOperations(a0 context.Context, a1 string) (r0 []config.Operation, err error) {
-	err = c.Invoke(a0, "PendingConfigOperations", []any{a1}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) PendingPublications(a0 context.Context, a1 string, a2 int) (r0 []mediastore.Publication, err error) {
-	err = c.Invoke(a0, "PendingPublications", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) PersonalCollection(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 personal.Page, err error) {
-	err = c.Invoke(a0, "PersonalCollection", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) PersonalProfile(a0 context.Context, a1 string) (r0 personal.Profile, err error) {
-	err = c.Invoke(a0, "PersonalProfile", []any{a1}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) PlaybackOwner(a0 context.Context, a1 string) (r0 string, err error) {
-	err = c.Invoke(a0, "PlaybackOwner", []any{a1}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) PlaybackReset(a0 context.Context) (err error) {
-	err = c.Invoke(a0, "PlaybackReset", []any{}, []any{})
-	return err
-}
-
-func (c *Client) PlaybackSave(a0 context.Context, a1 string, a2 string, a3 string, a4 []uint8, a5 string, a6 time.Time) (err error) {
-	err = c.Invoke(a0, "PlaybackSave", []any{a1, a2, a3, a4, a5, a6}, []any{})
-	return err
-}
-
-func (c *Client) Playlist(a0 context.Context, a1 string, a2 string) (r0 playlists.Playlist, err error) {
-	err = c.Invoke(a0, "Playlist", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) PlaylistChanges(a0 context.Context, a1 string, a2 string, a3 int64, a4 int) (r0 []playlists.PlaylistChange, err error) {
-	err = c.Invoke(a0, "PlaylistChanges", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) PlaylistSnapshot(a0 context.Context, a1 string, a2 string, a3 int64) (r0 playlists.AggregateSnapshot, err error) {
-	err = c.Invoke(a0, "PlaylistSnapshot", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
 }

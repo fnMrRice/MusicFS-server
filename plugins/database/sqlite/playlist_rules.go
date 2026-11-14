@@ -58,7 +58,8 @@ func assignPlaylistBindings(old, bindings []playlists.PlaylistBinding) error {
 			e := &b.Entries[j]
 			if e.ID == "" {
 				e.ID = domain.NewID()
-			} else if previous, ok := entries[e.ID]; !ok || previous.Key() != e.Source.Key() {
+			} else if previous, ok := entries[e.ID]; !ok || previous.Key() != e.Source.Key() &&
+				(previous.TrackID == nil || e.Source.TrackID == nil || *previous.TrackID != *e.Source.TrackID) {
 				return domain.Fail("CONFLICT", "A playlist occurrence cannot change its original source")
 			}
 		}
@@ -148,8 +149,11 @@ func (s *Store) CreatePlaylist(ctx context.Context, owner string, r playlists.Cr
 	if err = validatePlaylistBindings(ctx, m.tx, owner, r.Bindings); err != nil {
 		return result, err
 	}
-	result = playlists.Playlist{ID: domain.NewID(), Name: r.Name, RuleRevision: 1, Stale: true, Bindings: r.Bindings, CreatedAt: time.Now().UTC()}
+	result = playlists.Playlist{Kind: "user", ID: domain.NewID(), Name: r.Name, RuleRevision: 1, Stale: true, Bindings: r.Bindings, CreatedAt: time.Now().UTC()}
 	if err = savePersonalPlaylist(ctx, m.tx, owner, &result, true); err != nil {
+		return result, err
+	}
+	if err = saveMusicPlaylistEntries(ctx, m.tx, owner, result); err != nil {
 		return result, err
 	}
 	if err = validatePlaylistGraph(ctx, m.tx, owner, result.ID); err != nil {
@@ -197,6 +201,9 @@ func (s *Store) EditPlaylist(ctx context.Context, owner, id string, r playlists.
 	result.Name, result.Bindings, result.Stale = r.Name, r.Bindings, true
 	result.RuleRevision++
 	if err = savePersonalPlaylist(ctx, m.tx, owner, &result, false); err != nil {
+		return result, err
+	}
+	if err = saveMusicPlaylistEntries(ctx, m.tx, owner, result); err != nil {
 		return result, err
 	}
 	if err = validatePlaylistGraph(ctx, m.tx, owner, id); err != nil {

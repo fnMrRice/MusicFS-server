@@ -55,7 +55,7 @@ func TestInstanceMigrationKeepsLibraryAndRemoteIdentities(t *testing.T) {
 	store := migrationStore(t)
 	legacyTrack(t, store, "track-one", "local")
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	migrationSQL(t, store, "INSERT INTO personal_favorites VALUES('admin','track-one',?)", now)
+	migrationSQL(t, store, "INSERT INTO music_playlist_entries(owner,playlist_id,binding_id,entry_id,track_id,position,created_at) VALUES('admin','favorites','','track-one','track-one',0,?)", now)
 	migrationSQL(t, store, "INSERT INTO source_albums VALUES('album-one','admin','local','Album',1,?,?)", now, now)
 	migrationSQL(t, store, "INSERT INTO source_album_members VALUES('album-one','track-one',0)")
 	plan := testkit.ScanPlan("music")
@@ -121,7 +121,7 @@ func TestInstanceMigrationKeepsLibraryAndRemoteIdentities(t *testing.T) {
 		t.Fatalf("old remote sync ticket was reinterpreted: %+v %v", failedSync, err)
 	}
 	var favorites, snapshots, revision int
-	if err := store.DB.QueryRow("SELECT COUNT(*) FROM personal_favorites WHERE source_track_id='track-one'").Scan(&favorites); err != nil || favorites != 1 {
+	if err := store.DB.QueryRow("SELECT COUNT(*) FROM music_playlist_entries WHERE playlist_id='favorites' AND track_id='track-one'").Scan(&favorites); err != nil || favorites != 1 {
 		t.Fatalf("favorite lost stable source identity: %v", err)
 	}
 	if err := store.DB.QueryRow("SELECT COUNT(*) FROM library_snapshot_items").Scan(&snapshots); err != nil || snapshots != 0 {

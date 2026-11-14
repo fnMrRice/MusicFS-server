@@ -59,6 +59,10 @@ func (s *Service) RecoverSource(ctx context.Context, who auth.Session, id string
 		}
 		return empty, err
 	}
+	if a.forcedSourceID != "" && r.TargetSourceTrackID != a.forcedSourceID {
+		s.mu.Unlock()
+		return empty, domain.Fail("CONFLICT", "Playback requires the playlist entry's selected source")
+	}
 	ctx, cancel := context.WithDeadline(ctx, a.recovery.Deadline())
 	unlink := context.AfterFunc(a.ctx, cancel)
 	s.preparing[who.ID] = cancel

@@ -11,6 +11,8 @@ const MaxGraphDepth = 16
 const MaxContributions = 20000
 
 type SourceRef struct {
+	TrackID        *string `json:"trackId,omitempty"`
+	ForcedSourceID *string `json:"forcedSourceTrackId,omitempty"`
 	SourceTrackID  *string `json:"sourceTrackId"`
 	RemoteSourceID *string `json:"remoteSourceId"`
 }
@@ -25,6 +27,7 @@ type PlaylistBinding struct {
 	Entries  []LocalEntry `json:"entries"`
 }
 type Playlist struct {
+	Kind             string            `json:"kind"`
 	ID               string            `json:"playlistId"`
 	Name             string            `json:"name"`
 	RuleRevision     int64             `json:"ruleRevision"`

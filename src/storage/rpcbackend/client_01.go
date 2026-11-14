@@ -20,6 +20,11 @@ import (
 	"time"
 )
 
+func (c *Client) CatalogFacets(a0 context.Context, a1 string, a2 string) (r0 catalog.Facets, err error) {
+	err = c.Invoke(a0, "CatalogFacets", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) CatalogQueryPage(a0 context.Context, a1 string, a2 string, a3 string, a4 int, a5 *catalog.Query) (r0 catalog.Page, err error) {
 	err = c.Invoke(a0, "CatalogQueryPage", []any{a1, a2, a3, a4, a5}, []any{&r0})
 	return r0, err
@@ -80,8 +85,8 @@ func (c *Client) ClaimRemoteSync(a0 context.Context) (r0 playlists.SyncJob, err 
 	return r0, err
 }
 
-func (c *Client) CommitPlayback(a0 context.Context, a1 string, a2 string, a3 string, a4 []uint8, a5 time.Time, a6 string, a7 string, a8 string) (err error) {
-	err = c.Invoke(a0, "CommitPlayback", []any{a1, a2, a3, a4, a5, a6, a7, a8}, []any{})
+func (c *Client) CommitPlayback(a0 context.Context, a1 string, a2 string, a3 string, a4 []uint8, a5 time.Time, a6 string, a7 string, a8 string, a9 string, a10 string) (err error) {
+	err = c.Invoke(a0, "CommitPlayback", []any{a1, a2, a3, a4, a5, a6, a7, a8, a9, a10}, []any{})
 	return err
 }
 
@@ -97,6 +102,11 @@ func (c *Client) CommitWriteback(a0 context.Context, a1 string, a2 string, a3 wr
 
 func (c *Client) CompleteRefreshTaskCancellation(a0 context.Context, a1 string, a2 string) (err error) {
 	err = c.Invoke(a0, "CompleteRefreshTaskCancellation", []any{a1, a2}, []any{})
+	return err
+}
+
+func (c *Client) ConfirmContentHistory(a0 context.Context, a1 string, a2 string, a3 string) (err error) {
+	err = c.Invoke(a0, "ConfirmContentHistory", []any{a1, a2, a3}, []any{})
 	return err
 }
 
@@ -127,15 +137,5 @@ func (c *Client) CreateMediaBackup(a0 context.Context, a1 string, a2 string) (r0
 
 func (c *Client) CreatePlaylist(a0 context.Context, a1 string, a2 playlists.CreatePlaylistRequest, a3 string) (r0 playlists.Playlist, err error) {
 	err = c.Invoke(a0, "CreatePlaylist", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) CreateRelease(a0 context.Context, a1 string, a2 albums.CreateReleaseRequest, a3 string) (r0 albums.Release, err error) {
-	err = c.Invoke(a0, "CreateRelease", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) CreateSourceAlbum(a0 context.Context, a1 string, a2 albums.CreateSourceAlbumRequest, a3 string) (r0 albums.SourceAlbum, err error) {
-	err = c.Invoke(a0, "CreateSourceAlbum", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
 }

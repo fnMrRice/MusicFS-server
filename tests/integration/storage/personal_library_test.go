@@ -58,17 +58,19 @@ func TestPersonalCollectionsPersistenceIsolationCursorAndRetention(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for i := 0; i < personal.MaxRecent+1; i++ {
-		if _, err = tx.Exec("INSERT INTO personal_recently_played VALUES(?,?,?)", "admin", fmt.Sprintf("synthetic-%04d", i), now.Add(-time.Duration(i)*time.Second).Format(time.RFC3339Nano)); err != nil {
+	insert := func(owner, id string, stamp time.Time) {
+		if _, err := tx.Exec("INSERT INTO music_tracks(id,owner,title) VALUES(?,?,?)", id, owner, id); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tx.Exec("INSERT INTO music_playlist_entries(owner,playlist_id,binding_id,entry_id,track_id,position,updated_at) VALUES(?,'recently-played','',?,?,0,?)", owner, id, id, stamp.Format(time.RFC3339Nano)); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if _, err = tx.Exec("INSERT INTO personal_recently_played VALUES('admin','expired',?)", now.Add(-91*24*time.Hour).Format(time.RFC3339Nano)); err != nil {
-		t.Fatal(err)
+	for i := 0; i < personal.MaxRecent+1; i++ {
+		insert("admin", fmt.Sprintf("synthetic-%04d", i), now.Add(-time.Duration(i)*time.Second))
 	}
-	if _, err = tx.Exec("INSERT INTO personal_recently_played VALUES('other','private',?)", now.Format(time.RFC3339Nano)); err != nil {
-		t.Fatal(err)
-	}
+	insert("admin", "expired", now.Add(-91*24*time.Hour))
+	insert("other", "private", now)
 	if err = tx.Commit(); err != nil {
 		t.Fatal(err)
 	}
@@ -76,16 +78,16 @@ func TestPersonalCollectionsPersistenceIsolationCursorAndRetention(t *testing.T)
 		t.Fatal(err)
 	}
 	var count int
-	if err = s.DB.QueryRow("SELECT COUNT(*) FROM personal_recently_played WHERE owner='admin'").Scan(&count); err != nil || count != personal.MaxRecent {
+	if err = s.DB.QueryRow("SELECT COUNT(*) FROM music_playlist_entries WHERE playlist_id='recently-played' AND owner='admin'").Scan(&count); err != nil || count != personal.MaxRecent {
 		t.Fatal("history retention count", count, err)
 	}
-	if err = s.DB.QueryRow("SELECT COUNT(*) FROM personal_recently_played WHERE owner='admin' AND source_track_id IN ('expired','synthetic-1000')").Scan(&count); err != nil || count != 0 {
+	if err = s.DB.QueryRow("SELECT COUNT(*) FROM music_playlist_entries WHERE playlist_id='recently-played' AND owner='admin' AND entry_id IN ('expired','synthetic-1000')").Scan(&count); err != nil || count != 0 {
 		t.Fatal("history retention removed wrong entries", count, err)
 	}
 	if err = s.DeletePersonalCollection(ctx, "admin", personal.Recent, ""); err != nil {
 		t.Fatal(err)
 	}
-	if err = s.DB.QueryRow("SELECT COUNT(*) FROM personal_recently_played WHERE owner='other'").Scan(&count); err != nil || count != 1 {
+	if err = s.DB.QueryRow("SELECT COUNT(*) FROM music_playlist_entries WHERE playlist_id='recently-played' AND owner='other'").Scan(&count); err != nil || count != 1 {
 		t.Fatal("history clear touched another user", err)
 	}
 	nickname := "Alice"
@@ -102,7 +104,7 @@ func TestPersonalHistoryValidatesSessionAndDeduplicatesAcrossAttempts(t *testing
 	s, _, tracks := matchingFixture(t, 2)
 	ctx := context.Background()
 	who := auth.Session{ID: "login", User: auth.User{ID: "admin"}}
-	d := playback.Description{SessionID: domain.NewID(), AttemptID: domain.NewID(), AssetID: tracks[0].AssetID}
+	d := playback.Description{SessionID: domain.NewID(), AttemptID: domain.NewID(), AssetID: tracks[0].AssetID, SourceTrackID: tracks[0].ID}
 	save := func(state string, expiry time.Time) {
 		t.Helper()
 		raw, _ := json.Marshal(d)

@@ -7,6 +7,12 @@ import (
 )
 
 func (s SourceRef) Key() string {
+	if s.TrackID != nil {
+		if s.ForcedSourceID != nil {
+			return "track:" + *s.TrackID + "\x00forced:" + *s.ForcedSourceID
+		}
+		return "track:" + *s.TrackID
+	}
 	if s.SourceTrackID != nil {
 		return "local:" + *s.SourceTrackID
 	}
@@ -16,6 +22,16 @@ func (s SourceRef) Key() string {
 	return ""
 }
 func (s SourceRef) Validate() error {
+	if s.TrackID != nil {
+		if !ValidID(*s.TrackID) || s.SourceTrackID != nil || s.RemoteSourceID != nil ||
+			s.ForcedSourceID != nil && !ValidID(*s.ForcedSourceID) {
+			return Invalid()
+		}
+		return nil
+	}
+	if s.ForcedSourceID != nil {
+		return Invalid()
+	}
 	if (s.SourceTrackID == nil) == (s.RemoteSourceID == nil) {
 		return Invalid()
 	}

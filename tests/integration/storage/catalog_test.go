@@ -187,14 +187,14 @@ func TestCatalogAlbumsArtistsFacetsAndUnknownMetadata(t *testing.T) {
 func TestCatalogFavoriteSnapshotExpiryEmptyAndCancelledContext(t *testing.T) {
 	s, service, tracks := catalogFixture(t)
 	ctx := context.Background()
-	if _, err := s.DB.ExecContext(ctx, "INSERT INTO personal_favorites VALUES(?,?,?)", "admin", tracks[1].ID, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+	if _, err := s.PutFavorite(ctx, "admin", tracks[1].ID); err != nil {
 		t.Fatal(err)
 	}
 	page, err := service.Search(ctx, "admin", catalog.Query{FavoriteOnly: true}, "", 50)
 	if err != nil || page.Total != 1 {
 		t.Fatal(page, err)
 	}
-	if _, err = s.DB.ExecContext(ctx, "DELETE FROM personal_favorites WHERE owner='admin'"); err != nil {
+	if err = s.DeletePersonalCollection(ctx, "admin", "favorites", ""); err != nil {
 		t.Fatal(err)
 	}
 	stable, err := service.Page(ctx, "admin", page.QueryID, "", 50)

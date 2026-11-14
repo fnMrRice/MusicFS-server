@@ -1,0 +1,118 @@
+// Package music 定义曲目资料及其与歌手、专辑和插件来源的关系。
+package music
+
+import (
+	"context"
+
+	"github.com/fnMrRice/MusicFS-server/src/library"
+)
+
+type Artist struct {
+	ID   string `json:"artistId"`
+	Name string `json:"name"`
+}
+
+type AlbumFields struct {
+	Name        string  `json:"name"`
+	ExternalID  *string `json:"externalId"`
+	IsExternal  bool    `json:"isExternal"`
+	CoverPath   *string `json:"coverPath"`
+	Publisher   *string `json:"publisher"`
+	ReleaseDate *string `json:"releaseDate"`
+}
+
+type Album struct {
+	ID string `json:"albumId"`
+	AlbumFields
+	Revision int64 `json:"revision"`
+}
+
+type Source struct {
+	SourceTrackID string  `json:"sourceTrackId"`
+	PluginID      *string `json:"pluginId"`
+	InstanceID    string  `json:"providerInstanceId"`
+	SourceID      string  `json:"sourceId"`
+	CreatedAt     string  `json:"createdAt"`
+	UpdatedAt     string  `json:"updatedAt"`
+}
+
+type TrackFields struct {
+	Title     string  `json:"title"`
+	CoverPath *string `json:"coverPath"`
+	Genre     *string `json:"genre"`
+	Year      *int    `json:"year"`
+	Rating    *int    `json:"rating"`
+}
+
+type Track struct {
+	ID string `json:"trackId"`
+	TrackFields
+	Revision       int64          `json:"revision"`
+	Artists        []Artist       `json:"artists"`
+	Albums         []Album        `json:"albums"`
+	Sources        []Source       `json:"sources"`
+	SelectedSource *library.Track `json:"selectedSource"`
+	CreatedAt      string         `json:"createdAt"`
+	UpdatedAt      string         `json:"updatedAt"`
+}
+
+type TrackInput struct {
+	TrackFields
+	ArtistNames []string `json:"artistNames"`
+	AlbumIDs    []string `json:"albumIds"`
+}
+
+type Query struct {
+	After, Q, ProviderID, ArtistID, AlbumID, Genre, Unknown string
+	Limit                                                   int
+}
+
+type ArtistItem struct {
+	Artist
+	TrackCount int `json:"trackCount"`
+}
+
+type AlbumItem struct {
+	Album
+	TrackCount int `json:"trackCount"`
+}
+
+type ArtistPage struct {
+	Items     []ArtistItem `json:"items"`
+	NextAfter *string      `json:"nextAfter"`
+}
+
+type GenreItem struct {
+	Name       string `json:"name"`
+	TrackCount int    `json:"trackCount"`
+}
+
+type GenrePage struct {
+	Items     []GenreItem `json:"items"`
+	NextAfter *string     `json:"nextAfter"`
+}
+
+type AlbumPage struct {
+	Items     []AlbumItem `json:"items"`
+	NextAfter *string     `json:"nextAfter"`
+}
+
+type TrackPage struct {
+	Items            []Track `json:"items"`
+	NextAfter        *string `json:"nextAfter"`
+	LibraryRevision  string  `json:"libraryRevision"`
+	MatchingRevision int64   `json:"matchingRevision"`
+}
+
+type Repository interface {
+	MusicTrack(context.Context, string, string) (Track, error)
+	MusicTrackForSource(context.Context, string, string) (Track, error)
+	MusicTracks(context.Context, string, Query) (TrackPage, error)
+	SaveMusicTrack(context.Context, string, string, int64, TrackInput, string) (Track, error)
+	MusicArtists(context.Context, string, Query) (ArtistPage, error)
+	MusicArtist(context.Context, string, string) (Artist, error)
+	MusicGenres(context.Context, string, Query) (GenrePage, error)
+	MusicAlbum(context.Context, string, string) (Album, error)
+	MusicAlbums(context.Context, string, Query) (AlbumPage, error)
+	SaveMusicAlbum(context.Context, string, string, int64, AlbumFields, string) (Album, error)
+}

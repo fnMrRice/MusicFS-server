@@ -9,13 +9,72 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
-	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
-	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/candidates"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
-	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 )
+
+func (c *Client) QueueEnrichment(a0 context.Context, a1 string, a2 enrichment.JobRequest, a3 string) (r0 enrichment.Job, r1 bool, err error) {
+	err = c.Invoke(a0, "QueueEnrichment", []any{a1, a2, a3}, []any{&r0, &r1})
+	return r0, r1, err
+}
+
+func (c *Client) QueueFingerprint(a0 context.Context, a1 string, a2 identification.FingerprintTarget, a3 string, a4 bool) (r0 identification.FingerprintJob, r1 bool, err error) {
+	err = c.Invoke(a0, "QueueFingerprint", []any{a1, a2, a3, a4}, []any{&r0, &r1})
+	return r0, r1, err
+}
+
+func (c *Client) QueueHash(a0 context.Context, a1 string, a2 identification.HashTarget, a3 string, a4 bool) (r0 identification.HashJob, r1 bool, err error) {
+	err = c.Invoke(a0, "QueueHash", []any{a1, a2, a3, a4}, []any{&r0, &r1})
+	return r0, r1, err
+}
+
+func (c *Client) QueueRemoteSync(a0 context.Context, a1 string, a2 string, a3 int64, a4 playlists.Binding, a5 string) (r0 playlists.SyncJob, r1 bool, err error) {
+	err = c.Invoke(a0, "QueueRemoteSync", []any{a1, a2, a3, a4, a5}, []any{&r0, &r1})
+	return r0, r1, err
+}
+
+func (c *Client) QueueWriteback(a0 context.Context, a1 string, a2 writebackhost.Request, a3 writeback.Target, a4 string) (r0 writebackhost.Job, r1 bool, err error) {
+	err = c.Invoke(a0, "QueueWriteback", []any{a1, a2, a3, a4}, []any{&r0, &r1})
+	return r0, r1, err
+}
+
+func (c *Client) RebuildPlaylist(a0 context.Context, a1 string, a2 string, a3 playlists.RebuildRequest, a4 string) (r0 playlists.AggregateSnapshot, err error) {
+	err = c.Invoke(a0, "RebuildPlaylist", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) RecordBackupObject(a0 context.Context, a1 string, a2 string, a3 string) (err error) {
+	err = c.Invoke(a0, "RecordBackupObject", []any{a1, a2, a3}, []any{})
+	return err
+}
+
+func (c *Client) RecordPlaybackStarted(a0 context.Context, a1 auth.Session, a2 personal.PlaybackStarted) (r0 personal.Entry, err error) {
+	err = c.Invoke(a0, "RecordPlaybackStarted", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) Recording(a0 context.Context, a1 string, a2 string) (r0 matching.Recording, err error) {
+	err = c.Invoke(a0, "Recording", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) RecordingCover(a0 context.Context, a1 string, a2 string) (r0 library.RecordingCover, err error) {
+	err = c.Invoke(a0, "RecordingCover", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) RecoverEnrichment(a0 context.Context) (err error) {
+	err = c.Invoke(a0, "RecoverEnrichment", []any{}, []any{})
+	return err
+}
+
+func (c *Client) RecoverFingerprints(a0 context.Context) (err error) {
+	err = c.Invoke(a0, "RecoverFingerprints", []any{}, []any{})
+	return err
+}
 
 func (c *Client) RecoverHashes(a0 context.Context) (err error) {
 	err = c.Invoke(a0, "RecoverHashes", []any{}, []any{})
@@ -74,65 +133,5 @@ func (c *Client) RemotePlaylists(a0 context.Context, a1 string, a2 string, a3 in
 
 func (c *Client) RemoteSnapshot(a0 context.Context, a1 string, a2 string, a3 int64) (r0 playlists.Snapshot, err error) {
 	err = c.Invoke(a0, "RemoteSnapshot", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) RemoteSource(a0 context.Context, a1 string, a2 string) (r0 playlists.RemoteSource, err error) {
-	err = c.Invoke(a0, "RemoteSource", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) RemoteSyncJob(a0 context.Context, a1 string, a2 string) (r0 playlists.SyncJob, err error) {
-	err = c.Invoke(a0, "RemoteSyncJob", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) ReplayWorkPackage(a0 context.Context, a1 string, a2 string, a3 string, a4 string) (r0 workpackages.Package, r1 bool, err error) {
-	err = c.Invoke(a0, "ReplayWorkPackage", []any{a1, a2, a3, a4}, []any{&r0, &r1})
-	return r0, r1, err
-}
-
-func (c *Client) ReplayWriteback(a0 context.Context, a1 string, a2 writebackhost.Request, a3 string) (r0 writebackhost.Job, r1 bool, err error) {
-	err = c.Invoke(a0, "ReplayWriteback", []any{a1, a2, a3}, []any{&r0, &r1})
-	return r0, r1, err
-}
-
-func (c *Client) ReserveEnrichmentPreview(a0 context.Context, a1 enrichment.Work, a2 int64) (err error) {
-	err = c.Invoke(a0, "ReserveEnrichmentPreview", []any{a1, a2}, []any{})
-	return err
-}
-
-func (c *Client) Result(a0 context.Context, a1 string, a2 string, a3 string, a4 string) (r0 []uint8, err error) {
-	err = c.Invoke(a0, "Result", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) RevokeTimeline(a0 context.Context, a1 string, a2 string, a3 int64, a4 string) (r0 timeline.Evidence, err error) {
-	err = c.Invoke(a0, "RevokeTimeline", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) RootStatistics(a0 context.Context, a1 string, a2 string) (r0 library.RootStatistics, err error) {
-	err = c.Invoke(a0, "RootStatistics", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SaveAuth(a0 context.Context, a1 auth.Session) (err error) {
-	err = c.Invoke(a0, "SaveAuth", []any{a1}, []any{})
-	return err
-}
-
-func (c *Client) SaveCandidates(a0 context.Context, a1 string, a2 matching.Snapshot, a3 []candidates.Candidate) (r0 matching.CandidatePage, err error) {
-	err = c.Invoke(a0, "SaveCandidates", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SaveMatchingRun(a0 context.Context, a1 matching.Run) (err error) {
-	err = c.Invoke(a0, "SaveMatchingRun", []any{a1}, []any{})
-	return err
-}
-
-func (c *Client) SavePersonalProfile(a0 context.Context, a1 string, a2 *string) (r0 personal.Profile, err error) {
-	err = c.Invoke(a0, "SavePersonalProfile", []any{a1, a2}, []any{&r0})
 	return r0, err
 }

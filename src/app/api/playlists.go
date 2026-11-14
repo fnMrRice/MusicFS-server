@@ -3,9 +3,11 @@ package api
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
+	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 )
 
@@ -28,6 +30,17 @@ func (s *Server) RegisterPlaylists(service *playlists.AggregateService) {
 		page, err := remotePagination(r, false, true)
 		if err != nil {
 			return err
+		}
+		if personal.ValidKind(page.kind) {
+			p, err := service.Playlist(r.Context(), session.User.ID, page.kind)
+			if err != nil {
+				return err
+			}
+			items := []playlists.Playlist{}
+			if page.after < p.ID && strings.Contains(strings.ToLower(p.Name), strings.ToLower(page.query)) {
+				items = append(items, p)
+			}
+			return WriteJSON(w, http.StatusOK, albumPage{items, nil})
 		}
 		items, err := service.SearchPlaylists(r.Context(), session.User.ID, page.query, page.after, page.limit+1)
 		if err != nil {

@@ -17,6 +17,9 @@ func readPersonalPlaylist(ctx context.Context, tx *sql.Tx, owner, id string) (pl
 		return p, remoteNotFound(err)
 	}
 	err = json.Unmarshal(raw, &p)
+	if err == nil {
+		err = readMusicPlaylistEntries(ctx, tx, owner, &p)
+	}
 	return p, err
 }
 func savePersonalPlaylist(ctx context.Context, tx *sql.Tx, owner string, p *playlists.Playlist, insert bool) error {

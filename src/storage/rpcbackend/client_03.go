@@ -16,6 +16,16 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/tasks"
 )
 
+func (c *Client) Finish(a0 context.Context, a1 jobs.Job, a2 int, a3 error) (err error) {
+	err = c.Invoke(a0, "Finish", []any{a1, a2, a3}, []any{})
+	return err
+}
+
+func (c *Client) FinishAutomation(a0 context.Context, a1 string, a2 string, a3 *string) (err error) {
+	err = c.Invoke(a0, "FinishAutomation", []any{a1, a2, a3}, []any{})
+	return err
+}
+
 func (c *Client) FinishAutomationAction(a0 context.Context, a1 string, a2 enrichment.AutomationAction) (err error) {
 	err = c.Invoke(a0, "FinishAutomationAction", []any{a1, a2}, []any{})
 	return err
@@ -123,15 +133,5 @@ func (c *Client) ImportRemotePlaylist(a0 context.Context, a1 string, a2 playlist
 
 func (c *Client) InvalidateContent(a0 context.Context, a1 string, a2 string) (err error) {
 	err = c.Invoke(a0, "InvalidateContent", []any{a1, a2}, []any{})
-	return err
-}
-
-func (c *Client) InvalidateDerived(a0 context.Context, a1 string, a2 string) (err error) {
-	err = c.Invoke(a0, "InvalidateDerived", []any{a1, a2}, []any{})
-	return err
-}
-
-func (c *Client) InvalidateFingerprint(a0 context.Context, a1 string, a2 string) (err error) {
-	err = c.Invoke(a0, "InvalidateFingerprint", []any{a1, a2}, []any{})
 	return err
 }

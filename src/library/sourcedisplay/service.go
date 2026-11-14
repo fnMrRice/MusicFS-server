@@ -40,6 +40,9 @@ func Validate(refs []playlists.SourceRef) error {
 		return domain.Fail("INVALID_ARGUMENT", "Source lookup must contain 1 to 50 references")
 	}
 	for _, ref := range refs {
+		if ref.TrackID != nil {
+			return domain.Fail("INVALID_ARGUMENT", "Source lookup requires a local or remote source identifier")
+		}
 		if err := ref.Validate(); err != nil {
 			return err
 		}

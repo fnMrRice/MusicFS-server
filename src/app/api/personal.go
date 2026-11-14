@@ -11,6 +11,16 @@ import (
 )
 
 func (s *Server) RegisterPersonal(service *personal.Service) {
+	s.Handle("GET /api/v1/me/content-history/{type}", true, false, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
+		if r.URL.RawQuery != "" {
+			return personal.Invalid()
+		}
+		items, err := service.ContentHistory(r.Context(), a.User.ID, r.PathValue("type"))
+		if err != nil {
+			return err
+		}
+		return WriteJSON(w, http.StatusOK, map[string]any{"items": items})
+	})
 	s.Handle("GET /api/v1/me/profile", true, false, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
 		p, err := service.PersonalProfile(r.Context(), a.User.ID)
 		if err != nil {
@@ -58,21 +68,40 @@ func (s *Server) RegisterPersonal(service *personal.Service) {
 		}
 	}
 	s.Handle("PUT /api/v1/me/favorites/{id}", true, true, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
-		if r.ContentLength != 0 {
-			return personal.Invalid()
+		var entry personal.Entry
+		var err error
+		if r.ContentLength == 0 {
+			entry, err = service.PutFavorite(r.Context(), a.User.ID, r.PathValue("id"))
+		} else {
+			var input struct {
+				Source json.RawMessage `json:"forcedSourceTrackId"`
+			}
+			if err = DecodeJSON(w, r, &input); err != nil {
+				return err
+			}
+			var source *string
+			if len(input.Source) == 0 || json.Unmarshal(input.Source, &source) != nil || source != nil && !personal.ValidID(*source) {
+				return personal.Invalid()
+			}
+			entry, err = service.SetFavoriteSource(r.Context(), a.User.ID, r.PathValue("id"), source)
 		}
-		entry, err := service.PutFavorite(r.Context(), a.User.ID, r.PathValue("id"))
 		if err != nil {
 			return err
 		}
 		return WriteJSON(w, http.StatusOK, entry)
 	})
 	s.Handle("POST /api/v1/me/recently-played", true, true, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
-		var input personal.PlaybackStarted
+		var input struct {
+			SourceTrackID     string `json:"sourceTrackId"`
+			PlaybackSessionID string `json:"playbackSessionId"`
+			AttemptID         string `json:"attemptId"`
+		}
 		if err := DecodeJSON(w, r, &input); err != nil {
 			return err
 		}
-		entry, err := service.RecordPlaybackStarted(r.Context(), a, input)
+		entry, err := service.RecordPlaybackStarted(r.Context(), a, personal.PlaybackStarted{
+			SourceTrackID: input.SourceTrackID, PlaybackSessionID: input.PlaybackSessionID, AttemptID: input.AttemptID,
+		})
 		if err != nil {
 			return err
 		}

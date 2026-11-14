@@ -194,22 +194,27 @@ func groupedLibraryItems(ctx context.Context, tx *sql.Tx, owner, provider string
 		if !visible {
 			continue
 		}
-		sort.Slice(members, func(i, j int) bool { return preferredVersionLess(members[i], members[j]) })
-		representative := members[0]
-		if preferred := manual[key]; preferred != nil {
-			for _, member := range members {
-				if member.ID == *preferred {
-					representative = member
-					representative.ManualSourceTrackID = preferred
-					break
-				}
-			}
-		}
-		representative.Versions = members
-		items = append(items, representative)
+		items = append(items, representativeTrack(members, manual[key]))
 	}
 	sort.Slice(items, func(i, j int) bool { return groupedTrackLess(items[i], items[j]) })
 	return items, nil
+}
+
+// 两种曲目列表共用人工优先、否则按可用性和音质选择来源的规则。
+func representativeTrack(members []library.Track, preferred *string) library.Track {
+	sort.Slice(members, func(i, j int) bool { return preferredVersionLess(members[i], members[j]) })
+	representative := members[0]
+	if preferred != nil {
+		for _, member := range members {
+			if member.ID == *preferred {
+				representative = member
+				representative.ManualSourceTrackID = preferred
+				break
+			}
+		}
+	}
+	representative.Versions = members
+	return representative
 }
 
 func groupedTrackLess(left, right library.Track) bool {

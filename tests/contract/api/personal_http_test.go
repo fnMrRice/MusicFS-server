@@ -147,7 +147,7 @@ func TestPersonalHTTPProfileFavoritesHistoryAndAuthorization(t *testing.T) {
 		}
 		request("PUT", favoritePath, nil, status, change)
 	}
-	d := playback.Description{SessionID: domain.NewID(), AttemptID: domain.NewID(), AssetID: first.AssetID}
+	d := playback.Description{SessionID: domain.NewID(), AttemptID: domain.NewID(), AssetID: first.AssetID, SourceTrackID: first.ID}
 	raw, _ := json.Marshal(d)
 	if err := store.PlaybackSave(ctx, d.SessionID, auth.Digest(cookie.Value), "admin", raw, "active", time.Now().Add(time.Hour)); err != nil {
 		t.Fatal(err)

@@ -72,6 +72,11 @@ func (c *Client) BeginWriteback(a0 context.Context, a1 string, a2 string, a3 wri
 	return err
 }
 
+func (c *Client) BindMusicSourcePlugins(a0 context.Context, a1 map[string]string) (err error) {
+	err = c.Invoke(a0, "BindMusicSourcePlugins", []any{a1}, []any{})
+	return err
+}
+
 func (c *Client) BulkMerge(a0 context.Context, a1 string, a2 matching.BulkMergeRequest, a3 string) (r0 matching.BulkMergeResult, err error) {
 	err = c.Invoke(a0, "BulkMerge", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
@@ -129,10 +134,5 @@ func (c *Client) Candidates(a0 context.Context, a1 string, a2 string, a3 string,
 
 func (c *Client) CatalogArtist(a0 context.Context, a1 string, a2 string) (r0 catalog.Artist, err error) {
 	err = c.Invoke(a0, "CatalogArtist", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) CatalogFacets(a0 context.Context, a1 string, a2 string) (r0 catalog.Facets, err error) {
-	err = c.Invoke(a0, "CatalogFacets", []any{a1, a2}, []any{&r0})
 	return r0, err
 }

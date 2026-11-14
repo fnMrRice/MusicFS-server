@@ -12,6 +12,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
 	"github.com/fnMrRice/MusicFS-server/src/library/catalog"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/library/music"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/sourcedisplay"
@@ -38,9 +39,12 @@ const ContractVersion = 1
 // Callback-bearing operations retain their guard for the complete transaction.
 // Implementations must not acknowledge durable writes before commit succeeds.
 type Backend interface {
+	// BindMusicSourcePlugins 保存来源实例与插件的身份映射，供插件内编号解析使用。
+	BindMusicSourcePlugins(context.Context, map[string]string) error
 	auth.Repository
 	albums.Repository
 	catalog.Repository
+	music.Repository
 	config.Journal
 	enrichment.Repository
 	enrichment.AutomationRepository

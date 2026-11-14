@@ -93,7 +93,7 @@ func catalogDirectories(owner, provider, root, filename string, cache map[catalo
 
 func readCatalogData(ctx context.Context, tx *sql.Tx, owner, provider string) (catalogData, error) {
 	data := catalogData{tracks: []catalogTrack{}, albums: []catalog.Album{}, members: map[string][]string{}}
-	rows, err := tx.QueryContext(ctx, ordinaryMusicSources+`SELECT t.document,t.root_id,t.path,EXISTS(SELECT 1 FROM personal_favorites f WHERE f.owner=t.owner AND f.source_track_id=t.id) FROM tracks t WHERE t.owner=? AND (?='' OR t.provider=?) AND `+ordinaryMusicTrack+` ORDER BY t.id LIMIT ?`, owner, owner, provider, provider, catalog.MaxItems+1)
+	rows, err := tx.QueryContext(ctx, ordinaryMusicSources+`SELECT t.document,t.root_id,t.path,EXISTS(SELECT 1 FROM music_playlist_entries f JOIN music_sources s ON s.owner=f.owner AND s.track_id=f.track_id WHERE f.owner=t.owner AND f.playlist_id='favorites' AND f.binding_id='' AND s.id=t.id) FROM tracks t WHERE t.owner=? AND (?='' OR t.provider=?) AND `+ordinaryMusicTrack+` ORDER BY t.id LIMIT ?`, owner, owner, provider, provider, catalog.MaxItems+1)
 	if err != nil {
 		return data, err
 	}

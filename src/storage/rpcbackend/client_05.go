@@ -4,7 +4,8 @@ package rpcbackend
 
 import (
 	"context"
-	"github.com/fnMrRice/MusicFS-server/src/core/auth"
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
@@ -12,13 +13,66 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
-	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
-	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
-	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
+	"time"
 )
+
+func (c *Client) PendingConfigOperations(a0 context.Context, a1 string) (r0 []config.Operation, err error) {
+	err = c.Invoke(a0, "PendingConfigOperations", []any{a1}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) PendingContentHistory(a0 context.Context, a1 string, a2 string) (r0 []personal.HistoryDelivery, err error) {
+	err = c.Invoke(a0, "PendingContentHistory", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) PendingPublications(a0 context.Context, a1 string, a2 int) (r0 []mediastore.Publication, err error) {
+	err = c.Invoke(a0, "PendingPublications", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) PersonalCollection(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 personal.Page, err error) {
+	err = c.Invoke(a0, "PersonalCollection", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) PersonalProfile(a0 context.Context, a1 string) (r0 personal.Profile, err error) {
+	err = c.Invoke(a0, "PersonalProfile", []any{a1}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) PlaybackOwner(a0 context.Context, a1 string) (r0 string, err error) {
+	err = c.Invoke(a0, "PlaybackOwner", []any{a1}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) PlaybackReset(a0 context.Context) (err error) {
+	err = c.Invoke(a0, "PlaybackReset", []any{}, []any{})
+	return err
+}
+
+func (c *Client) PlaybackSave(a0 context.Context, a1 string, a2 string, a3 string, a4 []uint8, a5 string, a6 time.Time) (err error) {
+	err = c.Invoke(a0, "PlaybackSave", []any{a1, a2, a3, a4, a5, a6}, []any{})
+	return err
+}
+
+func (c *Client) Playlist(a0 context.Context, a1 string, a2 string) (r0 playlists.Playlist, err error) {
+	err = c.Invoke(a0, "Playlist", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) PlaylistChanges(a0 context.Context, a1 string, a2 string, a3 int64, a4 int) (r0 []playlists.PlaylistChange, err error) {
+	err = c.Invoke(a0, "PlaylistChanges", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) PlaylistSnapshot(a0 context.Context, a1 string, a2 string, a3 int64) (r0 playlists.AggregateSnapshot, err error) {
+	err = c.Invoke(a0, "PlaylistSnapshot", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) Playlists(a0 context.Context, a1 string, a2 string, a3 int) (r0 []playlists.Playlist, err error) {
 	err = c.Invoke(a0, "Playlists", []any{a1, a2, a3}, []any{&r0})
@@ -57,6 +111,11 @@ func (c *Client) PublishEvidence(a0 context.Context, a1 string, a2 identificatio
 	return err
 }
 
+func (c *Client) PublishOnlineTrack(a0 context.Context, a1 string, a2 string, a3 online.Track) (r0 library.Track, err error) {
+	err = c.Invoke(a0, "PublishOnlineTrack", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) PublishProcessedCache(a0 context.Context, a1 processedcache.Record, a2 processedcache.Authorization) (err error) {
 	err = c.Invoke(a0, "PublishProcessedCache", []any{a1, a2}, []any{})
 	return err
@@ -80,64 +139,4 @@ func (c *Client) PutPluginSettings(a0 context.Context, a1 string, a2 string, a3 
 func (c *Client) QueueAutomaticEnrichment(a0 context.Context, a1 string, a2 string, a3 enrichment.JobRequest) (r0 enrichment.Job, r1 bool, err error) {
 	err = c.Invoke(a0, "QueueAutomaticEnrichment", []any{a1, a2, a3}, []any{&r0, &r1})
 	return r0, r1, err
-}
-
-func (c *Client) QueueEnrichment(a0 context.Context, a1 string, a2 enrichment.JobRequest, a3 string) (r0 enrichment.Job, r1 bool, err error) {
-	err = c.Invoke(a0, "QueueEnrichment", []any{a1, a2, a3}, []any{&r0, &r1})
-	return r0, r1, err
-}
-
-func (c *Client) QueueFingerprint(a0 context.Context, a1 string, a2 identification.FingerprintTarget, a3 string, a4 bool) (r0 identification.FingerprintJob, r1 bool, err error) {
-	err = c.Invoke(a0, "QueueFingerprint", []any{a1, a2, a3, a4}, []any{&r0, &r1})
-	return r0, r1, err
-}
-
-func (c *Client) QueueHash(a0 context.Context, a1 string, a2 identification.HashTarget, a3 string, a4 bool) (r0 identification.HashJob, r1 bool, err error) {
-	err = c.Invoke(a0, "QueueHash", []any{a1, a2, a3, a4}, []any{&r0, &r1})
-	return r0, r1, err
-}
-
-func (c *Client) QueueRemoteSync(a0 context.Context, a1 string, a2 string, a3 int64, a4 playlists.Binding, a5 string) (r0 playlists.SyncJob, r1 bool, err error) {
-	err = c.Invoke(a0, "QueueRemoteSync", []any{a1, a2, a3, a4, a5}, []any{&r0, &r1})
-	return r0, r1, err
-}
-
-func (c *Client) QueueWriteback(a0 context.Context, a1 string, a2 writebackhost.Request, a3 writeback.Target, a4 string) (r0 writebackhost.Job, r1 bool, err error) {
-	err = c.Invoke(a0, "QueueWriteback", []any{a1, a2, a3, a4}, []any{&r0, &r1})
-	return r0, r1, err
-}
-
-func (c *Client) RebuildPlaylist(a0 context.Context, a1 string, a2 string, a3 playlists.RebuildRequest, a4 string) (r0 playlists.AggregateSnapshot, err error) {
-	err = c.Invoke(a0, "RebuildPlaylist", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) RecordBackupObject(a0 context.Context, a1 string, a2 string, a3 string) (err error) {
-	err = c.Invoke(a0, "RecordBackupObject", []any{a1, a2, a3}, []any{})
-	return err
-}
-
-func (c *Client) RecordPlaybackStarted(a0 context.Context, a1 auth.Session, a2 personal.PlaybackStarted) (r0 personal.Entry, err error) {
-	err = c.Invoke(a0, "RecordPlaybackStarted", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) Recording(a0 context.Context, a1 string, a2 string) (r0 matching.Recording, err error) {
-	err = c.Invoke(a0, "Recording", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) RecordingCover(a0 context.Context, a1 string, a2 string) (r0 library.RecordingCover, err error) {
-	err = c.Invoke(a0, "RecordingCover", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) RecoverEnrichment(a0 context.Context) (err error) {
-	err = c.Invoke(a0, "RecoverEnrichment", []any{}, []any{})
-	return err
-}
-
-func (c *Client) RecoverFingerprints(a0 context.Context) (err error) {
-	err = c.Invoke(a0, "RecoverFingerprints", []any{}, []any{})
-	return err
 }

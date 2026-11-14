@@ -17,6 +17,7 @@ type Library struct {
 	Order             int    `json:"order"`
 	Icon              string `json:"icon"`
 	TrackListOptional bool   `json:"trackListOptional"`
+	SeparateHistory   bool   `json:"separateHistory,omitempty"`
 }
 
 // Descriptor 描述内容类型的署名角色、外部编号来源和受支持的宿主视图。

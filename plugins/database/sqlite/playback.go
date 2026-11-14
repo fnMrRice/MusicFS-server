@@ -48,12 +48,22 @@ func (s *Store) SaveResult(ctx context.Context, owner, route, key, digest string
 	_, err := s.DB.ExecContext(ctx, "INSERT INTO idempotency VALUES(?,?,?,?,?,?)", owner, route, key, digest, raw, time.Now().UTC().Add(time.Hour).Format(time.RFC3339Nano))
 	return err
 }
-func (s *Store) CommitPlayback(ctx context.Context, id, owner, user string, raw []byte, expiry time.Time, route, key, digest string) error {
+func (s *Store) CommitPlayback(ctx context.Context, id, owner, user string, raw []byte, expiry time.Time, route, key, digest, trackID, sourceID string) error {
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
+	if trackID != "" {
+		var valid bool
+		err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM music_sources s JOIN tracks t ON s.id=t.id AND s.owner=t.owner WHERE s.owner=? AND s.track_id=? AND s.id=? AND json_extract(t.document,'$.availability')='available')`, user, trackID, sourceID).Scan(&valid)
+		if err != nil {
+			return err
+		}
+		if !valid {
+			return domain.Fail("CONFLICT", "Selected source is no longer an available member of the track")
+		}
+	}
 	_, err = tx.ExecContext(ctx, "INSERT INTO playback_sessions VALUES(?,?,?,?,'active',?) ON CONFLICT(id) DO UPDATE SET description=excluded.description", id, owner, user, raw, expiry.UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		return err

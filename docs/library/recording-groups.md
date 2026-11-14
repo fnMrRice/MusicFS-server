@@ -13,7 +13,7 @@ GET /api/v1/source-tracks?groupBy=recording&limit=50
 - `recordingId`：人工确认的录音 ID；尚未关联或明确解除的来源为 `null`。
 - `versions`：该录音全部本人来源曲目，包含代表来源。尚未关联的项目包含一个版本。成员不嵌套 `versions`。
 
-代表来源优先选择 `availability=available`，再按显示名称与来源 ID 排序。代表来源的 `sourceTrackId` 仍指向原来源，播放请求不改成 Recording ID。展开后可以明确播放其他版本；关联不保证跨版本时间轴一致，也不会删除文件、去掉版本或扩大来源权限。
+代表来源优先使用用户为录音指定的版本。自动策略先比较可用性，再按已知码率、文件大小降序排列，最后以显示名称与来源 ID 定序。展开后可以明确播放其他版本。歌单条目通过可选的强制来源独立指定版本。[曲目资料、歌单与播放记录](music-catalog.md)
 
 分组前读取本用户的全部来源，因此同一录音的成员即使原先分布在不同曲目页，也会完整出现在 `versions`。`providerInstanceId` 过滤选择包含该来源实例的组；组内仍返回所有本人来源，避免隐藏其他版本。未关联来源按各自的 `sourceTrackId` 独立显示。
 

@@ -9,9 +9,11 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/contenttype"
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/library/music"
 )
 
 const (
@@ -30,8 +32,11 @@ type Profile struct {
 }
 
 type Entry struct {
-	Track      library.Track `json:"track"`
-	RecordedAt time.Time     `json:"recordedAt"`
+	ForcedSourceID *string        `json:"forcedSourceTrackId"`
+	MusicTrack     music.Track    `json:"musicTrack"`
+	Track          *library.Track `json:"track"`
+	RecordedAt     time.Time      `json:"recordedAt"`
+	HistoryTarget  *HistoryTarget `json:"historyTarget,omitempty"`
 }
 
 type Page struct {
@@ -41,21 +46,29 @@ type Page struct {
 }
 
 type PlaybackStarted struct {
-	SourceTrackID     string `json:"sourceTrackId"`
-	PlaybackSessionID string `json:"playbackSessionId"`
-	AttemptID         string `json:"attemptId"`
+	SourceTrackID     string   `json:"sourceTrackId"`
+	PlaybackSessionID string   `json:"playbackSessionId"`
+	AttemptID         string   `json:"attemptId"`
+	SeparateTypes     []string `json:"separateTypes,omitempty"`
 }
 
 type Repository interface {
+	PendingContentHistory(context.Context, string, string) ([]HistoryDelivery, error)
+	ConfirmContentHistory(context.Context, string, string, string) error
 	PersonalProfile(context.Context, string) (Profile, error)
 	SavePersonalProfile(context.Context, string, *string) (Profile, error)
 	PersonalCollection(context.Context, string, string, string, int) (Page, error)
 	PutFavorite(context.Context, string, string) (Entry, error)
+	SetFavoriteSource(context.Context, string, string, *string) (Entry, error)
 	DeletePersonalCollection(context.Context, string, string, string) error
 	RecordPlaybackStarted(context.Context, auth.Session, PlaybackStarted) (Entry, error)
 }
 
-type Service struct{ Repository }
+type Service struct {
+	Repository
+	histories     map[string]contenttype.History
+	separateTypes []string
+}
 
 func New(repo Repository) *Service { return &Service{Repository: repo} }
 

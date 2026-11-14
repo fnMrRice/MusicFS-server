@@ -10,33 +10,27 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/library/music"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 )
 
-func personalTable(kind string) (string, string) {
-	if kind == personal.Favorites {
-		return "personal_favorites", "created_at"
-	}
-	return "personal_recently_played", "played_at"
-}
-
 func bumpPersonalRevision(ctx context.Context, tx *sql.Tx, owner, kind string) error {
-	_, err := tx.ExecContext(ctx, "INSERT INTO personal_collection_revisions VALUES(?,?,1) ON CONFLICT(owner,kind) DO UPDATE SET revision=revision+1", owner, kind)
+	_, err := tx.ExecContext(ctx, "INSERT INTO personal_collection_revisions(owner,kind,revision) VALUES(?,?,1) ON CONFLICT(owner,kind) DO UPDATE SET revision=revision+1", owner, kind)
 	return err
 }
 
-func readPersonalTrack(ctx context.Context, tx *sql.Tx, owner, id string) (library.Track, error) {
+func readPersonalTrack(ctx context.Context, tx *sql.Tx, owner, id string) (*library.Track, error) {
 	var track library.Track
 	var raw []byte
 	err := tx.QueryRowContext(ctx, "SELECT document FROM tracks WHERE owner=? AND id=?", owner, id).Scan(&raw)
 	if errors.Is(err, sql.ErrNoRows) {
-		return track, domain.Fail("NOT_FOUND", "Track was not found")
+		return &track, domain.Fail("NOT_FOUND", "Track was not found")
 	}
 	if err != nil {
-		return track, err
+		return &track, err
 	}
 	err = json.Unmarshal(raw, &track)
-	return track, err
+	return &track, err
 }
 
 func (s *Store) PersonalCollection(ctx context.Context, owner, kind, cursor string, limit int) (personal.Page, error) {
@@ -73,31 +67,48 @@ func (s *Store) PersonalCollection(ctx context.Context, owner, kind, cursor stri
 			return page, err
 		}
 	}
-	table, column := personalTable(kind)
-	rows, err := tx.QueryContext(ctx, "SELECT t.document,c."+column+" FROM "+table+" c JOIN tracks t ON t.owner=c.owner AND t.id=c.source_track_id WHERE c.owner=? ORDER BY c."+column+" DESC,c.source_track_id LIMIT ? OFFSET ?", owner, limit+1, position)
-	if err != nil {
-		return page, err
-	}
-	for rows.Next() {
-		var raw []byte
+	var tracks []music.Track
+	byID := map[string]int{}
+	var sources []*string
+	var trackPositions []int
+	err = musicRows(ctx, tx, `SELECT `+musicTrackColumns+`,p.forced_source_id,p.updated_at FROM music_playlist_entries p JOIN music_tracks m ON m.id=p.track_id AND m.owner=p.owner
+ WHERE p.owner=? AND p.playlist_id=? AND p.binding_id='' ORDER BY p.updated_at DESC,p.entry_id LIMIT ? OFFSET ?`, func(rows *sql.Rows) error {
+		track := music.Track{Artists: []music.Artist{}, Albums: []music.Album{}, Sources: []music.Source{}}
+		var source *string
 		var stamp string
-		var entry personal.Entry
-		if err = rows.Scan(&raw, &stamp); err == nil {
-			err = json.Unmarshal(raw, &entry.Track)
-		}
-		if err == nil {
-			entry.RecordedAt, err = time.Parse(time.RFC3339Nano, stamp)
-		}
+		err := rows.Scan(&track.ID, &track.Title, &track.CoverPath, &track.Genre, &track.Year, &track.Rating, &track.Revision, &track.CreatedAt, &track.UpdatedAt, &source, &stamp)
 		if err != nil {
-			rows.Close()
-			return page, err
+			return err
 		}
-		page.Items = append(page.Items, entry)
-	}
-	err = rows.Err()
-	rows.Close()
+		t, err := time.Parse(time.RFC3339Nano, stamp)
+		if err != nil {
+			return err
+		}
+		index, exists := byID[track.ID]
+		if !exists {
+			index = len(tracks)
+			byID[track.ID] = index
+			tracks = append(tracks, track)
+		}
+		trackPositions = append(trackPositions, index)
+		sources = append(sources, source)
+		page.Items = append(page.Items, personal.Entry{RecordedAt: t})
+		return nil
+	}, owner, kind, limit+1, position)
 	if err != nil {
 		return page, err
+	}
+	if err = loadMusicRelations(ctx, tx, owner, tracks, false); err != nil {
+		return page, err
+	}
+	for i, pos := range trackPositions {
+		t := tracks[pos]
+		page.Items[i].ForcedSourceID = sources[i]
+		page.Items[i].MusicTrack = t
+		page.Items[i].Track = t.SelectedSource
+		if sources[i] != nil {
+			page.Items[i].Track = exactMusicSource(t, *sources[i])
+		}
 	}
 	if len(page.Items) > limit {
 		page.Items = page.Items[:limit]
@@ -123,6 +134,14 @@ func (s *Store) PersonalCollection(ctx context.Context, owner, kind, cursor stri
 }
 
 func (s *Store) PutFavorite(ctx context.Context, owner, id string) (personal.Entry, error) {
+	return s.setFavorite(ctx, owner, id, nil, false)
+}
+
+func (s *Store) SetFavoriteSource(ctx context.Context, owner, id string, source *string) (personal.Entry, error) {
+	return s.setFavorite(ctx, owner, id, source, true)
+}
+
+func (s *Store) setFavorite(ctx context.Context, owner, id string, source *string, changeSource bool) (personal.Entry, error) {
 	var entry personal.Entry
 	if !personal.ValidID(id) {
 		return entry, personal.Invalid()
@@ -132,28 +151,55 @@ func (s *Store) PutFavorite(ctx context.Context, owner, id string) (personal.Ent
 		return entry, err
 	}
 	defer tx.Rollback()
-	entry.Track, err = readPersonalTrack(ctx, tx, owner, id)
+	id, err = personalTrackID(ctx, tx, owner, id)
 	if err != nil {
 		return entry, err
 	}
+	entry.MusicTrack, err = readMusicTrack(ctx, tx, owner, id)
+	if err != nil {
+		return entry, err
+	}
+	entry.Track = entry.MusicTrack.SelectedSource
 	var stamp string
-	err = tx.QueryRowContext(ctx, "SELECT created_at FROM personal_favorites WHERE owner=? AND source_track_id=?", owner, id).Scan(&stamp)
+	err = tx.QueryRowContext(ctx, "SELECT created_at,forced_source_id FROM music_playlist_entries WHERE owner=? AND playlist_id='favorites' AND binding_id='' AND entry_id=?", owner, id).Scan(&stamp, &entry.ForcedSourceID)
 	if errors.Is(err, sql.ErrNoRows) {
 		var count int
-		if err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM personal_favorites WHERE owner=?", owner).Scan(&count); err != nil {
+		if err = tx.QueryRowContext(ctx, "SELECT count(*) FROM music_playlist_entries WHERE owner=? AND playlist_id='favorites' AND binding_id=''", owner).Scan(&count); err != nil {
 			return entry, err
 		}
 		if count >= personal.MaxFavorites {
 			return entry, domain.Fail("RATE_LIMITED", "Favorite collection limit reached")
 		}
 		stamp = time.Now().UTC().Format("2006-01-02T15:04:05.000000000Z")
-		if _, err = tx.ExecContext(ctx, "INSERT INTO personal_favorites VALUES(?,?,?)", owner, id, stamp); err != nil {
+		_, err = tx.ExecContext(ctx, `INSERT INTO music_playlist_entries(owner,playlist_id,binding_id,entry_id,track_id,position,created_at,updated_at) VALUES(?,'favorites','',?,?,0,?,?)`, owner, id, id, stamp, stamp)
+		if err != nil {
 			return entry, err
 		}
 		err = bumpPersonalRevision(ctx, tx, owner, personal.Favorites)
 	}
 	if err != nil {
 		return entry, err
+	}
+	if changeSource && !sameSource(source, entry.ForcedSourceID) {
+		if source != nil {
+			var member bool
+			if err = tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM music_sources WHERE owner=? AND track_id=? AND id=?)", owner, id, *source).Scan(&member); err != nil {
+				return entry, err
+			}
+			if !member {
+				return entry, domain.Fail("CONFLICT", "Selected source is not a member of the track")
+			}
+		}
+		if _, err = tx.ExecContext(ctx, "UPDATE music_playlist_entries SET forced_source_id=? WHERE owner=? AND playlist_id='favorites' AND binding_id='' AND entry_id=?", source, owner, id); err != nil {
+			return entry, err
+		}
+		entry.ForcedSourceID = source
+		if err = bumpPersonalRevision(ctx, tx, owner, personal.Favorites); err != nil {
+			return entry, err
+		}
+	}
+	if entry.ForcedSourceID != nil {
+		entry.Track = exactMusicSource(entry.MusicTrack, *entry.ForcedSourceID)
 	}
 	entry.RecordedAt, err = time.Parse(time.RFC3339Nano, stamp)
 	if err != nil {
@@ -171,8 +217,13 @@ func (s *Store) DeletePersonalCollection(ctx context.Context, owner, kind, id st
 		return err
 	}
 	defer tx.Rollback()
-	table, _ := personalTable(kind)
-	result, err := tx.ExecContext(ctx, "DELETE FROM "+table+" WHERE owner=? AND (?='' OR source_track_id=?)", owner, id, id)
+	if kind == personal.Favorites && id != "" {
+		id, err = personalTrackID(ctx, tx, owner, id)
+		if err != nil {
+			return err
+		}
+	}
+	result, err := tx.ExecContext(ctx, "DELETE FROM music_playlist_entries WHERE owner=? AND playlist_id=? AND binding_id='' AND (?='' OR entry_id=?)", owner, kind, id, id)
 	if err != nil {
 		return err
 	}
@@ -189,9 +240,35 @@ func (s *Store) DeletePersonalCollection(ctx context.Context, owner, kind, id st
 		return err
 	}
 	if kind == personal.Recent {
-		if _, err = tx.ExecContext(ctx, "DELETE FROM personal_playback_receipts WHERE owner=? AND (?='' OR source_track_id=?)", owner, id, id); err != nil {
+		if _, err = tx.ExecContext(ctx, "DELETE FROM personal_playback_receipts WHERE owner=? AND history_target IS NULL AND (?='' OR source_track_id=?)", owner, id, id); err != nil {
 			return err
 		}
 	}
 	return tx.Commit()
+}
+
+func personalTrackID(ctx context.Context, tx *sql.Tx, owner, id string) (string, error) {
+	var resolved string
+	err := tx.QueryRowContext(ctx, "SELECT coalesce((SELECT track_id FROM music_sources WHERE owner=? AND id=?),?)", owner, id, id).Scan(&resolved)
+	return resolved, err
+}
+
+func sameSource(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
+}
+
+func exactMusicSource(track music.Track, id string) *library.Track {
+	if track.SelectedSource == nil {
+		return nil
+	}
+	for i := range track.SelectedSource.Versions {
+		member := &track.SelectedSource.Versions[i]
+		if member.ID == id {
+			return member
+		}
+	}
+	return nil
 }

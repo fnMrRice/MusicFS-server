@@ -42,6 +42,7 @@ descriptor["properties"]["library"] = obj({
     "icon": identifier,
     "trackListOptional": {"type": "boolean"},
 })
+descriptor["properties"]["library"]["properties"]["separateHistory"] = {"type": "boolean", "default": False}
 fields = {
     "title": text(256, 1), "description": text(16384),
     "externalIds": array(obj({"namespace": identifier, "value": text(256, 1)}), 32, True),
@@ -49,6 +50,10 @@ fields = {
     "tags": array(text(64, 1), 64, True),
 }
 definitions = {
+    "ContentHistoryEntry": obj({"workId": text(128, 1), "workTitle": {"type": "string"},
+                                "sourceTrackId": text(128, 1), "trackTitle": {"type": "string"},
+                                "recordedAt": ref("Timestamp")}),
+    "ContentHistory": obj({"items": {"type": "array", "items": ref("ContentHistoryEntry")}}),
     "ContentType": descriptor,
     "ContentTypes": obj({"items": {"type": "array", "items": ref("ContentType")}}),
     "CreateWork": obj({"contentType": identifier, **fields}),
@@ -99,6 +104,9 @@ list_works["parameters"] = [
     ]
 ]
 paths = {
+    "/me/content-history/{type}": {
+        "parameters": [{"name": "type", "in": "path", "required": True, "schema": identifier}],
+        "get": operation("getContentHistory", "ContentHistory", "按内容类型读取已登录用户的插件私有播放记录。")},
     "/content-types": {"get": operation("listContentTypes", "ContentTypes", "已注册的内容类型。library 声明作品库入口顺序、图标及可选的曲目列表展示。需要登录。")},
     "/works": {"get": list_works,
                "post": operation("createWork", "Work", "按已注册类型创建本人作品资料；不扫描文件、不按编号自动合并。", "CreateWork")},

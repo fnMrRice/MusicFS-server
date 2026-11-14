@@ -22,7 +22,6 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/catalog"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/musicdirs"
-	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/sourcedisplay"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/hashworker"
@@ -101,6 +100,10 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 			return nil, nil, fmt.Errorf("Storage configuration changed during startup; restart with the current configuration")
 		}
 		c = current
+	}
+	if err = store.BindMusicSourcePlugins(ctx, musicSourcePlugins(c)); err != nil {
+		store.Close()
+		return nil, nil, err
 	}
 	storageDriver, err := storage.Lookup(c.Storage.Backend)
 	if err != nil {
@@ -205,7 +208,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	handler := api.New(api.Options{Auth: sessions, InstanceID: instance, Ready: isReady, SecureCookie: c.TLSCert != "", Logger: log})
 	handler.RegisterLibrary(lib)
 	handler.RegisterCatalog(catalog.New(store))
-	handler.RegisterPersonal(personal.New(store))
+	handler.RegisterMusicLibrary(store)
 	handler.RegisterSourceDisplay(sourcedisplay.New(store, online))
 	handler.RegisterPluginManagement(pluginManager)
 	handler.RegisterOnline(online)
@@ -216,10 +219,13 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	handler.RegisterFingerprinting(fingerprints)
 	handler.RegisterMedia(content)
 	handler.RegisterAlbums(albums.New(store, content, lib))
-	if err := configureWorks(handler, store, lib); err != nil {
+	closeHistory, err := configureWorks(ctx, c, handler, store, lib)
+	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
+	beforeHistory := cleanup
+	cleanup = func() { closeHistory(); beforeHistory() }
 	handler.RegisterEnrichment(metadata)
 	taskService := tasks.New(store, queue, metadata, lib.TaskNames)
 	beforeTasks := cleanup

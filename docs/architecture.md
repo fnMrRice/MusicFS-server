@@ -28,6 +28,7 @@ Server 是 Go 模块化单体，统一管理来源、曲库、歌单、资料补
 
 | 对象 | 语义 |
 | --- | --- |
+| 曲目 / 歌手 / 专辑 | 曲目可在取得音频前建档。署名与专辑成员分别关联，曲目本身保存曲名、封面、流派、年份、星级及时间。详见[实体关系与接口](library/music-catalog.md) |
 | Recording | 一个录音版本；Live、Remix、翻唱分别建模 |
 | SourceTrack | providerInstanceId + externalId 唯一；未匹配也能播放 |
 | SourceAsset | 某来源、音质的不可变字节版本；内容变化创建新资产 |

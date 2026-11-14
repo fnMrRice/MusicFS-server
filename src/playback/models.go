@@ -25,9 +25,11 @@ type Preferences struct {
 	DSPExecution    string  `json:"dspExecution"`
 }
 type CreateRequest struct {
-	SourceTrackID string       `json:"sourceTrackId"`
-	Capabilities  Capabilities `json:"capabilities"`
-	Preferences   Preferences  `json:"preferences"`
+	TrackID        string       `json:"trackId,omitempty"`
+	ForcedSourceID string       `json:"forcedSourceTrackId,omitempty"`
+	SourceTrackID  string       `json:"sourceTrackId"`
+	Capabilities   Capabilities `json:"capabilities"`
+	Preferences    Preferences  `json:"preferences"`
 }
 type OutputProfile struct {
 	ID         string  `json:"id,omitempty"`
@@ -52,6 +54,7 @@ type Processing struct {
 	Parameters map[string]float64 `json:"parameters,omitempty"`
 }
 type Description struct {
+	SourceTrackID       string        `json:"sourceTrackId"`
 	DSPExecution        string        `json:"dspExecution"`
 	SessionID           string        `json:"sessionId"`
 	AttemptID           string        `json:"attemptId"`

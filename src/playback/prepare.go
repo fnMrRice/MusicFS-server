@@ -219,7 +219,7 @@ func (p *preparedInput) describe(id string, gain float64, expiry time.Time, tran
 	if p.online {
 		return p.describeOnline(id, expiry, transport)
 	}
-	d := Description{SessionID: id, AssetID: t.AssetID, DeliveryMode: "proxy", OutputProfile: OutputProfile{MIME: t.MIME, Codec: t.Codec, Container: t.Container, Transport: transport,
+	d := Description{SessionID: id, SourceTrackID: t.ID, AssetID: t.AssetID, DeliveryMode: "proxy", OutputProfile: OutputProfile{MIME: t.MIME, Codec: t.Codec, Container: t.Container, Transport: transport,
 		SampleRate: p.profile.SampleRate, Channels: p.profile.Channels, Layout: p.profile.Layout, BitrateBps: p.profile.BitrateBps}, ExpiresAt: expiry, SeekMode: "byteRange", EffectiveProcessing: []Processing{}, ResumeDecision: "continue"}
 	d.DSPExecution = p.dspExecution
 	for _, step := range p.decodeProcessing {

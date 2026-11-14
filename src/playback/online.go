@@ -40,7 +40,7 @@ func (s *Service) prepareOnline(ctx context.Context, owner string, t library.Tra
 }
 
 func (p *preparedInput) describeOnline(id string, expiry time.Time, transport string) Description {
-	return Description{SessionID: id, AssetID: p.track.AssetID, DeliveryMode: "proxy", OutputProfile: OutputProfile{MIME: p.track.MIME, Codec: p.track.Codec, Container: p.track.Container, Transport: transport}, ExpiresAt: expiry, SeekMode: "none", DSPExecution: p.dspExecution, EffectiveProcessing: []Processing{}, ResumeDecision: "continue"}
+	return Description{SessionID: id, SourceTrackID: p.track.ID, AssetID: p.track.AssetID, DeliveryMode: "proxy", OutputProfile: OutputProfile{MIME: p.track.MIME, Codec: p.track.Codec, Container: p.track.Container, Transport: transport}, ExpiresAt: expiry, SeekMode: "none", DSPExecution: p.dspExecution, EffectiveProcessing: []Processing{}, ResumeDecision: "continue"}
 }
 
 // onlineStream 在已有会话鉴权和实例租约之下按需打开一个顺序响应。

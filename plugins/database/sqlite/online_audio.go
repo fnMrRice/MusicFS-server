@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
@@ -43,6 +44,9 @@ func (s *Store) PublishOnlineTrack(ctx context.Context, owner, provider string, 
 		return empty, err
 	}
 	track := library.Track{ID: id, ProviderID: provider, DisplayName: metadata.Title, Title: &metadata.Title, Artists: library.NormalizeArtists(metadata.Artists), DurationMs: metadata.DurationMs, Availability: "available", AssetID: asset, Asset: &current}
+	if album := strings.TrimSpace(metadata.Album); album != "" {
+		track.Album = &album
+	}
 	raw, err = json.Marshal(track)
 	if err != nil {
 		return empty, err
