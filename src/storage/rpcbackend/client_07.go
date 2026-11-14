@@ -21,6 +21,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
+func (c *Client) RemoteSnapshot(a0 context.Context, a1 string, a2 string, a3 int64) (r0 playlists.Snapshot, err error) {
+	err = c.Invoke(a0, "RemoteSnapshot", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) RemoteSource(a0 context.Context, a1 string, a2 string) (r0 playlists.RemoteSource, err error) {
 	err = c.Invoke(a0, "RemoteSource", []any{a1, a2}, []any{&r0})
 	return r0, err
@@ -134,9 +139,4 @@ func (c *Client) SelectCover(a0 context.Context, a1 string, a2 albums.SelectCove
 func (c *Client) SelectRecordingCover(a0 context.Context, a1 string, a2 library.SelectRecordingCoverRequest, a3 string) (r0 library.RecordingCover, err error) {
 	err = c.Invoke(a0, "SelectRecordingCover", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
-}
-
-func (c *Client) SetConfigOperationStatus(a0 context.Context, a1 string, a2 string) (err error) {
-	err = c.Invoke(a0, "SetConfigOperationStatus", []any{a1, a2}, []any{})
-	return err
 }

@@ -117,7 +117,8 @@ func (s *Store) UpdateWork(ctx context.Context, owner, id string, request works.
 	if err != nil {
 		return result, err
 	}
-	changed, err := m.tx.ExecContext(ctx, "UPDATE works SET title=?,description=?,revision=?,show_in_track_list=?,document=? WHERE owner=? AND id=? AND revision=?", result.Title, result.Description, result.Revision, result.ShowInTrackList, raw, owner, id, request.ExpectedRevision)
+	// 合并可编辑字段，保留同一作品文档中独立选用的在线资料。
+	changed, err := m.tx.ExecContext(ctx, "UPDATE works SET title=?,description=?,revision=?,show_in_track_list=?,document=json_patch(document,json(?)) WHERE owner=? AND id=? AND revision=?", result.Title, result.Description, result.Revision, result.ShowInTrackList, string(raw), owner, id, request.ExpectedRevision)
 	if err != nil {
 		return result, err
 	}

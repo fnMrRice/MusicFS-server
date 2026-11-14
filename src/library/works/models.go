@@ -72,6 +72,8 @@ type Query struct {
 }
 
 type Repository interface {
+	WorkScrapedFields(context.Context, string, string) ([]ScrapedField, error)
+	SelectWorkScrapedField(context.Context, string, string, int64, ScrapedField, string) (int64, error)
 	CreateWork(context.Context, string, CreateRequest, string) (Work, error)
 	UpdateWork(context.Context, string, string, UpdateRequest, string) (Work, error)
 	Work(context.Context, string, string) (Work, error)

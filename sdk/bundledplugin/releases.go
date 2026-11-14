@@ -4,24 +4,25 @@
 package bundledplugin
 
 const (
-	LocalFilesVersion   = "0.3.0"
-	FFmpegVersion       = "0.7.0"
-	NCMVersion          = "0.1.0"
-	LocalScraperVersion = "0.1.0"
-	NetEaseVersion      = "0.1.0"
-	QQMusicVersion      = "0.1.0"
-	AppleMusicVersion   = "0.1.0"
-	BilibiliVersion     = "0.1.0"
-	GainVersion         = "0.1.0"
-	EqualizerVersion    = "0.1.0"
-	CompressorVersion   = "0.1.0"
-	ReverbVersion       = "0.1.0"
-	ChannelMixVersion   = "0.1.0"
-	SQLiteVersion       = "0.1.0"
-	ChromaprintVersion  = "0.1.0"
-	FLACVersion         = "0.1.0"
-	MatchingVersion     = "0.1.0"
-	ThumbnailVersion    = "0.1.0"
+	LocalFilesVersion     = "0.3.0"
+	FFmpegVersion         = "0.7.0"
+	NCMVersion            = "0.1.0"
+	LocalScraperVersion   = "0.1.0"
+	OnlineScrapersVersion = "0.1.0"
+	NetEaseVersion        = "0.1.0"
+	QQMusicVersion        = "0.1.0"
+	AppleMusicVersion     = "0.1.0"
+	BilibiliVersion       = "0.1.0"
+	GainVersion           = "0.1.0"
+	EqualizerVersion      = "0.1.0"
+	CompressorVersion     = "0.1.0"
+	ReverbVersion         = "0.1.0"
+	ChannelMixVersion     = "0.1.0"
+	SQLiteVersion         = "0.1.0"
+	ChromaprintVersion    = "0.1.0"
+	FLACVersion           = "0.1.0"
+	MatchingVersion       = "0.1.0"
+	ThumbnailVersion      = "0.1.0"
 )
 
 // Version returns the package's declared release, including before a worker
@@ -44,6 +45,9 @@ func Version(pluginID string) string {
 		return NCMVersion
 	case "musicfs.scraper.local":
 		return LocalScraperVersion
+	case "musicfs.scraper.musicbrainz", "musicfs.scraper.coverartarchive", "musicfs.scraper.acoustid",
+		"musicfs.scraper.lrclib", "musicfs.scraper.itunes", "musicfs.scraper.bangumi", "musicfs.scraper.dlsite":
+		return OnlineScrapersVersion
 	case "musicfs.plugin.source.netease":
 		return NetEaseVersion
 	case "musicfs.plugin.source.qqmusic":

@@ -8,12 +8,16 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/music"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
-	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"github.com/fnMrRice/MusicFS-server/src/tasks"
 )
+
+func (c *Client) InvalidateContent(a0 context.Context, a1 string, a2 string) (err error) {
+	err = c.Invoke(a0, "InvalidateContent", []any{a1, a2}, []any{})
+	return err
+}
 
 func (c *Client) InvalidateDerived(a0 context.Context, a1 string, a2 string) (err error) {
 	err = c.Invoke(a0, "InvalidateDerived", []any{a1, a2}, []any{})
@@ -127,10 +131,5 @@ func (c *Client) MusicTracks(a0 context.Context, a1 string, a2 music.Query) (r0 
 
 func (c *Client) NextAutomation(a0 context.Context) (r0 enrichment.AutomationWork, err error) {
 	err = c.Invoke(a0, "NextAutomation", []any{}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) NextWriteback(a0 context.Context) (r0 writebackhost.Work, err error) {
-	err = c.Invoke(a0, "NextWriteback", []any{}, []any{&r0})
 	return r0, err
 }

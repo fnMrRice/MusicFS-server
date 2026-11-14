@@ -1,0 +1,144 @@
+package online
+
+import (
+	"cmp"
+	"context"
+	"errors"
+	"net/http"
+	"net/url"
+	"slices"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/fnMrRice/MusicFS-server/sdk/fault"
+	"github.com/fnMrRice/MusicFS-server/sdk/scraper"
+)
+
+// ITunes 查询地区商店的文字目录，不提取推广图片或音频。
+func ITunes(client *http.Client) scraper.Plugin {
+	return newLookupPlugin(client, "itunes", "iTunes Search", []string{"trackDetails", "albumDetails", "albumTracks", "artistDetails"}, searchITunes)
+}
+
+var itunesPacer = requestPacer{interval: 3 * time.Second}
+
+type itunesEntry struct {
+	WrapperType, Kind, CollectionType                             string
+	ArtistID, CollectionID, TrackID                               int64
+	ArtistName, CollectionName, TrackName                         string
+	ArtistLinkURL, ArtistViewURL, CollectionViewURL, TrackViewURL string
+	ReleaseDate, PrimaryGenreName                                 string
+	DiscNumber, TrackNumber, TrackCount                           int
+	TrackTimeMillis                                               int64
+}
+
+func itunesQuery(ctx context.Context, client *http.Client, path string, params url.Values) ([]itunesEntry, error) {
+	if err := itunesPacer.wait(ctx); err != nil {
+		return nil, err
+	}
+	var response struct{ Results []itunesEntry }
+	err := lookupJSON(ctx, client, "https://itunes.apple.com/"+path, params, nil, &response)
+	return response.Results, err
+}
+
+func searchITunes(ctx context.Context, client *http.Client, field string, q scraper.Query) ([]scraper.Item, error) {
+	country := strings.ToUpper(cmp.Or(q.Country, "US"))
+	if len(country) != 2 || country[0] < 'A' || country[0] > 'Z' || country[1] < 'A' || country[1] > 'Z' {
+		return nil, fault.Fail("INVALID_ARGUMENT", "invalid store country")
+	}
+	entity, term := "song", strings.TrimSpace(q.Title+" "+q.Artist)
+	switch field {
+	case "albumDetails", "albumTracks":
+		entity, term = "album", strings.TrimSpace(cmp.Or(q.Album, q.Title)+" "+q.Artist)
+	case "artistDetails":
+		entity, term = "musicArtist", cmp.Or(q.Artist, q.Title)
+	}
+	path := "search"
+	params := url.Values{"country": {country}}
+	if q.ExternalID != "" {
+		id, err := lookupNumericID(q.ExternalID)
+		if err != nil {
+			return nil, err
+		}
+		path = "lookup"
+		params.Set("id", id)
+		if field == "albumTracks" {
+			params.Set("entity", "song")
+			params.Set("limit", "200")
+		}
+	} else {
+		if term == "" {
+			return nil, fault.Fail("INVALID_ARGUMENT", "search term or store ID required")
+		}
+		params.Set("media", "music")
+		params.Set("entity", entity)
+		params.Set("term", term)
+		params.Set("limit", "8")
+		if field == "albumTracks" {
+			params.Set("limit", "3")
+		}
+	}
+	entries, err := itunesQuery(ctx, client, path, params)
+	if err != nil {
+		return nil, err
+	}
+	results := []scraper.Item{}
+	for _, entry := range entries {
+		item, ok := entry.item(entity)
+		if !ok || (path == "lookup" && item.ID != params.Get("id")) {
+			continue
+		}
+		if field == "albumTracks" {
+			rows := entries
+			if path == "search" {
+				rows, err = itunesQuery(ctx, client, "lookup", url.Values{"country": {country}, "id": {item.ID}, "entity": {"song"}, "limit": {"200"}})
+				if err != nil {
+					return nil, err
+				}
+			}
+			for _, row := range rows {
+				if row.CollectionID == entry.CollectionID && row.Kind == "song" && row.WrapperType == "track" && row.TrackName != "" {
+					item.Tracks = append(item.Tracks, scraper.Track{Title: row.TrackName, Artist: row.ArtistName, Disc: row.DiscNumber, Number: row.TrackNumber, Duration: float64(row.TrackTimeMillis) / 1000})
+				}
+			}
+			if len(item.Tracks) == 0 {
+				continue
+			}
+			// 商店单次最多传回 200 项，避免把截断结果作为完整曲序。
+			if len(rows) >= 200 && entry.TrackCount > len(item.Tracks) {
+				return nil, errors.New("album exceeds store lookup limit")
+			}
+			slices.SortStableFunc(item.Tracks, func(a, b scraper.Track) int {
+				return cmp.Or(cmp.Compare(a.Disc, b.Disc), cmp.Compare(a.Number, b.Number))
+			})
+		}
+		results = append(results, item)
+	}
+	return results, nil
+}
+
+func (r itunesEntry) item(entity string) (scraper.Item, bool) {
+	var id int64
+	item := scraper.Item{Artist: r.ArtistName, Description: r.PrimaryGenreName}
+	switch entity {
+	case "song":
+		if r.WrapperType != "track" || r.Kind != "song" {
+			return item, false
+		}
+		id, item.Title, item.SourceURL = r.TrackID, r.TrackName, r.TrackViewURL
+		item.Duration, item.Album, item.Date = float64(r.TrackTimeMillis)/1000, r.CollectionName, r.ReleaseDate
+	case "album":
+		if r.WrapperType != "collection" || !strings.EqualFold(r.CollectionType, "Album") {
+			return item, false
+		}
+		id, item.Title, item.SourceURL = r.CollectionID, r.CollectionName, r.CollectionViewURL
+		item.Album, item.Date = r.CollectionName, r.ReleaseDate
+	case "musicArtist":
+		if r.WrapperType != "artist" {
+			return item, false
+		}
+		id, item.Title, item.SourceURL = r.ArtistID, r.ArtistName, cmp.Or(r.ArtistLinkURL, r.ArtistViewURL)
+	}
+	item.ID = strconv.FormatInt(id, 10)
+	return item, id > 0 && item.Title != ""
+}

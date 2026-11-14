@@ -12,10 +12,19 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
-	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) SelectWorkScrapedField(a0 context.Context, a1 string, a2 string, a3 int64, a4 works.ScrapedField, a5 string) (r0 int64, err error) {
+	err = c.Invoke(a0, "SelectWorkScrapedField", []any{a1, a2, a3, a4, a5}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SetConfigOperationStatus(a0 context.Context, a1 string, a2 string) (err error) {
+	err = c.Invoke(a0, "SetConfigOperationStatus", []any{a1, a2}, []any{})
+	return err
+}
 
 func (c *Client) SetDefaultSource(a0 context.Context, a1 string, a2 matching.DefaultSourceRequest, a3 string) (r0 matching.Mutation, err error) {
 	err = c.Invoke(a0, "SetDefaultSource", []any{a1, a2, a3}, []any{&r0})
@@ -117,17 +126,12 @@ func (c *Client) WorkPackages(a0 context.Context, a1 string, a2 string) (r0 []wo
 	return r0, err
 }
 
+func (c *Client) WorkScrapedFields(a0 context.Context, a1 string, a2 string) (r0 []works.ScrapedField, err error) {
+	err = c.Invoke(a0, "WorkScrapedFields", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) Works(a0 context.Context, a1 string, a2 works.Query) (r0 []works.Work, err error) {
 	err = c.Invoke(a0, "Works", []any{a1, a2}, []any{&r0})
 	return r0, err
-}
-
-func (c *Client) WritebackWork(a0 context.Context, a1 string, a2 string) (r0 writebackhost.Work, err error) {
-	err = c.Invoke(a0, "WritebackWork", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) WrittenPublication(a0 context.Context, a1 string, a2 string, a3 mediastore.Object) (err error) {
-	err = c.Invoke(a0, "WrittenPublication", []any{a1, a2, a3}, []any{})
-	return err
 }

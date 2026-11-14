@@ -63,7 +63,7 @@ func builtinIdentity(pluginID string) *pluginproto.PluginIdentity {
 	case "musicfs.scraper.local":
 		identity.Name = "Local Metadata Extraction"
 		identity.LocalizedNames = map[string]string{"zh": "本地元数据提取", "zh-Hans": "本地元数据提取", "zh-Hant": "本機中繼資料擷取"}
-		identity.Features = []string{"metadata"}
+		identity.Features = []string{"metadata", "scraper"}
 	case "musicfs.plugin.storage.sqlite":
 		identity.Name = "SQLite Database"
 		identity.LocalizedNames = map[string]string{"zh": "SQLite 数据库", "zh-Hans": "SQLite 数据库", "zh-Hant": "SQLite 資料庫"}

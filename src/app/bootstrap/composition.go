@@ -218,6 +218,10 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	handler.RegisterHashing(hashes)
 	handler.RegisterFingerprinting(fingerprints)
 	handler.RegisterMedia(content)
+	if err = configureOnlineScrapers(handler, store, content); err != nil {
+		cleanup()
+		return nil, nil, err
+	}
 	handler.RegisterAlbums(albums.New(store, content, lib))
 	closeHistory, err := configureWorks(ctx, c, handler, store, lib)
 	if err != nil {

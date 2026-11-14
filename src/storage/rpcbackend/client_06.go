@@ -16,6 +16,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 )
 
+func (c *Client) QueueAutomaticEnrichment(a0 context.Context, a1 string, a2 string, a3 enrichment.JobRequest) (r0 enrichment.Job, r1 bool, err error) {
+	err = c.Invoke(a0, "QueueAutomaticEnrichment", []any{a1, a2, a3}, []any{&r0, &r1})
+	return r0, r1, err
+}
+
 func (c *Client) QueueEnrichment(a0 context.Context, a1 string, a2 enrichment.JobRequest, a3 string) (r0 enrichment.Job, r1 bool, err error) {
 	err = c.Invoke(a0, "QueueEnrichment", []any{a1, a2, a3}, []any{&r0, &r1})
 	return r0, r1, err
@@ -128,10 +133,5 @@ func (c *Client) RemotePlaylist(a0 context.Context, a1 string, a2 string) (r0 pl
 
 func (c *Client) RemotePlaylists(a0 context.Context, a1 string, a2 string, a3 int) (r0 []playlists.RemotePlaylist, err error) {
 	err = c.Invoke(a0, "RemotePlaylists", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) RemoteSnapshot(a0 context.Context, a1 string, a2 string, a3 int64) (r0 playlists.Snapshot, err error) {
-	err = c.Invoke(a0, "RemoteSnapshot", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
 }

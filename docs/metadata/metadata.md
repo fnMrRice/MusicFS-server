@@ -21,7 +21,7 @@ Linux 使用 `../build/linux/musicfs-plugins`，保留相同 `args`。可选 `sh
 
 `GET /api/v1/scraper-instances` 返回本人实例的编号、显示名、字段和可用状态，不包含执行路径。`available` 表示已启用且程序通过本地校验，不保证每个源都支持提取。`queryCorrectionsSupported=false`：当前本地插件不进行在线搜索，提交非空标题/艺人修正返回415 `UNSUPPORTED`。
 
-宿主调度只依赖 `enrichment.Host/Session/Input` 和插件声明的 `Descriptor`。受信任插件通过注册工厂接入，实例列表、字段校验、查询修正和刮削轨迹使用该声明；本地插件的不支持查询修正不再成为所有 Scraper 的限制。显式选择不支持所请求字段或修正的实例会被拒绝；未指定实例时，只选择能力匹配的可用实例。当前官方仍只装配本地 Scraper，这不表示新增在线刮削服务已经实现。
+本地任务通过 `enrichment.Host/Session/Input` 和插件的 `Descriptor` 选择实例、校验字段并记录来源。当前扫描读本地素材。用户主动搜索时，Server 单独调用[在线资料插件](online-scrapers.md)，按插件声明检索作品、专辑、歌手、曲目或媒体候选。
 
 支持的格式和限制见[插件说明](../../plugins/scraper/local/README.md)：MP3 ID3v2.3/v2.4 的 USLT/APIC、原生 FLAC 的歌词注释/PICTURE，以及授权的同名歌词/图片和目录封面。NCM 由独立后台解密通道提供 MP3/FLAC 字节及外层封面附件，宿主将附件作为独立资源交本地 Scraper 验证，不将其重写进音频标签。容器元数据中的封面 URL 不下载；图片经过与其他封面相同的类型、尺寸和内容检查后才成为可用候选。不支持的内嵌内容保留问题说明，仍可使用有效旁置内容。
 
@@ -65,7 +65,7 @@ Content-Type: application/json
 
 `POST /api/v1/metadata-jobs/{jobId}/cancel` 接受 `{}`，自然幂等，不需要幂等键。已完成任务也可取消，从而撤销其候选的新选用资格；逐目标已完成结果仍供解释。取消不撤销已发布的选择和人工锁，不能用新键继续应用该任务候选；此前成功应用的原键仍可重放。人工解锁沿用[内容接口](media.md)。
 
-停用插件保留内容、人工锁和历史任务。远端 Scraper 和自动合并录音尚未实现。补全不改原件；[显式写回](writeback.md)另行使用当前选用内容。控制面与二进制通道见[插件契约](../contracts/plugins/v1/README.md)。
+停用插件保留内容、人工锁和历史任务。自动合并录音仍待实施。[显式写回](writeback.md)另行使用当前选用内容。控制面与二进制通道见[插件契约](../contracts/plugins/v1/README.md)。
 
 ## 导入歌词与自动补缺
 

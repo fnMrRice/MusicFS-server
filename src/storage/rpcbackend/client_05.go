@@ -13,11 +13,17 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"time"
 )
+
+func (c *Client) NextWriteback(a0 context.Context) (r0 writebackhost.Work, err error) {
+	err = c.Invoke(a0, "NextWriteback", []any{}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) PendingConfigOperations(a0 context.Context, a1 string) (r0 []config.Operation, err error) {
 	err = c.Invoke(a0, "PendingConfigOperations", []any{a1}, []any{&r0})
@@ -134,9 +140,4 @@ func (c *Client) PutFavorite(a0 context.Context, a1 string, a2 string) (r0 perso
 func (c *Client) PutPluginSettings(a0 context.Context, a1 string, a2 string, a3 int64, a4 settings.Values) (r0 settings.Record, err error) {
 	err = c.Invoke(a0, "PutPluginSettings", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
-}
-
-func (c *Client) QueueAutomaticEnrichment(a0 context.Context, a1 string, a2 string, a3 enrichment.JobRequest) (r0 enrichment.Job, r1 bool, err error) {
-	err = c.Invoke(a0, "QueueAutomaticEnrichment", []any{a1, a2, a3}, []any{&r0, &r1})
-	return r0, r1, err
 }

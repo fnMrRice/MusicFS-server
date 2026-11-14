@@ -40,6 +40,11 @@ func (c *Client) ChangesAfter(a0 context.Context, a1 string, a2 int64, a3 int) (
 	return r0, err
 }
 
+func (c *Client) CheckOnlineSelection(a0 context.Context, a1 string, a2 mediastore.SelectRequest, a3 string) (r0 mediastore.Selection, r1 bool, err error) {
+	err = c.Invoke(a0, "CheckOnlineSelection", []any{a1, a2, a3}, []any{&r0, &r1})
+	return r0, r1, err
+}
+
 func (c *Client) CheckProcessedCache(a0 context.Context, a1 processedcache.Record, a2 processedcache.Authorization) (err error) {
 	err = c.Invoke(a0, "CheckProcessedCache", []any{a1, a2}, []any{})
 	return err
@@ -132,10 +137,5 @@ func (c *Client) CreateCatalogQuery(a0 context.Context, a1 string, a2 catalog.Qu
 
 func (c *Client) CreateMediaBackup(a0 context.Context, a1 string, a2 string) (r0 mediastore.Backup, err error) {
 	err = c.Invoke(a0, "CreateMediaBackup", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) CreatePlaylist(a0 context.Context, a1 string, a2 playlists.CreatePlaylistRequest, a3 string) (r0 playlists.Playlist, err error) {
-	err = c.Invoke(a0, "CreatePlaylist", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
 }

@@ -2,9 +2,11 @@ package e2e_test
 
 import (
 	"encoding/json"
+	"net/http"
 	"testing"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/scraper/online"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
@@ -24,7 +26,7 @@ func TestBundledPluginsAutostartPendingAndPersistedDisable(t *testing.T) {
 				t.Fatalf("plugins: %d %s", code, raw)
 			}
 			testkit.ValidateHTTP(t, "PluginManagementSnapshot", raw)
-			valid := len(snapshot.Items) == 18 && snapshot.RestartRequired == restartRequired
+			valid := len(snapshot.Items) == 18+len(online.Catalog(http.DefaultClient, "")) && snapshot.RestartRequired == restartRequired
 			for _, p := range snapshot.Items {
 				if p.Builtin != nil {
 					valid = valid && p.Execution == "builtin" && !p.StateMutable && len(p.Instances) == 0

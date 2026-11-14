@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	onlinescrapers "github.com/fnMrRice/MusicFS-server/plugins/scraper/online"
 	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
@@ -26,6 +27,11 @@ func TestWebPolicyAllowsLoginQRImagesAndPlatformAvatars(t *testing.T) {
 	wantHosts := []string{}
 	for _, descriptor := range onlineplugins.Descriptors() {
 		for _, host := range descriptor.Resources.ImageHosts {
+			wantHosts = append(wantHosts, "https://"+host)
+		}
+	}
+	for _, p := range onlinescrapers.Catalog(http.DefaultClient, "") {
+		for _, host := range p.Descriptor().ImageHosts {
 			wantHosts = append(wantHosts, "https://"+host)
 		}
 	}

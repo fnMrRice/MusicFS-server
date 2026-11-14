@@ -78,10 +78,7 @@ func (s *Store) SelectContentGuarded(ctx context.Context, owner string, request 
 	}
 	// Automatic is deliberately absent from public JSON, but is part of the
 	// durable operation identity so a replay cannot change the manual policy.
-	m, replayed, err := s.beginContentMutation(ctx, owner, request.Target.SourceTrackID, "select", key, request.ExpectedRevision, struct {
-		Request   mediastore.SelectRequest
-		Automatic bool
-	}{request, request.Automatic})
+	m, replayed, err := s.beginSelection(ctx, owner, request, key)
 	if err != nil {
 		return empty, err
 	}
@@ -98,6 +95,9 @@ func (s *Store) SelectContentGuarded(ctx context.Context, owner string, request 
 	}
 	if object.Metadata.Target != request.Target {
 		return empty, domain.Fail("RESOURCE_CHANGED", "Content belongs to a different source version")
+	}
+	if request.Online != nil && (object.Metadata.Field != request.Online.Field || object.Metadata.Origin.Kind != "scraper" || object.Metadata.Origin.InstanceID != request.Online.PluginID) {
+		return empty, domain.Fail("RESOURCE_CHANGED", "Content does not match the scraper selection")
 	}
 	if object.State != "available" {
 		return empty, domain.Fail("RESOURCE_CHANGED", "Content is unavailable")

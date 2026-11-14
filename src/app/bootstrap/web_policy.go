@@ -1,9 +1,11 @@
 package bootstrap
 
 import (
+	"net/http"
 	"slices"
 	"strings"
 
+	onlinescrapers "github.com/fnMrRice/MusicFS-server/plugins/scraper/online"
 	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
 )
 
@@ -25,6 +27,11 @@ func webContentPolicy(origins []string) string {
 			continue
 		}
 		for _, host := range descriptor.Resources.ImageHosts {
+			hosts = append(hosts, "https://"+host)
+		}
+	}
+	for _, p := range onlinescrapers.Catalog(http.DefaultClient, "") {
+		for _, host := range p.Descriptor().ImageHosts {
 			hosts = append(hosts, "https://"+host)
 		}
 	}

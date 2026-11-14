@@ -71,6 +71,14 @@ type SelectRequest struct {
 	ObjectID         string        `json:"objectId"`
 	// Automatic is service-owned. HTTP manual selection must set it to false.
 	Automatic bool `json:"-"`
+	// 在线刮削保存用户确认为本次选用的候选，其标识可在预览过期后重放。
+	Online *OnlineCandidate `json:"onlineCandidate,omitempty"`
+}
+
+type OnlineCandidate struct {
+	PluginID string `json:"pluginId"`
+	Field    string `json:"field"`
+	Token    string `json:"token"`
 }
 
 type UnlockRequest struct {
@@ -81,6 +89,7 @@ type UnlockRequest struct {
 }
 
 type ContentRepository interface {
+	CheckOnlineSelection(context.Context, string, SelectRequest, string) (Selection, bool, error)
 	PrepareContent(context.Context, string, UploadInput, string) (Publication, bool, error)
 	ContentObject(context.Context, string, string) (ContentObject, error)
 	ContentSelection(context.Context, string, string) (Selection, error)

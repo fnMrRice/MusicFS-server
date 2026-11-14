@@ -16,6 +16,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/tasks"
 )
 
+func (c *Client) FingerprintIndexes(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 []identification.FingerprintIndex, err error) {
+	err = c.Invoke(a0, "FingerprintIndexes", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) Finish(a0 context.Context, a1 jobs.Job, a2 int, a3 error) (err error) {
 	err = c.Invoke(a0, "Finish", []any{a1, a2, a3}, []any{})
 	return err
@@ -129,9 +134,4 @@ func (c *Client) HidePlaylistSource(a0 context.Context, a1 string, a2 string, a3
 func (c *Client) ImportRemotePlaylist(a0 context.Context, a1 string, a2 playlists.Binding, a3 string) (r0 playlists.RemotePlaylist, r1 bool, err error) {
 	err = c.Invoke(a0, "ImportRemotePlaylist", []any{a1, a2, a3}, []any{&r0, &r1})
 	return r0, r1, err
-}
-
-func (c *Client) InvalidateContent(a0 context.Context, a1 string, a2 string) (err error) {
-	err = c.Invoke(a0, "InvalidateContent", []any{a1, a2}, []any{})
-	return err
 }

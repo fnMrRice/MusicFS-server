@@ -19,6 +19,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
+func (c *Client) CreatePlaylist(a0 context.Context, a1 string, a2 playlists.CreatePlaylistRequest, a3 string) (r0 playlists.Playlist, err error) {
+	err = c.Invoke(a0, "CreatePlaylist", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) CreateRelease(a0 context.Context, a1 string, a2 albums.CreateReleaseRequest, a3 string) (r0 albums.Release, err error) {
 	err = c.Invoke(a0, "CreateRelease", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
@@ -131,10 +136,5 @@ func (c *Client) FingerprintCandidates(a0 context.Context, a1 identification.Has
 
 func (c *Client) FingerprintIndex(a0 context.Context, a1 string, a2 string) (r0 identification.FingerprintIndex, err error) {
 	err = c.Invoke(a0, "FingerprintIndex", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) FingerprintIndexes(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 []identification.FingerprintIndex, err error) {
-	err = c.Invoke(a0, "FingerprintIndexes", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
 }
