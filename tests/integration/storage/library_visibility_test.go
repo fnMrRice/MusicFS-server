@@ -131,7 +131,7 @@ func TestOrdinaryMusicPackageIdentityLocationAndOwnerIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	visibilityPackage(t, s, "admin", "local", "music", "cd_dump", duplicate)
+	visibilityPackage(t, s, "admin", "local", "cd_album", "cd_dump", duplicate)
 	want := []string{tracks[2].ID, tracks[3].ID}
 	slices.Sort(want)
 	if got := visibilityIDs(t, s, "admin", "local"); !reflect.DeepEqual(got, want) {
@@ -169,13 +169,14 @@ func TestOrdinaryMusicPackageIdentityLocationAndOwnerIsolation(t *testing.T) {
 	}
 }
 
-func TestOrdinaryMusicPackageRetaggingPreservesSourcesAndPersonalData(t *testing.T) {
+func TestCDAlbumTrackListSettingPreservesSourcesAndPersonalData(t *testing.T) {
 	s := visibilityStore(t)
 	o := visibilityObservation("song", "album/song.wav", "Artist", "Album", "Rock", "wav")
 	track := visibilityScan(t, s, "admin", "local", o)[0]
-	p, input := visibilityPackage(t, s, "admin", "local", "music", "directory", o)
-	if got := visibilityIDs(t, s, "admin", "local"); !reflect.DeepEqual(got, []string{track.ID}) {
-		t.Fatal("ordinary music directory was hidden", got)
+	p, _ := visibilityPackage(t, s, "admin", "local", "cd_album", "directory", o)
+	work, err := s.Work(t.Context(), "admin", p.WorkID)
+	if err != nil || work.ShowInTrackList || len(visibilityIDs(t, s, "admin", "local")) != 0 {
+		t.Fatal("CD album audio should be hidden by default", work, err)
 	}
 	if _, err := s.PutFavorite(t.Context(), "admin", track.ID); err != nil {
 		t.Fatal(err)
@@ -186,18 +187,19 @@ func TestOrdinaryMusicPackageRetaggingPreservesSourcesAndPersonalData(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, kind := range []string{"cd_dump", "directory"} {
-		input.ExpectedPackageRevision, input.Package.Kind = p.Revision, kind
-		p, err = s.PublishWorkPackage(t.Context(), "admin", input, domain.NewID(), domain.NewID())
-		if err != nil {
-			t.Fatal(err)
+	for _, show := range []bool{true, false} {
+		work, err = s.UpdateWork(t.Context(), "admin", p.WorkID, works.UpdateRequest{
+			ExpectedRevision: work.Revision, Title: work.Title, ShowInTrackList: show,
+		}, domain.NewID())
+		if err != nil || work.ShowInTrackList != show {
+			t.Fatal("CD album setting was not saved", work, err)
 		}
-		want := 0
-		if kind == "directory" {
-			want = 1
+		want := []string{}
+		if show {
+			want = append(want, track.ID)
 		}
-		if got := visibilityIDs(t, s, "admin", "local"); len(got) != want {
-			t.Fatalf("retagged %s: %v", kind, got)
+		if got := visibilityIDs(t, s, "admin", "local"); !slices.Equal(got, want) {
+			t.Fatalf("showInTrackList=%t: got %v, want %v", show, got, want)
 		}
 		current, err := s.FindTrack(t.Context(), "admin", track.ID)
 		if err != nil || current.AssetID != track.AssetID || current.Availability != "available" {
@@ -212,7 +214,7 @@ func TestOrdinaryMusicPackageRetaggingPreservesSourcesAndPersonalData(t *testing
 			t.Fatal("playlist source was lost", snapshot, err)
 		}
 		stored, err := s.WorkPackage(t.Context(), "admin", p.WorkID, p.ID)
-		if err != nil || stored.Nodes[1].SourceTrackID != track.ID || stored.Kind != kind {
+		if err != nil || stored.Nodes[1].SourceTrackID != track.ID || stored.Kind != p.Kind {
 			t.Fatal("package source was lost", stored, err)
 		}
 	}

@@ -10,17 +10,18 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
 	"github.com/fnMrRice/MusicFS-server/src/library/catalog"
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
+	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
 )
 
-func TestWorkPackagesHTTPExcludeASMRAndCDFromMusicLibrary(t *testing.T) {
+func TestWorkPackagesHTTPSeparateLibrariesAndToggleCDAlbumTracks(t *testing.T) {
 	f := newPackageCatalogHTTP(t)
 	// 先扫描，再把同位置音频关联到作品，覆盖既有曲库条目的隐藏规则。
 	f.scan(t, "catalog-initial-scan")
 	var scanned library.Page
 	f.call(t, "GET", "/source-tracks", nil, "", 200, "SourceTracks", &scanned)
-	if len(scanned.Items) != 3 {
-		t.Fatal("initial scan did not expose all three tracks", len(scanned.Items))
+	if len(scanned.Items) != len(f.waves) {
+		t.Fatal("initial scan did not expose all tracks", len(scanned.Items))
 	}
 	tracks := map[string]library.Track{}
 	albumIDs := map[string]string{}
@@ -36,13 +37,14 @@ func TestWorkPackagesHTTPExcludeASMRAndCDFromMusicLibrary(t *testing.T) {
 	}
 	var before catalog.Page
 	f.call(t, "GET", "/library/search?type=albums", nil, "", 200, "CatalogPage", &before)
-	if before.Total != 3 {
+	if before.Total != len(f.waves) {
 		t.Fatal("initial album fixture is incomplete", before.Total)
 	}
 	packages := []workpackages.Package{
 		f.importCopy(t, "asmr-only", "asmr", "directory"),
-		f.importCopy(t, "cd-only", "music", "cd_dump"),
+		f.importCopy(t, "cd-only", "cd_album", "cd_dump"),
 		f.importCopy(t, "music-only", "music", "directory"),
+		f.importCopy(t, "radio-only", "radio", "directory"),
 	}
 	musicIDs := map[string]bool{tracks["music-only"].ID: true}
 	for _, node := range packages[2].Nodes {
@@ -51,7 +53,68 @@ func TestWorkPackagesHTTPExcludeASMRAndCDFromMusicLibrary(t *testing.T) {
 		}
 	}
 	f.assertMusicBrowsing(t, musicIDs, albumIDs["music-only"])
-	// 再扫描也不能重新把已关联的 ASMR/CD 音频带回普通曲库。
+	for i, typ := range []string{"asmr", "cd_album", "music", "radio"} {
+		var page struct {
+			Items []works.Work `json:"items"`
+		}
+		f.call(t, "GET", "/works?contentType="+typ, nil, "", 200, "Works", &page)
+		if len(page.Items) != 1 || page.Items[0].ID != packages[i].WorkID {
+			t.Fatalf("%s library returned unexpected works: %+v", typ, page.Items)
+		}
+		if typ == "asmr" || typ == "radio" {
+			item := page.Items[0]
+			update := works.UpdateRequest{ExpectedRevision: item.Revision, Title: item.Title, Credits: item.Credits,
+				ExternalIDs: item.ExternalIDs, Tags: item.Tags, ShowInTrackList: true}
+			f.call(t, "PUT", "/works/"+item.ID, update, "invalid-show-"+typ, 400, "Error", nil)
+		}
+	}
+	cd := packages[1]
+	var work works.Work
+	f.call(t, "GET", "/works/"+cd.WorkID, nil, "", 200, "Work", &work)
+	update := works.UpdateRequest{ExpectedRevision: work.Revision, Title: work.Title, ExternalIDs: work.ExternalIDs,
+		Credits: work.Credits, Tags: work.Tags, ShowInTrackList: true}
+	f.call(t, "PUT", "/works/"+cd.WorkID, update, "show-disc-tracks", 200, "Work", &work)
+	if !work.ShowInTrackList {
+		t.Fatal("CD album did not retain track list setting")
+	}
+	want := map[string]bool{tracks["cd-only"].ID: true}
+	for id := range musicIDs {
+		want[id] = true
+	}
+	for _, node := range cd.Nodes {
+		if node.Kind == "audio" {
+			want[node.SourceTrackID] = true
+		}
+	}
+	var visible library.Page
+	f.call(t, "GET", "/source-tracks", nil, "", 200, "SourceTracks", &visible)
+	if len(visible.Items) != len(want) {
+		t.Fatal("unexpected CD and music track count", visible.Items)
+	}
+	for _, track := range visible.Items {
+		if !want[track.ID] {
+			t.Fatal("unexpected track after enabling CD album", track.ID)
+		}
+	}
+	var page catalog.Page
+	f.call(t, "GET", "/library/search?type=tracks", nil, "", 200, "CatalogPage", &page)
+	if page.Total != len(want) || len(page.Items) != len(want) {
+		t.Fatal("catalog query did not include the enabled CD album", page.Total)
+	}
+	for _, item := range page.Items {
+		var track catalog.Track
+		if err := json.Unmarshal(item, &track); err != nil || !want[track.ID] {
+			t.Fatal("wrong source in track query after enabling CD album", track, err)
+		}
+	}
+	var facets catalog.Facets
+	f.call(t, "GET", "/library/facets", nil, "", 200, "CatalogFacets", &facets)
+	if len(facets.Genres) != 2 {
+		t.Fatal("CD genre did not appear alongside ordinary music", facets.Genres)
+	}
+	update.ExpectedRevision, update.ShowInTrackList = work.Revision, false
+	f.call(t, "PUT", "/works/"+cd.WorkID, update, "hide-disc-tracks", 200, "Work", &work)
+	// 重新扫描后普通曲库仍只显示独立音乐。
 	f.scan(t, "catalog-rescan-after-packages")
 	f.assertMusicBrowsing(t, musicIDs, albumIDs["music-only"])
 	f.assertPackageSourcesRemainPlayable(t, packages, tracks, albumIDs)

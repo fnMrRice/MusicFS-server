@@ -37,6 +37,11 @@ descriptor = obj({
     "views": {"type": "array", "minItems": 1, "maxItems": 2,
               "uniqueItems": True, "items": {"enum": ["work-list", "work-detail"]}},
 })
+descriptor["properties"]["library"] = obj({
+    "order": {"type": "integer", "minimum": 0},
+    "icon": identifier,
+    "trackListOptional": {"type": "boolean"},
+})
 fields = {
     "title": text(256, 1), "description": text(16384),
     "externalIds": array(obj({"namespace": identifier, "value": text(256, 1)}), 32, True),
@@ -50,11 +55,17 @@ definitions = {
     "UpdateWork": obj({"expectedRevision": {"type": "integer", "minimum": 1,
                                              "maximum": 9223372036854775806}, **fields}),
     "Work": obj({"workId": text(128, 1), "contentType": identifier, **fields,
+                 "showInTrackList": {"type": "boolean"},
                  "revision": {"type": "integer", "minimum": 1},
                  "createdAt": ref("Timestamp"), "updatedAt": ref("Timestamp")}),
     "Works": obj({"items": array(ref("Work"), 100),
                   "nextAfter": {"type": ["string", "null"], "minLength": 1, "maxLength": 128}}),
 }
+for request in ("CreateWork", "UpdateWork"):
+    definitions[request]["properties"]["showInTrackList"] = {
+        "type": "boolean", "default": False,
+        "description": "将本作品的音轨纳入普通曲目列表。只有声明 trackListOptional 的类型可以开启。",
+    }
 
 
 def response(model, description):
@@ -88,7 +99,7 @@ list_works["parameters"] = [
     ]
 ]
 paths = {
-    "/content-types": {"get": operation("listContentTypes", "ContentTypes", "已注册的内置内容类型；需要登录，不接受查询参数。")},
+    "/content-types": {"get": operation("listContentTypes", "ContentTypes", "已注册的内容类型。library 声明作品库入口顺序、图标及可选的曲目列表展示。需要登录。")},
     "/works": {"get": list_works,
                "post": operation("createWork", "Work", "按已注册类型创建本人作品资料；不扫描文件、不按编号自动合并。", "CreateWork")},
     "/works/{id}": {"parameters": [{"$ref": "#/components/parameters/ID"}],

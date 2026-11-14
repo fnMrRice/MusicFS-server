@@ -67,7 +67,7 @@ sync(schema_path, "$defs", {
 search = copy.deepcopy(paths["/library/search"])
 operation = search["get"]
 operation["description"] = (
-    "普通音乐范围排除本人已发布ASMR作品或CD抓轨副本的音频，分类及计数只含可见成员。"
+    "普通音乐范围包含已开启曲目展示的CD专辑，排除其余CD专辑、ASMR与电台音频；分类及计数只含可见成员。"
     "当前用户完整曲库按tracks/albums/artists/categories查询；categories要求categoryKind，"
     "tracks以categoryKind和categoryId进入分类。分类按来源曲目计数，专辑标签分类不创建SourceAlbum。"
     "多选参数重复同名键，条件取交集；10分钟固定快照，游标绑定全部规范化条件，失效410。"
@@ -90,7 +90,7 @@ parameters[1:1] = [
 categories = copy.deepcopy(search)
 categories["get"]["operationId"] = "listLibraryCategories"
 categories["get"]["description"] = (
-    "普通音乐范围排除本人已发布ASMR作品或CD抓轨副本的音频，分类及计数只含可见成员。"
+    "普通音乐范围包含已开启曲目展示的CD专辑，排除其余CD专辑、ASMR与电台音频；分类及计数只含可见成员。"
     "四类曲目分类固定快照。歌手和专辑按来源及标签分组，流派跨来源折叠大小写；"
     "未知元数据具有独立身份。文件夹只返回扫描范围内的安全目录名称和不透明编号；"
     "trackCount统计满足筛选的来源曲目，目录计数包含后代。breadcrumbs从根到自身。"

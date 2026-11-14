@@ -25,7 +25,7 @@ func (s *Service) CreateWork(ctx context.Context, owner string, input CreateRequ
 	if err != nil {
 		return Work{}, err
 	}
-	if err = s.validateType(normalized.ContentType, normalized.Credits, normalized.ExternalIDs); err != nil {
+	if err = s.validateType(normalized.ContentType, normalized.ShowInTrackList, normalized.Credits, normalized.ExternalIDs); err != nil {
 		return Work{}, err
 	}
 	return s.Repository.CreateWork(ctx, owner, normalized, key)
@@ -40,16 +40,19 @@ func (s *Service) UpdateWork(ctx context.Context, owner, id string, input Update
 	if err != nil {
 		return Work{}, err
 	}
-	if err = s.validateType(current.ContentType, normalized.Credits, normalized.ExternalIDs); err != nil {
+	if err = s.validateType(current.ContentType, normalized.ShowInTrackList, normalized.Credits, normalized.ExternalIDs); err != nil {
 		return Work{}, err
 	}
 	return s.Repository.UpdateWork(ctx, owner, id, normalized, key)
 }
 
-func (s *Service) validateType(id string, credits []Credit, externalIDs []ExternalID) error {
+func (s *Service) validateType(id string, showInTrackList bool, credits []Credit, externalIDs []ExternalID) error {
 	descriptor, ok := s.types.Get(id)
 	if !ok {
 		return domain.Fail("UNSUPPORTED", "Content type is not registered for editing")
+	}
+	if showInTrackList && (descriptor.Library == nil || !descriptor.Library.TrackListOptional) {
+		return domain.Fail("INVALID_ARGUMENT", "Content type does not support inclusion in the track list")
 	}
 	contains := func(values []contenttype.NamedValue, key string) bool {
 		for _, value := range values {

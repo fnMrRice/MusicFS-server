@@ -73,6 +73,12 @@ func TestDescriptorRejectsInvalidDeclarations(t *testing.T) {
 		{"unknown view", func(d *contenttype.Descriptor) { d.Views[0] = "custom-script" }},
 		{"duplicate view", func(d *contenttype.Descriptor) { d.Views[1] = d.Views[0] }},
 		{"too many views", func(d *contenttype.Descriptor) { d.Views = append(d.Views, contenttype.ViewWorkList) }},
+		{"invalid icon", func(d *contenttype.Descriptor) { d.Library = &contenttype.Library{Icon: "../disc"} }},
+		{"negative order", func(d *contenttype.Descriptor) { d.Library = &contenttype.Library{Icon: "disc", Order: -1} }},
+		{"missing library view", func(d *contenttype.Descriptor) {
+			d.Library = &contenttype.Library{Icon: "disc"}
+			d.Views = []string{contenttype.ViewWorkDetail}
+		}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -93,6 +99,19 @@ func TestCloneProtectsAllMutableCollections(t *testing.T) {
 	cloned.Views[0] = "changed"
 	if !reflect.DeepEqual(original, validDescriptor()) {
 		t.Fatal("changing the clone changed the original declaration")
+	}
+}
+
+func TestLibraryDeclarationIsIndependent(t *testing.T) {
+	original := validDescriptor()
+	original.Library = &contenttype.Library{Order: 10, Icon: "disc", TrackListOptional: true}
+	if err := original.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	cloned := original.Clone()
+	cloned.Library.Icon = "radio"
+	if original.Library.Icon != "disc" {
+		t.Fatal("changing the clone changed the original library declaration")
 	}
 }
 

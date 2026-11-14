@@ -10,7 +10,7 @@ helpers = runpy.run_path(str(Path(__file__).with_name("update-works-contracts.py
 root, sync = helpers["ROOT"], helpers["sync_entries"]
 api_path = root / "docs/contracts/openapi.yaml"
 paths = json.loads(api_path.read_text(encoding="utf-8"))["paths"]
-scope = "普通音乐范围排除本人已发布ASMR作品或CD抓轨副本的音频，分类及计数只含可见成员。"
+scope = "普通音乐范围包含已开启曲目展示的CD专辑，排除其余CD专辑、ASMR与电台音频；分类及计数只含可见成员。"
 updates = {}
 for route, method in (
     ("/source-tracks", "get"), ("/source-albums", "get"),
@@ -18,7 +18,8 @@ for route, method in (
     ("/library/facets", "get"), ("/library/queries", "post"),
 ):
     value = copy.deepcopy(paths[route])
-    description = value[method].get("description", "")
+    description = value[method].get("description", "").removeprefix(
+        "普通音乐范围排除本人已发布ASMR作品或CD抓轨副本的音频，分类及计数只含可见成员。")
     if route == "/source-tracks":
         description = description.replace("含完整versions", "含可见音乐versions").replace(
             "保留组内所有本人来源", "保留组内所有可见音乐来源")
@@ -32,7 +33,7 @@ updates["/source-tracks/{id}"] = {
     "get": {
         "operationId": "getSourceTrack",
         "description": (
-            "按显式来源编号读取本人SourceTrack，供歌单和作品引用解析；包含ASMR及CD抓轨音频。"
+            "按显式来源编号读取本人SourceTrack，供歌单和作品引用解析，包含独立作品库中的音频。"
             "不存在或属于其他用户返回404。不授予播放权限，不公开物理路径。"
         ),
         "responses": {

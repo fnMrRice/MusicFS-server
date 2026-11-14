@@ -6,27 +6,41 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/content/asmr"
+	"github.com/fnMrRice/MusicFS-server/plugins/content/cdalbum"
 	"github.com/fnMrRice/MusicFS-server/plugins/content/music"
+	"github.com/fnMrRice/MusicFS-server/plugins/content/radio"
 	"github.com/fnMrRice/MusicFS-server/sdk/contenttype"
 	"github.com/fnMrRice/MusicFS-server/src/library/contenttypes"
 )
 
 func TestRegistryListsBuiltinDeclarationsInRegistrationOrder(t *testing.T) {
-	registry, err := contenttypes.New(music.Descriptor(), asmr.Descriptor())
+	registry, err := contenttypes.New(music.Descriptor(), cdalbum.Descriptor(), asmr.Descriptor(), radio.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
 	listed := registry.List()
-	if len(listed) != 2 || listed[0].ID != "music" || listed[1].ID != "asmr" {
+	if len(listed) != 4 || listed[0].ID != "music" || listed[0].Library != nil {
 		t.Fatalf("unexpected declaration order: %+v", listed)
+	}
+	libraries := []struct {
+		id, name, icon string
+		order          int
+		optional       bool
+	}{{"cd_album", "CD专辑", "disc", 10, true}, {"asmr", "ASMR", "headphones", 20, false}, {"radio", "电台", "radio", 30, false}}
+	for i, want := range libraries {
+		item := listed[i+1]
+		if item.ID != want.id || item.Name != want.name || item.Library == nil ||
+			item.Library.Icon != want.icon || item.Library.Order != want.order || item.Library.TrackListOptional != want.optional {
+			t.Fatalf("%s has unexpected library declaration: %+v", want.id, item)
+		}
 	}
 	wantRoles := []string{"circle", "voice_actor", "scenario", "illustrator"}
 	gotRoles := []string{}
-	for _, role := range listed[1].CreditRoles {
+	for _, role := range listed[2].CreditRoles {
 		gotRoles = append(gotRoles, role.ID)
 	}
-	if !reflect.DeepEqual(gotRoles, wantRoles) || listed[1].ExternalIDNamespaces[0].ID != "dlsite" {
-		t.Fatalf("unexpected ASMR metadata: %+v", listed[1])
+	if !reflect.DeepEqual(gotRoles, wantRoles) || listed[2].ExternalIDNamespaces[0].ID != "dlsite" {
+		t.Fatalf("unexpected ASMR metadata: %+v", listed[2])
 	}
 	for _, descriptor := range listed {
 		if descriptor.PluginVersion != "0.1.0" || descriptor.PluginID != "musicfs.plugin.content."+descriptor.ID {

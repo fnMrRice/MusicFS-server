@@ -36,8 +36,8 @@ func TestOrdinaryMusicCatalogExcludesPackageCategoriesFacetsAndAlbums(t *testing
 	whisper := categoryFind(t, oldGenres, "", "Whisper", false)
 	visibilityPackage(t, s, "admin", "local", "music", "directory", keep)
 	visibilityPackage(t, s, "admin", "local", "asmr", "directory", asmr)
-	visibilityPackage(t, s, "admin", "local", "music", "cd_dump", cd)
-	visibilityPackage(t, s, "admin", "local", "asmr", "cd_dump", voiceCD)
+	visibilityPackage(t, s, "admin", "local", "cd_album", "cd_dump", cd)
+	visibilityPackage(t, s, "admin", "local", "radio", "cd_dump", voiceCD)
 	current, err := service.Search(t.Context(), "admin", catalog.Query{}, "", 200)
 	if err != nil || current.Total != 1 || current.CatalogRevision == before.CatalogRevision {
 		t.Fatal(current, err)

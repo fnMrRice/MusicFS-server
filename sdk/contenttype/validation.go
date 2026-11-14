@@ -61,6 +61,9 @@ func (d Descriptor) Validate() error {
 		}
 		seen[view] = true
 	}
+	if library := d.Library; library != nil && (library.Order < 0 || !ValidID(library.Icon) || !seen[ViewWorkList]) {
+		return fmt.Errorf("INVALID_ARGUMENT: invalid work library declaration")
+	}
 	return nil
 }
 

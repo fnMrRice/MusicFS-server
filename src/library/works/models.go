@@ -26,31 +26,34 @@ type Credit struct {
 }
 
 type Work struct {
-	ID          string       `json:"workId"`
-	Owner       string       `json:"-"`
-	ContentType string       `json:"contentType"`
-	Title       string       `json:"title"`
-	Description string       `json:"description"`
-	ExternalIDs []ExternalID `json:"externalIds"`
-	Credits     []Credit     `json:"credits"`
-	Tags        []string     `json:"tags"`
-	Revision    int64        `json:"revision"`
-	CreatedAt   time.Time    `json:"createdAt"`
-	UpdatedAt   time.Time    `json:"updatedAt"`
+	ID              string       `json:"workId"`
+	Owner           string       `json:"-"`
+	ContentType     string       `json:"contentType"`
+	ShowInTrackList bool         `json:"showInTrackList"`
+	Title           string       `json:"title"`
+	Description     string       `json:"description"`
+	ExternalIDs     []ExternalID `json:"externalIds"`
+	Credits         []Credit     `json:"credits"`
+	Tags            []string     `json:"tags"`
+	Revision        int64        `json:"revision"`
+	CreatedAt       time.Time    `json:"createdAt"`
+	UpdatedAt       time.Time    `json:"updatedAt"`
 }
 
 type CreateRequest struct {
-	ContentType string       `json:"contentType"`
-	Title       string       `json:"title"`
-	Description string       `json:"description"`
-	ExternalIDs []ExternalID `json:"externalIds"`
-	Credits     []Credit     `json:"credits"`
-	Tags        []string     `json:"tags"`
+	ContentType     string       `json:"contentType"`
+	ShowInTrackList bool         `json:"showInTrackList,omitempty"`
+	Title           string       `json:"title"`
+	Description     string       `json:"description"`
+	ExternalIDs     []ExternalID `json:"externalIds"`
+	Credits         []Credit     `json:"credits"`
+	Tags            []string     `json:"tags"`
 }
 
 // UpdateRequest 完整替换可编辑资料；作品类型在创建后保持不变。
 type UpdateRequest struct {
 	ExpectedRevision int64        `json:"expectedRevision"`
+	ShowInTrackList  bool         `json:"showInTrackList,omitempty"`
 	Title            string       `json:"title"`
 	Description      string       `json:"description"`
 	ExternalIDs      []ExternalID `json:"externalIds"`

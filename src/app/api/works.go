@@ -41,6 +41,7 @@ func (s *Server) RegisterWorks(service *works.Service) {
 			ContentType *string `json:"contentType"`
 			workFieldsInput
 		}
+		input.ShowInTrackList = new(bool)
 		if err := DecodeJSON(w, r, &input); err != nil {
 			return err
 		}
@@ -49,7 +50,8 @@ func (s *Server) RegisterWorks(service *works.Service) {
 		}
 		result, err := service.CreateWork(r.Context(), session.User.ID, works.CreateRequest{
 			ContentType: *input.ContentType, Title: *input.Title, Description: *input.Description,
-			ExternalIDs: *input.ExternalIDs, Credits: *input.Credits, Tags: *input.Tags,
+			ShowInTrackList: *input.ShowInTrackList,
+			ExternalIDs:     *input.ExternalIDs, Credits: *input.Credits, Tags: *input.Tags,
 		}, r.Header.Get("Idempotency-Key"))
 		if err != nil {
 			return err
@@ -71,6 +73,7 @@ func (s *Server) RegisterWorks(service *works.Service) {
 			ExpectedRevision *int64 `json:"expectedRevision"`
 			workFieldsInput
 		}
+		input.ShowInTrackList = new(bool)
 		if err := DecodeJSON(w, r, &input); err != nil {
 			return err
 		}
@@ -79,7 +82,8 @@ func (s *Server) RegisterWorks(service *works.Service) {
 		}
 		result, err := service.UpdateWork(r.Context(), session.User.ID, r.PathValue("id"), works.UpdateRequest{
 			ExpectedRevision: *input.ExpectedRevision, Title: *input.Title, Description: *input.Description,
-			ExternalIDs: *input.ExternalIDs, Credits: *input.Credits, Tags: *input.Tags,
+			ShowInTrackList: *input.ShowInTrackList,
+			ExternalIDs:     *input.ExternalIDs, Credits: *input.Credits, Tags: *input.Tags,
 		}, r.Header.Get("Idempotency-Key"))
 		if err != nil {
 			return err
@@ -89,15 +93,16 @@ func (s *Server) RegisterWorks(service *works.Service) {
 }
 
 type workFieldsInput struct {
-	Title       *string             `json:"title"`
-	Description *string             `json:"description"`
-	ExternalIDs *[]works.ExternalID `json:"externalIds"`
-	Credits     *[]works.Credit     `json:"credits"`
-	Tags        *[]string           `json:"tags"`
+	ShowInTrackList *bool               `json:"showInTrackList"`
+	Title           *string             `json:"title"`
+	Description     *string             `json:"description"`
+	ExternalIDs     *[]works.ExternalID `json:"externalIds"`
+	Credits         *[]works.Credit     `json:"credits"`
+	Tags            *[]string           `json:"tags"`
 }
 
 func (input workFieldsInput) valid() bool {
-	return input.Title != nil && input.Description != nil && input.ExternalIDs != nil && input.Credits != nil && input.Tags != nil
+	return input.Title != nil && input.Description != nil && input.ExternalIDs != nil && input.Credits != nil && input.Tags != nil && input.ShowInTrackList != nil
 }
 
 func workQuery(r *http.Request) (works.Query, error) {

@@ -13,7 +13,8 @@ const (
 func Descriptor() contenttype.Descriptor {
 	return contenttype.Descriptor{
 		ID: TypeID, PluginID: PluginID, PluginVersion: PluginVersion,
-		Name:        "音声作品",
+		Name:        "ASMR",
+		Library:     &contenttype.Library{Order: 20, Icon: "headphones"},
 		Description: "按作品包组织本地音声，保留多层音轨目录、内容变体和附件。",
 		CreditRoles: []contenttype.NamedValue{
 			{ID: "circle", Name: "社团"},

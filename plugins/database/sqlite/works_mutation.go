@@ -68,12 +68,12 @@ func (s *Store) CreateWork(ctx context.Context, owner string, request works.Crea
 		return result, err
 	}
 	now := time.Now().UTC()
-	result = works.Work{ID: domain.NewID(), Owner: owner, ContentType: request.ContentType, Title: request.Title, Description: request.Description, ExternalIDs: request.ExternalIDs, Credits: request.Credits, Tags: request.Tags, Revision: 1, CreatedAt: now, UpdatedAt: now}
+	result = works.Work{ID: domain.NewID(), Owner: owner, ContentType: request.ContentType, ShowInTrackList: request.ShowInTrackList, Title: request.Title, Description: request.Description, ExternalIDs: request.ExternalIDs, Credits: request.Credits, Tags: request.Tags, Revision: 1, CreatedAt: now, UpdatedAt: now}
 	raw, err := json.Marshal(result)
 	if err != nil {
 		return result, err
 	}
-	if _, err = m.tx.ExecContext(ctx, "INSERT INTO works(id,owner,content_type,title,description,revision,document) VALUES(?,?,?,?,?,?,?)", result.ID, owner, result.ContentType, result.Title, result.Description, result.Revision, raw); err != nil {
+	if _, err = m.tx.ExecContext(ctx, "INSERT INTO works(id,owner,content_type,title,description,revision,show_in_track_list,document) VALUES(?,?,?,?,?,?,?,?)", result.ID, owner, result.ContentType, result.Title, result.Description, result.Revision, result.ShowInTrackList, raw); err != nil {
 		return result, err
 	}
 	if err = replaceWorkMetadata(ctx, m.tx, result); err != nil {
@@ -107,6 +107,8 @@ func (s *Store) UpdateWork(ctx context.Context, owner, id string, request works.
 	if result.Revision != request.ExpectedRevision {
 		return result, domain.Fail("CONFLICT", "Work revision changed")
 	}
+	visibilityChanged := result.ShowInTrackList != request.ShowInTrackList
+	result.ShowInTrackList = request.ShowInTrackList
 	result.Title, result.Description = request.Title, request.Description
 	result.ExternalIDs, result.Credits, result.Tags = request.ExternalIDs, request.Credits, request.Tags
 	result.Revision++
@@ -115,7 +117,7 @@ func (s *Store) UpdateWork(ctx context.Context, owner, id string, request works.
 	if err != nil {
 		return result, err
 	}
-	changed, err := m.tx.ExecContext(ctx, "UPDATE works SET title=?,description=?,revision=?,document=? WHERE owner=? AND id=? AND revision=?", result.Title, result.Description, result.Revision, raw, owner, id, request.ExpectedRevision)
+	changed, err := m.tx.ExecContext(ctx, "UPDATE works SET title=?,description=?,revision=?,show_in_track_list=?,document=? WHERE owner=? AND id=? AND revision=?", result.Title, result.Description, result.Revision, result.ShowInTrackList, raw, owner, id, request.ExpectedRevision)
 	if err != nil {
 		return result, err
 	}
@@ -125,6 +127,11 @@ func (s *Store) UpdateWork(ctx context.Context, owner, id string, request works.
 	}
 	if count != 1 {
 		return result, domain.Fail("CONFLICT", "Work revision changed")
+	}
+	if visibilityChanged {
+		if _, err = m.tx.ExecContext(ctx, "UPDATE library_revision SET revision=revision+1"); err != nil {
+			return result, err
+		}
 	}
 	if err = replaceWorkMetadata(ctx, m.tx, result); err != nil {
 		return result, err

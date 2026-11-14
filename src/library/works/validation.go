@@ -87,7 +87,7 @@ func NormalizeUpdate(request UpdateRequest) (UpdateRequest, error) {
 	if err != nil {
 		return request, err
 	}
-	return UpdateRequest{ExpectedRevision: request.ExpectedRevision, Title: normalized.Title, Description: normalized.Description, ExternalIDs: normalized.ExternalIDs, Credits: normalized.Credits, Tags: normalized.Tags}, nil
+	return UpdateRequest{ExpectedRevision: request.ExpectedRevision, ShowInTrackList: request.ShowInTrackList, Title: normalized.Title, Description: normalized.Description, ExternalIDs: normalized.ExternalIDs, Credits: normalized.Credits, Tags: normalized.Tags}, nil
 }
 
 func NormalizeQuery(query Query) (Query, error) {

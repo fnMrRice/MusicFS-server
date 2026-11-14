@@ -4,7 +4,7 @@
 
 ## 模块与交付
 
-内容类型和手工作品资料由 `src/library/contenttypes`、`src/library/works` 管理，音乐／ASMR声明来自 `plugins/content`。`src/library/workpackages` 负责完整包预览、事务发布和附件授权，Local Files 提供精确音频观察，复用来源身份及公共播放链。当前范围见[作品资料](library/works.md)与[本地作品包](library/work-packages.md)。CUE 解析位于独立SDK，分段播放等后续项按[作品库实施阶段](../../docs/content-library.md)推进。
+内容类型和手工作品资料由 `src/library/contenttypes`、`src/library/works` 管理。CD 专辑、ASMR 和电台在 `plugins/content` 中分别声明独立库；用户可按 CD 专辑将曲目同时纳入普通音乐。`src/library/workpackages` 负责作品包预览、事务发布和附件授权，音频复用已有来源身份和播放链。当前范围见[作品资料](library/works.md)与[本地作品包](library/work-packages.md)。CUE 分段播放等后续项见[作品库实施阶段](../../docs/content-library.md)。
 
 Server 是 Go 模块化单体，统一管理来源、曲库、歌单、资料补全和音频交付。宿主按七类职责组织，子包说明见[源码导航](../src/README.md)。
 

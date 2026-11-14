@@ -7,7 +7,7 @@ const ordinaryMusicSources = `WITH excluded_work_audio AS MATERIALIZED (
         p.provider_id,p.root_id,json_extract(n.value,'$.sourcePath') AS source_path
  FROM work_packages p JOIN works w ON w.id=p.work_id AND w.owner=p.owner,
       json_each(p.document,'$.nodes') n
- WHERE p.owner=? AND (p.kind='cd_dump' OR w.content_type='asmr')
+ WHERE p.owner=? AND w.content_type<>'music' AND w.show_in_track_list=0
    AND json_extract(n.value,'$.kind')='audio'
 ) `
 

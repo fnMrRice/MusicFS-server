@@ -16,7 +16,9 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/content/asmr"
+	"github.com/fnMrRice/MusicFS-server/plugins/content/cdalbum"
 	"github.com/fnMrRice/MusicFS-server/plugins/content/music"
+	"github.com/fnMrRice/MusicFS-server/plugins/content/radio"
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
 	"github.com/fnMrRice/MusicFS-server/sdk/contenttype"
@@ -52,11 +54,11 @@ func newPackageCatalogHTTP(t *testing.T) *packageCatalogFixture {
 	}
 	waves := map[string][]byte{}
 	names := map[byte]string{}
-	for i, name := range []string{"asmr-only", "cd-only", "music-only"} {
+	for i, name := range []string{"asmr-only", "cd-only", "music-only", "radio-only"} {
 		if err := os.MkdirAll(filepath.Join(root, name), 0700); err != nil {
 			t.Fatal(err)
 		}
-		// 仅修改末尾 PCM 样本，用真实可播文件区分三个独立来源的元数据。
+		// 仅修改末尾 PCM 样本，用真实可播文件区分各来源的元数据。
 		data := bytes.Clone(wave)
 		marker := byte(i + 1)
 		data[len(data)-1] = marker
@@ -100,14 +102,16 @@ func newPackageCatalogHTTP(t *testing.T) *packageCatalogFixture {
 		t.Fatal(err)
 	}
 	t.Cleanup(queue.Close)
-	service := workpackages.New(store, store, lib, map[string]contenttype.PackageOrganizer{"asmr": asmr.PackageOrganizer(), "music": music.PackageOrganizer()})
+	service := workpackages.New(store, store, lib, map[string]contenttype.PackageOrganizer{
+		"asmr": asmr.PackageOrganizer(), "cd_album": cdalbum.PackageOrganizer(), "music": music.PackageOrganizer(), "radio": radio.PackageOrganizer(),
+	})
 	server := api.New(api.Options{Auth: auth.New(store, testToken, []string{origin}, time.Hour), InstanceID: "package-catalog-test", SecureCookie: true,
 		Logger: slog.New(slog.NewTextHandler(io.Discard, nil))})
 	server.RegisterLibrary(lib)
 	server.RegisterCatalog(catalog.New(store))
 	server.RegisterAlbums(albums.New(store, nil, lib))
 	server.RegisterWorkPackages(service)
-	registry, err := contenttypes.New(music.Descriptor(), asmr.Descriptor())
+	registry, err := contenttypes.New(music.Descriptor(), cdalbum.Descriptor(), asmr.Descriptor(), radio.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,7 +168,7 @@ func (f *packageCatalogFixture) scan(t *testing.T, key string) {
 		var job jobs.Job
 		f.call(t, "GET", "/scan-jobs/"+queued.JobID, nil, "", 200, "ScanJob", &job)
 		if job.Status == "succeeded" {
-			if job.Progress.Observed != 3 {
+			if job.Progress.Observed != len(f.waves) {
 				t.Fatal("scan did not observe every fixture", job.Progress.Observed)
 			}
 			return
