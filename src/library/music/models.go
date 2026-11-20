@@ -66,6 +66,7 @@ type TrackInput struct {
 type Query struct {
 	After, Q, ProviderID, ArtistID, AlbumID, Genre, Unknown string
 	Limit                                                   int
+	SourceOnly                                              bool
 }
 
 type ArtistItem struct {

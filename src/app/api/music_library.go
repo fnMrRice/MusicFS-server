@@ -89,18 +89,21 @@ func registerMusicList[T any](s *Server, kind string, load func(context.Context,
 		}
 		allowed := map[string]bool{"limit": false, "after": false, "q": false, "providerInstanceId": false}
 		if kind == "tracks" {
-			for _, field := range []string{"artistId", "albumId", "genre", "unknown"} {
+			for _, field := range []string{"artistId", "albumId", "genre", "unknown", "sourceOnly"} {
 				allowed[field] = false
 			}
 		}
 		if err = catalogParameters(params, allowed); err != nil {
 			return err
 		}
+		if params.Has("sourceOnly") && params.Get("sourceOnly") != "true" && params.Get("sourceOnly") != "false" {
+			return invalidCatalogParameter()
+		}
 		limit, err := catalogLimit(params)
 		if err != nil {
 			return err
 		}
-		query := music.Query{Limit: limit, After: params.Get("after"), Q: params.Get("q"), ProviderID: params.Get("providerInstanceId"), ArtistID: params.Get("artistId"), AlbumID: params.Get("albumId"), Genre: params.Get("genre"), Unknown: params.Get("unknown")}
+		query := music.Query{Limit: limit, After: params.Get("after"), Q: params.Get("q"), ProviderID: params.Get("providerInstanceId"), ArtistID: params.Get("artistId"), AlbumID: params.Get("albumId"), Genre: params.Get("genre"), Unknown: params.Get("unknown"), SourceOnly: params.Get("sourceOnly") == "true"}
 		res, err := load(r.Context(), a.User.ID, query)
 		if err != nil {
 			return err
