@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -20,6 +21,13 @@ func Bangumi(client *http.Client) scraper.Plugin {
 }
 
 const bangumiAPI = "https://api.bgm.tv/v0/"
+
+// 章节名里的制表、换行及其相邻空白视为一个空格，保留其余半角和全角空格。
+var bangumiLayoutSpace = regexp.MustCompile(`\p{Zs}*[\t-\r\x{85}\p{Zl}\p{Zp}][\t-\r\x{85}\p{Z}]*`)
+
+func bangumiTrackName(name string) string {
+	return strings.TrimSpace(bangumiLayoutSpace.ReplaceAllString(name, " "))
+}
 
 type bangumiRecord struct {
 	ID            int64
@@ -136,12 +144,13 @@ func bangumiTracks(ctx context.Context, client *http.Client, id string) ([]scrap
 		}
 		expectedTotal = page.Total
 		for _, row := range page.Data {
-			title := strings.TrimSpace(cmp.Or(row.Name, row.NameCN))
+			chinese := bangumiTrackName(row.NameCN)
+			title := cmp.Or(bangumiTrackName(row.Name), chinese)
 			if title == "" {
 				return nil, errors.New("album track title is missing")
 			}
 			tracks = append(tracks, scraper.Track{
-				Title: title, LocalizedTitles: addPlatformName(nil, title, "zh", row.NameCN),
+				Title: title, LocalizedTitles: addPlatformName(nil, title, "zh", chinese),
 				ExternalID: numericTrackID(row.ID), Disc: row.Disc, Number: int(row.Sort), Duration: float64(row.Duration),
 			})
 		}
