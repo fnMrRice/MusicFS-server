@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/scraper/online"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/builtinplugins"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
@@ -17,6 +18,7 @@ func TestBundledPluginsAutostartPendingAndPersistedDisable(t *testing.T) {
 	path := writeYAMLConfiguration(t, cfg)
 	stop := startAudioYAMLServer(t, path, cfg, base)
 	c := login(t, base, cfg.AdminToken)
+	expectedItems := 18 + len(online.Catalog(http.DefaultClient, "")) + len(builtinplugins.ContentTypes())
 	check := func(ncmState string, restartRequired bool) {
 		t.Helper()
 		for deadline := time.Now().Add(10 * time.Second); ; {
@@ -26,7 +28,7 @@ func TestBundledPluginsAutostartPendingAndPersistedDisable(t *testing.T) {
 				t.Fatalf("plugins: %d %s", code, raw)
 			}
 			testkit.ValidateHTTP(t, "PluginManagementSnapshot", raw)
-			valid := len(snapshot.Items) == 18+len(online.Catalog(http.DefaultClient, "")) && snapshot.RestartRequired == restartRequired
+			valid := len(snapshot.Items) == expectedItems && snapshot.RestartRequired == restartRequired
 			for _, p := range snapshot.Items {
 				if p.Builtin != nil {
 					valid = valid && p.Execution == "builtin" && !p.StateMutable && len(p.Instances) == 0

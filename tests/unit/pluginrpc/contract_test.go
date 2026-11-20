@@ -11,14 +11,14 @@ import (
 )
 
 func TestPersistenceContractFingerprints(t *testing.T) {
-	// 固定当前接口身份；backend 包含中立的指纹分析器与音频处理器缓存身份。
+	// 固定当前接口身份，主库包含歌单关联及推荐页的持久化接口。
 	// 其余接口继续保留源码目录迁移前的指纹，目录调整不应改变协议身份。
 	for _, test := range []struct {
 		name     string
 		contract reflect.Type
 		want     string
 	}{
-		{"backend", reflect.TypeFor[storage.Backend](), "8e97f4d6abaa8df431d4c6084faade89b53a845b0b712757417bfb7aed6e748c"},
+		{"backend", reflect.TypeFor[storage.Backend](), "a6869cf021fb9c66230b9a3e32ab6caae8190cbfe9267f080ba940eb0f03a856"},
 		{"maintenance", reflect.TypeFor[storage.Maintenance](), "c2b65a92a0386d7990000f825babaf527dfb541184711fca13d26cc5298fa013"},
 		{"plugin-state", reflect.TypeFor[plugindb.Backend](), "3585f631ae09e5d4694d439d5d2a72e5d8d2f30cf9b64ac2003dd674eb12c401"},
 	} {
