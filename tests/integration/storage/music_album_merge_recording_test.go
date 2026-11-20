@@ -85,6 +85,65 @@ func TestManualAlbumTrackMergeMultipleSourceGroups(t *testing.T) {
 	}
 }
 
+func TestManualAlbumTrackMergeWritesEditedMetadataToNewRecording(t *testing.T) {
+	s := visibilityStore(t)
+	ctx := t.Context()
+	first := visibilityScan(t, s, "admin", "local", localizedObservation("a", "First", []string{"First artist"}, 120000))[0]
+	second := visibilityScan(t, s, "admin", "other-provider", localizedObservation("b", "Second", []string{"Second artist"}, 120001))[0]
+	a, err := s.MusicTrackForSource(ctx, "admin", first.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := s.MusicTrackForSource(ctx, "admin", second.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	album := a.Albums[0]
+	artist := b.Artists[0]
+	b, err = s.SaveMusicTrack(ctx, "admin", b.ID, b.Revision, music.TrackInput{TrackFields: b.TrackFields,
+		ArtistNames: []string{artist.Name}, AlbumIDs: []string{album.ID}}, domain.NewID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	localized := []scraper.LocalizedTitle{{Language: "ja", Title: "別名"}}
+	year, rating := 2024, 4
+	req := mergeTrackRequest(a, album.Revision, b)
+	req.Metadata = &music.MergeTrackMetadata{
+		TrackFields: music.TrackFields{Title: " Revised ", LocalizedTitles: localized, Year: &year, Rating: &rating},
+		ArtistNames: []string{artist.Name, "New artist"},
+	}
+	merged, err := s.MergeMusicAlbumTracks(ctx, "admin", album.ID, req, domain.NewID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if merged.ID == a.ID || merged.ID == b.ID || len(merged.Sources) != 2 || len(merged.Albums) != len(b.Albums) {
+		t.Fatal("merge lost recording identity, sources or membership", merged)
+	}
+	// 合并前打开的编辑窗口仍持有原单文件身份，此时继续保存必须提示重新读取。
+	_, err = s.SaveMusicTrack(ctx, "admin", b.ID, b.Revision, music.TrackInput{TrackFields: music.TrackFields{Title: "Stale edit"}}, domain.NewID())
+	var stale *domain.Error
+	if !errors.As(err, &stale) || stale.Code != "RESOURCE_CHANGED" {
+		t.Fatalf("stale editor wrote a retired source identity: %v", err)
+	}
+	if _, err = s.MusicTrack(ctx, "admin", b.ID); !errors.As(err, &stale) || stale.Code != "RESOURCE_CHANGED" {
+		t.Fatalf("stale track ID still read as editable: %v", err)
+	}
+	current, err := s.MusicTrackForSource(ctx, "admin", second.ID)
+	if err != nil || current.ID != merged.ID || current.Title != merged.Title {
+		t.Fatalf("source did not resolve to the edited recording: %+v %v", current, err)
+	}
+	found, err := s.MusicTracks(ctx, "admin", music.Query{AlbumID: album.ID, Q: "別名", ProviderID: "local", Limit: 20})
+	if err != nil || len(found.Items) != 1 || len(found.Items[0].Sources) != 2 {
+		t.Fatal("provider-filtered search did not retain the edited recording and both versions", found, err)
+	}
+	result := found.Items[0]
+	if result.Title != "Revised" || result.Year == nil || *result.Year != year || result.Rating == nil || *result.Rating != rating ||
+		result.Genre != nil || !slices.Equal(result.LocalizedTitles, localized) || len(result.Artists) != 2 ||
+		result.Artists[0].ID != artist.ID || result.Artists[1].Name != "New artist" {
+		t.Fatal("stored metadata differs from the edited values", result)
+	}
+}
+
 func TestManualAlbumTrackMergeSourceConflictRollsBack(t *testing.T) {
 	s := visibilityStore(t)
 	ctx := t.Context()
@@ -100,6 +159,7 @@ func TestManualAlbumTrackMergeSourceConflictRollsBack(t *testing.T) {
 	album := a.Albums[0]
 	d := metadataTrack(t, s, "Placeholder", album.ID)
 	req := mergeTrackRequest(a, album.Revision, d, b)
+	req.Metadata = &music.MergeTrackMetadata{TrackFields: music.TrackFields{Title: "Updated", LocalizedTitles: []scraper.LocalizedTitle{}}, ArtistNames: []string{"New artist"}}
 	assertReject := func(code string) {
 		t.Helper()
 		_, err := s.MergeMusicAlbumTracks(ctx, "admin", album.ID, req, domain.NewID())
@@ -110,6 +170,11 @@ func TestManualAlbumTrackMergeSourceConflictRollsBack(t *testing.T) {
 		rows := albumRows(t, s, album.ID, "")
 		if len(rows) != 3 || rows[0].Albums[0].Revision != album.Revision {
 			t.Fatal("failed merge changed the album", rows)
+		}
+		for _, track := range rows {
+			if track.Title == "Updated" {
+				t.Fatal("failed merge published edited metadata")
+			}
 		}
 		var moved int
 		if err = s.DB.QueryRowContext(ctx, "SELECT count(*) FROM recording_source_links WHERE recording_id IS NOT NULL").Scan(&moved); err != nil || moved != 0 {

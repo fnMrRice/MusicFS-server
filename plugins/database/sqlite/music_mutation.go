@@ -134,6 +134,9 @@ func (s *Store) SaveMusicTrack(ctx context.Context, owner, id string, revision i
 				_, err = tx.ExecContext(ctx, "INSERT INTO recordings(id,owner,created_at,updated_at) VALUES(?,?,?,?)", newID, owner, now, now)
 			}
 		} else {
+			if err := checkMusicTrackIdentity(ctx, tx, owner, newID); err != nil {
+				return music.Track{}, err
+			}
 			var same bool
 			same, err = unchangedMusicTrack(ctx, tx, owner, newID, revision, t, titles)
 			if err != nil {

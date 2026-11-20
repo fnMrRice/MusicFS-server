@@ -159,11 +159,26 @@ func (s *Store) MusicTrack(ctx context.Context, owner, id string) (music.Track, 
 		return music.Track{}, err
 	}
 	defer tx.Rollback()
+	if err := checkMusicTrackIdentity(ctx, tx, owner, id); err != nil {
+		return music.Track{}, err
+	}
 	t, err := readMusicTrack(ctx, tx, owner, id)
 	if err != nil {
 		return t, err
 	}
 	return t, tx.Commit()
+}
+
+// 单文件归并后仍保留旧资料供解绑恢复。编辑器须重新选择当前曲目才能继续读写。
+func checkMusicTrackIdentity(ctx context.Context, tx *sql.Tx, owner, id string) error {
+	var moved bool
+	if err := tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM music_sources WHERE owner=? AND id=? AND track_id<>id)", owner, id).Scan(&moved); err != nil {
+		return err
+	}
+	if moved {
+		return domain.Fail("RESOURCE_CHANGED", "Track source now belongs to a different recording")
+	}
+	return nil
 }
 
 func (s *Store) MusicTrackForSource(ctx context.Context, owner, source string) (music.Track, error) {

@@ -63,10 +63,17 @@ func TestMergeTracksInAlbumRequiresRevisionAndReplays(t *testing.T) {
 	reqBody["targetTrackId"] = "outside-selection"
 	request("reject-invalid-target", true, 400)
 	reqBody["targetTrackId"] = members[0].TrackID
+	reqBody["metadata"] = map[string]any{"title": "Incomplete"}
+	request("reject-incomplete-metadata", true, 400)
+	reqBody["metadata"] = map[string]any{"title": "Edited", "localizedTitles": []any{}, "artistNames": []string{}, "genre": nil, "rating": 4}
 	raw, _ := json.Marshal(reqBody)
 	testkit.ValidateHTTP(t, "MergeMusicAlbumTracks", raw)
 	saved := request("merge-selected-tracks", true, 200)
 	testkit.ValidateHTTP(t, "MusicTrack", saved)
+	var track music.Track
+	if err := json.Unmarshal(saved, &track); err != nil || track.Title != "Edited" || track.Rating == nil || *track.Rating != 4 || len(track.LocalizedTitles) != 0 {
+		t.Fatalf("final metadata was not applied: %s", saved)
+	}
 	if !bytes.Equal(saved, request("merge-selected-tracks", true, 200)) {
 		t.Fatal("merge replay changed the response")
 	}

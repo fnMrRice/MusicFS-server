@@ -18,6 +18,13 @@ func (s *Store) MergeMusicAlbumTracks(ctx context.Context, owner, albumID string
 	if albumID == "" {
 		return music.Track{}, domain.Fail("INVALID_ARGUMENT", "Album is required")
 	}
+	if in.Metadata != nil {
+		metadata, err := in.Metadata.Normalize()
+		if err != nil {
+			return music.Track{}, err
+		}
+		in.Metadata = &metadata
+	}
 	return saveMusic(ctx, s, owner, "albums/merge-tracks", albumID, key, in.ExpectedAlbumRevision, in, func(tx *sql.Tx, id string) (music.Track, error) {
 		album, err := readMusicAlbum(ctx, tx, owner, id)
 		if err != nil {
@@ -84,8 +91,10 @@ func (s *Store) MergeMusicAlbumTracks(ctx context.Context, owner, albumID string
 			for _, a := range donor.Albums {
 				albumIDs[a.ID] = true
 			}
-			if err := mergeTrackTitles(&target, donor); err != nil {
-				return music.Track{}, err
+			if in.Metadata == nil {
+				if err := mergeTrackTitles(&target, donor); err != nil {
+					return music.Track{}, err
+				}
 			}
 			if err := moveTrackRelations(ctx, tx, owner, target.ID, donor.ID); err != nil {
 				return music.Track{}, err
@@ -99,12 +108,18 @@ func (s *Store) MergeMusicAlbumTracks(ctx context.Context, owner, albumID string
 				return music.Track{}, err
 			}
 		}
+		if in.Metadata != nil {
+			target.TrackFields = in.Metadata.TrackFields
+			if err := writeMusicCredits(ctx, tx, owner, target.ID, in.Metadata.ArtistNames); err != nil {
+				return music.Track{}, err
+			}
+		}
 		raw, err := json.Marshal(target.LocalizedTitles)
 		if err != nil {
 			return music.Track{}, err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE music_tracks SET localized_titles=?,cover_path=?,genre=?,year=?,rating=?,
- metadata_locked=1,scraper_placeholder=0,revision=revision+1 WHERE owner=? AND id=?`, string(raw), target.CoverPath, target.Genre, target.Year, target.Rating, owner, target.ID); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE music_tracks SET title=?,localized_titles=?,cover_path=?,genre=?,year=?,rating=?,
+ metadata_locked=1,scraper_placeholder=0,revision=revision+1 WHERE owner=? AND id=?`, target.Title, string(raw), target.CoverPath, target.Genre, target.Year, target.Rating, owner, target.ID); err != nil {
 			return music.Track{}, err
 		}
 		for album := range albumIDs {
