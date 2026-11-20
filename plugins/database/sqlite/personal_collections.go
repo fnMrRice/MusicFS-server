@@ -73,10 +73,9 @@ func (s *Store) PersonalCollection(ctx context.Context, owner, kind, cursor stri
 	var trackPositions []int
 	err = musicRows(ctx, tx, `SELECT `+musicTrackColumns+`,p.forced_source_id,p.updated_at FROM music_playlist_entries p JOIN music_tracks m ON m.id=p.track_id AND m.owner=p.owner
  WHERE p.owner=? AND p.playlist_id=? AND p.binding_id='' ORDER BY p.updated_at DESC,p.entry_id LIMIT ? OFFSET ?`, func(rows *sql.Rows) error {
-		track := music.Track{Artists: []music.Artist{}, Albums: []music.Album{}, Sources: []music.Source{}}
 		var source *string
 		var stamp string
-		err := rows.Scan(&track.ID, &track.Title, &track.CoverPath, &track.Genre, &track.Year, &track.Rating, &track.Revision, &track.CreatedAt, &track.UpdatedAt, &source, &stamp)
+		track, err := scanMusicTrack(rows, &source, &stamp)
 		if err != nil {
 			return err
 		}

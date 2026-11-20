@@ -8,6 +8,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/sdk/scraper"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library/music"
+	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 )
 
@@ -141,6 +142,17 @@ func TestManualAlbumTrackMergeWritesEditedMetadataToNewRecording(t *testing.T) {
 		result.Genre != nil || !slices.Equal(result.LocalizedTitles, localized) || len(result.Artists) != 2 ||
 		result.Artists[0].ID != artist.ID || result.Artists[1].Name != "New artist" {
 		t.Fatal("stored metadata differs from the edited values", result)
+	}
+	if _, err = s.SetFavoriteSource(ctx, "admin", result.ID, &second.ID); err != nil {
+		t.Fatal(err)
+	}
+	favorites, err := s.PersonalCollection(ctx, "admin", personal.Favorites, "", 10)
+	if err != nil || len(favorites.Items) != 1 {
+		t.Fatalf("could not read favorited recording: %+v %v", favorites, err)
+	}
+	entry := favorites.Items[0]
+	if entry.Track == nil || entry.Track.ID != second.ID || entry.MusicTrack.Title != result.Title || !slices.Equal(entry.MusicTrack.LocalizedTitles, localized) {
+		t.Fatal("favorite lost edited metadata or the pinned source", entry)
 	}
 }
 

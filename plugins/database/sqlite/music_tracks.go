@@ -28,10 +28,11 @@ const musicTrackColumns = "m.id,m.title,m.localized_titles,m.cover_path,m.genre,
 
 type musicScanner interface{ Scan(...any) error }
 
-func scanMusicTrack(row musicScanner) (music.Track, error) {
+func scanMusicTrack(row musicScanner, extra ...any) (music.Track, error) {
 	t := music.Track{Artists: []music.Artist{}, Albums: []music.Album{}, Sources: []music.Source{}}
 	var titles []byte
-	if err := row.Scan(&t.ID, &t.Title, &titles, &t.CoverPath, &t.Genre, &t.Year, &t.Rating, &t.Revision, &t.CreatedAt, &t.UpdatedAt); err != nil {
+	fields := []any{&t.ID, &t.Title, &titles, &t.CoverPath, &t.Genre, &t.Year, &t.Rating, &t.Revision, &t.CreatedAt, &t.UpdatedAt}
+	if err := row.Scan(append(fields, extra...)...); err != nil {
 		return t, err
 	}
 	err := json.Unmarshal(titles, &t.LocalizedTitles)
