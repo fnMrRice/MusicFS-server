@@ -3,13 +3,12 @@ package online
 import (
 	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
-	"regexp"
 	"slices"
 	"strconv"
-	"strings"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/fault"
 	"github.com/fnMrRice/MusicFS-server/sdk/scraper"
@@ -22,13 +21,6 @@ func Bangumi(client *http.Client) scraper.Plugin {
 
 const bangumiAPI = "https://api.bgm.tv/v0/"
 
-// 章节名里的制表、换行及其相邻空白视为一个空格，保留其余半角和全角空格。
-var bangumiLayoutSpace = regexp.MustCompile(`\p{Zs}*[\t-\r\x{85}\p{Zl}\p{Zp}][\t-\r\x{85}\p{Z}]*`)
-
-func bangumiTrackName(name string) string {
-	return strings.TrimSpace(bangumiLayoutSpace.ReplaceAllString(name, " "))
-}
-
 type bangumiRecord struct {
 	ID            int64
 	Type          int
@@ -37,6 +29,20 @@ type bangumiRecord struct {
 	Date, Summary string
 	ShortSummary  string `json:"short_summary"`
 	Images        struct{ Large, Common, Medium string }
+	Infobox       []struct {
+		Key   string
+		Value json.RawMessage
+	}
+}
+
+type bangumiEpisode struct {
+	ID       int64
+	Name     string
+	NameCN   string `json:"name_cn"`
+	Desc     string
+	Disc     int
+	Sort     float64
+	Duration int `json:"duration_seconds"`
 }
 
 func searchBangumi(ctx context.Context, client *http.Client, field string, q scraper.Query) ([]scraper.Item, error) {
@@ -102,7 +108,7 @@ func searchBangumi(ctx context.Context, client *http.Client, field string, q scr
 				continue
 			}
 		case "albumTracks":
-			tracks, err := bangumiTracks(ctx, client, id)
+			tracks, err := bangumiTracks(ctx, client, id, row)
 			if err != nil {
 				return nil, err
 			}
@@ -116,21 +122,14 @@ func searchBangumi(ctx context.Context, client *http.Client, field string, q scr
 	return results, nil
 }
 
-func bangumiTracks(ctx context.Context, client *http.Client, id string) ([]scraper.Track, error) {
+func bangumiTracks(ctx context.Context, client *http.Client, id string, album bangumiRecord) ([]scraper.Track, error) {
 	const pageSize, maxTracks = 100, 2000
-	tracks := []scraper.Track{}
+	var episodes []bangumiEpisode
 	expectedTotal := -1
 	for offset := 0; ; {
 		var page struct {
 			Total int
-			Data  []struct {
-				ID       int64
-				Name     string
-				NameCN   string `json:"name_cn"`
-				Disc     int
-				Sort     float64
-				Duration int `json:"duration_seconds"`
-			}
+			Data  []bangumiEpisode
 		}
 		params := url.Values{"subject_id": {id}, "limit": {strconv.Itoa(pageSize)}, "offset": {strconv.Itoa(offset)}}
 		if err := lookupJSON(ctx, client, bangumiAPI+"episodes", params, nil, &page); err != nil {
@@ -143,17 +142,7 @@ func bangumiTracks(ctx context.Context, client *http.Client, id string) ([]scrap
 			return nil, errors.New("album track list changed during lookup")
 		}
 		expectedTotal = page.Total
-		for _, row := range page.Data {
-			chinese := bangumiTrackName(row.NameCN)
-			title := cmp.Or(bangumiTrackName(row.Name), chinese)
-			if title == "" {
-				return nil, errors.New("album track title is missing")
-			}
-			tracks = append(tracks, scraper.Track{
-				Title: title, LocalizedTitles: addPlatformName(nil, title, "zh", chinese),
-				ExternalID: numericTrackID(row.ID), Disc: row.Disc, Number: int(row.Sort), Duration: float64(row.Duration),
-			})
-		}
+		episodes = append(episodes, page.Data...)
 		offset += len(page.Data)
 		if offset >= page.Total {
 			break
@@ -161,6 +150,15 @@ func bangumiTracks(ctx context.Context, client *http.Client, id string) ([]scrap
 		if len(page.Data) == 0 {
 			return nil, errors.New("incomplete album track list")
 		}
+	}
+	hints := newBangumiTrackHints(album, episodes)
+	tracks := make([]scraper.Track, 0, len(episodes))
+	for _, episode := range episodes {
+		track := hints.track(episode)
+		if track.Title == "" {
+			return nil, errors.New("album track title is missing")
+		}
+		tracks = append(tracks, track)
 	}
 	slices.SortStableFunc(tracks, func(a, b scraper.Track) int {
 		return cmp.Or(cmp.Compare(a.Disc, b.Disc), cmp.Compare(a.Number, b.Number))

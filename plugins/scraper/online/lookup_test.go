@@ -155,7 +155,8 @@ func TestBangumiChapterLayoutProducesValidTrackNames(t *testing.T) {
 		t.Fatalf("unexpected album tracks: %#v %v", items, err)
 	}
 	first, second := items[0].Tracks[0], items[0].Tracks[1]
-	if first.ExternalID != "15946" || first.Title != "Special Track: 卑怯戦隊うろたんだー / シンP feat.MEIKO,KAITO,ミク,リン&amp;レン" {
+	if first.ExternalID != "15946" || first.Title != "Special Track: 卑怯戦隊うろたんだー" ||
+		first.Artist != "シンP feat.MEIKO,KAITO,ミク,リン&レン" || first.Composer != "" {
 		t.Errorf("unexpected special track title: %#v", first)
 	}
 	if second.Title != "曲名  A　 B 副题" || len(second.LocalizedTitles) != 1 ||

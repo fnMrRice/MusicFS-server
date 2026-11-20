@@ -34,9 +34,11 @@ type Track struct {
 	LocalizedArtistNames []LocalizedTitle `json:"localizedArtistNames,omitempty"`
 	Title                string           `json:"title"`
 	Artist               string           `json:"artist,omitempty"`
-	Disc                 int              `json:"disc,omitempty"`
-	Number               int              `json:"number,omitempty"`
-	Duration             float64          `json:"duration,omitempty"`
+	// Composer 仅保存平台在这首曲目上明确标注的作曲者。
+	Composer string  `json:"composer,omitempty"`
+	Disc     int     `json:"disc,omitempty"`
+	Number   int     `json:"number,omitempty"`
+	Duration float64 `json:"duration,omitempty"`
 }
 
 // Item 使用上游稳定编号；曲目表保留来源顺序，图片保存来源引用。

@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
@@ -18,6 +17,7 @@ import (
 
 type albumScrapeTrack struct {
 	track          scraper.Track
+	previous       *scraper.Track
 	input          music.TrackInput
 	slot, prior    string
 	override       albumSlotOverride
@@ -48,6 +48,10 @@ func albumReleaseTracks(ctx context.Context, tx *sql.Tx, album string, field wor
 	if err != nil {
 		return nil, err
 	}
+	previous, err := previousBangumiChapters(ctx, tx, album, field)
+	if err != nil {
+		return nil, err
+	}
 	incoming := make([]albumScrapeTrack, 0, len(field.Item.Tracks))
 	slots := map[string]int{}
 	idCounts := map[string]int{}
@@ -69,8 +73,12 @@ func albumReleaseTracks(ctx context.Context, tx *sql.Tx, album string, field wor
 			slot = fmt.Sprintf("%s:%d", slot, slots[slot])
 		}
 		prior := ""
+		var chapter *scraper.Track
 		if track.ExternalID != "" && idCounts[track.ExternalID] == 1 {
 			prior = byID[track.ExternalID]
+			if prior != "" {
+				chapter = previous[track.ExternalID]
+			}
 		}
 		if r := bySlot[slot]; prior == "" && (r.external == "" || track.ExternalID == "" || r.external == track.ExternalID) {
 			prior = r.track
@@ -96,7 +104,7 @@ func albumReleaseTracks(ctx context.Context, tx *sql.Tx, album string, field wor
 		for _, name := range track.LocalizedArtistNames {
 			appendCredit(name.Title)
 		}
-		incoming = append(incoming, albumScrapeTrack{track: track, input: input, slot: slot, prior: prior, override: override, creditVariants: variants})
+		incoming = append(incoming, albumScrapeTrack{track: track, previous: chapter, input: input, slot: slot, prior: prior, override: override, creditVariants: variants})
 	}
 	return incoming, nil
 }
@@ -170,19 +178,8 @@ func syncMusicAlbumScrapedTracks(ctx context.Context, tx *sql.Tx, owner, album s
 			member = &scrapedAlbumMember{id: id, title: t.input.Title}
 		}
 		used[id] = true
-		titles, err := mergedScrapedTitles(member.title, member.titles, t.input)
-		if err != nil {
+		if err = updateScrapedAlbumMember(ctx, tx, owner, member, t); err != nil {
 			return err
-		}
-		if !slices.Equal(titles, member.titles) {
-			raw, err := json.Marshal(titles)
-			if err != nil {
-				return err
-			}
-			if _, err = tx.ExecContext(ctx, "UPDATE music_tracks SET localized_titles=?,revision=revision+1 WHERE id=?", string(raw), id); err != nil {
-				return err
-			}
-			member.titles = titles
 		}
 		if pos, ok := positions[id]; ok && pos != i {
 			continue
