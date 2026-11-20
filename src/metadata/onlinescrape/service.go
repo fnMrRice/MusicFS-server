@@ -71,13 +71,19 @@ func validQuery(q scraper.Query) bool {
 			return false
 		}
 	}
+	if q.SourceURL != "" {
+		u, err := url.Parse(q.SourceURL)
+		if len(q.SourceURL) > 4096 || strings.ContainsFunc(q.SourceURL, unicode.IsControl) || err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil {
+			return false
+		}
+	}
 	if math.IsNaN(q.Duration) || q.Duration < 0 || q.Duration > 86400 {
 		return false
 	}
 	if len(q.Fingerprint) > 48<<10 || strings.ContainsFunc(q.Fingerprint, unicode.IsSpace) || strings.ContainsFunc(q.Fingerprint, unicode.IsControl) {
 		return false
 	}
-	return strings.TrimSpace(q.Title+q.Artist+q.Album+q.ExternalID+q.Fingerprint) != ""
+	return strings.TrimSpace(q.Title+q.Artist+q.Album+q.ExternalID+q.SourceURL+q.Fingerprint) != ""
 }
 
 func (s *Service) Search(ctx context.Context, owner, id, field string, q scraper.Query) ([]Candidate, error) {

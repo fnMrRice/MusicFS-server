@@ -1,6 +1,7 @@
 package online
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/scraper"
@@ -25,8 +26,9 @@ type brainzEntity struct {
 		Label   struct{ Name string }
 	} `json:"label-info"`
 	Media []struct {
-		Position int
-		Tracks   []struct {
+		Position   int
+		TrackCount int `json:"track-count"`
+		Tracks     []struct {
 			Position  int
 			Title     string
 			Length    int64
@@ -38,6 +40,21 @@ type brainzEntity struct {
 			}
 		}
 	}
+}
+
+// 上游声明的曲数必须完整返回，避免把截断曲目表当作整张专辑。
+func (row brainzEntity) validateTrackList() error {
+	for _, medium := range row.Media {
+		if medium.TrackCount > 0 && medium.TrackCount != len(medium.Tracks) {
+			return errors.New("incomplete MusicBrainz album track list")
+		}
+		for _, track := range medium.Tracks {
+			if strings.TrimSpace(track.Title) == "" && strings.TrimSpace(track.Recording.Title) == "" {
+				return errors.New("MusicBrainz album track title is missing")
+			}
+		}
+	}
+	return nil
 }
 
 func brainzCredits(credits []brainzCredit) string {
@@ -61,9 +78,14 @@ func (row brainzEntity) item(entity string) scraper.Item {
 	case "release":
 		item.Album = row.Title
 		details = append(details, row.Status, row.Country)
+		publishers := []string{}
 		for _, label := range row.Labels {
-			details = append(details, label.Label.Name, label.Catalog)
+			if label.Label.Name != "" {
+				publishers = append(publishers, label.Label.Name)
+			}
+			details = append(details, label.Catalog)
 		}
+		item.Publisher = strings.Join(publishers, " / ")
 	case "artist":
 		item.Title, item.Artist, item.Date = row.Name, row.Name, row.LifeSpan.Begin
 		details = append(details, row.Type, row.Area.Name, row.Country)

@@ -34,6 +34,10 @@ func (p brainzPlugin) Search(ctx context.Context, field string, q scraper.Query)
 	if err != nil {
 		return nil, err
 	}
+	q, err = albumPageQuery("musicfs.scraper.musicbrainz", field, q)
+	if err != nil {
+		return nil, err
+	}
 	rows, err := p.entities(ctx, entity, inc, q)
 	if err != nil {
 		return nil, err
@@ -52,6 +56,9 @@ func (p brainzPlugin) Search(ctx context.Context, field string, q scraper.Query)
 		}
 		item := row.item(entity)
 		if field == "albumTracks" {
+			if err := row.validateTrackList(); err != nil {
+				return nil, err
+			}
 			item.Tracks = row.trackList()
 			if len(item.Tracks) == 0 {
 				continue

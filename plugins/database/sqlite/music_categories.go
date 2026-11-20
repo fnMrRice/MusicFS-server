@@ -108,6 +108,13 @@ func (s *Store) MusicAlbums(ctx context.Context, owner string, q music.Query) (m
 		res.Items = res.Items[:q.Limit]
 		res.NextAfter = &res.Items[q.Limit-1].ID
 	}
+	albums := make([]*music.Album, len(res.Items))
+	for i := range res.Items {
+		albums[i] = &res.Items[i].Album
+	}
+	if err = populateMusicAlbumCovers(ctx, tx, owner, albums...); err != nil {
+		return res, err
+	}
 	return res, tx.Commit()
 }
 
@@ -123,7 +130,19 @@ func readMusicAlbum(ctx context.Context, q interface {
 }
 
 func (s *Store) MusicAlbum(ctx context.Context, owner, id string) (music.Album, error) {
-	return readMusicAlbum(ctx, s.DB, owner, id)
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return music.Album{}, err
+	}
+	defer tx.Rollback()
+	album, err := readMusicAlbum(ctx, tx, owner, id)
+	if err != nil {
+		return album, err
+	}
+	if err = populateMusicAlbumCovers(ctx, tx, owner, &album); err != nil {
+		return album, err
+	}
+	return album, tx.Commit()
 }
 
 func (s *Store) MusicGenres(ctx context.Context, owner string, q music.Query) (music.GenrePage, error) {

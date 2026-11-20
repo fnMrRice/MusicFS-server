@@ -15,9 +15,9 @@ import (
 	"github.com/fnMrRice/MusicFS-server/sdk/scraper"
 )
 
-// ITunes 查询地区商店的文字目录，不提取推广图片或音频。
+// ITunes 查询地区商店的专辑资料和官方封面，不请求音频。
 func ITunes(client *http.Client) scraper.Plugin {
-	return newLookupPlugin(client, "itunes", "iTunes Search", []string{"trackDetails", "albumDetails", "albumTracks", "artistDetails"}, searchITunes)
+	return newLookupPlugin(client, "itunes", "iTunes Search", []string{"trackDetails", "albumDetails", "albumTracks", "artistDetails"}, searchITunes, "*.mzstatic.com")
 }
 
 var itunesPacer = requestPacer{interval: 3 * time.Second}
@@ -28,6 +28,7 @@ type itunesEntry struct {
 	ArtistName, CollectionName, TrackName                         string
 	ArtistLinkURL, ArtistViewURL, CollectionViewURL, TrackViewURL string
 	ReleaseDate, PrimaryGenreName                                 string
+	ArtworkURL100, ArtworkURL60, ArtworkURL30                     string
 	DiscNumber, TrackNumber, TrackCount                           int
 	TrackTimeMillis                                               int64
 }
@@ -104,9 +105,9 @@ func searchITunes(ctx context.Context, client *http.Client, field string, q scra
 			if len(item.Tracks) == 0 {
 				continue
 			}
-			// 商店单次最多传回 200 项，避免把截断结果作为完整曲序。
-			if len(rows) >= 200 && entry.TrackCount > len(item.Tracks) {
-				return nil, errors.New("album exceeds store lookup limit")
+			// 即使未达到单次上限，也不能把少于上游声明曲数的响应当作整张专辑。
+			if entry.TrackCount > 0 && entry.TrackCount != len(item.Tracks) {
+				return nil, errors.New("incomplete store album track list")
 			}
 			slices.SortStableFunc(item.Tracks, func(a, b scraper.Track) int {
 				return cmp.Or(cmp.Compare(a.Disc, b.Disc), cmp.Compare(a.Number, b.Number))
@@ -119,7 +120,13 @@ func searchITunes(ctx context.Context, client *http.Client, field string, q scra
 
 func (r itunesEntry) item(entity string) (scraper.Item, bool) {
 	var id int64
-	item := scraper.Item{Artist: r.ArtistName, Description: r.PrimaryGenreName}
+	item := scraper.Item{Artist: r.ArtistName, Genre: r.PrimaryGenreName}
+	for _, raw := range []string{r.ArtworkURL100, r.ArtworkURL60, r.ArtworkURL30} {
+		if scraper.AllowsImageURL(raw, []string{"*.mzstatic.com"}) {
+			item.ImageURL = raw
+			break
+		}
+	}
 	switch entity {
 	case "song":
 		if r.WrapperType != "track" || r.Kind != "song" {

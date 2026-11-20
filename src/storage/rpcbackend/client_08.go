@@ -36,6 +36,11 @@ func (c *Client) SelectMusicAlbumScrapedField(a0 context.Context, a1 string, a2 
 	return r0, err
 }
 
+func (c *Client) SelectMusicAlbumScrapedFields(a0 context.Context, a1 string, a2 string, a3 int64, a4 []works.ScrapedField, a5 string) (r0 int64, err error) {
+	err = c.Invoke(a0, "SelectMusicAlbumScrapedFields", []any{a1, a2, a3, a4, a5}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) SelectRecordingCover(a0 context.Context, a1 string, a2 library.SelectRecordingCoverRequest, a3 string) (r0 library.RecordingCover, err error) {
 	err = c.Invoke(a0, "SelectRecordingCover", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
@@ -128,10 +133,5 @@ func (c *Client) UpdateProgress(a0 context.Context, a1 jobs.Job, a2 int) (err er
 
 func (c *Client) UpdateRelease(a0 context.Context, a1 string, a2 string, a3 albums.UpdateReleaseRequest, a4 string) (r0 albums.Release, err error) {
 	err = c.Invoke(a0, "UpdateRelease", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) UpdateSourceAlbum(a0 context.Context, a1 string, a2 string, a3 albums.UpdateSourceAlbumRequest, a4 string) (r0 albums.SourceAlbum, err error) {
-	err = c.Invoke(a0, "UpdateSourceAlbum", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
 }

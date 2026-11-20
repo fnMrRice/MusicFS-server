@@ -25,7 +25,8 @@ type AlbumFields struct {
 type Album struct {
 	ID string `json:"albumId"`
 	AlbumFields
-	Revision int64 `json:"revision"`
+	OriginalName string `json:"originalName"`
+	Revision     int64  `json:"revision"`
 }
 
 type Source struct {
@@ -119,4 +120,5 @@ type Repository interface {
 	SaveMusicAlbum(context.Context, string, string, int64, AlbumFields, string) (Album, error)
 	MusicAlbumScrapedFields(context.Context, string, string) ([]works.ScrapedField, error)
 	SelectMusicAlbumScrapedField(context.Context, string, string, int64, works.ScrapedField, string) (int64, error)
+	SelectMusicAlbumScrapedFields(context.Context, string, string, int64, []works.ScrapedField, string) (int64, error)
 }

@@ -108,6 +108,7 @@ func searchBangumi(ctx context.Context, client *http.Client, field string, q scr
 func bangumiTracks(ctx context.Context, client *http.Client, id string) ([]scraper.Track, error) {
 	const pageSize, maxTracks = 100, 2000
 	tracks := []scraper.Track{}
+	expectedTotal := -1
 	for offset := 0; ; {
 		var page struct {
 			Total int
@@ -126,11 +127,16 @@ func bangumiTracks(ctx context.Context, client *http.Client, id string) ([]scrap
 		if page.Total > maxTracks || offset+len(page.Data) > maxTracks {
 			return nil, errors.New("album track list is too large")
 		}
+		if page.Total < 0 || expectedTotal >= 0 && page.Total != expectedTotal || offset+len(page.Data) > page.Total {
+			return nil, errors.New("album track list changed during lookup")
+		}
+		expectedTotal = page.Total
 		for _, row := range page.Data {
 			title := strings.TrimSpace(cmp.Or(row.Name, row.NameCN))
-			if title != "" {
-				tracks = append(tracks, scraper.Track{Title: title, Disc: row.Disc, Number: int(row.Sort), Duration: float64(row.Duration)})
+			if title == "" {
+				return nil, errors.New("album track title is missing")
 			}
+			tracks = append(tracks, scraper.Track{Title: title, Disc: row.Disc, Number: int(row.Sort), Duration: float64(row.Duration)})
 		}
 		offset += len(page.Data)
 		if offset >= page.Total {

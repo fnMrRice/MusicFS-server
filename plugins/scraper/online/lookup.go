@@ -39,6 +39,11 @@ func (p *lookupPlugin) Search(ctx context.Context, field string, q scraper.Query
 	if !slices.Contains(p.descriptor.Fields, field) {
 		return nil, fault.Fail("UNSUPPORTED", "unsupported scraper field")
 	}
+	var err error
+	q, err = albumPageQuery(p.descriptor.PluginID, field, q)
+	if err != nil {
+		return nil, err
+	}
 	items, err := p.search(ctx, p.client, field, q)
 	if errors.Is(err, errCatalogMissing) {
 		return []scraper.Item{}, nil

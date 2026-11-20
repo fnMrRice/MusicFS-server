@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"slices"
+	"strings"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library/music"
@@ -45,7 +47,33 @@ func (s *Store) SelectMusicAlbumScrapedField(ctx context.Context, owner, id stri
 	}
 	// 幂等身份仅包含原请求；候选过期后仍能重放成功回执。
 	input := struct{ PluginID, Token string }{field.PluginID, field.CandidateToken}
-	return saveMusic(ctx, s, owner, "albums/scraped/"+field.Field, id, key, revision, input, func(tx *sql.Tx, albumID string) (int64, error) {
+	return s.saveMusicAlbumScraped(ctx, owner, id, revision, []works.ScrapedField{field}, key, "albums/scraped/"+field.Field, input)
+}
+
+// SelectMusicAlbumScrapedFields 一次发布同一发行版的资料和完整曲目表。
+func (s *Store) SelectMusicAlbumScrapedFields(ctx context.Context, owner, id string, revision int64, fields []works.ScrapedField, key string) (int64, error) {
+	if !works.ValidID(id) || len(fields) < 2 || len(fields) > 3 {
+		return 0, domain.Fail("INVALID_ARGUMENT", "Album details and complete track list are required")
+	}
+	fields = slices.Clone(fields)
+	slices.SortFunc(fields, func(a, b works.ScrapedField) int { return strings.Compare(a.Field, b.Field) })
+	input := make([]struct{ Field, PluginID, Token string }, len(fields))
+	seen := map[string]bool{}
+	for i, field := range fields {
+		if !music.AlbumScrapedField(field.Field) || seen[field.Field] || !works.ValidID(field.PluginID) || !works.ValidID(field.CandidateToken) || field.PluginID != fields[0].PluginID {
+			return 0, domain.Fail("INVALID_ARGUMENT", "Invalid album scraped field bundle")
+		}
+		seen[field.Field] = true
+		input[i] = struct{ Field, PluginID, Token string }{field.Field, field.PluginID, field.CandidateToken}
+	}
+	if !seen["albumDetails"] || !seen["albumTracks"] {
+		return 0, domain.Fail("INVALID_ARGUMENT", "Album details and complete track list are required")
+	}
+	return s.saveMusicAlbumScraped(ctx, owner, id, revision, fields, key, "albums/scraped", input)
+}
+
+func (s *Store) saveMusicAlbumScraped(ctx context.Context, owner, id string, revision int64, fields []works.ScrapedField, key, kind string, input any) (int64, error) {
+	return saveMusic(ctx, s, owner, kind, id, key, revision, input, func(tx *sql.Tx, albumID string) (int64, error) {
 		album, err := readMusicAlbum(ctx, tx, owner, albumID)
 		if err != nil {
 			return 0, err
@@ -53,17 +81,33 @@ func (s *Store) SelectMusicAlbumScrapedField(ctx context.Context, owner, id stri
 		if album.Revision != revision {
 			return 0, domain.Fail("CONFLICT", "Music album revision changed")
 		}
-		if field.Item.ID == "" {
-			return 0, domain.Fail("NOT_FOUND", "Scraper candidate expired or unavailable")
+		for _, field := range fields {
+			if field.Item.ID == "" {
+				return 0, domain.Fail("NOT_FOUND", "Scraper candidate expired or unavailable")
+			}
+			if len(fields) > 1 && (field.Item.ID != fields[0].Item.ID || field.Field == "albumTracks" && len(field.Item.Tracks) == 0) {
+				return 0, domain.Fail("INVALID_ARGUMENT", "Album candidates must describe the same release and include its complete track list")
+			}
 		}
-		field.CandidateToken = ""
-		raw, err := json.Marshal(field)
-		if err != nil {
-			return 0, err
+		if len(fields) > 1 {
+			for _, field := range fields {
+				if field.Field == "albumTracks" {
+					if err = syncMusicAlbumScrapedTracks(ctx, tx, owner, albumID, field); err != nil {
+						return 0, err
+					}
+				}
+			}
 		}
-		if _, err = tx.ExecContext(ctx, `INSERT INTO music_album_scraped_fields(album_id,field,document) VALUES(?,?,?)
+		for _, field := range fields {
+			field.CandidateToken = ""
+			raw, err := json.Marshal(field)
+			if err != nil {
+				return 0, err
+			}
+			if _, err = tx.ExecContext(ctx, `INSERT INTO music_album_scraped_fields(album_id,field,document) VALUES(?,?,?)
  ON CONFLICT(album_id,field) DO UPDATE SET document=excluded.document`, albumID, field.Field, string(raw)); err != nil {
-			return 0, err
+				return 0, err
+			}
 		}
 		result, err := tx.ExecContext(ctx, "UPDATE music_albums SET revision=revision+1 WHERE owner=? AND id=? AND revision=?", owner, albumID, revision)
 		if err != nil {
