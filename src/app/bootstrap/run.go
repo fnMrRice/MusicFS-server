@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"flag"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/version"
 )
 
 const APIVersion = "1"
@@ -31,12 +33,12 @@ func Run(args []string, output io.Writer) error {
 	path := f.String("config", "", "Configuration YAML path (.yaml or .yml)")
 	web := f.String("web-root", "", "Built Web artifact directory")
 	startupMode := f.String("startup-mode", "standalone", "Startup ownership: standalone or client-managed")
-	version := f.Bool("version", false, "Print version")
+	printVersion := f.Bool("version", false, "Print version")
 	if err := f.Parse(args); err != nil {
 		return err
 	}
-	if *version {
-		_, err := io.WriteString(output, "MusicFS Server 0.1.0 (API v1)\n")
+	if *printVersion {
+		_, err := fmt.Fprintf(output, "MusicFS Server %s (API v%s)\n", version.Server, APIVersion)
 		return err
 	}
 	if *startupMode != "standalone" && *startupMode != "client-managed" {

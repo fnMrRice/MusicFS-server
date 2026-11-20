@@ -8,6 +8,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/version"
 )
 
 func (s *Server) health(w http.ResponseWriter, r *http.Request, _ auth.Session) error {
@@ -17,11 +18,12 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request, _ auth.Session) 
 		status = http.StatusServiceUnavailable
 	}
 	return WriteJSON(w, status, struct {
-		Product    string `json:"product"`
-		InstanceID string `json:"instanceId"`
-		APIVersion string `json:"apiVersion"`
-		Ready      bool   `json:"ready"`
-	}{"MusicFS", s.options.InstanceID, "1", ready})
+		Product       string `json:"product"`
+		InstanceID    string `json:"instanceId"`
+		ServerVersion string `json:"serverVersion"`
+		APIVersion    string `json:"apiVersion"`
+		Ready         bool   `json:"ready"`
+	}{"MusicFS", s.options.InstanceID, version.Server, "1", ready})
 }
 
 func (s *Server) login(w http.ResponseWriter, r *http.Request, _ auth.Session) error {

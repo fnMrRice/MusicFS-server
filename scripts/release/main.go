@@ -13,6 +13,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/fnMrRice/MusicFS-server/src/core/version"
 )
 
 type builder struct {
@@ -133,11 +135,11 @@ func run() error {
 			return err
 		}
 	}
-	version, err := b.command("go", "version")
+	goVersion, err := b.command("go", "version")
 	if err != nil {
 		return err
 	}
-	m := manifest{Version: "0.1.0", Revision: strings.TrimSpace(string(rev)), Dirty: dirty, OS: b.target, Arch: b.arch, GoVersion: strings.TrimSpace(string(version)), BuiltAt: time.Now().UTC(), APIVersion: "1", PluginProtocol: "1.0", Programs: b.programNames(), ExternalTools: []string{"FFmpeg/ffprobe: external, libmp3lame required", "Chromaprint fpcalc 1.6.1: external, optional"}, Dependencies: deps, GoLicenses: goLicenses}
+	m := manifest{Version: version.Server, Revision: strings.TrimSpace(string(rev)), Dirty: dirty, OS: b.target, Arch: b.arch, GoVersion: strings.TrimSpace(string(goVersion)), BuiltAt: time.Now().UTC(), APIVersion: "1", PluginProtocol: "1.0", Programs: b.programNames(), ExternalTools: []string{"FFmpeg/ffprobe: external, libmp3lame required", "Chromaprint fpcalc 1.6.1: external, optional"}, Dependencies: deps, GoLicenses: goLicenses}
 	m.Components = components(b.splitPlugins)
 	m.Modules = sourceModules
 	m.SchemaVersion, err = b.schemaVersion()

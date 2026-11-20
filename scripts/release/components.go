@@ -11,6 +11,7 @@ import (
 	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/src/core/version"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginrpc"
 )
 
@@ -29,7 +30,7 @@ type component struct {
 // 发布目录记录内置实现和可选外部入口；工具、凭据及远端平台仍须单独可用。
 func components(splitPlugins bool) []component {
 	result := []component{
-		{Program: "musicfs", Required: true, Version: "0.1.0", Protocol: "HTTP API v1", Capabilities: []string{"local-library", "playback", "metadata"}, Requirements: []string{"configuration", "administrator token"}},
+		{Program: "musicfs", Required: true, Version: version.Server, Protocol: "HTTP API v1", Capabilities: []string{"local-library", "playback", "metadata"}, Requirements: []string{"configuration", "administrator token"}},
 		{Program: "musicfs-plugin-local", PluginID: "musicfs.plugin.source.localfiles", Version: "0.3.0", Protocol: pluginproto.ProtocolVersion, Capabilities: []string{"library.scan", "metadata.read", "stream.resolve"}, Requirements: []string{"authorized music root"}},
 		{Program: "musicfs-plugin-audio-ffmpeg", PluginID: "musicfs.plugin.decoder.ffmpeg", Version: bundledplugin.FFmpegVersion, Protocol: pluginproto.ProtocolVersion, Capabilities: []string{"audio.decode", "audio.dsp", "audio.dsp.builtin", "audio.encode", "audio.mux"}, Requirements: []string{"FFmpeg and ffprobe capability probe", "audio.normalize requires normalization probe"}},
 		{Program: "musicfs-plugin-ncm", PluginID: "musicfs.plugin.decoder.ncm", Version: "0.1.0", Protocol: pluginproto.ProtocolVersion, Capabilities: []string{"audio.decrypt"}, Requirements: []string{}},
