@@ -36,6 +36,7 @@ type preview struct {
 type Service struct {
 	plugins  map[string]scraper.Plugin
 	gate     chan struct{}
+	albums   albumCache
 	mu       sync.Mutex
 	previews []preview
 	bytes    int
@@ -43,7 +44,7 @@ type Service struct {
 }
 
 func New(plugins []scraper.Plugin) (*Service, error) {
-	s := &Service{plugins: map[string]scraper.Plugin{}, gate: make(chan struct{}, 8)}
+	s := &Service{plugins: map[string]scraper.Plugin{}, gate: make(chan struct{}, 8), albums: newAlbumCache()}
 	for _, p := range plugins {
 		d := p.Descriptor()
 		if d.Type != "scraper" || !works.ValidID(d.PluginID) || d.Name == "" || len(d.Fields) == 0 || s.plugins[d.PluginID] != nil {
@@ -90,6 +91,10 @@ func validQuery(q scraper.Query) bool {
 }
 
 func (s *Service) Search(ctx context.Context, owner, id, field string, q scraper.Query) ([]Candidate, error) {
+	return s.SearchWithRefresh(ctx, owner, id, field, q, false)
+}
+
+func (s *Service) SearchWithRefresh(ctx context.Context, owner, id, field string, q scraper.Query, refresh bool) ([]Candidate, error) {
 	p := s.plugins[id]
 	if p == nil {
 		return nil, domain.Fail("NOT_FOUND", "Unknown scraper plugin")
@@ -104,20 +109,41 @@ func (s *Service) Search(ctx context.Context, owner, id, field string, q scraper
 	if !validQuery(q) {
 		return nil, domain.Fail("INVALID_ARGUMENT", "Invalid scraper query")
 	}
-	select {
-	case s.gate <- struct{}{}:
-		defer func() { <-s.gate }()
-	default:
-		return nil, &domain.Error{Code: "RATE_LIMITED", Message: "Scraper search is busy",
-			Scraper: &fault.ScraperFailure{PluginID: id, Reason: "busy"}}
+	album := field == "albumDetails" || field == "albumTracks"
+	if refresh && !album {
+		return nil, domain.Fail("INVALID_ARGUMENT", "Only album details and tracks support refresh")
 	}
-	p, _, release, err := s.configured(ctx, owner, id, nil)
+	record, err := s.currentSettings(ctx, owner, id)
 	if err != nil {
 		return nil, err
 	}
-	defer release()
-	items, err := p.Search(ctx, field, q)
+	load := func(ctx context.Context) (searchPage, error) {
+		p, _, release, err := s.configured(id, record, nil)
+		if err != nil {
+			return searchPage{}, err
+		}
+		defer release()
+		items, err := p.Search(ctx, field, q)
+		if err != nil {
+			return searchPage{}, err
+		}
+		return preparePage(items, field, d.ImageHosts)
+	}
+	var page searchPage
+	if album {
+		key := albumQuery{albumScope{owner, id, field, record.Revision}, q}
+		page, err = s.cachedAlbum(ctx, key, refresh, load)
+	} else {
+		if err := s.admit(id); err != nil {
+			return nil, err
+		}
+		defer func() { <-s.gate }()
+		page, err = load(ctx)
+	}
 	if err != nil {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
 		var failure *domain.Error
 		if errors.As(err, &failure) {
 			if failure.Scraper != nil {
@@ -130,15 +156,36 @@ func (s *Service) Search(ctx context.Context, owner, id, field string, q scraper
 		}
 		return nil, domain.Fail("SOURCE_UNAVAILABLE", "Scraper source request failed")
 	}
-	result := []Candidate{}
-	pending := []preview{}
-	now := time.Now()
-	total := 0
+	return s.issue(owner, id, field, page), nil
+}
+
+func (s *Service) admit(id string) error {
+	select {
+	case s.gate <- struct{}{}:
+		return nil
+	default:
+		return &domain.Error{Code: "RATE_LIMITED", Message: "Scraper search is busy",
+			Scraper: &fault.ScraperFailure{PluginID: id, Reason: "busy"}}
+	}
+}
+
+type searchItem struct {
+	scraper.Item
+	size int
+}
+
+type searchPage struct {
+	items []searchItem
+	size  int
+}
+
+func preparePage(items []scraper.Item, field string, hosts []string) (searchPage, error) {
+	var page searchPage
 	for _, item := range items {
 		if item.ID == "" || item.Title == "" {
 			continue
 		}
-		if item.ImageURL != "" && !scraper.AllowsImageURL(item.ImageURL, d.ImageHosts) {
+		if item.ImageURL != "" && !scraper.AllowsImageURL(item.ImageURL, hosts) {
 			item.ImageURL = ""
 		}
 		if item.SourceURL != "" {
@@ -152,29 +199,51 @@ func (s *Service) Search(ctx context.Context, owner, id, field string, q scraper
 		}
 		raw, err := json.Marshal(item)
 		if err != nil || len(raw) > 1<<20 {
-			return nil, domain.Fail("UNSUPPORTED", "Scraper returned oversized or invalid content")
+			return searchPage{}, domain.Fail("UNSUPPORTED", "Scraper returned oversized or invalid content")
 		}
-		if len(result) >= 32 || total+len(raw) > 2<<20 {
+		if len(page.items) >= 32 || page.size+len(raw) > 2<<20 {
 			break
 		}
+		page.items = append(page.items, searchItem{item, len(raw)})
+		page.size += len(raw)
+	}
+	return page, nil
+}
+
+func (s *Service) issue(owner, id, field string, page searchPage) []Candidate {
+	now := time.Now()
+	result := make([]Candidate, 0, len(page.items))
+	pending := make([]preview, 0, len(page.items))
+	for _, entry := range page.items {
 		token := domain.NewID()
-		result = append(result, Candidate{Item: item, Token: token})
+		result = append(result, Candidate{Item: cloneItem(entry.Item), Token: token})
 		pending = append(pending, preview{
-			owner: owner, token: token, field: works.ScrapedField{Field: field, PluginID: id, Item: item},
-			expires: now.Add(30 * time.Minute), size: len(raw),
+			owner: owner, token: token, field: works.ScrapedField{Field: field, PluginID: id, Item: entry.Item},
+			expires: now.Add(30 * time.Minute), size: entry.size,
 		})
-		total += len(raw)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for len(s.previews) > 0 && (!now.Before(s.previews[0].expires) || len(s.previews)+len(pending) > 1024 || s.bytes+total > 16<<20) {
+	for len(s.previews) > 0 && (!now.Before(s.previews[0].expires) || len(s.previews)+len(pending) > 1024 || s.bytes+page.size > 16<<20) {
 		s.bytes -= s.previews[0].size
 		s.previews[0] = preview{}
 		s.previews = s.previews[1:]
 	}
 	s.previews = append(s.previews, pending...)
-	s.bytes += total
-	return result, nil
+	s.bytes += page.size
+	return result
+}
+
+// 搜索缓存和短期候选共享只读数据，对外返回可独立使用的曲目表和别名。
+func cloneItem(item scraper.Item) scraper.Item {
+	item.LocalizedTitles = slices.Clone(item.LocalizedTitles)
+	item.LocalizedArtistNames = slices.Clone(item.LocalizedArtistNames)
+	item.Tracks = slices.Clone(item.Tracks)
+	for i := range item.Tracks {
+		item.Tracks[i].LocalizedTitles = slices.Clone(item.Tracks[i].LocalizedTitles)
+		item.Tracks[i].LocalizedArtistNames = slices.Clone(item.Tracks[i].LocalizedArtistNames)
+	}
+	return item
 }
 
 func hasFieldContent(field string, item scraper.Item) bool {
@@ -195,7 +264,9 @@ func (s *Service) Candidate(owner, plugin, field, token string) (works.ScrapedFi
 	defer s.mu.Unlock()
 	for _, p := range s.previews {
 		if p.token == token && p.owner == owner && p.field.Field == field && p.field.PluginID == plugin && time.Now().Before(p.expires) {
-			return p.field, nil
+			result := p.field
+			result.Item = cloneItem(result.Item)
+			return result, nil
 		}
 	}
 	return works.ScrapedField{}, domain.Fail("NOT_FOUND", "Scraper candidate expired or unavailable")

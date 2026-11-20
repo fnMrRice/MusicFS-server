@@ -32,23 +32,25 @@ func (s *Service) SettingsProviders() []settings.Provider {
 	return providers
 }
 
-func (s *Service) configured(ctx context.Context, owner, id string, fallback *http.Client) (scraper.Plugin, *http.Client, func(), error) {
+func (s *Service) currentSettings(ctx context.Context, owner, id string) (settings.Record, error) {
+	if _, ok := s.plugins[id].(scraper.SettingsProvider); ok && s.settings != nil {
+		return s.settings.GetPluginSettings(ctx, owner, id)
+	}
+	return settings.Record{}, nil
+}
+
+func (s *Service) configured(id string, record settings.Record, fallback *http.Client) (scraper.Plugin, *http.Client, func(), error) {
 	plugin := s.plugins[id]
 	configurable, ok := plugin.(scraper.SettingsProvider)
 	if !ok {
 		return plugin, fallback, func() {}, nil
 	}
 	values := settings.Defaults(configurable.SettingsSchema())
-	if s.settings != nil {
-		record, err := s.settings.GetPluginSettings(ctx, owner, id)
+	if record.Values != nil {
+		var err error
+		values, err = settings.Normalize(configurable.SettingsSchema(), record.Values)
 		if err != nil {
 			return nil, nil, nil, err
-		}
-		if record.Values != nil {
-			values, err = settings.Normalize(configurable.SettingsSchema(), record.Values)
-			if err != nil {
-				return nil, nil, nil, err
-			}
 		}
 	}
 	if err := configurable.ValidateSettings(map[string]any(values)); err != nil {

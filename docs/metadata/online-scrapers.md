@@ -10,6 +10,8 @@
 
 选用结果按当前音乐专辑和字段保存，并在同一事务补齐专辑曲目：优先复用专辑内唯一精确匹配的已有曲目，缺少音源的曲目建为资料条目，以灰色显示；按平台碟序和曲序排列。相同发行版重刮按位置复用身份，保留人工编辑及真实来源，不重复建档。原来额外关联的曲目继续保留，排在平台曲目之后。「全部曲目」仍使用有来源过滤。保存校验专辑修订并支持幂等重试，刷新、重启后仍可读取。
 
+首次读取平台专辑详情和曲目表后，再次预览同一发行版时优先使用缓存。要核对平台的最新资料，可在预览中点击「刷新预览」，或从已关联专辑的「刷新资料」入口重新读取。刷新成功后展示新资料，写入曲库仍需确认选用或合并。
+
 专辑封面读取优先采用已选封面、专辑详情图像，再回退专辑原封面、普通曲目和当前可见来源封面。返回受鉴权媒体地址或有效 HTTPS 图片地址，不把文件系统路径当作网页图片。专辑名可用原有编辑接口手动修改；只读的 `originalName` 始终保留首次名称。
 
 曲目和歌手可分别保存多种语言的名称。曲目接口使用 `localizedTitles`，歌手使用 `localizedNames`。每项包含 BCP 47 语言标签 `language` 和名称 `title`，同一语言可有多个别名。使用曲目名称或已保存的别名均可查询。在线资料中的主名和别名可在曲目主行的「更多 → 搜索在线资料」中确认，歌词和封面按所选来源版本保存。
@@ -55,7 +57,7 @@ iTunes 刮削以所选商店的名称为主。查找日文作品时，在「更�
 插件实现 `sdk/scraper.Plugin`，提供 `Descriptor` 和 `Search`。声明包括 `type=scraper`、稳定的插件编号、支持的 `fields` 和配置状态。图片来源通过 `imageHosts` 显式声明。插件管理按 `scraper` 用途列出，内置能力直接取插件声明。
 
 - `GET /api/v1/scrapers` 列出在线插件及其字段。本地提取实例按原有 `GET /api/v1/scraper-instances` 查询。
-- `POST /api/v1/scrapers/{id}/search` 接受一个字段和结构化查询，查询结果包括来源信息及短期候选令牌。预览绑定当前用户、插件和字段，过期或 Server 重启后可重新搜索。
+- `POST /api/v1/scrapers/{id}/search` 接受一个字段和结构化查询，查询结果包括来源信息及短期候选令牌。Server 在内存中缓存 `albumDetails` 和 `albumTracks` 的查询结果，按用户、插件、设置修订和查询条件区分。缓存最多保留 24 小时，在容量不足或服务重启后重新读取。客户端可在请求顶层传入 `"refresh": true` 主动访问上游。刷新失败时返回错误并保留此前成功的结果。命中缓存的搜索也会签发新的选用令牌。
 - `PUT /api/v1/works/{id}/scraped-fields/{field}` 人工选用作品的一个字段。请求提供 `pluginId`、`candidateToken`、`expectedRevision` 和幂等键。用 `GET /api/v1/works/{id}/scraped-fields` 读取已保存的资料。
 - `GET /api/v1/library/albums/{id}/scraped-fields` 读取当前用户音乐专辑已选用的资料；`PUT /api/v1/library/albums/{id}/scraped-fields/{field}` 按音乐专辑修订选用 `albumDetails`、`albumTracks` 或 `artwork`，请求提供 `pluginId`、`candidateToken`、`expectedRevision` 和幂等键，成功返回新的 `revision`。重放相同成功请求不依赖短期候选仍然有效。
 - `PUT /api/v1/library/albums/{id}/scraped-fields` 原子选用详情和全部曲目，请求为 `{expectedRevision,pluginId,candidates:{albumDetails,albumTracks,artwork?}}`，候选值均为短期令牌；要求同插件、同发行版，且曲目表非空。成功后统一递增专辑与曲库修订并返回 `{revision}`。单字段接口仍可独立选封面。

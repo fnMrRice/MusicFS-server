@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -85,19 +86,19 @@ func TestOnlineScraperReportsLocalSearchCapacity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	search := func() error {
-		_, err := service.Search(t.Context(), "user", "album-fixture", "albumDetails", scraper.Query{Album: "Album"})
+	search := func(index int) error {
+		_, err := service.Search(t.Context(), "user", "album-fixture", "albumDetails", scraper.Query{Album: "Album " + strconv.Itoa(index)})
 		return err
 	}
 	var pending sync.WaitGroup
 	defer pending.Wait()
 	defer close(plugin.release)
-	for range cap(plugin.entered) {
-		pending.Go(func() { _ = search() })
+	for i := range cap(plugin.entered) {
+		pending.Go(func() { _ = search(i) })
 		<-plugin.entered
 	}
 	var problem *fault.Error
-	if err := search(); !errors.As(err, &problem) || problem.Code != "RATE_LIMITED" || problem.RetryAfter != nil || problem.Scraper == nil ||
+	if err := search(cap(plugin.entered)); !errors.As(err, &problem) || problem.Code != "RATE_LIMITED" || problem.RetryAfter != nil || problem.Scraper == nil ||
 		*problem.Scraper != (fault.ScraperFailure{Reason: "busy", PluginID: "album-fixture"}) {
 		t.Fatalf("unexpected local capacity error: %v", err)
 	}

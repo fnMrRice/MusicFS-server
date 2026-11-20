@@ -43,7 +43,9 @@ func TestOnlineScraperModels(t *testing.T) {
 		t.Fatal("album fields accepted track lyrics")
 	}
 	schema := testkit.ContractSchema(t, "http", "OnlineScraperSearch")
-	for _, data := range []string{`{"field":"albumTracks","query":{}}`, `{"field":"unknown","query":{"title":"x"}}`, `{"field":"lyrics","query":{"country":"tw"}}`} {
+	testkit.ValidateHTTP(t, "OnlineScraperSearch", []byte(`{"field":"albumDetails","query":{"externalId":"edition"},"refresh":true}`))
+	for _, data := range []string{`{"field":"albumTracks","query":{}}`, `{"field":"unknown","query":{"title":"x"}}`, `{"field":"lyrics","query":{"country":"tw"}}`,
+		`{"field":"lyrics","query":{"title":"x"},"refresh":true}`, `{"field":"albumTracks","query":{"title":"x"},"refresh":"true"}`} {
 		if err := schema.Validate(testkit.DecodeJSON(t, []byte(data))); err == nil {
 			t.Fatalf("invalid search accepted: %s", data)
 		}

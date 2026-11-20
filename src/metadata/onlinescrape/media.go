@@ -28,7 +28,11 @@ func (s *Service) OpenMedia(ctx context.Context, owner string, selected works.Sc
 	if !scraper.AllowsImageURL(selected.Item.ImageURL, hosts) {
 		return nil, "", domain.Fail("UNSUPPORTED", "Unrecognized scraper image host")
 	}
-	_, client, release, err := s.configured(ctx, owner, selected.PluginID, client)
+	record, err := s.currentSettings(ctx, owner, selected.PluginID)
+	if err != nil {
+		return nil, "", err
+	}
+	_, client, release, err := s.configured(selected.PluginID, record, client)
 	if err != nil {
 		return nil, "", err
 	}

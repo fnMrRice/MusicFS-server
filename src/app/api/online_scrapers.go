@@ -22,13 +22,14 @@ func (s *Server) RegisterOnlineScrapers(catalog *onlinescrape.Service, repo work
 	})
 	s.Handle("POST /api/v1/scrapers/{id}/search", true, true, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		var input struct {
-			Field string        `json:"field"`
-			Query scraper.Query `json:"query"`
+			Field   string        `json:"field"`
+			Query   scraper.Query `json:"query"`
+			Refresh bool          `json:"refresh"`
 		}
 		if err := DecodeJSON(w, r, &input); err != nil {
 			return err
 		}
-		items, err := catalog.Search(r.Context(), session.User.ID, r.PathValue("id"), input.Field, input.Query)
+		items, err := catalog.SearchWithRefresh(r.Context(), session.User.ID, r.PathValue("id"), input.Field, input.Query, input.Refresh)
 		if err != nil {
 			return err
 		}
