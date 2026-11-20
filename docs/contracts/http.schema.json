@@ -3,6 +3,8 @@
   "$id": "https://musicfs.invalid/contracts/http.schema.json",
   "title": "MusicFS HTTP v1 模型",
   "$defs": {
+    "SetFavoriteSource": {"type": "object", "additionalProperties": false, "required": ["forcedSourceTrackId"], "properties": {"forcedSourceTrackId": {"anyOf": [{"$ref": "#/$defs/ID"}, {"type": "null"}]}}},
+
     "OnlineScraperField": {"enum":["trackDetails","albumDetails","albumTracks","artistDetails","artwork","artistImage","lyrics","workDetails","recordingIdentity"]},
     "OnlineScraperDescriptor": {"type":"object","additionalProperties":false,"properties":{"pluginId":{"type":"string","minLength":1},"name":{"type":"string","minLength":1},"type":{"const":"scraper"},"fields":{"type":"array","items":{"$ref":"#/$defs/OnlineScraperField"},"minItems":1,"uniqueItems":true},"requiresExternalId":{"type":"boolean","default":false},"externalIdNamespace":{"type":"string","minLength":1},"imageHosts":{"type":"array","items":{"type":"string","minLength":1}},"available":{"type":"boolean"}},"required":["pluginId","name","type","fields","available"]},
     "OnlineScrapers": {"type":"object","additionalProperties":false,"properties":{"items":{"type":"array","items":{"$ref":"#/$defs/OnlineScraperDescriptor"}}},"required":["items"]},
@@ -17,8 +19,6 @@
     "WorkScrapedFieldInput": {"type":"object","additionalProperties":false,"properties":{"pluginId":{"type":"string","minLength":1},"candidateToken":{"type":"string","minLength":1},"expectedRevision":{"type":"integer","minimum":1}},"required":["pluginId","candidateToken","expectedRevision"]},
     "TrackScrapedFieldInput": {"type":"object","additionalProperties":false,"properties":{"pluginId":{"type":"string","minLength":1},"candidateToken":{"type":"string","minLength":1},"expectedRevision":{"type":"integer","minimum":0},"assetId":{"type":"string","minLength":1},"assetVersion":{"type":"string","minLength":1}},"required":["pluginId","candidateToken","expectedRevision","assetId","assetVersion"]},
     "ScrapedWorkRevision": {"type":"object","additionalProperties":false,"properties":{"revision":{"type":"integer","minimum":1}},"required":["revision"]},
-    "SetFavoriteSource": {"type": "object", "additionalProperties": false, "required": ["forcedSourceTrackId"], "properties": {"forcedSourceTrackId": {"anyOf": [{"$ref": "#/$defs/ID"}, {"type": "null"}]}}},
-
     "ContentHistoryEntry": {"type": "object", "additionalProperties": false, "required": ["workId", "workTitle", "sourceTrackId", "trackTitle", "recordedAt"], "properties": {"workId": {"type": "string", "minLength": 1, "maxLength": 128}, "workTitle": {"type": "string"}, "sourceTrackId": {"type": "string", "minLength": 1, "maxLength": 128}, "trackTitle": {"type": "string"}, "recordedAt": {"$ref": "#/$defs/Timestamp"}}},
     "ContentHistory": {"type": "object", "additionalProperties": false, "required": ["items"], "properties": {"items": {"type": "array", "items": {"$ref": "#/$defs/ContentHistoryEntry"}}}},
 
