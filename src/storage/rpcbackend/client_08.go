@@ -16,6 +16,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
+func (c *Client) SelectContent(a0 context.Context, a1 string, a2 mediastore.SelectRequest, a3 string) (r0 mediastore.Selection, err error) {
+	err = c.Invoke(a0, "SelectContent", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) SelectContentGuarded(a0 context.Context, a1 string, a2 mediastore.SelectRequest, a3 string, a4 mediastore.Guard) (r0 mediastore.Selection, err error) {
 	err = c.Invoke(a0, "SelectContentGuarded", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
@@ -23,6 +28,11 @@ func (c *Client) SelectContentGuarded(a0 context.Context, a1 string, a2 mediasto
 
 func (c *Client) SelectCover(a0 context.Context, a1 string, a2 albums.SelectCoverRequest, a3 string, a4 mediastore.Guard) (r0 albums.CoverSelection, err error) {
 	err = c.Invoke(a0, "SelectCover", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SelectMusicAlbumScrapedField(a0 context.Context, a1 string, a2 string, a3 int64, a4 works.ScrapedField, a5 string) (r0 int64, err error) {
+	err = c.Invoke(a0, "SelectMusicAlbumScrapedField", []any{a1, a2, a3, a4, a5}, []any{&r0})
 	return r0, err
 }
 
@@ -123,15 +133,5 @@ func (c *Client) UpdateRelease(a0 context.Context, a1 string, a2 string, a3 albu
 
 func (c *Client) UpdateSourceAlbum(a0 context.Context, a1 string, a2 string, a3 albums.UpdateSourceAlbumRequest, a4 string) (r0 albums.SourceAlbum, err error) {
 	err = c.Invoke(a0, "UpdateSourceAlbum", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) UpdateWork(a0 context.Context, a1 string, a2 string, a3 works.UpdateRequest, a4 string) (r0 works.Work, err error) {
-	err = c.Invoke(a0, "UpdateWork", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) Work(a0 context.Context, a1 string, a2 string) (r0 works.Work, err error) {
-	err = c.Invoke(a0, "Work", []any{a1, a2}, []any{&r0})
 	return r0, err
 }

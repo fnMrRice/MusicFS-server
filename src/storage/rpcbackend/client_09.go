@@ -10,6 +10,16 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
+func (c *Client) UpdateWork(a0 context.Context, a1 string, a2 string, a3 works.UpdateRequest, a4 string) (r0 works.Work, err error) {
+	err = c.Invoke(a0, "UpdateWork", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) Work(a0 context.Context, a1 string, a2 string) (r0 works.Work, err error) {
+	err = c.Invoke(a0, "Work", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) WorkPackage(a0 context.Context, a1 string, a2 string, a3 string) (r0 workpackages.Package, err error) {
 	err = c.Invoke(a0, "WorkPackage", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
