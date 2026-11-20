@@ -95,6 +95,11 @@ func (c *Client) ClaimRemoteSync(a0 context.Context) (r0 playlists.SyncJob, err 
 	return r0, err
 }
 
+func (c *Client) ClearMusicAlbumScrapedFields(a0 context.Context, a1 string, a2 string, a3 int64, a4 string) (r0 int64, err error) {
+	err = c.Invoke(a0, "ClearMusicAlbumScrapedFields", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) CommitPlayback(a0 context.Context, a1 string, a2 string, a3 string, a4 []uint8, a5 time.Time, a6 string, a7 string, a8 string, a9 string, a10 string) (err error) {
 	err = c.Invoke(a0, "CommitPlayback", []any{a1, a2, a3, a4, a5, a6, a7, a8, a9, a10}, []any{})
 	return err
@@ -132,10 +137,5 @@ func (c *Client) ContentSelection(a0 context.Context, a1 string, a2 string) (r0 
 
 func (c *Client) Cover(a0 context.Context, a1 string, a2 albums.Target) (r0 albums.CoverSelection, err error) {
 	err = c.Invoke(a0, "Cover", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) CreateCatalogQuery(a0 context.Context, a1 string, a2 catalog.Query, a3 int, a4 string) (r0 catalog.Page, err error) {
-	err = c.Invoke(a0, "CreateCatalogQuery", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
 }

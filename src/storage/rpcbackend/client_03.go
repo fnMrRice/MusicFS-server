@@ -4,6 +4,7 @@ package rpcbackend
 
 import (
 	"context"
+	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
@@ -15,6 +16,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"github.com/fnMrRice/MusicFS-server/src/tasks"
 )
+
+func (c *Client) FindTrack(a0 context.Context, a1 string, a2 string) (r0 library.Track, err error) {
+	err = c.Invoke(a0, "FindTrack", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) FingerprintCandidates(a0 context.Context, a1 identification.HashScope, a2 string, a3 identification.FingerprintRequest, a4 int) (r0 []identification.HashTarget, err error) {
 	err = c.Invoke(a0, "FingerprintCandidates", []any{a1, a2, a3, a4}, []any{&r0})
@@ -129,9 +135,4 @@ func (c *Client) HashCandidates(a0 context.Context, a1 identification.HashScope,
 func (c *Client) HashProgress(a0 context.Context, a1 identification.HashJob, a2 int64) (err error) {
 	err = c.Invoke(a0, "HashProgress", []any{a1, a2}, []any{})
 	return err
-}
-
-func (c *Client) HiddenRules(a0 context.Context, a1 string, a2 string) (r0 playlists.HiddenRules, err error) {
-	err = c.Invoke(a0, "HiddenRules", []any{a1, a2}, []any{&r0})
-	return r0, err
 }

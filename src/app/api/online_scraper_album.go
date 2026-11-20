@@ -20,6 +20,22 @@ func (s *Server) RegisterOnlineAlbumScrapers(catalog *onlinescrape.Service, repo
 		}
 		return WriteJSON(w, http.StatusOK, map[string]any{"items": items})
 	})
+	s.Handle("DELETE /api/v1/library/albums/{id}/scraped-fields", true, true, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
+		var input struct {
+			ExpectedRevision int64 `json:"expectedRevision"`
+		}
+		if err := DecodeJSON(w, r, &input); err != nil {
+			return err
+		}
+		if input.ExpectedRevision < 1 {
+			return domain.Fail("INVALID_ARGUMENT", "Expected album revision is required")
+		}
+		revision, err := repo.ClearMusicAlbumScrapedFields(r.Context(), session.User.ID, r.PathValue("id"), input.ExpectedRevision, r.Header.Get("Idempotency-Key"))
+		if err != nil {
+			return err
+		}
+		return WriteJSON(w, http.StatusOK, map[string]int64{"revision": revision})
+	})
 	s.Handle("PUT /api/v1/library/albums/{id}/scraped-fields", true, true, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		var input struct {
 			ExpectedRevision *int64 `json:"expectedRevision"`

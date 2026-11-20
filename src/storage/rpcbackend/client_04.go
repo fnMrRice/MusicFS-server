@@ -15,6 +15,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/tasks"
 )
 
+func (c *Client) HiddenRules(a0 context.Context, a1 string, a2 string) (r0 playlists.HiddenRules, err error) {
+	err = c.Invoke(a0, "HiddenRules", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) HidePlaylistSource(a0 context.Context, a1 string, a2 string, a3 playlists.HideRequest, a4 string) (r0 playlists.HiddenRules, err error) {
 	err = c.Invoke(a0, "HidePlaylistSource", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
@@ -127,10 +132,5 @@ func (c *Client) MusicAlbums(a0 context.Context, a1 string, a2 music.Query) (r0 
 
 func (c *Client) MusicArtist(a0 context.Context, a1 string, a2 string) (r0 music.Artist, err error) {
 	err = c.Invoke(a0, "MusicArtist", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) MusicArtists(a0 context.Context, a1 string, a2 music.Query) (r0 music.ArtistPage, err error) {
-	err = c.Invoke(a0, "MusicArtists", []any{a1, a2}, []any{&r0})
 	return r0, err
 }

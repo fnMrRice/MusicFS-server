@@ -8,8 +8,8 @@ import (
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
-	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
+	"github.com/fnMrRice/MusicFS-server/src/library/catalog"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
@@ -18,6 +18,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) CreateCatalogQuery(a0 context.Context, a1 string, a2 catalog.Query, a3 int, a4 string) (r0 catalog.Page, err error) {
+	err = c.Invoke(a0, "CreateCatalogQuery", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) CreateMediaBackup(a0 context.Context, a1 string, a2 string) (r0 mediastore.Backup, err error) {
 	err = c.Invoke(a0, "CreateMediaBackup", []any{a1, a2}, []any{&r0})
@@ -131,10 +136,5 @@ func (c *Client) FindConfigOperation(a0 context.Context, a1 string, a2 string) (
 
 func (c *Client) FindDerived(a0 context.Context, a1 string, a2 string) (r0 mediastore.DerivedObject, err error) {
 	err = c.Invoke(a0, "FindDerived", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) FindTrack(a0 context.Context, a1 string, a2 string) (r0 library.Track, err error) {
-	err = c.Invoke(a0, "FindTrack", []any{a1, a2}, []any{&r0})
 	return r0, err
 }

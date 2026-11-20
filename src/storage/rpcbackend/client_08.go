@@ -17,6 +17,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
+func (c *Client) SaveResult(a0 context.Context, a1 string, a2 string, a3 string, a4 string, a5 []uint8) (err error) {
+	err = c.Invoke(a0, "SaveResult", []any{a1, a2, a3, a4, a5}, []any{})
+	return err
+}
+
 func (c *Client) ScanAutomationResults(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 enrichment.AutomationPage, err error) {
 	err = c.Invoke(a0, "ScanAutomationResults", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
@@ -129,10 +134,5 @@ func (c *Client) Timeline(a0 context.Context, a1 string, a2 string) (r0 timeline
 
 func (c *Client) Unlink(a0 context.Context, a1 string, a2 matching.UnlinkRequest, a3 string) (r0 matching.Mutation, err error) {
 	err = c.Invoke(a0, "Unlink", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) UnlockContent(a0 context.Context, a1 string, a2 mediastore.UnlockRequest, a3 string) (r0 mediastore.Selection, err error) {
-	err = c.Invoke(a0, "UnlockContent", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
 }

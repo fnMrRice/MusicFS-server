@@ -12,6 +12,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
+func (c *Client) UnlockContent(a0 context.Context, a1 string, a2 mediastore.UnlockRequest, a3 string) (r0 mediastore.Selection, err error) {
+	err = c.Invoke(a0, "UnlockContent", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) UnlockCover(a0 context.Context, a1 string, a2 albums.UnlockCoverRequest, a3 string) (r0 albums.CoverSelection, err error) {
 	err = c.Invoke(a0, "UnlockCover", []any{a1, a2, a3}, []any{&r0})
 	return r0, err

@@ -21,15 +21,22 @@ type scrapedAlbumMember struct {
 
 type scrapedAlbumRef struct{ slot, track, external string }
 
+// 清理占位前保护跨专辑关系、手动合并、歌单及录音设置。m、x 分别表示曲目和专辑成员。
+const disposableAlbumPlaceholder = `m.scraper_placeholder=1
+ AND NOT EXISTS(SELECT 1 FROM music_sources WHERE owner=m.owner AND track_id=m.id)
+ AND NOT EXISTS(SELECT 1 FROM music_manual_album_tracks WHERE track_id=m.id AND album_id<>x.album_id)
+ AND NOT EXISTS(SELECT 1 FROM music_album_scraped_track_refs WHERE track_id=m.id AND album_id<>x.album_id)
+ AND NOT EXISTS(SELECT 1 FROM music_album_merged_slots WHERE track_id=m.id)
+ AND NOT EXISTS(SELECT 1 FROM music_playlist_entries WHERE owner=m.owner AND track_id=m.id)
+ AND NOT EXISTS(SELECT 1 FROM recording_source_links WHERE recording_id=m.id)
+ AND NOT EXISTS(SELECT 1 FROM recording_default_sources WHERE recording_id=m.id)
+ AND NOT EXISTS(SELECT 1 FROM recording_cover_preferences WHERE recording_id=m.id)`
+
 func albumMatchingMembers(ctx context.Context, tx *sql.Tx, owner, album string) (map[string]*scrapedAlbumMember, error) {
 	members := map[string]*scrapedAlbumMember{}
 	err := musicRows(ctx, tx, `SELECT m.id,m.title,m.localized_titles,
  EXISTS(SELECT 1 FROM music_sources WHERE track_id=m.id),
- m.scraper_placeholder=1 AND NOT EXISTS(SELECT 1 FROM music_sources WHERE track_id=m.id)
- AND NOT EXISTS(SELECT 1 FROM music_manual_album_tracks WHERE track_id=m.id AND album_id<>x.album_id)
- AND NOT EXISTS(SELECT 1 FROM music_album_scraped_track_refs WHERE track_id=m.id AND album_id<>x.album_id)
- AND NOT EXISTS(SELECT 1 FROM music_playlist_entries WHERE track_id=m.id)
- AND NOT EXISTS(SELECT 1 FROM recording_cover_preferences WHERE recording_id=m.id)
+ `+disposableAlbumPlaceholder+`
  FROM music_album_tracks x JOIN music_tracks m ON m.id=x.track_id WHERE x.album_id=? AND m.owner=?
  AND (m.origin='manual' OR (m.origin='recording' AND m.metadata_locked=1) OR EXISTS(SELECT 1 FROM music_sources WHERE track_id=m.id))`, func(r *sql.Rows) error {
 		m := &scrapedAlbumMember{}

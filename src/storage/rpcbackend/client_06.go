@@ -19,6 +19,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 )
 
+func (c *Client) PublishEvidence(a0 context.Context, a1 string, a2 identification.Ticket, a3 identification.Result) (err error) {
+	err = c.Invoke(a0, "PublishEvidence", []any{a1, a2, a3}, []any{})
+	return err
+}
+
 func (c *Client) PublishOnlineTrack(a0 context.Context, a1 string, a2 string, a3 online.Track) (r0 library.Track, err error) {
 	err = c.Invoke(a0, "PublishOnlineTrack", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
@@ -131,10 +136,5 @@ func (c *Client) RecoverRemoteSync(a0 context.Context) (err error) {
 
 func (c *Client) RecoverWritebackQueue(a0 context.Context, a1 map[string]bool) (err error) {
 	err = c.Invoke(a0, "RecoverWritebackQueue", []any{a1}, []any{})
-	return err
-}
-
-func (c *Client) ReferencePublication(a0 context.Context, a1 string, a2 string) (err error) {
-	err = c.Invoke(a0, "ReferencePublication", []any{a1, a2}, []any{})
 	return err
 }

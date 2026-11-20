@@ -11,11 +11,15 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
-	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"time"
 )
+
+func (c *Client) MusicArtists(a0 context.Context, a1 string, a2 music.Query) (r0 music.ArtistPage, err error) {
+	err = c.Invoke(a0, "MusicArtists", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) MusicGenres(a0 context.Context, a1 string, a2 music.Query) (r0 music.GenrePage, err error) {
 	err = c.Invoke(a0, "MusicGenres", []any{a1, a2}, []any{&r0})
@@ -131,10 +135,5 @@ func (c *Client) ProviderScanState(a0 context.Context, a1 string, a2 string) (r0
 
 func (c *Client) Publish(a0 context.Context, a1 jobs.Job, a2 library.ScanPublication) (err error) {
 	err = c.Invoke(a0, "Publish", []any{a1, a2}, []any{})
-	return err
-}
-
-func (c *Client) PublishEvidence(a0 context.Context, a1 string, a2 identification.Ticket, a3 identification.Result) (err error) {
-	err = c.Invoke(a0, "PublishEvidence", []any{a1, a2, a3}, []any{})
 	return err
 }

@@ -19,6 +19,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
 
+func (c *Client) ReferencePublication(a0 context.Context, a1 string, a2 string) (err error) {
+	err = c.Invoke(a0, "ReferencePublication", []any{a1, a2}, []any{})
+	return err
+}
+
 func (c *Client) RefreshTaskMetadataJobs(a0 context.Context, a1 string, a2 string) (r0 []string, err error) {
 	err = c.Invoke(a0, "RefreshTaskMetadataJobs", []any{a1, a2}, []any{&r0})
 	return r0, err
@@ -131,10 +136,5 @@ func (c *Client) SavePersonalProfile(a0 context.Context, a1 string, a2 *string) 
 
 func (c *Client) SavePluginOperation(a0 context.Context, a1 plugincontrol.Operation) (err error) {
 	err = c.Invoke(a0, "SavePluginOperation", []any{a1}, []any{})
-	return err
-}
-
-func (c *Client) SaveResult(a0 context.Context, a1 string, a2 string, a3 string, a4 string, a5 []uint8) (err error) {
-	err = c.Invoke(a0, "SaveResult", []any{a1, a2, a3, a4, a5}, []any{})
 	return err
 }

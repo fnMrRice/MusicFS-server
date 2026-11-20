@@ -51,6 +51,9 @@ func saveMusic[T any](ctx context.Context, s *Store, owner, kind, id, key string
 	if track, ok := any(res).(music.Track); kind == "tracks" && ok && track.Revision == revision {
 		changed = false
 	}
+	if resultRevision, ok := any(res).(int64); ok && resultRevision == revision {
+		changed = false
+	}
 	if changed {
 		_, err = tx.ExecContext(ctx, "UPDATE library_revision SET revision=revision+1")
 	}
