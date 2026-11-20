@@ -6,7 +6,6 @@ import (
 	"context"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
-	"github.com/fnMrRice/MusicFS-server/src/library/catalog"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
@@ -19,6 +18,11 @@ import (
 
 func (c *Client) AlbumChanges(a0 context.Context, a1 string, a2 albums.Target, a3 int64, a4 int) (r0 []albums.Change, err error) {
 	err = c.Invoke(a0, "AlbumChanges", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) AppendPlaylistSelection(a0 context.Context, a1 string, a2 string, a3 playlists.AppendSelectionRequest, a4 string) (r0 playlists.SelectionResult, err error) {
+	err = c.Invoke(a0, "AppendPlaylistSelection", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
 }
 
@@ -129,10 +133,5 @@ func (c *Client) CandidateSnapshot(a0 context.Context, a1 string, a2 string, a3 
 
 func (c *Client) Candidates(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 matching.CandidatePage, err error) {
 	err = c.Invoke(a0, "Candidates", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) CatalogArtist(a0 context.Context, a1 string, a2 string) (r0 catalog.Artist, err error) {
-	err = c.Invoke(a0, "CatalogArtist", []any{a1, a2}, []any{&r0})
 	return r0, err
 }

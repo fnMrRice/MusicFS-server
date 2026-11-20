@@ -19,8 +19,18 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
+func (c *Client) CreateMediaBackup(a0 context.Context, a1 string, a2 string) (r0 mediastore.Backup, err error) {
+	err = c.Invoke(a0, "CreateMediaBackup", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) CreatePlaylist(a0 context.Context, a1 string, a2 playlists.CreatePlaylistRequest, a3 string) (r0 playlists.Playlist, err error) {
 	err = c.Invoke(a0, "CreatePlaylist", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) CreatePlaylistSelection(a0 context.Context, a1 string, a2 playlists.CreateSelectionRequest, a3 string) (r0 playlists.SelectionResult, err error) {
+	err = c.Invoke(a0, "CreatePlaylistSelection", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
 }
 
@@ -126,15 +136,5 @@ func (c *Client) FindDerived(a0 context.Context, a1 string, a2 string) (r0 media
 
 func (c *Client) FindTrack(a0 context.Context, a1 string, a2 string) (r0 library.Track, err error) {
 	err = c.Invoke(a0, "FindTrack", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) FingerprintCandidates(a0 context.Context, a1 identification.HashScope, a2 string, a3 identification.FingerprintRequest, a4 int) (r0 []identification.HashTarget, err error) {
-	err = c.Invoke(a0, "FingerprintCandidates", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) FingerprintIndex(a0 context.Context, a1 string, a2 string) (r0 identification.FingerprintIndex, err error) {
-	err = c.Invoke(a0, "FingerprintIndex", []any{a1, a2}, []any{&r0})
 	return r0, err
 }

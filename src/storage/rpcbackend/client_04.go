@@ -6,13 +6,23 @@ import (
 	"context"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/music"
-	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"github.com/fnMrRice/MusicFS-server/src/tasks"
 )
+
+func (c *Client) HidePlaylistSource(a0 context.Context, a1 string, a2 string, a3 playlists.HideRequest, a4 string) (r0 playlists.HiddenRules, err error) {
+	err = c.Invoke(a0, "HidePlaylistSource", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) ImportRemotePlaylist(a0 context.Context, a1 string, a2 playlists.Binding, a3 string) (r0 playlists.RemotePlaylist, r1 bool, err error) {
+	err = c.Invoke(a0, "ImportRemotePlaylist", []any{a1, a2, a3}, []any{&r0, &r1})
+	return r0, r1, err
+}
 
 func (c *Client) InvalidateContent(a0 context.Context, a1 string, a2 string) (err error) {
 	err = c.Invoke(a0, "InvalidateContent", []any{a1, a2}, []any{})
@@ -121,15 +131,5 @@ func (c *Client) MusicTrack(a0 context.Context, a1 string, a2 string) (r0 music.
 
 func (c *Client) MusicTrackForSource(a0 context.Context, a1 string, a2 string) (r0 music.Track, err error) {
 	err = c.Invoke(a0, "MusicTrackForSource", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) MusicTracks(a0 context.Context, a1 string, a2 music.Query) (r0 music.TrackPage, err error) {
-	err = c.Invoke(a0, "MusicTracks", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) NextAutomation(a0 context.Context) (r0 enrichment.AutomationWork, err error) {
-	err = c.Invoke(a0, "NextAutomation", []any{}, []any{&r0})
 	return r0, err
 }

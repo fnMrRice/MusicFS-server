@@ -5,6 +5,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 )
 
@@ -18,9 +19,10 @@ func matchingRevision(revision *int64) error {
 func (s *Server) registerMatchingMutations(service matchingAPI) {
 	s.Handle("POST /api/v1/matching/links", true, true, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		var input struct {
-			ExpectedRevision  *int64   `json:"expectedRevision"`
-			SourceTrackIDs    []string `json:"sourceTrackIds"`
-			TargetRecordingID *string  `json:"targetRecordingId"`
+			ExpectedRevision  *int64                  `json:"expectedRevision"`
+			SourceTrackIDs    []string                `json:"sourceTrackIds"`
+			Selection         *library.TrackSelection `json:"selection"`
+			TargetRecordingID *string                 `json:"targetRecordingId"`
 		}
 		if err := DecodeJSON(w, r, &input); err != nil {
 			return err
@@ -28,10 +30,14 @@ func (s *Server) registerMatchingMutations(service matchingAPI) {
 		if err := matchingRevision(input.ExpectedRevision); err != nil {
 			return err
 		}
-		if err := matchingSourceIDs(input.SourceTrackIDs); err != nil {
+		if input.Selection != nil {
+			if input.SourceTrackIDs != nil {
+				return domain.Fail("INVALID_ARGUMENT", "Selection and sourceTrackIds are mutually exclusive")
+			}
+		} else if err := matchingSourceIDs(input.SourceTrackIDs); err != nil {
 			return err
 		}
-		result, err := service.ManualLink(r.Context(), session.User.ID, matching.LinkRequest{ExpectedRevision: *input.ExpectedRevision, SourceTrackIDs: input.SourceTrackIDs, TargetRecordingID: input.TargetRecordingID}, r.Header.Get("Idempotency-Key"))
+		result, err := service.ManualLink(r.Context(), session.User.ID, matching.LinkRequest{ExpectedRevision: *input.ExpectedRevision, SourceTrackIDs: input.SourceTrackIDs, Selection: input.Selection, TargetRecordingID: input.TargetRecordingID}, r.Header.Get("Idempotency-Key"))
 		if err != nil {
 			return err
 		}

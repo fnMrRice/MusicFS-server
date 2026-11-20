@@ -8,6 +8,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/library/music"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
@@ -15,10 +16,19 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"time"
 )
+
+func (c *Client) MusicTracks(a0 context.Context, a1 string, a2 music.Query) (r0 music.TrackPage, err error) {
+	err = c.Invoke(a0, "MusicTracks", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) NextAutomation(a0 context.Context) (r0 enrichment.AutomationWork, err error) {
+	err = c.Invoke(a0, "NextAutomation", []any{}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) NextWriteback(a0 context.Context) (r0 writebackhost.Work, err error) {
 	err = c.Invoke(a0, "NextWriteback", []any{}, []any{&r0})
@@ -129,15 +139,5 @@ func (c *Client) PublishProcessedCache(a0 context.Context, a1 processedcache.Rec
 
 func (c *Client) PublishWorkPackage(a0 context.Context, a1 string, a2 workpackages.Publication, a3 string, a4 string) (r0 workpackages.Package, err error) {
 	err = c.Invoke(a0, "PublishWorkPackage", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) PutFavorite(a0 context.Context, a1 string, a2 string) (r0 personal.Entry, err error) {
-	err = c.Invoke(a0, "PutFavorite", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) PutPluginSettings(a0 context.Context, a1 string, a2 string, a3 int64, a4 settings.Values) (r0 settings.Record, err error) {
-	err = c.Invoke(a0, "PutPluginSettings", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
 }

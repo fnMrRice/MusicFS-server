@@ -60,6 +60,7 @@ type Repository interface {
 	PersonalCollection(context.Context, string, string, string, int) (Page, error)
 	PutFavorite(context.Context, string, string) (Entry, error)
 	SetFavoriteSource(context.Context, string, string, *string) (Entry, error)
+	SetFavoritesSelection(context.Context, string, library.TrackSelection, bool) (SelectionResult, error)
 	DeletePersonalCollection(context.Context, string, string, string) error
 	RecordPlaybackStarted(context.Context, auth.Session, PlaybackStarted) (Entry, error)
 }
@@ -68,6 +69,11 @@ type Service struct {
 	Repository
 	histories     map[string]contenttype.History
 	separateTypes []string
+}
+
+type SelectionResult struct {
+	Affected       int      `json:"affected"`
+	SourceTrackIDs []string `json:"sourceTrackIds"`
 }
 
 func New(repo Repository) *Service { return &Service{Repository: repo} }

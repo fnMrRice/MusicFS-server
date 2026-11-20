@@ -64,9 +64,10 @@ type Link struct {
 }
 
 type LinkRequest struct {
-	ExpectedRevision  int64    `json:"expectedRevision"`
-	SourceTrackIDs    []string `json:"sourceTrackIds"`
-	TargetRecordingID *string  `json:"targetRecordingId"`
+	ExpectedRevision  int64                   `json:"expectedRevision"`
+	SourceTrackIDs    []string                `json:"sourceTrackIds,omitempty"`
+	Selection         *library.TrackSelection `json:"selection,omitempty"`
+	TargetRecordingID *string                 `json:"targetRecordingId"`
 }
 
 type UnlinkRequest struct {

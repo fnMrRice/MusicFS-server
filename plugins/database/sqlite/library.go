@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
@@ -192,35 +191,10 @@ func (s *Store) ListTracks(ctx context.Context, user, provider, cursor string, l
 		if err != nil {
 			return page, err
 		}
-		rows, err := tx.QueryContext(ctx, ordinaryMusicSources+"SELECT t.document FROM tracks t WHERE t.owner=? AND (?='' OR t.provider=?) AND "+ordinaryMusicTrack, user, user, provider, provider)
+		items, err := ordinaryLibraryItems(ctx, tx, user, provider)
 		if err != nil {
 			return page, err
 		}
-		var items []library.Track
-		for rows.Next() {
-			var raw []byte
-			if err = rows.Scan(&raw); err != nil {
-				rows.Close()
-				return page, err
-			}
-			var t library.Track
-			if err = json.Unmarshal(raw, &t); err != nil {
-				rows.Close()
-				return page, err
-			}
-			items = append(items, t)
-		}
-		err = rows.Err()
-		rows.Close()
-		if err != nil {
-			return page, err
-		}
-		sort.Slice(items, func(i, j int) bool {
-			if items[i].DisplayName == items[j].DisplayName {
-				return items[i].ID < items[j].ID
-			}
-			return items[i].DisplayName < items[j].DisplayName
-		})
 		for i, t := range items {
 			raw, _ := json.Marshal(t)
 			if _, err = tx.ExecContext(ctx, "INSERT INTO library_snapshot_items VALUES(?,?,?)", snapshot, i, raw); err != nil {

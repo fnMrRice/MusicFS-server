@@ -56,6 +56,7 @@ type Backend interface {
 	library.Repository
 	library.AudioRepository
 	library.GroupedRepository
+	library.SelectionRepository
 	library.RecordingCoverRepository
 	matching.Repository
 	matching.AutomationRepository

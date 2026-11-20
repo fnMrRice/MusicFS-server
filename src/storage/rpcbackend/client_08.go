@@ -4,17 +4,32 @@ package rpcbackend
 
 import (
 	"context"
+	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/sourcedisplay"
-	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) SelectContentGuarded(a0 context.Context, a1 string, a2 mediastore.SelectRequest, a3 string, a4 mediastore.Guard) (r0 mediastore.Selection, err error) {
+	err = c.Invoke(a0, "SelectContentGuarded", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SelectCover(a0 context.Context, a1 string, a2 albums.SelectCoverRequest, a3 string, a4 mediastore.Guard) (r0 albums.CoverSelection, err error) {
+	err = c.Invoke(a0, "SelectCover", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SelectRecordingCover(a0 context.Context, a1 string, a2 library.SelectRecordingCoverRequest, a3 string) (r0 library.RecordingCover, err error) {
+	err = c.Invoke(a0, "SelectRecordingCover", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) SelectWorkScrapedField(a0 context.Context, a1 string, a2 string, a3 int64, a4 works.ScrapedField, a5 string) (r0 int64, err error) {
 	err = c.Invoke(a0, "SelectWorkScrapedField", []any{a1, a2, a3, a4, a5}, []any{&r0})
@@ -38,6 +53,11 @@ func (c *Client) SetExclusion(a0 context.Context, a1 string, a2 matching.Exclusi
 
 func (c *Client) SetFavoriteSource(a0 context.Context, a1 string, a2 string, a3 *string) (r0 personal.Entry, err error) {
 	err = c.Invoke(a0, "SetFavoriteSource", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SetFavoritesSelection(a0 context.Context, a1 string, a2 library.TrackSelection, a3 bool) (r0 personal.SelectionResult, err error) {
+	err = c.Invoke(a0, "SetFavoritesSelection", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
 }
 
@@ -113,25 +133,5 @@ func (c *Client) UpdateWork(a0 context.Context, a1 string, a2 string, a3 works.U
 
 func (c *Client) Work(a0 context.Context, a1 string, a2 string) (r0 works.Work, err error) {
 	err = c.Invoke(a0, "Work", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) WorkPackage(a0 context.Context, a1 string, a2 string, a3 string) (r0 workpackages.Package, err error) {
-	err = c.Invoke(a0, "WorkPackage", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) WorkPackages(a0 context.Context, a1 string, a2 string) (r0 []workpackages.Package, err error) {
-	err = c.Invoke(a0, "WorkPackages", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) WorkScrapedFields(a0 context.Context, a1 string, a2 string) (r0 []works.ScrapedField, err error) {
-	err = c.Invoke(a0, "WorkScrapedFields", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) Works(a0 context.Context, a1 string, a2 works.Query) (r0 []works.Work, err error) {
-	err = c.Invoke(a0, "Works", []any{a1, a2}, []any{&r0})
 	return r0, err
 }

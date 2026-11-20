@@ -20,6 +20,11 @@ import (
 	"time"
 )
 
+func (c *Client) CatalogArtist(a0 context.Context, a1 string, a2 string) (r0 catalog.Artist, err error) {
+	err = c.Invoke(a0, "CatalogArtist", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) CatalogFacets(a0 context.Context, a1 string, a2 string) (r0 catalog.Facets, err error) {
 	err = c.Invoke(a0, "CatalogFacets", []any{a1, a2}, []any{&r0})
 	return r0, err
@@ -132,10 +137,5 @@ func (c *Client) Cover(a0 context.Context, a1 string, a2 albums.Target) (r0 albu
 
 func (c *Client) CreateCatalogQuery(a0 context.Context, a1 string, a2 catalog.Query, a3 int, a4 string) (r0 catalog.Page, err error) {
 	err = c.Invoke(a0, "CreateCatalogQuery", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) CreateMediaBackup(a0 context.Context, a1 string, a2 string) (r0 mediastore.Backup, err error) {
-	err = c.Invoke(a0, "CreateMediaBackup", []any{a1, a2}, []any{&r0})
 	return r0, err
 }

@@ -14,7 +14,18 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 )
+
+func (c *Client) PutFavorite(a0 context.Context, a1 string, a2 string) (r0 personal.Entry, err error) {
+	err = c.Invoke(a0, "PutFavorite", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) PutPluginSettings(a0 context.Context, a1 string, a2 string, a3 int64, a4 settings.Values) (r0 settings.Record, err error) {
+	err = c.Invoke(a0, "PutPluginSettings", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) QueueAutomaticEnrichment(a0 context.Context, a1 string, a2 string, a3 enrichment.JobRequest) (r0 enrichment.Job, r1 bool, err error) {
 	err = c.Invoke(a0, "QueueAutomaticEnrichment", []any{a1, a2, a3}, []any{&r0, &r1})
@@ -123,15 +134,5 @@ func (c *Client) Release(a0 context.Context, a1 string, a2 string) (r0 albums.Re
 
 func (c *Client) Releases(a0 context.Context, a1 string, a2 string, a3 int) (r0 []albums.Release, err error) {
 	err = c.Invoke(a0, "Releases", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) RemotePlaylist(a0 context.Context, a1 string, a2 string) (r0 playlists.RemotePlaylist, err error) {
-	err = c.Invoke(a0, "RemotePlaylist", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) RemotePlaylists(a0 context.Context, a1 string, a2 string, a3 int) (r0 []playlists.RemotePlaylist, err error) {
-	err = c.Invoke(a0, "RemotePlaylists", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
 }

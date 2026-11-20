@@ -6,7 +6,6 @@ import (
 	"context"
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/library/albums"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/music"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
@@ -20,6 +19,16 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) RemotePlaylist(a0 context.Context, a1 string, a2 string) (r0 playlists.RemotePlaylist, err error) {
+	err = c.Invoke(a0, "RemotePlaylist", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) RemotePlaylists(a0 context.Context, a1 string, a2 string, a3 int) (r0 []playlists.RemotePlaylist, err error) {
+	err = c.Invoke(a0, "RemotePlaylists", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) RemoteSnapshot(a0 context.Context, a1 string, a2 string, a3 int64) (r0 playlists.Snapshot, err error) {
 	err = c.Invoke(a0, "RemoteSnapshot", []any{a1, a2, a3}, []any{&r0})
@@ -49,6 +58,11 @@ func (c *Client) ReplayWriteback(a0 context.Context, a1 string, a2 writebackhost
 func (c *Client) ReserveEnrichmentPreview(a0 context.Context, a1 enrichment.Work, a2 int64) (err error) {
 	err = c.Invoke(a0, "ReserveEnrichmentPreview", []any{a1, a2}, []any{})
 	return err
+}
+
+func (c *Client) ResolveTrackSelection(a0 context.Context, a1 string, a2 library.TrackSelection) (r0 library.TrackSelectionResult, err error) {
+	err = c.Invoke(a0, "ResolveTrackSelection", []any{a1, a2}, []any{&r0})
+	return r0, err
 }
 
 func (c *Client) Result(a0 context.Context, a1 string, a2 string, a3 string, a4 string) (r0 []uint8, err error) {
@@ -123,20 +137,5 @@ func (c *Client) SearchPlaylists(a0 context.Context, a1 string, a2 string, a3 st
 
 func (c *Client) SelectContent(a0 context.Context, a1 string, a2 mediastore.SelectRequest, a3 string) (r0 mediastore.Selection, err error) {
 	err = c.Invoke(a0, "SelectContent", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SelectContentGuarded(a0 context.Context, a1 string, a2 mediastore.SelectRequest, a3 string, a4 mediastore.Guard) (r0 mediastore.Selection, err error) {
-	err = c.Invoke(a0, "SelectContentGuarded", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SelectCover(a0 context.Context, a1 string, a2 albums.SelectCoverRequest, a3 string, a4 mediastore.Guard) (r0 albums.CoverSelection, err error) {
-	err = c.Invoke(a0, "SelectCover", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SelectRecordingCover(a0 context.Context, a1 string, a2 library.SelectRecordingCoverRequest, a3 string) (r0 library.RecordingCover, err error) {
-	err = c.Invoke(a0, "SelectRecordingCover", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
 }
