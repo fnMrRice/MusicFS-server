@@ -20,6 +20,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
 
+func (c *Client) Release(a0 context.Context, a1 string, a2 string) (r0 albums.Release, err error) {
+	err = c.Invoke(a0, "Release", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) Releases(a0 context.Context, a1 string, a2 string, a3 int) (r0 []albums.Release, err error) {
 	err = c.Invoke(a0, "Releases", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
@@ -132,10 +137,5 @@ func (c *Client) ScanAutomationResults(a0 context.Context, a1 string, a2 string,
 
 func (c *Client) ScanStatus(a0 context.Context, a1 string, a2 string) (r0 jobs.ScanStatus, err error) {
 	err = c.Invoke(a0, "ScanStatus", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SearchPlaylists(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 []playlists.Playlist, err error) {
-	err = c.Invoke(a0, "SearchPlaylists", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
 }

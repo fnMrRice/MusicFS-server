@@ -16,6 +16,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
+func (c *Client) SearchPlaylists(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 []playlists.Playlist, err error) {
+	err = c.Invoke(a0, "SearchPlaylists", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) SelectContent(a0 context.Context, a1 string, a2 mediastore.SelectRequest, a3 string) (r0 mediastore.Selection, err error) {
 	err = c.Invoke(a0, "SelectContent", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
@@ -129,9 +134,4 @@ func (c *Client) UnlockCover(a0 context.Context, a1 string, a2 albums.UnlockCove
 func (c *Client) UpdateProgress(a0 context.Context, a1 jobs.Job, a2 int) (err error) {
 	err = c.Invoke(a0, "UpdateProgress", []any{a1, a2}, []any{})
 	return err
-}
-
-func (c *Client) UpdateRelease(a0 context.Context, a1 string, a2 string, a3 albums.UpdateReleaseRequest, a4 string) (r0 albums.Release, err error) {
-	err = c.Invoke(a0, "UpdateRelease", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
 }

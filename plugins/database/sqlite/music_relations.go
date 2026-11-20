@@ -25,10 +25,10 @@ func musicRows(ctx context.Context, tx *sql.Tx, query string, scan func(*sql.Row
 	return rows.Err()
 }
 
-const albumColumns = "a.id,a.name,a.external_id,a.is_external,a.cover_path,a.publisher,a.release_date,a.original_name,a.revision"
+const albumColumns = "a.id,a.name,a.external_id,a.is_external,a.cover_path,a.publisher,a.release_date,a.source_url,a.source_plugin_id,a.original_name,a.revision"
 
 func albumFields(a *music.Album) []any {
-	return []any{&a.ID, &a.Name, &a.ExternalID, &a.IsExternal, &a.CoverPath, &a.Publisher, &a.ReleaseDate, &a.OriginalName, &a.Revision}
+	return []any{&a.ID, &a.Name, &a.ExternalID, &a.IsExternal, &a.CoverPath, &a.Publisher, &a.ReleaseDate, &a.SourceURL, &a.SourcePluginID, &a.OriginalName, &a.Revision}
 }
 
 func loadMusicRelations(ctx context.Context, tx *sql.Tx, owner string, items []music.Track, ordinary bool) error {

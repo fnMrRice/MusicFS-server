@@ -91,6 +91,11 @@ func (s *Store) saveMusicAlbumScraped(ctx context.Context, owner, id string, rev
 		}
 		if len(fields) > 1 {
 			for _, field := range fields {
+				if field.Field == "albumDetails" {
+					if err = setMusicAlbumSource(ctx, tx, owner, albumID, field); err != nil {
+						return 0, err
+					}
+				}
 				if field.Field == "albumTracks" {
 					if err = syncMusicAlbumScrapedTracks(ctx, tx, owner, albumID, field); err != nil {
 						return 0, err
@@ -118,4 +123,17 @@ func (s *Store) saveMusicAlbumScraped(ctx context.Context, owner, id string, rev
 		}
 		return revision + 1, nil
 	})
+}
+
+// 初次明确选用发行版时保存对应页面；缺失或无效页面不破坏已有配对。
+func setMusicAlbumSource(ctx context.Context, tx *sql.Tx, owner, album string, field works.ScrapedField) error {
+	page, plugin := strings.TrimSpace(field.Item.SourceURL), field.PluginID
+	if page == "" {
+		return nil
+	}
+	if _, err := (music.AlbumFields{Name: "source", SourceURL: &page, SourcePluginID: &plugin}).Normalize(); err != nil {
+		return nil
+	}
+	_, err := tx.ExecContext(ctx, "UPDATE music_albums SET source_url=?,source_plugin_id=? WHERE owner=? AND id=?", page, plugin, owner, album)
+	return err
 }

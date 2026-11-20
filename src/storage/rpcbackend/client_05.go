@@ -14,10 +14,14 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
-	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"time"
 )
+
+func (c *Client) MusicTrack(a0 context.Context, a1 string, a2 string) (r0 music.Track, err error) {
+	err = c.Invoke(a0, "MusicTrack", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) MusicTrackForSource(a0 context.Context, a1 string, a2 string) (r0 music.Track, err error) {
 	err = c.Invoke(a0, "MusicTrackForSource", []any{a1, a2}, []any{&r0})
@@ -134,9 +138,4 @@ func (c *Client) PublishEvidence(a0 context.Context, a1 string, a2 identificatio
 func (c *Client) PublishOnlineTrack(a0 context.Context, a1 string, a2 string, a3 online.Track) (r0 library.Track, err error) {
 	err = c.Invoke(a0, "PublishOnlineTrack", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
-}
-
-func (c *Client) PublishProcessedCache(a0 context.Context, a1 processedcache.Record, a2 processedcache.Authorization) (err error) {
-	err = c.Invoke(a0, "PublishProcessedCache", []any{a1, a2}, []any{})
-	return err
 }

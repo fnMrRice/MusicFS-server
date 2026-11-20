@@ -69,6 +69,23 @@ func TestOnlineScraperAlbumBundleRequiresCompleteTracksAndReplays(t *testing.T) 
 	if err != nil || len(saved) != 2 {
 		t.Fatalf("bundle fields: %+v %v", saved, err)
 	}
+	call("PUT", "/library/albums/"+album.ID, map[string]any{"name": "Manual alias", "expectedRevision": 2, "sourceUrl": "https://example.com/manual-page", "sourcePluginId": "album-fixture"}, "save-page-without-refresh", 200)
+	mergePath := "/library/albums/" + album.ID + "/metadata-merge"
+	mergeInput := map[string]any{"expectedRevision": 2, "pluginId": "album-fixture", "candidates": map[string]string{"albumDetails": details, "albumTracks": tracks}, "fields": []string{"name", "publisher"}}
+	call("PUT", mergePath, mergeInput, "reject-old-comparison", 409)
+	mergeInput["expectedRevision"] = 3
+	raw, _ = json.Marshal(mergeInput)
+	testkit.ValidateHTTP(t, "MusicAlbumMergeInput", raw)
+	merged := call("PUT", mergePath, mergeInput, "accept-selected-comparison", 200)
+	current, err := store.MusicAlbum(t.Context(), "admin", album.ID)
+	if err != nil || current.Name != "Online album" || current.OriginalName != "Original album" || current.SourceURL == nil || *current.SourceURL != "https://example.com/manual-page" {
+		t.Fatalf("merged album/source link: %+v %v", current, err)
+	}
+	mergeInput["expectedRevision"] = 4
+	mergeInput["fields"] = []string{"unknown"}
+	call("PUT", mergePath, mergeInput, "reject-invalid-merge-field", 400)
+	mergeInput["expectedRevision"] = 3
+	mergeInput["fields"] = []string{"name", "publisher"}
 	fresh, _ := onlinescrape.New(nil)
 	server, _ = testServer()
 	cookie, session = login(t, server)
@@ -76,6 +93,11 @@ func TestOnlineScraperAlbumBundleRequiresCompleteTracksAndReplays(t *testing.T) 
 	if replay := call("PUT", path, input, "select-whole-bundle", 200); string(replay) != string(first) {
 		t.Fatal("replay changed after candidate expiration")
 	}
-	input["expectedRevision"] = 2
+	if replay := call("PUT", mergePath, mergeInput, "accept-selected-comparison", 200); string(replay) != string(merged) {
+		t.Fatal("merge replay changed after candidate expiration")
+	}
+	mergeInput["expectedRevision"] = 4
+	call("PUT", mergePath, mergeInput, "expired-new-comparison", 404)
+	input["expectedRevision"] = 4
 	call("PUT", path, input, "expired-new-bundle", 404)
 }
