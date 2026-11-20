@@ -7,8 +7,6 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
-	"github.com/fnMrRice/MusicFS-server/src/library/music"
-	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
@@ -17,6 +15,31 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 )
+
+func (c *Client) RecoverFingerprints(a0 context.Context) (err error) {
+	err = c.Invoke(a0, "RecoverFingerprints", []any{}, []any{})
+	return err
+}
+
+func (c *Client) RecoverHashes(a0 context.Context) (err error) {
+	err = c.Invoke(a0, "RecoverHashes", []any{}, []any{})
+	return err
+}
+
+func (c *Client) RecoverJobs(a0 context.Context) (err error) {
+	err = c.Invoke(a0, "RecoverJobs", []any{}, []any{})
+	return err
+}
+
+func (c *Client) RecoverPluginOperations(a0 context.Context) (err error) {
+	err = c.Invoke(a0, "RecoverPluginOperations", []any{}, []any{})
+	return err
+}
+
+func (c *Client) RecoverRemoteSync(a0 context.Context) (err error) {
+	err = c.Invoke(a0, "RecoverRemoteSync", []any{}, []any{})
+	return err
+}
 
 func (c *Client) RecoverWritebackQueue(a0 context.Context, a1 map[string]bool) (err error) {
 	err = c.Invoke(a0, "RecoverWritebackQueue", []any{a1}, []any{})
@@ -110,30 +133,5 @@ func (c *Client) SaveAuth(a0 context.Context, a1 auth.Session) (err error) {
 
 func (c *Client) SaveCandidates(a0 context.Context, a1 string, a2 matching.Snapshot, a3 []candidates.Candidate) (r0 matching.CandidatePage, err error) {
 	err = c.Invoke(a0, "SaveCandidates", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SaveMatchingRun(a0 context.Context, a1 matching.Run) (err error) {
-	err = c.Invoke(a0, "SaveMatchingRun", []any{a1}, []any{})
-	return err
-}
-
-func (c *Client) SaveMusicAlbum(a0 context.Context, a1 string, a2 string, a3 int64, a4 music.AlbumFields, a5 string) (r0 music.Album, err error) {
-	err = c.Invoke(a0, "SaveMusicAlbum", []any{a1, a2, a3, a4, a5}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SaveMusicArtistNames(a0 context.Context, a1 string, a2 string, a3 int64, a4 music.ArtistNamesInput, a5 string) (r0 music.Artist, err error) {
-	err = c.Invoke(a0, "SaveMusicArtistNames", []any{a1, a2, a3, a4, a5}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SaveMusicTrack(a0 context.Context, a1 string, a2 string, a3 int64, a4 music.TrackInput, a5 string) (r0 music.Track, err error) {
-	err = c.Invoke(a0, "SaveMusicTrack", []any{a1, a2, a3, a4, a5}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SavePersonalProfile(a0 context.Context, a1 string, a2 *string) (r0 personal.Profile, err error) {
-	err = c.Invoke(a0, "SavePersonalProfile", []any{a1, a2}, []any{&r0})
 	return r0, err
 }

@@ -17,6 +17,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/tasks"
 )
 
+func (c *Client) FindDerived(a0 context.Context, a1 string, a2 string) (r0 mediastore.DerivedObject, err error) {
+	err = c.Invoke(a0, "FindDerived", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) FindTrack(a0 context.Context, a1 string, a2 string) (r0 library.Track, err error) {
 	err = c.Invoke(a0, "FindTrack", []any{a1, a2}, []any{&r0})
 	return r0, err
@@ -64,6 +69,11 @@ func (c *Client) FinishHash(a0 context.Context, a1 identification.HashJob, a2 id
 
 func (c *Client) FinishMediaBackup(a0 context.Context, a1 string) (err error) {
 	err = c.Invoke(a0, "FinishMediaBackup", []any{a1}, []any{})
+	return err
+}
+
+func (c *Client) FinishPlaylistAddition(a0 context.Context, a1 int64, a2 string, a3 int64) (err error) {
+	err = c.Invoke(a0, "FinishPlaylistAddition", []any{a1, a2, a3}, []any{})
 	return err
 }
 
@@ -125,14 +135,4 @@ func (c *Client) GetRefreshTask(a0 context.Context, a1 string, a2 string) (r0 ta
 func (c *Client) GetWriteback(a0 context.Context, a1 string, a2 string) (r0 writebackhost.Job, err error) {
 	err = c.Invoke(a0, "GetWriteback", []any{a1, a2}, []any{&r0})
 	return r0, err
-}
-
-func (c *Client) HashCandidates(a0 context.Context, a1 identification.HashScope, a2 string, a3 int) (r0 []identification.HashTarget, err error) {
-	err = c.Invoke(a0, "HashCandidates", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) HashProgress(a0 context.Context, a1 identification.HashJob, a2 int64) (err error) {
-	err = c.Invoke(a0, "HashProgress", []any{a1, a2}, []any{})
-	return err
 }

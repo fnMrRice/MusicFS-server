@@ -12,13 +12,26 @@ import (
 
 type neteasePlaylist struct {
 	ID          json.Number `json:"id"`
+	UserID      json.Number `json:"userId"`
 	Name        string      `json:"name"`
 	TrackCount  *int64      `json:"trackCount"`
 	CoverImgURL string      `json:"coverImgUrl"`
 	PicURL      string      `json:"picUrl"`
 	Creator     *struct {
-		Nickname string `json:"nickname"`
+		UserID   json.Number `json:"userId"`
+		Nickname string      `json:"nickname"`
 	} `json:"creator"`
+}
+
+func (p neteasePlaylist) ownedBy(accountID string) bool {
+	id := p.UserID.String()
+	if p.Creator != nil && p.Creator.UserID != "" {
+		if id != "" && id != p.Creator.UserID.String() {
+			return false
+		}
+		id = p.Creator.UserID.String()
+	}
+	return id != "" && id == accountID
 }
 
 func (p neteasePlaylist) summary() (Playlist, error) {
@@ -33,10 +46,8 @@ func (p neteasePlaylist) summary() (Playlist, error) {
 	if image == "" {
 		image = p.PicURL
 	}
-	cover, err := imageURL(image)
-	if err != nil {
-		return Playlist{}, err
-	}
+	// 可选封面不符合展示策略时省略，保留歌单身份和名称。
+	cover, _ := imageURL(image)
 	var creator *string
 	if p.Creator != nil {
 		value, err := textValue(p.Creator.Nickname, 4096)
@@ -113,6 +124,9 @@ func (c *Client) ObservePlaylist(ctx context.Context, externalID string) (Playli
 			} `json:"trackIds"`
 		} `json:"playlist"`
 	}
+	if err := c.WaitForMetadata(ctx); err != nil {
+		return PlaylistObservation{}, err
+	}
 	if err := c.Get(ctx, "/api/v6/playlist/detail", url.Values{"id": {externalID}, "n": {"1"}, "s": {"0"}}, &response); err != nil {
 		return PlaylistObservation{}, err
 	}
@@ -126,8 +140,9 @@ func (c *Client) ObservePlaylist(ctx context.Context, externalID string) (Playli
 	if p == nil {
 		return PlaylistObservation{}, domain.Fail("NOT_FOUND", "Public playlist was not found")
 	}
-	if p.Privacy == nil || *p.Privacy != 0 {
-		return PlaylistObservation{}, domain.Fail("ACCESS_DENIED", "Playlist is not explicitly public")
+	owned := p.ownedBy(c.Secret.AccountID)
+	if !owned && (p.Privacy == nil || *p.Privacy != 0) {
+		return PlaylistObservation{}, domain.Fail("ACCESS_DENIED", "This account cannot access this private playlist")
 	}
 	if p.ID.String() != externalID || p.TrackIDs == nil || p.TrackCount == nil || len(*p.TrackIDs) > MaxPlaylistEntries {
 		return PlaylistObservation{}, upstreamInvalid()
@@ -136,6 +151,7 @@ func (c *Client) ObservePlaylist(ctx context.Context, externalID string) (Playli
 	if err != nil {
 		return PlaylistObservation{}, err
 	}
+	playlist.Writable = owned
 	observation := PlaylistObservation{Playlist: playlist, Entries: []PlaylistEntry{}, Complete: *p.TrackCount == int64(len(*p.TrackIDs)), Consistency: Unversioned, ObservedAt: time.Now().UTC()}
 	for index, entry := range *p.TrackIDs {
 		if !numericID.MatchString(entry.ID.String()) {

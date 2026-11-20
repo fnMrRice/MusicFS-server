@@ -94,6 +94,9 @@ func (s *Store) AppendPlaylistSelection(ctx context.Context, owner, id string, r
 	if err = assignPlaylistBindings(p.Bindings, bindings); err != nil {
 		return result, err
 	}
+	if err = queuePlaylistEntries(ctx, m.tx, owner, id, nil, bindings[len(bindings)-1:]); err != nil {
+		return result, err
+	}
 	p.Bindings, p.Stale = bindings, true
 	p.RuleRevision++
 	if err = savePersonalPlaylist(ctx, m.tx, owner, &p, false); err != nil {

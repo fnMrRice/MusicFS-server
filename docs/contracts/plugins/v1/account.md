@@ -21,3 +21,5 @@ View 的可选 `avatarUrl` 是展示资料，与 `displayName` 一起返回；�
 `provider.online.accountOptions` 使用 `{context}` 请求并精确回显作用域，返回 `{context, value: {method, configured, validation, developerToken?}}`。`method/validation` 必须与插件 `login` 声明一致；没有登录声明时只能返回 `none/false/notSupported`，不能附加令牌。该方法不要求已登录平台，但仍要求 MusicFS 用户与实例归属。可选开发者令牌仅延续 MusicKit 本人浏览器授权所需的公开客户端配置；内部凭据仍只走 `provider.online.account` 的私有状态字段。
 
 View.revision 是每次有效登录的随机代次，恢复后首次校验也产生新值；同一登录的再次 check 保持不变。分页游标及推荐缓存绑定该代次。业务入口未登录/未校验返回 PLATFORM_AUTH_REQUIRED，HTTP 映射 403；账号状态、登录、校验和退出入口不受业务登录门槛影响。
+
+支持 `playlist.addTracks` 的 Worker 使用 `provider.online.addPlaylistTrack` 向当前账号拥有的歌单添加一首歌。请求包含 `context`、关联时的 `accountId`、歌单 `externalId` 和歌曲 `trackId`。插件在账号锁内检查当前账号是否匹配，成功回显 `{context, value: true}`。重试时已在歌单中的歌曲也返回成功。歌单列表或详情中的可选 `writable` 字段供客户端显示关联操作，实际写入前仍核对账号与目标歌单归属。见[歌单管理及上游接口依据](../../../library/source-playlists.md)。

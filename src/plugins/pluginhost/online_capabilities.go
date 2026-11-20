@@ -46,6 +46,8 @@ func (w *OnlineWorker) requireOnlineCapability(method string, request any) error
 		capability = "playlist.tracks"
 	case "provider.online.playlists":
 		capability = "playlist.list"
+	case "provider.online.addPlaylistTrack":
+		capability = "playlist.addTracks"
 	case "provider.online.recommendations":
 		capability = "recommendations.playlists"
 	}

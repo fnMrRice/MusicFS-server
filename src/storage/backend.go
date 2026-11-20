@@ -68,6 +68,7 @@ type Backend interface {
 	personal.Repository
 	playback.Repository
 	playlists.Repository
+	playlists.LinkRepository
 	playlists.AggregateRepository
 	plugincontrol.Repository
 	processedcache.Repository

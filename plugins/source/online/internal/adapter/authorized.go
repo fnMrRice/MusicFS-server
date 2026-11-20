@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	domain "github.com/fnMrRice/MusicFS-server/sdk/fault"
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
@@ -121,4 +122,14 @@ func (c *Client) Playlists(ctx context.Context, request PlaylistsRequest) (Playl
 	return authorized(ctx, c, func(ctx context.Context) (PlaylistsPage, error) {
 		return c.driver.Playlists(ctx, request)
 	})
+}
+
+func (c *Client) AddPlaylistTrack(ctx context.Context, request online.PlaylistTrackAddition) error {
+	_, err := authorized(ctx, c, func(ctx context.Context) (struct{}, error) {
+		if request.AccountID == "" || request.AccountID != c.account.secret.AccountID {
+			return struct{}{}, domain.Fail("ACCESS_DENIED", "Platform account does not match the linked playlist")
+		}
+		return struct{}{}, c.driver.AddPlaylistTrack(ctx, request)
+	})
+	return err
 }

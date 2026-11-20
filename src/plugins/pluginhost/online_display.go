@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 )
 
 func (w *OnlineWorker) MetadataBatch(ctx context.Context, ids []string) (online.TrackBatch, error) {
@@ -19,6 +20,18 @@ func (w *OnlineWorker) MetadataBatch(ctx context.Context, ids []string) (online.
 		return online.TrackBatch{}, err
 	}
 	return result, nil
+}
+
+func (w *OnlineWorker) AddPlaylistTrack(ctx context.Context, r online.PlaylistTrackAddition) error {
+	scope, err := w.newScope(ctx)
+	if err != nil {
+		return err
+	}
+	ack, err := onlineCall[bool](ctx, w, "provider.online.addPlaylistTrack", scope, pluginproto.OnlinePlaylistTrackAddition{Context: scope, PlaylistTrackAddition: r})
+	if err == nil && !ack {
+		return domain.Fail("PROTOCOL_MISMATCH", "Missing playlist update confirmation")
+	}
+	return err
 }
 func (w *OnlineWorker) PlaylistTracks(ctx context.Context, r online.PlaylistTracksRequest) (online.PlaylistTracksPage, error) {
 	scope, err := w.newScope(ctx)

@@ -19,7 +19,7 @@ func Resources(platform string) online.ResourcePolicy {
 func Capabilities(platform string) []online.Capability {
 	switch platform {
 	case online.Netease:
-		return online.DeclareCapabilities("search.tracks", "search.albums", "search.artists", "search.playlists", "metadata.album", "metadata.artist", "album.tracks", "artist.albums", "artist.tracks", "metadata.tracks.batch", "playlist.tracks", "metadata.track", "track.details", "playlist.observe", "playlist.list", "recommendations.playlists")
+		return online.DeclareCapabilities("search.tracks", "search.albums", "search.artists", "search.playlists", "metadata.album", "metadata.artist", "album.tracks", "artist.albums", "artist.tracks", "metadata.tracks.batch", "playlist.tracks", "metadata.track", "track.details", "playlist.observe", "playlist.list", "playlist.addTracks", "recommendations.playlists")
 	case online.Bilibili:
 		return online.DeclareCapabilities("search.tracks", "search.playlists", "metadata.track", "track.details", "metadata.tracks.batch", "playlist.tracks", "playlist.observe", "stream.resolve")
 	default:

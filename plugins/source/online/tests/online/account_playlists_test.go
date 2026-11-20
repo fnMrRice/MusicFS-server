@@ -21,16 +21,16 @@ func TestAccountPlaylistsUseValidatedAccountAndBoundPagination(t *testing.T) {
 			t.Fatal("playlist listing did not use the current account", r.URL)
 		}
 		if q.Get("offset") == "0" {
-			return response(`{"code":200,"more":true,"playlist":[{"id":91,"name":"My playlist","trackCount":2,"creator":{"nickname":"Fixture"}}]}`).RoundTrip(r)
+			return response(`{"code":200,"more":true,"playlist":[{"id":91,"name":"My playlist","trackCount":2,"creator":{"userId":12345,"nickname":"Fixture"},"coverImgUrl":"https://127.0.0.1/private"}]}`).RoundTrip(r)
 		}
 		if q.Get("offset") != "1" {
 			t.Fatal("unexpected playlist page", r.URL)
 		}
-		return response(`{"code":200,"more":false,"playlist":[{"id":92,"name":"Saved playlist","trackCount":1}]}`).RoundTrip(r)
+		return response(`{"code":200,"more":false,"playlist":[{"id":92,"userId":654,"name":"Saved playlist","trackCount":1}]}`).RoundTrip(r)
 	}))
 	ctx := context.Background()
 	page, err := c.Playlists(ctx, online.PlaylistsRequest{Limit: 1})
-	if err != nil || len(page.Items) != 1 || page.Items[0].ExternalID != "91" || page.NextCursor == nil || online.ValidatePlaylists(online.Netease, page, 1) != nil {
+	if err != nil || len(page.Items) != 1 || page.Items[0].ExternalID != "91" || !page.Items[0].Writable || page.Items[0].CoverURL != nil || page.NextCursor == nil || online.ValidatePlaylists(online.Netease, page, 1) != nil {
 		t.Fatal("invalid first account page", page, err)
 	}
 	cursor := *page.NextCursor
@@ -41,9 +41,8 @@ func TestAccountPlaylistsUseValidatedAccountAndBoundPagination(t *testing.T) {
 	if calls.Load() != 1 {
 		t.Fatal("unbound cursor reached the upstream")
 	}
-	time.Sleep(1010 * time.Millisecond)
 	page, err = c.Playlists(ctx, online.PlaylistsRequest{Limit: 1, Cursor: cursor})
-	if err != nil || len(page.Items) != 1 || page.Items[0].ExternalID != "92" || page.NextCursor != nil {
+	if err != nil || len(page.Items) != 1 || page.Items[0].ExternalID != "92" || page.Items[0].Writable || page.NextCursor != nil {
 		t.Fatal("invalid next account page", page, err)
 	}
 	if _, err = c.Account(ctx, online.AccountRequest{Action: "logout"}); err != nil {
@@ -65,7 +64,6 @@ func TestAccountPlaylistsRejectMalformedOrUnsafeResponses(t *testing.T) {
 		"missing list":       `{"code":200,"more":false}`,
 		"missing more":       `{"code":200,"playlist":[]}`,
 		"empty continuation": `{"code":200,"more":true,"playlist":[]}`,
-		"unsafe cover":       `{"code":200,"more":false,"playlist":[{"id":91,"name":"Name","coverImgUrl":"https://127.0.0.1/private"}]}`,
 		"duplicate":          `{"code":200,"more":false,"playlist":[{"id":91,"name":"A"},{"id":91,"name":"B"}]}`,
 		"oversized":          `{"code":200,"more":false,"playlist":[{"id":91,"name":"A"},{"id":92,"name":"B"},{"id":93,"name":"C"}]}`,
 	} {

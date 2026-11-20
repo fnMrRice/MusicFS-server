@@ -1016,3 +1016,11 @@ WHEN OLD.track_id<>NEW.track_id BEGIN
  AND NOT EXISTS(SELECT 1 FROM music_sources WHERE track_id=OLD.track_id)
  AND EXISTS(SELECT 1 FROM music_tracks WHERE id=OLD.track_id AND origin<>'manual');
 END;
+-- migration: 040_music_album_scraped.sql
+-- 专辑刮削资料按字段保存来源和内容，生命周期跟随音乐专辑。
+CREATE TABLE music_album_scraped_fields (
+ album_id TEXT NOT NULL REFERENCES music_albums(id) ON DELETE CASCADE,
+ field TEXT NOT NULL CHECK(field IN ('albumDetails','albumTracks','artwork')),
+ document TEXT NOT NULL CHECK(json_valid(document)),
+ PRIMARY KEY(album_id,field)
+);

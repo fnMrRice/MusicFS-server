@@ -11,21 +11,38 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 )
 
-func ensureRemoteSource(ctx context.Context, tx *sql.Tx, owner string, b playlists.Binding, external string) (playlists.RemoteSource, error) {
+func (s *Store) EnsurePlaylistTrackSources(ctx context.Context, owner, instance, account string, ids []string) ([]playlists.RemoteSource, error) {
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	sources := make([]playlists.RemoteSource, 0, len(ids))
+	for _, id := range ids {
+		source, err := ensureRemoteSource(ctx, tx, owner, playlists.RemoteRef{InstanceID: instance, AccountID: account, ExternalID: id})
+		if err != nil {
+			return nil, err
+		}
+		sources = append(sources, source)
+	}
+	return sources, tx.Commit()
+}
+
+func ensureRemoteSource(ctx context.Context, tx *sql.Tx, owner string, ref playlists.RemoteRef) (playlists.RemoteSource, error) {
 	var id string
-	err := tx.QueryRowContext(ctx, "SELECT id FROM remote_sources WHERE owner=? AND instance_id=? AND account_id=? AND external_id=?", owner, b.InstanceID, b.AccountID, external).Scan(&id)
+	err := tx.QueryRowContext(ctx, "SELECT id FROM remote_sources WHERE owner=? AND instance_id=? AND account_id=? AND external_id=?", owner, ref.InstanceID, ref.AccountID, ref.ExternalID).Scan(&id)
 	if err == nil {
 		return readRemoteSource(tx.QueryRowContext(ctx, "SELECT document FROM remote_sources WHERE owner=? AND id=?", owner, id))
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		return playlists.RemoteSource{}, err
 	}
-	source := playlists.RemoteSource{ID: domain.NewID(), RemoteRef: playlists.RemoteRef{InstanceID: b.InstanceID, AccountID: b.AccountID, ExternalID: external}, PlaybackAvailability: "unsupported"}
+	source := playlists.RemoteSource{ID: domain.NewID(), RemoteRef: ref, PlaybackAvailability: "unsupported"}
 	raw, err := json.Marshal(source)
 	if err != nil {
 		return source, err
 	}
-	_, err = tx.ExecContext(ctx, "INSERT INTO remote_sources VALUES(?,?,?,?,?,?)", source.ID, owner, b.InstanceID, b.AccountID, external, raw)
+	_, err = tx.ExecContext(ctx, "INSERT INTO remote_sources VALUES(?,?,?,?,?,?)", source.ID, owner, ref.InstanceID, ref.AccountID, ref.ExternalID, raw)
 	return source, err
 }
 func (s *Store) FinishRemoteSync(ctx context.Context, ticket playlists.SyncJob, observation playlists.Observation) (playlists.Snapshot, error) {
@@ -54,7 +71,9 @@ func (s *Store) FinishRemoteSync(ctx context.Context, ticket playlists.SyncJob, 
 		if _, ok := sources[entry.ExternalTrackID]; ok {
 			continue
 		}
-		source, e := ensureRemoteSource(ctx, tx, j.Owner, j.Binding, entry.ExternalTrackID)
+		ref := j.Binding.RemoteRef
+		ref.ExternalID = entry.ExternalTrackID
+		source, e := ensureRemoteSource(ctx, tx, j.Owner, ref)
 		if e != nil {
 			return empty, e
 		}

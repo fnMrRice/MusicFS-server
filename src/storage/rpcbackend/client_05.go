@@ -8,11 +8,27 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/music"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"time"
 )
+
+func (c *Client) MusicAlbumScrapeTarget(a0 context.Context, a1 string, a2 string, a3 string) (r0 music.AlbumScrapeTarget, err error) {
+	err = c.Invoke(a0, "MusicAlbumScrapeTarget", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) MusicAlbumScrapedFields(a0 context.Context, a1 string, a2 string) (r0 []works.ScrapedField, err error) {
+	err = c.Invoke(a0, "MusicAlbumScrapedFields", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) MusicAlbums(a0 context.Context, a1 string, a2 music.Query) (r0 music.AlbumPage, err error) {
+	err = c.Invoke(a0, "MusicAlbums", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) MusicArtist(a0 context.Context, a1 string, a2 string) (r0 music.Artist, err error) {
 	err = c.Invoke(a0, "MusicArtist", []any{a1, a2}, []any{&r0})
@@ -46,6 +62,11 @@ func (c *Client) MusicTracks(a0 context.Context, a1 string, a2 music.Query) (r0 
 
 func (c *Client) NextAutomation(a0 context.Context) (r0 enrichment.AutomationWork, err error) {
 	err = c.Invoke(a0, "NextAutomation", []any{}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) NextPlaylistAddition(a0 context.Context) (r0 *playlists.LinkAddition, err error) {
+	err = c.Invoke(a0, "NextPlaylistAddition", []any{}, []any{&r0})
 	return r0, err
 }
 
@@ -104,34 +125,12 @@ func (c *Client) PlaylistChanges(a0 context.Context, a1 string, a2 string, a3 in
 	return r0, err
 }
 
+func (c *Client) PlaylistLinks(a0 context.Context, a1 string) (r0 []playlists.PlaylistLink, err error) {
+	err = c.Invoke(a0, "PlaylistLinks", []any{a1}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) PlaylistSnapshot(a0 context.Context, a1 string, a2 string, a3 int64) (r0 playlists.AggregateSnapshot, err error) {
 	err = c.Invoke(a0, "PlaylistSnapshot", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
-}
-
-func (c *Client) Playlists(a0 context.Context, a1 string, a2 string, a3 int) (r0 []playlists.Playlist, err error) {
-	err = c.Invoke(a0, "Playlists", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) PrepareAutomation(a0 context.Context, a1 string, a2 enrichment.AutomaticPolicy) (err error) {
-	err = c.Invoke(a0, "PrepareAutomation", []any{a1, a2}, []any{})
-	return err
-}
-
-func (c *Client) PrepareContent(a0 context.Context, a1 string, a2 mediastore.UploadInput, a3 string) (r0 mediastore.Publication, r1 bool, err error) {
-	err = c.Invoke(a0, "PrepareContent", []any{a1, a2, a3}, []any{&r0, &r1})
-	return r0, r1, err
-}
-
-func (c *Client) PrepareRestoredDatabase(a0 context.Context, a1 []mediastore.BackupObject) (err error) {
-	err = c.Invoke(a0, "PrepareRestoredDatabase", []any{a1}, []any{})
-	return err
-}
-
-func (c *Client) ProviderScanState(a0 context.Context, a1 string, a2 string) (r0 string) {
-	if err := c.Invoke(a0, "ProviderScanState", []any{a1, a2}, []any{&r0}); err != nil {
-		return "failed"
-	}
-	return r0
 }

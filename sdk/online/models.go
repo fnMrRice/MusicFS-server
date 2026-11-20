@@ -70,6 +70,7 @@ type SearchPage struct {
 
 type Playlist struct {
 	ExternalID string  `json:"externalId"`
+	Writable   bool    `json:"writable,omitempty"`
 	Title      string  `json:"title"`
 	SourceURL  string  `json:"sourceUrl"`
 	TrackCount *int64  `json:"trackCount"`

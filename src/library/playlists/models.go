@@ -123,6 +123,7 @@ type Remote interface {
 }
 
 type Repository interface {
+	EnsurePlaylistTrackSources(context.Context, string, string, string, []string) ([]RemoteSource, error)
 	ImportRemotePlaylist(context.Context, string, Binding, string) (RemotePlaylist, bool, error)
 	RemotePlaylist(context.Context, string, string) (RemotePlaylist, error)
 	RemotePlaylists(context.Context, string, string, int) ([]RemotePlaylist, error)

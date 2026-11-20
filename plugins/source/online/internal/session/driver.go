@@ -50,6 +50,7 @@ type Driver interface {
 	MetadataBatch(context.Context, []string) (online.TrackBatch, error)
 	PlaylistTracks(context.Context, online.PlaylistTracksRequest) (online.PlaylistTracksPage, error)
 	Playlists(context.Context, online.PlaylistsRequest) (online.PlaylistsPage, error)
+	AddPlaylistTrack(context.Context, online.PlaylistTrackAddition) error
 	PublicRecommendations(context.Context, int) (online.RecommendationPage, error)
 }
 

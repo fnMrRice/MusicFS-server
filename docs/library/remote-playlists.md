@@ -32,6 +32,6 @@
 
 ## 边界与配置
 
-复用[在线 Provider 配置](../providers/online.md#配置和实例状态)，停用保存后重启 Server 生效。本人已导入历史不要求来源在线；新导入与同步必须重新检查实例、账号和能力，不回退匿名或借用其他账号。私人平台歌单、平台写回和完整音频解析尚未支持；真实授权范围见[账号登录](../providers/platform-login.md)。[个人歌单聚合与隐藏](playlists.md)使用独立规则，不由同步隐式处理。
+复用[在线 Provider 配置](../providers/online.md#配置和实例状态)，停用保存后重启 Server 生效。本人已导入历史不要求来源在线；新导入与同步必须重新检查实例、账号和能力，不回退匿名或借用其他账号。导入与同步负责读取快照。将新增曲目追加到本人网易云歌单需要显式建立[账号歌单关联](source-playlists.md)。真实授权范围见[账号登录](../providers/platform-login.md)。[个人歌单聚合与隐藏](playlists.md)使用独立规则。
 
 公开模型见 [OpenAPI](../contracts/openapi.yaml)和 [HTTP Schema](../contracts/http.schema.json)。

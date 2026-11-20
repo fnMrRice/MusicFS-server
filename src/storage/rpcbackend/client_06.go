@@ -18,7 +18,35 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) Playlists(a0 context.Context, a1 string, a2 string, a3 int) (r0 []playlists.Playlist, err error) {
+	err = c.Invoke(a0, "Playlists", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) PrepareAutomation(a0 context.Context, a1 string, a2 enrichment.AutomaticPolicy) (err error) {
+	err = c.Invoke(a0, "PrepareAutomation", []any{a1, a2}, []any{})
+	return err
+}
+
+func (c *Client) PrepareContent(a0 context.Context, a1 string, a2 mediastore.UploadInput, a3 string) (r0 mediastore.Publication, r1 bool, err error) {
+	err = c.Invoke(a0, "PrepareContent", []any{a1, a2, a3}, []any{&r0, &r1})
+	return r0, r1, err
+}
+
+func (c *Client) PrepareRestoredDatabase(a0 context.Context, a1 []mediastore.BackupObject) (err error) {
+	err = c.Invoke(a0, "PrepareRestoredDatabase", []any{a1}, []any{})
+	return err
+}
+
+func (c *Client) ProviderScanState(a0 context.Context, a1 string, a2 string) (r0 string) {
+	if err := c.Invoke(a0, "ProviderScanState", []any{a1, a2}, []any{&r0}); err != nil {
+		return "failed"
+	}
+	return r0
+}
 
 func (c *Client) Publish(a0 context.Context, a1 jobs.Job, a2 library.ScanPublication) (err error) {
 	err = c.Invoke(a0, "Publish", []any{a1, a2}, []any{})
@@ -112,30 +140,5 @@ func (c *Client) RecordingCover(a0 context.Context, a1 string, a2 string) (r0 li
 
 func (c *Client) RecoverEnrichment(a0 context.Context) (err error) {
 	err = c.Invoke(a0, "RecoverEnrichment", []any{}, []any{})
-	return err
-}
-
-func (c *Client) RecoverFingerprints(a0 context.Context) (err error) {
-	err = c.Invoke(a0, "RecoverFingerprints", []any{}, []any{})
-	return err
-}
-
-func (c *Client) RecoverHashes(a0 context.Context) (err error) {
-	err = c.Invoke(a0, "RecoverHashes", []any{}, []any{})
-	return err
-}
-
-func (c *Client) RecoverJobs(a0 context.Context) (err error) {
-	err = c.Invoke(a0, "RecoverJobs", []any{}, []any{})
-	return err
-}
-
-func (c *Client) RecoverPluginOperations(a0 context.Context) (err error) {
-	err = c.Invoke(a0, "RecoverPluginOperations", []any{}, []any{})
-	return err
-}
-
-func (c *Client) RecoverRemoteSync(a0 context.Context) (err error) {
-	err = c.Invoke(a0, "RecoverRemoteSync", []any{}, []any{})
 	return err
 }

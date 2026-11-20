@@ -12,10 +12,10 @@ SQLite 插件在打开主库时执行内嵌 SQL。每个版本独立记录在 `s
 
 | 文件 | 内容 |
 | --- | --- |
-| [001–010](010_batch_001_010.sql) · [011–039](039_batch_011_039.sql) | 原始建库及历史升级，按分段标记查找对应版本 |
-| [040](040_music_album_scraped.sql) | 专辑逐字段在线资料、来源与曲目表 |
+| [001–010](010_batch_001_010.sql) · [011–040](040_batch_011_040.sql) | 原始建库及历史升级，按分段标记查找对应版本 |
 | [041](041_album_original_name.sql) | 专辑原名、刮削曲位与重刮身份 |
 | [042](042_album_source_link.sql) | 专辑平台链接与插件身份 |
 | [043](043_localized_music_names.sql) | 曲目与歌手多语言别名、多平台专辑链接、人工合并曲位 |
+| [044](044_playlist_links.sql) | 个人歌单与可写远程歌单的关联及待同步曲目 |
 
 [存储插件契约](../../../../docs/plugins/storage-plugins.md) · [备份与恢复](../../../../docs/operations/backup.md)

@@ -33,6 +33,11 @@ type Client interface {
 // Transport dependencies can be captured by the factory, never supplied by RPC.
 type Factory func(scope online.Scope, timeout time.Duration) (Client, error)
 
+// PlaylistTrackWriter 由声明支持向账号歌单添加歌曲的插件实现。
+type PlaylistTrackWriter interface {
+	AddPlaylistTrack(context.Context, online.PlaylistTrackAddition) error
+}
+
 // Plugin supplies the independently released implementation and declarations.
 type Plugin struct {
 	Descriptor pluginproto.OnlineDescriptor

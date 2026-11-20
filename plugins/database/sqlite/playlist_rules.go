@@ -198,6 +198,9 @@ func (s *Store) EditPlaylist(ctx context.Context, owner, id string, r playlists.
 	if err = validatePlaylistBindings(ctx, m.tx, owner, r.Bindings); err != nil {
 		return result, err
 	}
+	if err = queuePlaylistEntries(ctx, m.tx, owner, id, result.Bindings, r.Bindings); err != nil {
+		return result, err
+	}
 	result.Name, result.Bindings, result.Stale = r.Name, r.Bindings, true
 	result.RuleRevision++
 	if err = savePersonalPlaylist(ctx, m.tx, owner, &result, false); err != nil {

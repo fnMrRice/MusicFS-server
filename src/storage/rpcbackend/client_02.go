@@ -109,6 +109,11 @@ func (c *Client) EnrichmentCandidate(a0 context.Context, a1 string, a2 string) (
 	return r0, err
 }
 
+func (c *Client) EnsurePlaylistTrackSources(a0 context.Context, a1 string, a2 string, a3 string, a4 []string) (r0 []playlists.RemoteSource, err error) {
+	err = c.Invoke(a0, "EnsurePlaylistTrackSources", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) ExpandSourceAlbum(a0 context.Context, a1 string, a2 string, a3 int64) (r0 albums.Expansion, err error) {
 	err = c.Invoke(a0, "ExpandSourceAlbum", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
@@ -132,9 +137,4 @@ func (c *Client) FindAuth(a0 context.Context, a1 string) (r0 auth.Session, err e
 func (c *Client) FindConfigOperation(a0 context.Context, a1 string, a2 string) (r0 config.Operation, r1 bool, err error) {
 	err = c.Invoke(a0, "FindConfigOperation", []any{a1, a2}, []any{&r0, &r1})
 	return r0, r1, err
-}
-
-func (c *Client) FindDerived(a0 context.Context, a1 string, a2 string) (r0 mediastore.DerivedObject, err error) {
-	err = c.Invoke(a0, "FindDerived", []any{a1, a2}, []any{&r0})
-	return r0, err
 }

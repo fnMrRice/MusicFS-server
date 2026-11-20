@@ -7,16 +7,40 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/library/music"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
-	"github.com/fnMrRice/MusicFS-server/src/library/sourcedisplay"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
-	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) SaveMatchingRun(a0 context.Context, a1 matching.Run) (err error) {
+	err = c.Invoke(a0, "SaveMatchingRun", []any{a1}, []any{})
+	return err
+}
+
+func (c *Client) SaveMusicAlbum(a0 context.Context, a1 string, a2 string, a3 int64, a4 music.AlbumFields, a5 string) (r0 music.Album, err error) {
+	err = c.Invoke(a0, "SaveMusicAlbum", []any{a1, a2, a3, a4, a5}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SaveMusicArtistNames(a0 context.Context, a1 string, a2 string, a3 int64, a4 music.ArtistNamesInput, a5 string) (r0 music.Artist, err error) {
+	err = c.Invoke(a0, "SaveMusicArtistNames", []any{a1, a2, a3, a4, a5}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SaveMusicTrack(a0 context.Context, a1 string, a2 string, a3 int64, a4 music.TrackInput, a5 string) (r0 music.Track, err error) {
+	err = c.Invoke(a0, "SaveMusicTrack", []any{a1, a2, a3, a4, a5}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SavePersonalProfile(a0 context.Context, a1 string, a2 *string) (r0 personal.Profile, err error) {
+	err = c.Invoke(a0, "SavePersonalProfile", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) SavePluginOperation(a0 context.Context, a1 plugincontrol.Operation) (err error) {
 	err = c.Invoke(a0, "SavePluginOperation", []any{a1}, []any{})
@@ -111,29 +135,4 @@ func (c *Client) SetPublicationStage(a0 context.Context, a1 string, a2 string, a
 func (c *Client) SetWritebackState(a0 context.Context, a1 string, a2 string, a3 string, a4 string) (err error) {
 	err = c.Invoke(a0, "SetWritebackState", []any{a1, a2, a3, a4}, []any{})
 	return err
-}
-
-func (c *Client) SourceAlbum(a0 context.Context, a1 string, a2 string) (r0 albums.SourceAlbum, err error) {
-	err = c.Invoke(a0, "SourceAlbum", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SourceAlbums(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 []albums.SourceAlbum, err error) {
-	err = c.Invoke(a0, "SourceAlbums", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SourceDisplay(a0 context.Context, a1 string, a2 []playlists.SourceRef) (r0 sourcedisplay.Page, err error) {
-	err = c.Invoke(a0, "SourceDisplay", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) Split(a0 context.Context, a1 string, a2 matching.SplitRequest, a3 string) (r0 matching.Mutation, err error) {
-	err = c.Invoke(a0, "Split", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) Timeline(a0 context.Context, a1 string, a2 string) (r0 timeline.Evidence, err error) {
-	err = c.Invoke(a0, "Timeline", []any{a1, a2}, []any{&r0})
-	return r0, err
 }

@@ -6,16 +6,49 @@ import (
 	"context"
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/library/sourcedisplay"
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) SourceAlbum(a0 context.Context, a1 string, a2 string) (r0 albums.SourceAlbum, err error) {
+	err = c.Invoke(a0, "SourceAlbum", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SourceAlbums(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 []albums.SourceAlbum, err error) {
+	err = c.Invoke(a0, "SourceAlbums", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SourceDisplay(a0 context.Context, a1 string, a2 []playlists.SourceRef) (r0 sourcedisplay.Page, err error) {
+	err = c.Invoke(a0, "SourceDisplay", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) Split(a0 context.Context, a1 string, a2 matching.SplitRequest, a3 string) (r0 matching.Mutation, err error) {
+	err = c.Invoke(a0, "Split", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) Timeline(a0 context.Context, a1 string, a2 string) (r0 timeline.Evidence, err error) {
+	err = c.Invoke(a0, "Timeline", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) Unlink(a0 context.Context, a1 string, a2 matching.UnlinkRequest, a3 string) (r0 matching.Mutation, err error) {
 	err = c.Invoke(a0, "Unlink", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
+}
+
+func (c *Client) UnlinkPlaylist(a0 context.Context, a1 string, a2 playlists.RemoteRef, a3 string) (err error) {
+	err = c.Invoke(a0, "UnlinkPlaylist", []any{a1, a2, a3}, []any{})
+	return err
 }
 
 func (c *Client) UnlockContent(a0 context.Context, a1 string, a2 mediastore.UnlockRequest, a3 string) (r0 mediastore.Selection, err error) {

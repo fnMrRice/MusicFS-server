@@ -26,6 +26,8 @@ func methodCapability(method string) string {
 		return "playlist.tracks"
 	case "provider.online.playlists":
 		return "playlist.list"
+	case "provider.online.addPlaylistTrack":
+		return "playlist.addTracks"
 	case "provider.online.recommendations":
 		return "recommendations.playlists"
 	default:

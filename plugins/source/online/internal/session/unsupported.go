@@ -61,6 +61,9 @@ func (Unsupported) PlaylistTracks(context.Context, online.PlaylistTracksRequest)
 func (Unsupported) Playlists(context.Context, online.PlaylistsRequest) (online.PlaylistsPage, error) {
 	return online.PlaylistsPage{}, unsupported()
 }
+func (Unsupported) AddPlaylistTrack(context.Context, online.PlaylistTrackAddition) error {
+	return unsupported()
+}
 func (Unsupported) PublicRecommendations(context.Context, int) (online.RecommendationPage, error) {
 	return online.RecommendationPage{}, unsupported()
 }

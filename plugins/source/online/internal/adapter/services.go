@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/source/online/internal/session"
+	"github.com/fnMrRice/MusicFS-server/sdk/fault"
 )
 
 func (c *Client) services() session.Runtime {
@@ -27,6 +28,11 @@ func (c *Client) waitForMetadata(ctx context.Context) error {
 	c.mu.Unlock()
 	if wait <= 0 {
 		return ctx.Err()
+	}
+	// 只等待本地请求间隔，平台返回的长时间限流要交给调用方安排重试。
+	if wait > time.Second {
+		seconds := int((wait + time.Second - 1) / time.Second)
+		return &fault.Error{Code: "RATE_LIMITED", Message: "Upstream metadata rate is limited", RetryAfter: &seconds}
 	}
 	timer := time.NewTimer(wait)
 	defer timer.Stop()

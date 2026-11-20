@@ -1,6 +1,6 @@
 # 个人歌单：绑定、出处与隐藏
 
-个人歌单支持本地追加、[远程歌单](remote-playlists.md)绑定、嵌套组合与独立隐藏意图。操作只改变 MusicFS 内的规则和快照，不修改远端平台或原始音频；聚合关系不授予来源访问权，也不保证曲目能播放。
+个人歌单支持本地追加、[远程快照](remote-playlists.md)绑定、嵌套组合与独立隐藏意图。用户还可单独关联一个可写的网易云歌单，将此后新增的网易云来源曲目追加到远程。聚合规则、隐藏和排序在 MusicFS 内生效。[账号歌单与关联](source-playlists.md)
 
 ## 有序绑定和稳定身份
 
@@ -58,4 +58,4 @@
 
 不增加新的YAML开关。本地引用沿用Provider授权，远程引用必须先[显式导入与同步](remote-playlists.md)；聚合重建不会联网同步。禁用在线实例后，已有本地远程快照和本人聚合历史仍可读取。原始WAV播放、Range与停止沿用既有播放接口，隐藏只是歌单展示规则，不是禁止播放来源。
 
-公开模型见 [OpenAPI](../contracts/openapi.yaml)与 [HTTP Schema](../contracts/http.schema.json)。平台账号控制面已接入，真实授权仍待验收；私人平台歌单、远端编辑和完整音频解析尚未支持，见[账号登录](../providers/platform-login.md)。
+公开模型见 [OpenAPI](../contracts/openapi.yaml)与 [HTTP Schema](../contracts/http.schema.json)。网易云关联歌单支持追加歌曲，真实账号授权和写入的验收范围见[账号登录](../providers/platform-login.md)。

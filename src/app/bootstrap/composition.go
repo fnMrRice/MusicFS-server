@@ -212,8 +212,11 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	handler.RegisterSourceDisplay(sourcedisplay.New(store, online))
 	handler.RegisterPluginManagement(pluginManager)
 	handler.RegisterOnline(online)
+	handler.RegisterPlaylistTrackSources(online, store)
 	handler.RegisterRecommendations(recommendations)
 	handler.RegisterRemotePlaylists(remotePlaylists)
+	links := playlists.NewLinks(store, online)
+	handler.RegisterPlaylistLinks(links)
 	handler.RegisterPlaylists(playlists.NewAggregate(store))
 	handler.RegisterHashing(hashes)
 	handler.RegisterFingerprinting(fingerprints)
@@ -320,5 +323,8 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 		return nil, nil, err
 	}
 	matchingAutomation.Start(ctx)
+	stopLinks := links.Start(ctx)
+	beforeLinks := cleanup
+	cleanup = func() { stopLinks(); beforeLinks() }
 	return handler, cleanup, nil
 }

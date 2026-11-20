@@ -33,6 +33,9 @@ func (c *Client) Playlists(ctx context.Context, request PlaylistsRequest) (Playl
 		Playlists *[]neteasePlaylist `json:"playlist"`
 		More      *bool              `json:"more"`
 	}
+	if err := c.WaitForMetadata(ctx); err != nil {
+		return PlaylistsPage{}, err
+	}
 	if err := c.Get(ctx, "/api/user/playlist", url.Values{"uid": {accountID}, "limit": {strconv.Itoa(request.Limit)}, "offset": {strconv.Itoa(offset)}, "includeVideo": {"true"}}, &response); err != nil {
 		return PlaylistsPage{}, err
 	}
@@ -53,6 +56,7 @@ func (c *Client) Playlists(ctx context.Context, request PlaylistsRequest) (Playl
 			return PlaylistsPage{}, upstreamInvalid()
 		}
 		seen[playlist.ExternalID] = true
+		playlist.Writable = raw.ownedBy(accountID)
 		page.Items = append(page.Items, playlist)
 	}
 	if *response.More {

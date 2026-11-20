@@ -211,6 +211,19 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 		}
 		scope = r.Context
 		run = func(ctx context.Context) (any, error) { return client.Playlists(ctx, r.PlaylistsRequest) }
+	case "provider.online.addPlaylistTrack":
+		var r pluginproto.OnlinePlaylistTrackAddition
+		if err = pluginproto.DecodeOnline(raw, &r); err != nil {
+			return nil, err
+		}
+		scope = r.Context
+		run = func(ctx context.Context) (any, error) {
+			writer, ok := client.(PlaylistTrackWriter)
+			if !ok {
+				return nil, unsupported()
+			}
+			return true, writer.AddPlaylistTrack(ctx, r.PlaylistTrackAddition)
+		}
 	case "provider.online.recommendations":
 		var r pluginproto.OnlineRecommendations
 		if err = pluginproto.DecodeOnline(raw, &r); err != nil {

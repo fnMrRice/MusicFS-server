@@ -8,12 +8,23 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/music"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"github.com/fnMrRice/MusicFS-server/src/tasks"
 )
+
+func (c *Client) HashCandidates(a0 context.Context, a1 identification.HashScope, a2 string, a3 int) (r0 []identification.HashTarget, err error) {
+	err = c.Invoke(a0, "HashCandidates", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) HashProgress(a0 context.Context, a1 identification.HashJob, a2 int64) (err error) {
+	err = c.Invoke(a0, "HashProgress", []any{a1, a2}, []any{})
+	return err
+}
 
 func (c *Client) HiddenRules(a0 context.Context, a1 string, a2 string) (r0 playlists.HiddenRules, err error) {
 	err = c.Invoke(a0, "HiddenRules", []any{a1, a2}, []any{&r0})
@@ -48,6 +59,11 @@ func (c *Client) InvalidateFingerprint(a0 context.Context, a1 string, a2 string)
 func (c *Client) InvalidatePublication(a0 context.Context, a1 string, a2 string, a3 string) (err error) {
 	err = c.Invoke(a0, "InvalidatePublication", []any{a1, a2, a3}, []any{})
 	return err
+}
+
+func (c *Client) LinkPlaylist(a0 context.Context, a1 string, a2 playlists.Binding, a3 string) (r0 playlists.PlaylistLink, err error) {
+	err = c.Invoke(a0, "LinkPlaylist", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
 }
 
 func (c *Client) ListGroupedTracks(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 library.Page, err error) {
@@ -117,20 +133,5 @@ func (c *Client) MergeMusicAlbumTracks(a0 context.Context, a1 string, a2 string,
 
 func (c *Client) MusicAlbum(a0 context.Context, a1 string, a2 string) (r0 music.Album, err error) {
 	err = c.Invoke(a0, "MusicAlbum", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) MusicAlbumScrapeTarget(a0 context.Context, a1 string, a2 string, a3 string) (r0 music.AlbumScrapeTarget, err error) {
-	err = c.Invoke(a0, "MusicAlbumScrapeTarget", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) MusicAlbumScrapedFields(a0 context.Context, a1 string, a2 string) (r0 []works.ScrapedField, err error) {
-	err = c.Invoke(a0, "MusicAlbumScrapedFields", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) MusicAlbums(a0 context.Context, a1 string, a2 music.Query) (r0 music.AlbumPage, err error) {
-	err = c.Invoke(a0, "MusicAlbums", []any{a1, a2}, []any{&r0})
 	return r0, err
 }
