@@ -57,6 +57,9 @@ func (s *Store) MergeMusicAlbumMetadata(ctx context.Context, owner, id string, r
 		if details.Item.ID != tracks.Item.ID || len(tracks.Item.Tracks) == 0 {
 			return 0, domain.Fail("INVALID_ARGUMENT", "Album candidates must describe the same release and complete track list")
 		}
+		if err = setMusicAlbumSource(ctx, tx, album, details, false); err != nil {
+			return 0, err
+		}
 		current := works.ScrapedField{Field: "albumDetails", PluginID: details.PluginID}
 		var raw []byte
 		err = tx.QueryRowContext(ctx, "SELECT document FROM music_album_scraped_fields WHERE album_id=? AND field='albumDetails'", albumID).Scan(&raw)

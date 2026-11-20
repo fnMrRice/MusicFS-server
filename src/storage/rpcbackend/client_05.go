@@ -4,7 +4,6 @@ package rpcbackend
 
 import (
 	"context"
-	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
@@ -17,6 +16,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"time"
 )
+
+func (c *Client) MusicGenres(a0 context.Context, a1 string, a2 music.Query) (r0 music.GenrePage, err error) {
+	err = c.Invoke(a0, "MusicGenres", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) MusicTrack(a0 context.Context, a1 string, a2 string) (r0 music.Track, err error) {
 	err = c.Invoke(a0, "MusicTrack", []any{a1, a2}, []any{&r0})
@@ -133,9 +137,4 @@ func (c *Client) Publish(a0 context.Context, a1 jobs.Job, a2 library.ScanPublica
 func (c *Client) PublishEvidence(a0 context.Context, a1 string, a2 identification.Ticket, a3 identification.Result) (err error) {
 	err = c.Invoke(a0, "PublishEvidence", []any{a1, a2, a3}, []any{})
 	return err
-}
-
-func (c *Client) PublishOnlineTrack(a0 context.Context, a1 string, a2 string, a3 online.Track) (r0 library.Track, err error) {
-	err = c.Invoke(a0, "PublishOnlineTrack", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
 }

@@ -25,15 +25,6 @@ func missingMusic(ctx context.Context, tx *sql.Tx, owner string, q music.Query, 
 	return n, err
 }
 
-func (s *Store) MusicArtist(ctx context.Context, owner, id string) (music.Artist, error) {
-	var a music.Artist
-	err := s.DB.QueryRowContext(ctx, "SELECT id,name FROM music_artists WHERE owner=? AND id=?", owner, id).Scan(&a.ID, &a.Name)
-	if errors.Is(err, sql.ErrNoRows) {
-		return a, domain.Fail("NOT_FOUND", "Music artist not found")
-	}
-	return a, err
-}
-
 func (s *Store) MusicArtists(ctx context.Context, owner string, q music.Query) (music.ArtistPage, error) {
 	res := music.ArtistPage{Items: []music.ArtistItem{}}
 	if err := q.Validate(); err != nil {
@@ -44,17 +35,18 @@ func (s *Store) MusicArtists(ctx context.Context, owner string, q music.Query) (
 		return res, err
 	}
 	defer tx.Rollback()
-	err = musicRows(ctx, tx, musicCategoryScope+`SELECT a.id,a.name,count(DISTINCT x.track_id) FROM music_artists a
+	err = musicRows(ctx, tx, musicCategoryScope+`SELECT `+artistNameColumns+`,count(DISTINCT x.track_id) FROM music_artists a
  JOIN music_track_artists x ON x.artist_id=a.id JOIN scope ON scope.id=x.track_id
- WHERE a.owner=? AND a.id>? AND instr(lower(a.name),lower(?))>0
+ WHERE a.owner=? AND a.id>? AND (instr(lower(a.name),lower(?))>0 OR EXISTS (
+ SELECT 1 FROM music_artist_localized_names n WHERE n.artist_id=a.id AND instr(lower(n.name),lower(?))>0))
  GROUP BY a.id ORDER BY a.id LIMIT ?`, func(r *sql.Rows) error {
 		var a music.ArtistItem
-		if e := r.Scan(&a.ID, &a.Name, &a.TrackCount); e != nil {
+		if e := scanArtistNames(r, &a.Artist, nil, &a.TrackCount); e != nil {
 			return e
 		}
 		res.Items = append(res.Items, a)
 		return nil
-	}, owner, owner, owner, q.ProviderID, q.ProviderID, owner, q.After, q.Q, q.Limit+1)
+	}, owner, owner, owner, q.ProviderID, q.ProviderID, owner, q.After, q.Q, q.Q, q.Limit+1)
 	if err != nil {
 		return res, err
 	}
@@ -102,7 +94,7 @@ func (s *Store) MusicAlbums(ctx context.Context, owner string, q music.Query) (m
 		return res, err
 	}
 	if n > 0 {
-		res.Items = append(res.Items, music.AlbumItem{TrackCount: n})
+		res.Items = append(res.Items, music.AlbumItem{Album: music.Album{AlbumFields: music.AlbumFields{SourceLinks: []music.AlbumSourceLink{}}}, TrackCount: n})
 	}
 	if len(res.Items) > q.Limit {
 		res.Items = res.Items[:q.Limit]

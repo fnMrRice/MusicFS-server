@@ -11,10 +11,21 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/sourcedisplay"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) ScanAutomationResults(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 enrichment.AutomationPage, err error) {
+	err = c.Invoke(a0, "ScanAutomationResults", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) ScanStatus(a0 context.Context, a1 string, a2 string) (r0 jobs.ScanStatus, err error) {
+	err = c.Invoke(a0, "ScanStatus", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) SearchPlaylists(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 []playlists.Playlist, err error) {
 	err = c.Invoke(a0, "SearchPlaylists", []any{a1, a2, a3, a4}, []any{&r0})
@@ -124,14 +135,4 @@ func (c *Client) Unlink(a0 context.Context, a1 string, a2 matching.UnlinkRequest
 func (c *Client) UnlockContent(a0 context.Context, a1 string, a2 mediastore.UnlockRequest, a3 string) (r0 mediastore.Selection, err error) {
 	err = c.Invoke(a0, "UnlockContent", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
-}
-
-func (c *Client) UnlockCover(a0 context.Context, a1 string, a2 albums.UnlockCoverRequest, a3 string) (r0 albums.CoverSelection, err error) {
-	err = c.Invoke(a0, "UnlockCover", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) UpdateProgress(a0 context.Context, a1 jobs.Job, a2 int) (err error) {
-	err = c.Invoke(a0, "UpdateProgress", []any{a1, a2}, []any{})
-	return err
 }

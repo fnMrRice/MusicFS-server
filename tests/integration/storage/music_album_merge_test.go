@@ -14,17 +14,18 @@ func TestMusicAlbumSourceLinkSavesWithoutFetchingAndRejectsInvalidPairs(t *testi
 	ctx := t.Context()
 	page, plugin := "https://example.com/release/one", "fixture"
 	for _, in := range []music.AlbumFields{
-		{Name: "Album", SourceURL: &page}, {Name: "Album", SourcePluginID: &plugin},
-		{Name: "Album", SourceURL: albumTestString("http://example.com/one"), SourcePluginID: &plugin},
-		{Name: "Album", SourceURL: albumTestString("https://user:secret@example.com/one"), SourcePluginID: &plugin},
-		{Name: "Album", SourceURL: &page, SourcePluginID: albumTestString("bad plugin")},
+		{Name: "Album", SourceLinks: []music.AlbumSourceLink{{URL: page, PluginID: plugin}, {URL: "https://example.com/two", PluginID: plugin}}},
+		{Name: "Album", SourceLinks: []music.AlbumSourceLink{{URL: page}}}, {Name: "Album", SourceLinks: []music.AlbumSourceLink{{PluginID: plugin}}},
+		{Name: "Album", SourceLinks: []music.AlbumSourceLink{{URL: "http://example.com/one", PluginID: plugin}}},
+		{Name: "Album", SourceLinks: []music.AlbumSourceLink{{URL: "https://user:secret@example.com/one", PluginID: plugin}}},
+		{Name: "Album", SourceLinks: []music.AlbumSourceLink{{URL: page, PluginID: "bad plugin"}}},
 	} {
 		if _, err := s.SaveMusicAlbum(ctx, "admin", "", 0, in, domain.NewID()); err == nil {
 			t.Fatal("invalid source association was accepted")
 		}
 	}
-	a, err := s.SaveMusicAlbum(ctx, "admin", "", 0, music.AlbumFields{Name: "Original", SourceURL: &page, SourcePluginID: &plugin}, "source-link-without-fetch")
-	if err != nil || a.SourceURL == nil || *a.SourceURL != page || a.SourcePluginID == nil || *a.SourcePluginID != plugin {
+	a, err := s.SaveMusicAlbum(ctx, "admin", "", 0, music.AlbumFields{Name: "Original", SourceLinks: []music.AlbumSourceLink{{URL: page, PluginID: plugin}, {URL: "https://example.org/album", PluginID: "second"}}}, "source-link-without-fetch")
+	if err != nil || len(a.SourceLinks) != 2 || a.SourceLinks[0].URL != page || a.SourceLinks[0].PluginID != plugin {
 		t.Fatalf("source link: %+v %v", a, err)
 	}
 	fields, err := s.MusicAlbumScrapedFields(ctx, "admin", a.ID)
@@ -33,14 +34,14 @@ func TestMusicAlbumSourceLinkSavesWithoutFetchingAndRejectsInvalidPairs(t *testi
 	}
 	in := a.AlbumFields
 	in.Name = "Alias"
-	in.SourceURL = albumTestString("https://example.com/release/two")
+	in.SourceLinks[0].URL = "https://example.com/release/two"
 	changed, err := s.SaveMusicAlbum(ctx, "admin", a.ID, a.Revision, in, "change-source-link")
-	if err != nil || changed.OriginalName != "Original" || changed.SourceURL == nil || *changed.SourceURL != *in.SourceURL {
+	if err != nil || changed.OriginalName != "Original" || len(changed.SourceLinks) != 2 || changed.SourceLinks[0].URL != in.SourceLinks[0].URL || changed.SourceLinks[1].PluginID != "second" {
 		t.Fatalf("source link update: %+v %v", changed, err)
 	}
-	in.SourceURL, in.SourcePluginID = nil, nil
+	in.SourceLinks = nil
 	cleared, err := s.SaveMusicAlbum(ctx, "admin", a.ID, changed.Revision, in, "clear-source-link")
-	if err != nil || cleared.SourceURL != nil || cleared.SourcePluginID != nil {
+	if err != nil || len(cleared.SourceLinks) != 0 {
 		t.Fatalf("clear association: %+v %v", cleared, err)
 	}
 }
@@ -61,12 +62,12 @@ func TestMusicAlbumMetadataMergePreservesUnselectedFieldsAndSupportsPartialDates
 		t.Fatal(err)
 	}
 	a, err = s.MusicAlbum(ctx, "admin", a.ID)
-	if err != nil || a.SourceURL == nil || *a.SourceURL != old[0].Item.SourceURL || a.SourcePluginID == nil || *a.SourcePluginID != "fixture" {
+	if err != nil || len(a.SourceLinks) != 1 || a.SourceLinks[0].URL != old[0].Item.SourceURL || a.SourceLinks[0].PluginID != "fixture" {
 		t.Fatalf("bundle source association: %+v %v", a, err)
 	}
 	manualURL := "https://example.com/manual-page"
 	in := a.AlbumFields
-	in.SourceURL = &manualURL
+	in.SourceLinks[0].URL = manualURL
 	if _, err = s.SaveMusicAlbum(ctx, "admin", a.ID, 2, in, "manual-merge-link"); err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +88,7 @@ func TestMusicAlbumMetadataMergePreservesUnselectedFieldsAndSupportsPartialDates
 	}
 	merge(4, []string{"publisher", "genre"}, "selective-fields-merge")
 	a, err = s.MusicAlbum(ctx, "admin", a.ID)
-	if err != nil || a.Name != "Hand name" || a.OriginalName != "Hand name" || a.Publisher == nil || *a.Publisher != "New label" || a.ReleaseDate == nil || *a.ReleaseDate != "2001-02-03" || a.SourceURL == nil || *a.SourceURL != manualURL || a.CoverPath == nil || *a.CoverPath != oldArt.Item.ImageURL {
+	if err != nil || a.Name != "Hand name" || a.OriginalName != "Hand name" || a.Publisher == nil || *a.Publisher != "New label" || a.ReleaseDate == nil || *a.ReleaseDate != "2001-02-03" || len(a.SourceLinks) == 0 || a.SourceLinks[0].URL != manualURL || a.CoverPath == nil || *a.CoverPath != oldArt.Item.ImageURL {
 		t.Fatalf("unselected album values changed: %+v %v", a, err)
 	}
 	readDetails := func() works.ScrapedField {
@@ -119,7 +120,7 @@ func TestMusicAlbumMetadataMergePreservesUnselectedFieldsAndSupportsPartialDates
 	}
 	merge(6, []string{"name", "artist", "releaseDate", "description", "tracks"}, "select-main-and-tracks")
 	a, err = s.MusicAlbum(ctx, "admin", a.ID)
-	if err != nil || a.Name != "Online name" || a.OriginalName != "Hand name" || a.ReleaseDate == nil || *a.ReleaseDate != "2024-03-04" || a.SourceURL == nil || *a.SourceURL != manualURL {
+	if err != nil || a.Name != "Online name" || a.OriginalName != "Hand name" || a.ReleaseDate == nil || *a.ReleaseDate != "2024-03-04" || len(a.SourceLinks) == 0 || a.SourceLinks[0].URL != manualURL {
 		t.Fatalf("merged main values: %+v %v", a, err)
 	}
 	tracks, err = s.MusicTracks(ctx, "admin", music.Query{Limit: 20, AlbumID: a.ID})
@@ -127,10 +128,19 @@ func TestMusicAlbumMetadataMergePreservesUnselectedFieldsAndSupportsPartialDates
 		t.Fatalf("selected complete tracks not merged: %+v %v", tracks, err)
 	}
 	next[0].Item.Date = "1997-04"
+	for i := range next {
+		next[i].PluginID = "other-platform"
+	}
 	merge(7, []string{"releaseDate"}, "merge-partial-date")
 	a, err = s.MusicAlbum(ctx, "admin", a.ID)
 	if err != nil || a.ReleaseDate != nil || readDetails().Item.Date != "1997-04" {
 		t.Fatalf("partial date precision lost: %+v %v", a, err)
+	}
+	if len(a.SourceLinks) != 2 || a.SourceLinks[0].URL != manualURL || a.SourceLinks[1].PluginID != "other-platform" || a.SourceLinks[1].URL != next[0].Item.SourceURL {
+		t.Fatalf("merge did not retain both platforms: %+v", a.SourceLinks)
+	}
+	for i := range next {
+		next[i].PluginID = "fixture"
 	}
 	next[0].Item.Date = "2000-99"
 	if _, err = s.MergeMusicAlbumMetadata(ctx, "admin", a.ID, 8, next, []string{"releaseDate"}, "reject-invalid-date"); err == nil {

@@ -49,7 +49,7 @@ func TestMusicAlbumScrapedMigrationPersistenceAndLifetime(t *testing.T) {
 	if err != nil || upgraded.OriginalName != "Original album" {
 		t.Fatalf("original album name was not backfilled: %+v %v", upgraded, err)
 	}
-	if upgraded.SourceURL == nil || *upgraded.SourceURL != "https://music.apple.com/hk/album/original/123" || upgraded.SourcePluginID == nil || *upgraded.SourcePluginID != "musicfs.scraper.itunes" {
+	if len(upgraded.SourceLinks) != 1 || upgraded.SourceLinks[0].URL != "https://music.apple.com/hk/album/original/123" || upgraded.SourceLinks[0].PluginID != "musicfs.scraper.itunes" {
 		t.Fatalf("album source association was not backfilled: %+v", upgraded)
 	}
 	var genre string

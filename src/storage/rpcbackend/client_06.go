@@ -4,6 +4,7 @@ package rpcbackend
 
 import (
 	"context"
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
@@ -17,6 +18,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 )
+
+func (c *Client) PublishOnlineTrack(a0 context.Context, a1 string, a2 string, a3 online.Track) (r0 library.Track, err error) {
+	err = c.Invoke(a0, "PublishOnlineTrack", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) PublishProcessedCache(a0 context.Context, a1 processedcache.Record, a2 processedcache.Authorization) (err error) {
 	err = c.Invoke(a0, "PublishProcessedCache", []any{a1, a2}, []any{})
@@ -131,9 +137,4 @@ func (c *Client) RecoverWritebackQueue(a0 context.Context, a1 map[string]bool) (
 func (c *Client) ReferencePublication(a0 context.Context, a1 string, a2 string) (err error) {
 	err = c.Invoke(a0, "ReferencePublication", []any{a1, a2}, []any{})
 	return err
-}
-
-func (c *Client) RefreshTaskMetadataJobs(a0 context.Context, a1 string, a2 string) (r0 []string, err error) {
-	err = c.Invoke(a0, "RefreshTaskMetadataJobs", []any{a1, a2}, []any{&r0})
-	return r0, err
 }

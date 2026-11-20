@@ -120,24 +120,8 @@ func (m *matchingMutation) finish(ctx context.Context) (matching.Mutation, error
 
 // finishResponse 共用审计与提交逻辑，并允许批量操作保存完整的幂等响应。
 func (m *matchingMutation) finishResponse(ctx context.Context, response func(matching.Mutation) any) (matching.Mutation, error) {
-	if _, err := m.tx.ExecContext(ctx, "INSERT INTO matching_revisions(owner,revision) VALUES(?,?) ON CONFLICT(owner) DO UPDATE SET revision=excluded.revision", m.owner, m.result.Revision); err != nil {
+	if err := m.saveChanges(ctx); err != nil {
 		return m.result, err
-	}
-	var sequence int64
-	if err := m.tx.QueryRowContext(ctx, "SELECT COALESCE(MAX(sequence),0) FROM link_changes WHERE owner=?", m.owner).Scan(&sequence); err != nil {
-		return m.result, err
-	}
-	for i := range m.result.Changes {
-		sequence++
-		c := &m.result.Changes[i]
-		c.Sequence, c.Owner, c.OperationID, c.Revision, c.CreatedAt = sequence, m.owner, m.result.OperationID, m.result.Revision, time.Now().UTC()
-		raw, err := json.Marshal(c)
-		if err != nil {
-			return m.result, err
-		}
-		if _, err = m.tx.ExecContext(ctx, "INSERT INTO link_changes(sequence,owner,revision,operation_id,document) VALUES(?,?,?,?,?)", sequence, m.owner, m.result.Revision, m.result.OperationID, raw); err != nil {
-			return m.result, err
-		}
 	}
 	var value any = m.result
 	if response != nil {
@@ -152,6 +136,30 @@ func (m *matchingMutation) finishResponse(ctx context.Context, response func(mat
 		return m.result, err
 	}
 	return m.result, m.tx.Commit()
+}
+
+// saveChanges 在调用方事务内保存录音修订和逐来源的关联审计。
+func (m *matchingMutation) saveChanges(ctx context.Context) error {
+	if _, err := m.tx.ExecContext(ctx, "INSERT INTO matching_revisions(owner,revision) VALUES(?,?) ON CONFLICT(owner) DO UPDATE SET revision=excluded.revision", m.owner, m.result.Revision); err != nil {
+		return err
+	}
+	var sequence int64
+	if err := m.tx.QueryRowContext(ctx, "SELECT COALESCE(MAX(sequence),0) FROM link_changes WHERE owner=?", m.owner).Scan(&sequence); err != nil {
+		return err
+	}
+	for i := range m.result.Changes {
+		sequence++
+		c := &m.result.Changes[i]
+		c.Sequence, c.Owner, c.OperationID, c.Revision, c.CreatedAt = sequence, m.owner, m.result.OperationID, m.result.Revision, time.Now().UTC()
+		raw, err := json.Marshal(c)
+		if err != nil {
+			return err
+		}
+		if _, err = m.tx.ExecContext(ctx, "INSERT INTO link_changes(sequence,owner,revision,operation_id,document) VALUES(?,?,?,?,?)", sequence, m.owner, m.result.Revision, m.result.OperationID, raw); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func strptr(s string) *string {

@@ -16,7 +16,11 @@ func TestOnlineScraperModels(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	item := scraper.Item{ID: "edition", Title: "发行版本", Tracks: []scraper.Track{{Title: "CD2", Disc: 2, Number: 1}}}
+	item := scraper.Item{ID: "edition", Title: "发行版本", Tracks: []scraper.Track{{
+		Title: "CD2", Disc: 2, Number: 1, ExternalID: "track-20",
+		LocalizedTitles:      []scraper.LocalizedTitle{{Language: "en", Title: "Finale"}},
+		LocalizedArtistNames: []scraper.LocalizedTitle{{Language: "und", Title: "Rei Kagaya"}},
+	}}}
 	candidate := onlinescrape.Candidate{Item: item, Token: "token"}
 	selected := works.ScrapedField{Field: "albumTracks", PluginID: "musicfs.scraper.musicbrainz", Item: item}
 	for name, value := range map[string]any{

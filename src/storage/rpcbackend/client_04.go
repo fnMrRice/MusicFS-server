@@ -105,6 +105,11 @@ func (c *Client) MergeMusicAlbumMetadata(a0 context.Context, a1 string, a2 strin
 	return r0, err
 }
 
+func (c *Client) MergeMusicAlbumTracks(a0 context.Context, a1 string, a2 string, a3 music.MergeTracksInput, a4 string) (r0 music.Track, err error) {
+	err = c.Invoke(a0, "MergeMusicAlbumTracks", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) MusicAlbum(a0 context.Context, a1 string, a2 string) (r0 music.Album, err error) {
 	err = c.Invoke(a0, "MusicAlbum", []any{a1, a2}, []any{&r0})
 	return r0, err
@@ -127,10 +132,5 @@ func (c *Client) MusicArtist(a0 context.Context, a1 string, a2 string) (r0 music
 
 func (c *Client) MusicArtists(a0 context.Context, a1 string, a2 music.Query) (r0 music.ArtistPage, err error) {
 	err = c.Invoke(a0, "MusicArtists", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) MusicGenres(a0 context.Context, a1 string, a2 music.Query) (r0 music.GenrePage, err error) {
-	err = c.Invoke(a0, "MusicGenres", []any{a1, a2}, []any{&r0})
 	return r0, err
 }

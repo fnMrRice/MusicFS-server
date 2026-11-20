@@ -28,29 +28,35 @@ type Query struct {
 }
 
 type Track struct {
-	Title    string  `json:"title"`
-	Artist   string  `json:"artist,omitempty"`
-	Disc     int     `json:"disc,omitempty"`
-	Number   int     `json:"number,omitempty"`
-	Duration float64 `json:"duration,omitempty"`
+	ExternalID      string           `json:"externalId,omitempty"`
+	LocalizedTitles []LocalizedTitle `json:"localizedTitles,omitempty"`
+	// LocalizedArtistNames 保存整条曲目署名的不同写法，包含所有合作艺人。
+	LocalizedArtistNames []LocalizedTitle `json:"localizedArtistNames,omitempty"`
+	Title                string           `json:"title"`
+	Artist               string           `json:"artist,omitempty"`
+	Disc                 int              `json:"disc,omitempty"`
+	Number               int              `json:"number,omitempty"`
+	Duration             float64          `json:"duration,omitempty"`
 }
 
 // Item 使用上游稳定编号；曲目表保留来源顺序，图片保存来源引用。
 type Item struct {
-	ID          string  `json:"id"`
-	Title       string  `json:"title"`
-	Artist      string  `json:"artist,omitempty"`
-	Album       string  `json:"album,omitempty"`
-	Description string  `json:"description,omitempty"`
-	Genre       string  `json:"genre,omitempty"`
-	Publisher   string  `json:"publisher,omitempty"`
-	Date        string  `json:"date,omitempty"`
-	SourceURL   string  `json:"sourceUrl,omitempty"`
-	ImageURL    string  `json:"imageUrl,omitempty"`
-	Lyrics      string  `json:"lyrics,omitempty"`
-	Format      string  `json:"format,omitempty"`
-	Duration    float64 `json:"duration,omitempty"`
-	Tracks      []Track `json:"tracks,omitempty"`
+	ID                   string           `json:"id"`
+	Title                string           `json:"title"`
+	LocalizedTitles      []LocalizedTitle `json:"localizedTitles,omitempty"`
+	LocalizedArtistNames []LocalizedTitle `json:"localizedArtistNames,omitempty"`
+	Artist               string           `json:"artist,omitempty"`
+	Album                string           `json:"album,omitempty"`
+	Description          string           `json:"description,omitempty"`
+	Genre                string           `json:"genre,omitempty"`
+	Publisher            string           `json:"publisher,omitempty"`
+	Date                 string           `json:"date,omitempty"`
+	SourceURL            string           `json:"sourceUrl,omitempty"`
+	ImageURL             string           `json:"imageUrl,omitempty"`
+	Lyrics               string           `json:"lyrics,omitempty"`
+	Format               string           `json:"format,omitempty"`
+	Duration             float64          `json:"duration,omitempty"`
+	Tracks               []Track          `json:"tracks,omitempty"`
 }
 
 type Plugin interface {

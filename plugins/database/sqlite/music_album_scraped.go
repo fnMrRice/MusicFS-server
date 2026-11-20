@@ -89,21 +89,20 @@ func (s *Store) saveMusicAlbumScraped(ctx context.Context, owner, id string, rev
 				return 0, domain.Fail("INVALID_ARGUMENT", "Album candidates must describe the same release and include its complete track list")
 			}
 		}
-		if len(fields) > 1 {
-			for _, field := range fields {
-				if field.Field == "albumDetails" {
-					if err = setMusicAlbumSource(ctx, tx, owner, albumID, field); err != nil {
-						return 0, err
-					}
-				}
-				if field.Field == "albumTracks" {
-					if err = syncMusicAlbumScrapedTracks(ctx, tx, owner, albumID, field); err != nil {
-						return 0, err
-					}
+		for _, field := range fields {
+			if len(fields) > 1 && field.Field == "albumDetails" {
+				if err = setMusicAlbumSource(ctx, tx, album, field, true); err != nil {
+					return 0, err
 				}
 			}
-		}
-		for _, field := range fields {
+			if field.Field == "albumTracks" {
+				if len(field.Item.Tracks) == 0 {
+					return 0, domain.Fail("INVALID_ARGUMENT", "Album track list must not be empty")
+				}
+				if err = syncMusicAlbumScrapedTracks(ctx, tx, owner, albumID, field); err != nil {
+					return 0, err
+				}
+			}
 			field.CandidateToken = ""
 			raw, err := json.Marshal(field)
 			if err != nil {
@@ -126,14 +125,29 @@ func (s *Store) saveMusicAlbumScraped(ctx context.Context, owner, id string, rev
 }
 
 // 初次明确选用发行版时保存对应页面；缺失或无效页面不破坏已有配对。
-func setMusicAlbumSource(ctx context.Context, tx *sql.Tx, owner, album string, field works.ScrapedField) error {
-	page, plugin := strings.TrimSpace(field.Item.SourceURL), field.PluginID
-	if page == "" {
+func setMusicAlbumSource(ctx context.Context, tx *sql.Tx, album music.Album, field works.ScrapedField, replace bool) error {
+	link := music.AlbumSourceLink{PluginID: field.PluginID, URL: strings.TrimSpace(field.Item.SourceURL)}
+	if link.URL == "" {
 		return nil
 	}
-	if _, err := (music.AlbumFields{Name: "source", SourceURL: &page, SourcePluginID: &plugin}).Normalize(); err != nil {
+	if _, err := (music.AlbumFields{Name: "source", SourceLinks: []music.AlbumSourceLink{link}}).Normalize(); err != nil {
 		return nil
 	}
-	_, err := tx.ExecContext(ctx, "UPDATE music_albums SET source_url=?,source_plugin_id=? WHERE owner=? AND id=?", page, plugin, owner, album)
+	i := slices.IndexFunc(album.SourceLinks, func(value music.AlbumSourceLink) bool { return value.PluginID == link.PluginID })
+	if i < 0 {
+		album.SourceLinks = append(album.SourceLinks, link)
+	} else if replace {
+		album.SourceLinks[i] = link
+	} else {
+		return nil
+	}
+	if _, err := album.AlbumFields.Normalize(); err != nil {
+		return err
+	}
+	raw, err := json.Marshal(album.SourceLinks)
+	if err != nil {
+		return err
+	}
+	_, err = tx.ExecContext(ctx, "UPDATE music_albums SET source_links=? WHERE id=?", string(raw), album.ID)
 	return err
 }

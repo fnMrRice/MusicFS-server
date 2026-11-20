@@ -109,7 +109,7 @@ func TestBangumiSeparatesPortraitAndSubjectData(t *testing.T) {
 			}
 			switch r.URL.Query().Get("offset") {
 			case "0":
-				fmt.Fprint(w, `{"total":2,"data":[{"name":"B","disc":2,"sort":1,"duration_seconds":83}]}`)
+				fmt.Fprint(w, `{"total":2,"data":[{"id":123,"name":"B","name_cn":"乙","disc":2,"sort":1,"duration_seconds":83}]}`)
 			case "1":
 				fmt.Fprint(w, `{"total":2,"data":[{"name_cn":"A","disc":1,"sort":1}]}`)
 			default:
@@ -128,6 +128,10 @@ func TestBangumiSeparatesPortraitAndSubjectData(t *testing.T) {
 	items, err = plugin.Search(t.Context(), "albumTracks", scraper.Query{ExternalID: "23"})
 	if err != nil || len(items) != 1 || len(items[0].Tracks) != 2 || items[0].Tracks[0].Title != "A" || items[0].Tracks[1].Duration != 83 {
 		t.Fatalf("unexpected tracks %#v %v", items, err)
+	}
+	track := items[0].Tracks[1]
+	if track.ExternalID != "123" || len(track.LocalizedTitles) != 1 || track.LocalizedTitles[0] != (scraper.LocalizedTitle{Language: "zh", Title: "乙"}) {
+		t.Fatalf("missing episode identity or translated title: %#v", track)
 	}
 }
 
