@@ -1,0 +1,123 @@
+@startuml
+title MusicFS 数据库 · 录音匹配与播放恢复（迁移 045）
+' 由 scripts/generate-database-diagrams.py 从当前 SQL 和建表代码生成。
+hide circle
+skinparam defaultFontName Microsoft YaHei
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam linetype polyline
+skinparam nodesep 35
+skinparam ranksep 55
+skinparam entityBackgroundColor #F0F7FF
+skinparam entityBorderColor #6487AB
+skinparam ArrowColor #6487AB
+skinparam packageStyle rectangle
+skinparam backgroundColor #FFFFFF
+package "录音匹配与播放恢复 · 完整字段" {
+entity "录音版本\nrecordings" as recordings {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * created_at : TEXT
+  * updated_at : TEXT
+}
+entity "录音来源关联\nrecording_source_links" as recording_source_links {
+  * owner : TEXT [PK1]
+  * source_id : TEXT [PK2, FK]
+    recording_id : TEXT [FK]
+  * decision : TEXT
+  * revision : INTEGER
+}
+entity "默认来源偏好\nrecording_default_sources" as recording_default_sources {
+  * owner : TEXT [PK1, FK]
+  * recording_id : TEXT [PK2, FK]
+  * source_id : TEXT [FK]
+}
+entity "录音封面偏好\nrecording_cover_preferences" as recording_cover_preferences {
+  * owner : TEXT [PK1]
+  * recording_id : TEXT [PK2, FK]
+  * revision : INTEGER
+    object_id : TEXT
+}
+entity "匹配排除\nmatch_exclusions" as match_exclusions {
+  * owner : TEXT [PK1]
+  * left_source : TEXT [PK2, FK]
+  * right_source : TEXT [PK3, FK]
+  * excluded : INTEGER
+  * revision : INTEGER
+}
+entity "匹配候选\nmatching_candidates" as matching_candidates {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * left_source : TEXT
+  * right_source : TEXT
+  * left_asset : TEXT
+  * right_asset : TEXT
+  * score : INTEGER
+  * status : TEXT
+  * binding_digest : TEXT
+  * document : BLOB
+  * created_at : TEXT
+}
+entity "匹配修订\nmatching_revisions" as matching_revisions {
+    owner : TEXT [PK1]
+  * revision : INTEGER
+}
+entity "匹配运行状态\nmatching_runs" as matching_runs {
+    owner : TEXT [PK1]
+  * document : BLOB
+}
+entity "匹配操作回执\nmatching_action_receipts" as matching_action_receipts {
+  * owner : TEXT [PK1]
+  * idempotency_key : TEXT [PK2]
+  * document : BLOB
+}
+entity "关联变更记录\nlink_changes" as link_changes {
+  * sequence : INTEGER [PK2]
+  * owner : TEXT [PK1]
+  * revision : INTEGER
+  * operation_id : TEXT
+  * document : BLOB
+}
+entity "播放时间映射证据\ntimeline_evidence" as timeline_evidence {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * recording_id : TEXT
+  * from_source : TEXT
+  * to_source : TEXT
+  * revision : INTEGER
+    revoked_at : TEXT
+  * document : BLOB
+  * created_at : TEXT
+}
+entity "处理缓存索引\nprocessed_cache" as processed_cache {
+    id : TEXT [PK1]
+  * cache_key : TEXT
+  * owner : TEXT
+  * asset_id : TEXT
+  * asset_version : TEXT
+  * size_bytes : INTEGER
+  * sha256 : TEXT
+  * created_at : TEXT
+  * last_used_at : TEXT
+  * document : BLOB
+}
+}
+package "其他领域 · 仅列主键" #FAFAFA {
+entity "来源观测\ntracks" as tracks <<跨域引用>> #F1F1F1 {
+    id : TEXT [PK1]
+}
+}
+recording_source_links --> recordings : "recording_id"
+recording_source_links --> tracks : "source_id"
+recording_default_sources --> recording_source_links : "owner, source_id → owner, source_id / CASCADE"
+recording_default_sources --> recordings : "recording_id / CASCADE"
+recording_cover_preferences --> recordings : "recording_id / CASCADE"
+match_exclusions --> tracks : "right_source"
+match_exclusions --> tracks : "left_source"
+legend bottom left
+  PK序号 = 复合主键顺序；FK = SQL 外键列；* = DDL 显式 NOT NULL
+  实线箭头：子表 → 被引用表；标签包含复合列及级联删除
+  灰色表仅为跨域引用；虚线仅表示视图依赖
+  未画业务逻辑引用、唯一索引、CHECK、默认值和触发器；以 SQL 为准
+endlegend
+@enduml

@@ -1,0 +1,82 @@
+@startuml
+title MusicFS 数据库 · 用户、会话与配置（迁移 045）
+' 由 scripts/generate-database-diagrams.py 从当前 SQL 和建表代码生成。
+hide circle
+skinparam defaultFontName Microsoft YaHei
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam linetype polyline
+skinparam nodesep 35
+skinparam ranksep 55
+skinparam entityBackgroundColor #F0F7FF
+skinparam entityBorderColor #6487AB
+skinparam ArrowColor #6487AB
+skinparam packageStyle rectangle
+skinparam backgroundColor #FFFFFF
+package "用户、会话与配置 · 完整字段" {
+entity "用户\nusers" as users {
+    id : TEXT [PK1]
+  * role : TEXT
+}
+entity "登录会话\nauth_sessions" as auth_sessions {
+    id : TEXT [PK1]
+  * user_id : TEXT [FK]
+  * csrf : TEXT
+  * expires_at : TEXT
+}
+entity "个人资料\npersonal_profiles" as personal_profiles {
+    owner : TEXT [PK1, FK]
+    nickname : TEXT
+}
+entity "播放会话\nplayback_sessions" as playback_sessions {
+    id : TEXT [PK1]
+  * auth_session : TEXT
+  * user_id : TEXT
+  * description : BLOB
+  * state : TEXT
+  * expires_at : TEXT
+}
+entity "通用幂等记录\nidempotency" as idempotency {
+  * owner : TEXT [PK1]
+  * route : TEXT [PK2]
+  * key : TEXT [PK3]
+  * digest : TEXT
+  * result : BLOB
+  * expires_at : TEXT
+}
+entity "实例配置操作\nconfig_operations" as config_operations {
+    id : TEXT [PK1]
+  * config_path : TEXT
+  * idempotency_key : TEXT
+  * digest : TEXT
+  * previous_revision : TEXT
+  * next_revision : TEXT
+  * plugin_id : TEXT
+  * instance_id : TEXT
+  * enabled : INTEGER
+  * status : TEXT
+}
+entity "插件管理操作\nplugin_operations" as plugin_operations {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * document : BLOB
+}
+entity "用户插件设置\nplugin_settings" as plugin_settings {
+  * owner : TEXT [PK1]
+  * plugin_id : TEXT [PK2]
+  * revision : INTEGER
+  * document : BLOB
+}
+entity "数据库迁移版本\nschema_migrations" as schema_migrations {
+    version : INTEGER [PK1]
+}
+}
+auth_sessions --> users : "user_id"
+personal_profiles --> users : "owner / CASCADE"
+legend bottom left
+  PK序号 = 复合主键顺序；FK = SQL 外键列；* = DDL 显式 NOT NULL
+  实线箭头：子表 → 被引用表；标签包含复合列及级联删除
+  灰色表仅为跨域引用；虚线仅表示视图依赖
+  未画业务逻辑引用、唯一索引、CHECK、默认值和触发器；以 SQL 为准
+endlegend
+@enduml

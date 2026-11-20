@@ -1,0 +1,172 @@
+@startuml
+title MusicFS 数据库核心关系\n基于工作区迁移 001—045
+top to bottom direction
+hide circle
+skinparam defaultFontName Microsoft YaHei
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam linetype ortho
+skinparam nodesep 25
+skinparam ranksep 40
+skinparam packageStyle rectangle
+skinparam entity {
+  BackgroundColor #FFFFFF
+  BorderColor #526378
+}
+skinparam ArrowColor #526378
+
+package "音乐资料" as CatalogGroup #EAF3FF {
+  entity "music_tracks\n规范曲目" as MusicTrack {
+    * id : TEXT <<PK>>
+    --
+    owner : TEXT
+    title : TEXT
+    origin / metadata_source_id
+  }
+  entity "music_artists\n歌手" as Artist {
+    * id : TEXT <<PK>>
+    --
+    owner : TEXT
+    name : TEXT
+  }
+  entity "music_track_artists\n有序署名" as Credit {
+    * track_id : TEXT <<PK, FK>>
+    * artist_id : TEXT <<PK, FK>>
+    --
+    position : INTEGER
+  }
+}
+
+package "专辑与曲序" as AlbumGroup #EAF8EF {
+  entity "music_albums\n音乐专辑" as Album {
+    * id : TEXT <<PK>>
+    --
+    owner : TEXT
+    name : TEXT
+    origin : TEXT
+  }
+  entity "music_manual_album_tracks\n手工专辑成员" as ManualMember {
+    * album_id : TEXT <<PK, FK>>
+    * track_id : TEXT <<PK, FK>>
+    --
+    position : INTEGER
+  }
+  entity "music_album_source_refs\n按来源记录的专辑成员依据" as SourceMember {
+    * album_id : TEXT <<PK, FK>>
+    * origin_id : TEXT <<PK>>
+    * source_id : TEXT <<PK, FK>>
+    --
+    position : INTEGER
+  }
+}
+
+package "来源观测、资产与录音" as SourceGroup #FFF4E4 {
+  entity "music_sources\n曲目的可播放来源" as MusicSource {
+    * id : TEXT <<PK, FK>>
+    --
+    owner : TEXT <<FK>>
+    track_id : TEXT <<FK>>
+    provider_instance_id : TEXT
+    external_id : TEXT
+  }
+  entity "tracks\n来源观测" as Source {
+    * id : TEXT <<PK>>
+    --
+    owner / provider / external_id
+    root_id / path / version
+    asset_id : TEXT
+    document : BLOB(JSON)
+  }
+  entity "source_assets\n来源资产及历史版本" as Asset {
+    * id : TEXT <<PK>>
+    --
+    owner / track_id
+    version / current
+    file_sha512 : BLOB
+  }
+  entity "recordings\n同一录音的分组身份" as Recording {
+    * id : TEXT <<PK>>
+    --
+    owner : TEXT
+  }
+  entity "recording_source_links\n来源与录音关联" as RecordingLink {
+    * owner : TEXT <<PK>>
+    * source_id : TEXT <<PK, FK>>
+    --
+    recording_id : TEXT <<FK, 可空>>
+    decision / revision
+  }
+}
+
+package "作品与本地副本" as WorkGroup #F4ECFF {
+  entity "works\n作品" as Work {
+    * id : TEXT <<PK>>
+    --
+    owner / content_type / title
+    document : BLOB(JSON)
+  }
+  entity "work_packages\n作品副本与目录树" as WorkPackage {
+    * id : TEXT <<PK>>
+    --
+    work_id : TEXT <<FK>>
+    kind : directory / cd_dump
+    provider_id / root_id / relative_path
+    document : BLOB(JSON)
+  }
+}
+
+package "用户歌单" as PlaylistGroup #E9F8F8 {
+  entity "personal_playlists\n普通歌单定义与绑定" as Playlist {
+    * id : TEXT <<PK>>
+    --
+    owner : TEXT
+    document : BLOB(JSON)
+  }
+  entity "music_playlist_entries\n共享条目（含收藏、最近播放）" as PlaylistEntry {
+    * owner : TEXT <<PK, FK>>
+    * playlist_id : TEXT <<PK>>
+    * binding_id : TEXT <<PK>>
+    * entry_id : TEXT <<PK>>
+    --
+    track_id : TEXT <<FK>>
+    forced_source_id : TEXT
+    position / play_count
+  }
+}
+
+' 实线从引用表指向被引用表，仅表示 SQL 中声明的外键。
+ManualMember -[hidden]right-> RecordingLink
+Credit --> MusicTrack
+Credit --> Artist
+ManualMember --> Album
+ManualMember -up-> MusicTrack
+SourceMember --> Album
+SourceMember -up-> Source
+MusicSource -up-> MusicTrack
+MusicSource --> Source
+RecordingLink --> Recording
+RecordingLink --> Source
+WorkPackage --> Work
+PlaylistEntry -left-> MusicTrack
+
+' 虚线表示逻辑身份、JSON 引用或视图依赖，不表示数据库外键。
+Asset ..> Source : track_id
+WorkPackage ..left> Source
+PlaylistEntry ..> Playlist : 普通歌单
+
+legend bottom left
+  核心关系摘录：省略辅助表、部分字段、索引与触发器。
+  PK：主键；FK：真实外键；同表多个 PK 字段组成联合主键。
+  实线箭头：引用表 → 被引用表；虚线：逻辑引用或派生依赖。
+  music_sources 与 music_playlist_entries
+  均通过 (owner, track_id) 外键引用 music_tracks(owner, id)。
+  tracks 是来源观测，music_tracks 是独立音乐资料，可没有来源。
+  music_tracks.origin=recording 时沿用 recordings.id；CD 专辑沿用 works.id。
+  tracks.asset_id、metadata_source_id、forced_source_id 均为逻辑引用。
+  作品副本以 document.nodes[].sourceTrackId 引用 tracks.id。
+  origin_id 可为 tag、source 或作品副本 ID，不是通用外键。
+  music_album_tracks 视图按来源映射规范曲目，与手工成员合并去重，刮削曲序优先。
+  专辑刮削字段保存在 music_album_scraped_fields，以 album_id 外键关联专辑。
+  特殊歌单 playlist_id 为 favorites / recently-played，binding_id 为空串。
+endlegend
+@enduml

@@ -1,0 +1,120 @@
+@startuml
+title MusicFS 数据库 · 资料补全、自动化与原件写回（迁移 045）
+' 由 scripts/generate-database-diagrams.py 从当前 SQL 和建表代码生成。
+hide circle
+skinparam defaultFontName Microsoft YaHei
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam linetype polyline
+skinparam nodesep 35
+skinparam ranksep 55
+skinparam entityBackgroundColor #F0F7FF
+skinparam entityBorderColor #6487AB
+skinparam ArrowColor #6487AB
+skinparam packageStyle rectangle
+skinparam backgroundColor #FFFFFF
+package "资料补全、自动化与原件写回 · 完整字段" {
+entity "资料补全任务\nenrichment_jobs" as enrichment_jobs {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * state : TEXT
+  * request : BLOB
+  * created_at : TEXT
+  * updated_at : TEXT
+}
+entity "补全目标\nenrichment_targets" as enrichment_targets {
+  * job_id : TEXT [PK1, FK]
+  * source_id : TEXT [PK2, FK]
+  * owner : TEXT
+  * state : TEXT
+  * generation : INTEGER
+  * target : BLOB
+  * issues : BLOB
+    failure_code : TEXT
+  * preview_bytes : INTEGER
+  * candidate_count : INTEGER
+}
+entity "补全候选\nenrichment_candidates" as enrichment_candidates {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * job_id : TEXT [FK]
+  * source_id : TEXT [FK]
+  * generation : INTEGER
+    object_id : TEXT [FK]
+  * expires_at : TEXT
+  * document : BLOB
+}
+entity "自动补全触发\nmetadata_automation" as metadata_automation {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * scan_job_id : TEXT [FK]
+  * scan_generation : INTEGER
+  * plan_digest : TEXT
+  * root_id : TEXT
+  * source_id : TEXT [FK]
+  * asset_id : TEXT
+  * asset_version : TEXT
+  * reason : TEXT
+  * state : TEXT
+    policy : BLOB
+    job_id : TEXT [FK]
+    failure_code : TEXT
+  * created_at : TEXT
+}
+entity "自动补全动作\nmetadata_automation_actions" as metadata_automation_actions {
+  * trigger_id : TEXT [PK1, FK]
+  * field : TEXT [PK2]
+  * language : TEXT [PK3]
+  * expected_revision : INTEGER
+  * document : BLOB
+}
+entity "原件写回任务\nwriteback_jobs" as writeback_jobs {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * source_id : TEXT [FK]
+  * state : TEXT
+  * old_size : INTEGER
+  * work : BLOB
+    error : BLOB
+    result : BLOB
+    commit_result : BLOB
+  * created_at : TEXT
+  * updated_at : TEXT
+}
+entity "写回幂等记录\nwriteback_operations" as writeback_operations {
+  * owner : TEXT [PK1]
+  * key : TEXT [PK2]
+  * request_digest : TEXT
+  * binding_digest : TEXT
+  * job_id : TEXT [FK]
+  * expires_at : TEXT
+}
+}
+package "其他领域 · 仅列主键" #FAFAFA {
+entity "扫描任务\njobs" as jobs <<跨域引用>> #F1F1F1 {
+    id : TEXT [PK1]
+}
+entity "媒体内容索引\nmedia_content_objects" as media_content_objects <<跨域引用>> #F1F1F1 {
+    id : TEXT [PK1]
+}
+entity "来源观测\ntracks" as tracks <<跨域引用>> #F1F1F1 {
+    id : TEXT [PK1]
+}
+}
+enrichment_targets --> tracks : "source_id"
+enrichment_targets --> enrichment_jobs : "job_id"
+enrichment_candidates --> enrichment_targets : "job_id, source_id → job_id, source_id"
+enrichment_candidates --> media_content_objects : "object_id"
+metadata_automation --> enrichment_jobs : "job_id"
+metadata_automation --> tracks : "source_id"
+metadata_automation --> jobs : "scan_job_id"
+metadata_automation_actions --> metadata_automation : "trigger_id"
+writeback_jobs --> tracks : "source_id"
+writeback_operations --> writeback_jobs : "job_id"
+legend bottom left
+  PK序号 = 复合主键顺序；FK = SQL 外键列；* = DDL 显式 NOT NULL
+  实线箭头：子表 → 被引用表；标签包含复合列及级联删除
+  灰色表仅为跨域引用；虚线仅表示视图依赖
+  未画业务逻辑引用、唯一索引、CHECK、默认值和触发器；以 SQL 为准
+endlegend
+@enduml

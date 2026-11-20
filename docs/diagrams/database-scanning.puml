@@ -1,0 +1,102 @@
+@startuml
+title MusicFS 数据库 · 扫描、查询与固定快照（迁移 045）
+' 由 scripts/generate-database-diagrams.py 从当前 SQL 和建表代码生成。
+hide circle
+skinparam defaultFontName Microsoft YaHei
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam linetype polyline
+skinparam nodesep 35
+skinparam ranksep 55
+skinparam entityBackgroundColor #F0F7FF
+skinparam entityBorderColor #6487AB
+skinparam ArrowColor #6487AB
+skinparam packageStyle rectangle
+skinparam backgroundColor #FFFFFF
+package "扫描、查询与固定快照 · 完整字段" {
+entity "扫描任务\njobs" as jobs {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * target : TEXT
+  * kind : TEXT
+  * generation : INTEGER
+  * state : TEXT
+  * observed : INTEGER
+  * complete : INTEGER
+    error : TEXT
+  * created_at : TEXT
+  * updated_at : TEXT
+    last_success_at : TEXT
+  * plan : BLOB
+  * plan_digest : TEXT
+  * attempt_count : INTEGER
+  * max_attempts : INTEGER
+    next_attempt_at : TEXT
+    last_attempt_at : TEXT
+}
+entity "来源扫描租约\nprovider_scan_leases" as provider_scan_leases {
+  * owner : TEXT [PK1]
+  * provider : TEXT [PK2]
+  * last_generation : INTEGER
+    active_job_id : TEXT [FK]
+}
+entity "目录刷新取消意图\nrefresh_task_cancellations" as refresh_task_cancellations {
+    job_id : TEXT [PK1, FK]
+  * requested_at : TEXT
+    completed_at : TEXT
+}
+entity "曲库修订\nlibrary_revision" as library_revision {
+    singleton : INTEGER [PK1]
+  * revision : INTEGER
+}
+entity "来源查询快照\nlibrary_snapshots" as library_snapshots {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * provider : TEXT
+  * revision : TEXT
+  * expires_at : TEXT
+}
+entity "来源快照条目\nlibrary_snapshot_items" as library_snapshot_items {
+  * snapshot_id : TEXT [PK1, FK]
+  * position : INTEGER [PK2]
+  * document : BLOB
+}
+entity "来源快照游标\nlibrary_cursors" as library_cursors {
+    id : TEXT [PK1]
+  * snapshot_id : TEXT [FK]
+  * position : INTEGER
+}
+entity "曲库查询快照\ncatalog_queries" as catalog_queries {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * query : BLOB
+  * revision : TEXT
+  * total : INTEGER
+  * expires_at : TEXT
+  * cancelled : INTEGER
+  * idempotency_key : TEXT
+}
+entity "曲库查询条目\ncatalog_query_items" as catalog_query_items {
+  * query_id : TEXT [PK1, FK]
+  * position : INTEGER [PK2]
+  * document : BLOB
+}
+entity "曲库查询游标\ncatalog_query_cursors" as catalog_query_cursors {
+    id : TEXT [PK1]
+  * query_id : TEXT [FK]
+  * position : INTEGER
+}
+}
+provider_scan_leases --> jobs : "active_job_id"
+refresh_task_cancellations --> jobs : "job_id"
+library_snapshot_items --> library_snapshots : "snapshot_id / CASCADE"
+library_cursors --> library_snapshots : "snapshot_id / CASCADE"
+catalog_query_items --> catalog_queries : "query_id / CASCADE"
+catalog_query_cursors --> catalog_queries : "query_id / CASCADE"
+legend bottom left
+  PK序号 = 复合主键顺序；FK = SQL 外键列；* = DDL 显式 NOT NULL
+  实线箭头：子表 → 被引用表；标签包含复合列及级联删除
+  灰色表仅为跨域引用；虚线仅表示视图依赖
+  未画业务逻辑引用、唯一索引、CHECK、默认值和触发器；以 SQL 为准
+endlegend
+@enduml

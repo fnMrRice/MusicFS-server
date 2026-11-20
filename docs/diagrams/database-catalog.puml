@@ -1,0 +1,150 @@
+@startuml
+title MusicFS 数据库 · 音乐资料（迁移 045）
+' 由 scripts/generate-database-diagrams.py 从当前 SQL 和建表代码生成。
+hide circle
+skinparam defaultFontName Microsoft YaHei
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam linetype polyline
+skinparam nodesep 35
+skinparam ranksep 55
+skinparam entityBackgroundColor #F0F7FF
+skinparam entityBorderColor #6487AB
+skinparam ArrowColor #6487AB
+skinparam packageStyle rectangle
+skinparam backgroundColor #FFFFFF
+package "音乐资料 · 完整字段" {
+entity "曲目资料\nmusic_tracks" as music_tracks {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * title : TEXT
+    cover_path : TEXT
+    genre : TEXT
+    year : INTEGER
+    rating : INTEGER
+  * origin : TEXT
+    metadata_source_id : TEXT
+  * metadata_locked : INTEGER
+  * revision : INTEGER
+  * created_at : TEXT
+  * updated_at : TEXT
+  * localized_titles : TEXT
+  * scraper_placeholder : INTEGER
+}
+entity "歌手\nmusic_artists" as music_artists {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * name : TEXT
+  * names_revision : INTEGER
+}
+entity "歌手多语言别名\nmusic_artist_localized_names" as music_artist_localized_names {
+  * artist_id : TEXT [PK1, FK]
+  * language : TEXT [PK2]
+  * name : TEXT [PK3]
+}
+entity "曲目署名\nmusic_track_artists" as music_track_artists {
+  * track_id : TEXT [PK1, FK]
+  * artist_id : TEXT [PK2, FK]
+  * position : INTEGER
+}
+entity "音乐专辑\nmusic_albums" as music_albums {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * name : TEXT
+    external_id : TEXT
+  * is_external : INTEGER
+    cover_path : TEXT
+    publisher : TEXT
+    release_date : TEXT
+  * origin : TEXT
+    tag_provider : TEXT
+    tag_name : TEXT
+  * metadata_locked : INTEGER
+  * revision : INTEGER
+  * original_name : TEXT
+  * source_links : TEXT
+}
+entity "手工专辑成员\nmusic_manual_album_tracks" as music_manual_album_tracks {
+  * album_id : TEXT [PK1, FK]
+  * track_id : TEXT [PK2, FK]
+  * position : INTEGER
+}
+entity "曲目音源\nmusic_sources" as music_sources {
+    id : TEXT [PK1, FK]
+  * owner : TEXT [FK]
+  * track_id : TEXT [FK]
+    plugin_id : TEXT
+  * provider_instance_id : TEXT
+  * external_id : TEXT
+  * created_at : TEXT
+  * updated_at : TEXT
+}
+entity "来源实例与插件\nmusic_source_providers" as music_source_providers {
+    provider_instance_id : TEXT [PK1]
+  * plugin_id : TEXT
+}
+entity "专辑来源成员依据\nmusic_album_source_refs" as music_album_source_refs {
+  * album_id : TEXT [PK1, FK]
+  * source_id : TEXT [PK3, FK]
+  * origin_id : TEXT [PK2]
+  * position : INTEGER
+}
+entity "专辑刮削字段\nmusic_album_scraped_fields" as music_album_scraped_fields {
+  * album_id : TEXT [PK1, FK]
+  * field : TEXT [PK2]
+  * document : TEXT
+}
+entity "发行版刮削曲序\nmusic_album_scraped_track_refs" as music_album_scraped_track_refs {
+  * album_id : TEXT [PK1, FK]
+  * slot : TEXT [PK2]
+  * track_id : TEXT [FK]
+  * plugin_id : TEXT
+  * release_id : TEXT
+  * position : INTEGER
+  * external_id : TEXT
+}
+entity "专辑合并曲位\nmusic_album_merged_slots" as music_album_merged_slots {
+  * album_id : TEXT [PK1, FK]
+  * plugin_id : TEXT [PK2]
+  * release_id : TEXT [PK3]
+  * slot_key : TEXT [PK4]
+  * track_id : TEXT [FK]
+  * preferred : INTEGER
+}
+}
+package "其他领域 · 仅列主键" #FAFAFA {
+entity "来源观测\ntracks" as tracks <<跨域引用>> #F1F1F1 {
+    id : TEXT [PK1]
+}
+}
+music_artist_localized_names --> music_artists : "artist_id / CASCADE"
+music_track_artists --> music_artists : "artist_id / CASCADE"
+music_track_artists --> music_tracks : "track_id / CASCADE"
+music_manual_album_tracks --> music_tracks : "track_id / CASCADE"
+music_manual_album_tracks --> music_albums : "album_id / CASCADE"
+music_sources --> music_tracks : "owner, track_id → owner, id"
+music_sources --> tracks : "id / CASCADE"
+music_album_source_refs --> tracks : "source_id / CASCADE"
+music_album_source_refs --> music_albums : "album_id / CASCADE"
+music_album_scraped_fields --> music_albums : "album_id / CASCADE"
+music_album_scraped_track_refs --> music_tracks : "track_id / CASCADE"
+music_album_scraped_track_refs --> music_albums : "album_id / CASCADE"
+music_album_merged_slots --> music_tracks : "track_id / CASCADE"
+music_album_merged_slots --> music_albums : "album_id / CASCADE"
+entity "专辑成员汇总\nmusic_album_tracks" as music_album_tracks <<VIEW>> #FFF2D6 {
+  album_id : TEXT
+  track_id : TEXT
+  position : INTEGER
+}
+music_album_tracks ..> music_manual_album_tracks : 汇总
+music_album_tracks ..> music_album_source_refs : 汇总
+music_album_tracks ..> music_album_scraped_track_refs : 刮削曲序优先
+music_album_tracks ..> music_sources : 解析曲目
+music_album_tracks ..> music_albums : 校验归属
+legend bottom left
+  PK序号 = 复合主键顺序；FK = SQL 外键列；* = DDL 显式 NOT NULL
+  实线箭头：子表 → 被引用表；标签包含复合列及级联删除
+  灰色表仅为跨域引用；虚线仅表示视图依赖
+  未画业务逻辑引用、唯一索引、CHECK、默认值和触发器；以 SQL 为准
+endlegend
+@enduml

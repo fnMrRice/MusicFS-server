@@ -1,0 +1,131 @@
+@startuml
+title MusicFS 数据库 · 来源、资产与识别证据（迁移 045）
+' 由 scripts/generate-database-diagrams.py 从当前 SQL 和建表代码生成。
+hide circle
+skinparam defaultFontName Microsoft YaHei
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam linetype polyline
+skinparam nodesep 35
+skinparam ranksep 55
+skinparam entityBackgroundColor #F0F7FF
+skinparam entityBorderColor #6487AB
+skinparam ArrowColor #6487AB
+skinparam packageStyle rectangle
+skinparam backgroundColor #FFFFFF
+package "来源、资产与识别证据 · 完整字段" {
+entity "来源观测\ntracks" as tracks {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * provider : TEXT
+  * external_id : TEXT
+  * root_id : TEXT
+  * path : TEXT
+  * version : TEXT
+  * asset_id : TEXT
+  * mime : TEXT
+  * size : INTEGER
+  * document : BLOB
+}
+entity "不可变资产版本\nsource_assets" as source_assets {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * track_id : TEXT
+  * version : TEXT
+  * current : INTEGER
+  * document : BLOB
+  * created_at : TEXT
+    invalidated_at : TEXT
+    file_sha512 : BLOB
+}
+entity "资产证据\nasset_evidence" as asset_evidence {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * asset_id : TEXT [FK]
+  * kind : TEXT
+  * origin : TEXT
+  * generation : INTEGER
+  * status : TEXT
+    digest : BLOB
+  * document : BLOB
+  * created_at : TEXT
+    invalidated_at : TEXT
+}
+entity "摘要任务\nhash_jobs" as hash_jobs {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * asset_id : TEXT [FK]
+  * generation : INTEGER
+  * state : TEXT
+  * automatic : INTEGER
+  * document : BLOB
+  * created_at : TEXT
+  * updated_at : TEXT
+}
+entity "摘要冲突\nhash_conflicts" as hash_conflicts {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * asset_id : TEXT [FK]
+  * provider_evidence_id : TEXT [FK]
+  * verified_evidence_id : TEXT [FK]
+  * document : BLOB
+    resolved_at : TEXT
+}
+entity "指纹任务\nfingerprint_jobs" as fingerprint_jobs {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * asset_id : TEXT [FK]
+  * generation : INTEGER
+  * state : TEXT
+  * automatic : INTEGER
+  * request_digest : TEXT
+  * request_start_ms : INTEGER
+  * request_duration_ms : INTEGER
+  * config_revision : TEXT
+    result_id : TEXT
+  * document : BLOB
+  * created_at : TEXT
+  * updated_at : TEXT
+}
+entity "指纹索引\nfingerprint_indexes" as fingerprint_indexes {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * asset_id : TEXT [FK]
+  * job_id : TEXT [FK]
+  * publication_id : TEXT [FK]
+  * object_id : TEXT
+  * request_digest : TEXT
+  * current : INTEGER
+  * document : BLOB
+  * computed_at : TEXT
+}
+entity "旧指纹证据归档\nretired_fingerprint_evidence" as retired_fingerprint_evidence {
+  * kind : TEXT [PK1]
+  * id : TEXT [PK2]
+  * owner : TEXT
+  * document : BLOB
+  * retired_at : TEXT
+  * reason : TEXT
+}
+}
+package "其他领域 · 仅列主键" #FAFAFA {
+entity "媒体发布阶段\nmedia_publications" as media_publications <<跨域引用>> #F1F1F1 {
+    id : TEXT [PK1]
+}
+}
+asset_evidence --> source_assets : "asset_id"
+hash_jobs --> source_assets : "asset_id"
+hash_conflicts --> asset_evidence : "verified_evidence_id"
+hash_conflicts --> asset_evidence : "provider_evidence_id"
+hash_conflicts --> source_assets : "asset_id"
+fingerprint_jobs --> source_assets : "asset_id"
+fingerprint_indexes --> media_publications : "publication_id"
+fingerprint_indexes --> fingerprint_jobs : "job_id"
+fingerprint_indexes --> source_assets : "asset_id"
+legend bottom left
+  PK序号 = 复合主键顺序；FK = SQL 外键列；* = DDL 显式 NOT NULL
+  实线箭头：子表 → 被引用表；标签包含复合列及级联删除
+  灰色表仅为跨域引用；虚线仅表示视图依赖
+  未画业务逻辑引用、唯一索引、CHECK、默认值和触发器；以 SQL 为准
+endlegend
+@enduml

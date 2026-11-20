@@ -1,0 +1,136 @@
+@startuml
+title MusicFS 数据库 · 来源专辑、发行与作品包（迁移 045）
+' 由 scripts/generate-database-diagrams.py 从当前 SQL 和建表代码生成。
+hide circle
+skinparam defaultFontName Microsoft YaHei
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam linetype polyline
+skinparam nodesep 35
+skinparam ranksep 55
+skinparam entityBackgroundColor #F0F7FF
+skinparam entityBorderColor #6487AB
+skinparam ArrowColor #6487AB
+skinparam packageStyle rectangle
+skinparam backgroundColor #FFFFFF
+package "来源专辑、发行与作品包 · 完整字段" {
+entity "来源专辑\nsource_albums" as source_albums {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * provider_id : TEXT
+  * name : TEXT
+  * revision : INTEGER
+  * created_at : TEXT
+  * updated_at : TEXT
+}
+entity "来源专辑成员\nsource_album_members" as source_album_members {
+  * album_id : TEXT [PK1, FK]
+  * source_id : TEXT [PK2, FK]
+  * position : INTEGER
+}
+entity "发行集合\nreleases" as releases {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * name : TEXT
+  * revision : INTEGER
+  * created_at : TEXT
+  * updated_at : TEXT
+}
+entity "发行专辑成员\nrelease_albums" as release_albums {
+  * release_id : TEXT [PK1, FK]
+  * album_id : TEXT [PK2, FK]
+  * position : INTEGER
+}
+entity "专辑封面绑定\nalbum_cover_bindings" as album_cover_bindings {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * target_kind : TEXT
+  * target_id : TEXT
+  * object_id : TEXT [FK]
+  * target_revision : INTEGER
+  * source_id : TEXT [FK]
+  * asset_id : TEXT [FK]
+  * asset_version : TEXT
+  * created_at : TEXT
+}
+entity "当前专辑封面\nalbum_cover_heads" as album_cover_heads {
+  * owner : TEXT [PK1]
+  * target_kind : TEXT [PK2]
+  * target_id : TEXT [PK3]
+  * revision : INTEGER
+  * binding_id : TEXT [FK]
+  * manual_locked : INTEGER
+}
+entity "专辑变更记录\nalbum_changes" as album_changes {
+    sequence : INTEGER [PK1]
+  * owner : TEXT
+  * target_kind : TEXT
+  * target_id : TEXT
+  * document : BLOB
+}
+entity "作品\nworks" as works {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * content_type : TEXT
+  * title : TEXT
+  * description : TEXT
+  * revision : INTEGER
+  * document : BLOB
+  * show_in_track_list : INTEGER
+}
+entity "作品外部编号\nwork_external_ids" as work_external_ids {
+  * work_id : TEXT [PK1, FK]
+  * namespace : TEXT [PK2]
+  * value : TEXT [PK3]
+}
+entity "作品署名\nwork_credits" as work_credits {
+  * work_id : TEXT [PK1, FK]
+  * role : TEXT [PK2]
+  * name : TEXT [PK3]
+}
+entity "作品标签\nwork_tags" as work_tags {
+  * work_id : TEXT [PK1, FK]
+  * tag : TEXT [PK2]
+}
+entity "作品包副本\nwork_packages" as work_packages {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * work_id : TEXT [FK]
+  * provider_id : TEXT
+  * root_id : TEXT
+  * relative_path : TEXT
+  * revision : INTEGER
+  * document : BLOB
+  * kind : TEXT
+}
+}
+package "其他领域 · 仅列主键" #FAFAFA {
+entity "媒体内容索引\nmedia_content_objects" as media_content_objects <<跨域引用>> #F1F1F1 {
+    id : TEXT [PK1]
+}
+entity "不可变资产版本\nsource_assets" as source_assets <<跨域引用>> #F1F1F1 {
+    id : TEXT [PK1]
+}
+entity "来源观测\ntracks" as tracks <<跨域引用>> #F1F1F1 {
+    id : TEXT [PK1]
+}
+}
+source_album_members --> tracks : "source_id"
+source_album_members --> source_albums : "album_id"
+release_albums --> source_albums : "album_id"
+release_albums --> releases : "release_id"
+album_cover_bindings --> source_assets : "asset_id"
+album_cover_bindings --> tracks : "source_id"
+album_cover_bindings --> media_content_objects : "object_id"
+album_cover_heads --> album_cover_bindings : "binding_id"
+work_external_ids --> works : "work_id / CASCADE"
+work_credits --> works : "work_id / CASCADE"
+work_tags --> works : "work_id / CASCADE"
+work_packages --> works : "work_id / CASCADE"
+legend bottom left
+  PK序号 = 复合主键顺序；FK = SQL 外键列；* = DDL 显式 NOT NULL
+  实线箭头：子表 → 被引用表；标签包含复合列及级联删除
+  灰色表仅为跨域引用；虚线仅表示视图依赖
+  未画业务逻辑引用、唯一索引、CHECK、默认值和触发器；以 SQL 为准
+endlegend
+@enduml

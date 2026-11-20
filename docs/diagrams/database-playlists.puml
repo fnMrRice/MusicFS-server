@@ -1,0 +1,173 @@
+@startuml
+title MusicFS 数据库 · 歌单、收藏与播放历史（迁移 045）
+' 由 scripts/generate-database-diagrams.py 从当前 SQL 和建表代码生成。
+hide circle
+skinparam defaultFontName Microsoft YaHei
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam linetype polyline
+skinparam nodesep 35
+skinparam ranksep 55
+skinparam entityBackgroundColor #F0F7FF
+skinparam entityBorderColor #6487AB
+skinparam ArrowColor #6487AB
+skinparam packageStyle rectangle
+skinparam backgroundColor #FFFFFF
+package "歌单、收藏与播放历史 · 完整字段" {
+entity "个人歌单\npersonal_playlists" as personal_playlists {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * rule_revision : INTEGER
+  * hide_revision : INTEGER
+  * snapshot_revision : INTEGER
+  * document : BLOB
+}
+entity "关联平台歌单\nplaylist_links" as playlist_links {
+    id : INTEGER [PK1]
+  * owner : TEXT
+  * platform : TEXT
+  * instance_id : TEXT
+  * account_id : TEXT
+  * external_id : TEXT
+  * playlist_id : TEXT [FK]
+}
+entity "待同步曲目\nplaylist_link_additions" as playlist_link_additions {
+    id : INTEGER [PK1]
+  * link_id : INTEGER [FK]
+  * track_id : TEXT
+  * attempts : INTEGER
+  * retry_at : INTEGER
+  * last_error : TEXT
+}
+entity "每日推荐与历史页\nrecommendation_pages" as recommendation_pages {
+    id : INTEGER [PK1]
+  * owner_id : TEXT [FK]
+  * scope : TEXT
+  * server_day : TEXT
+  * successful : INTEGER
+  * sources_json : TEXT
+}
+entity "共享音乐条目\nmusic_playlist_entries" as music_playlist_entries {
+  * owner : TEXT [PK1, FK]
+  * playlist_id : TEXT [PK2]
+  * binding_id : TEXT [PK3]
+  * entry_id : TEXT [PK4]
+  * track_id : TEXT [FK]
+    forced_source_id : TEXT
+  * position : INTEGER
+  * source_contribution : INTEGER
+  * created_at : TEXT
+  * updated_at : TEXT
+  * play_count : INTEGER
+}
+entity "个人歌单快照\npersonal_playlist_snapshots" as personal_playlist_snapshots {
+  * playlist_id : TEXT [PK1, FK]
+  * revision : INTEGER [PK2]
+  * owner : TEXT
+  * document : BLOB
+}
+entity "隐藏规则\nplaylist_hidden_rules" as playlist_hidden_rules {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * playlist_id : TEXT [FK]
+  * active : INTEGER
+  * document : BLOB
+}
+entity "歌单变更记录\nplaylist_changes" as playlist_changes {
+    sequence : INTEGER [PK1]
+  * owner : TEXT
+  * playlist_id : TEXT [FK]
+  * document : BLOB
+}
+entity "远程歌单绑定\nremote_playlists" as remote_playlists {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * instance_id : TEXT
+  * account_id : TEXT
+  * external_id : TEXT
+  * binding_revision : INTEGER
+  * revision : INTEGER
+  * document : BLOB
+}
+entity "远程来源资料\nremote_sources" as remote_sources {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * instance_id : TEXT
+  * account_id : TEXT
+  * external_id : TEXT
+  * document : BLOB
+}
+entity "远程歌单快照\nremote_playlist_snapshots" as remote_playlist_snapshots {
+  * playlist_id : TEXT [PK1, FK]
+  * revision : INTEGER [PK2]
+  * owner : TEXT
+  * document : BLOB
+}
+entity "远程同步任务\nremote_sync_jobs" as remote_sync_jobs {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * playlist_id : TEXT [FK]
+  * state : TEXT
+  * generation : INTEGER
+  * binding_revision : INTEGER
+  * document : BLOB
+  * created_at : TEXT
+}
+entity "特殊歌单修订\npersonal_collection_revisions" as personal_collection_revisions {
+  * owner : TEXT [PK1]
+  * kind : TEXT [PK2]
+  * revision : INTEGER
+  * created_at : TEXT
+  * updated_at : TEXT
+}
+entity "特殊歌单游标\npersonal_collection_cursors" as personal_collection_cursors {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * kind : TEXT
+  * revision : TEXT
+  * position : INTEGER
+  * expires_at : TEXT
+}
+entity "播放上报回执\npersonal_playback_receipts" as personal_playback_receipts {
+  * owner : TEXT [PK1]
+  * playback_session_id : TEXT [PK2]
+  * source_track_id : TEXT
+  * recorded_at : TEXT
+  * expires_at : TEXT
+    history_target : TEXT
+}
+entity "待交付内容历史\ncontent_history_pending" as content_history_pending {
+  * owner : TEXT [PK1]
+  * type_id : TEXT [PK2]
+  * event_id : TEXT [PK3]
+  * work_id : TEXT
+  * work_title : TEXT
+  * source_id : TEXT
+  * track_title : TEXT
+  * recorded_at : TEXT
+}
+}
+package "其他领域 · 仅列主键" #FAFAFA {
+entity "曲目资料\nmusic_tracks" as music_tracks <<跨域引用>> #F1F1F1 {
+    id : TEXT [PK1]
+}
+entity "用户\nusers" as users <<跨域引用>> #F1F1F1 {
+    id : TEXT [PK1]
+}
+}
+playlist_links --> personal_playlists : "playlist_id / CASCADE"
+playlist_link_additions --> playlist_links : "link_id / CASCADE"
+recommendation_pages --> users : "owner_id / CASCADE"
+music_playlist_entries --> music_tracks : "owner, track_id → owner, id"
+personal_playlist_snapshots --> personal_playlists : "playlist_id"
+playlist_hidden_rules --> personal_playlists : "playlist_id"
+playlist_changes --> personal_playlists : "playlist_id"
+remote_playlist_snapshots --> remote_playlists : "playlist_id"
+remote_sync_jobs --> remote_playlists : "playlist_id"
+legend bottom left
+  PK序号 = 复合主键顺序；FK = SQL 外键列；* = DDL 显式 NOT NULL
+  实线箭头：子表 → 被引用表；标签包含复合列及级联删除
+  灰色表仅为跨域引用；虚线仅表示视图依赖
+  未画业务逻辑引用、唯一索引、CHECK、默认值和触发器；以 SQL 为准
+endlegend
+@enduml

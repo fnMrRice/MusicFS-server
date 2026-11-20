@@ -1,0 +1,143 @@
+@startuml
+title MusicFS 数据库 · 媒体内容、发布与备份（迁移 045）
+' 由 scripts/generate-database-diagrams.py 从当前 SQL 和建表代码生成。
+hide circle
+skinparam defaultFontName Microsoft YaHei
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam linetype polyline
+skinparam nodesep 35
+skinparam ranksep 55
+skinparam entityBackgroundColor #F0F7FF
+skinparam entityBorderColor #6487AB
+skinparam ArrowColor #6487AB
+skinparam packageStyle rectangle
+skinparam backgroundColor #FFFFFF
+package "媒体内容、发布与备份 · 完整字段" {
+entity "媒体发布阶段\nmedia_publications" as media_publications {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * object_id : TEXT
+  * purpose : TEXT
+  * target_id : TEXT
+  * generation : INTEGER
+  * status : TEXT
+  * document : BLOB
+  * created_at : TEXT
+  * updated_at : TEXT
+}
+entity "媒体内容索引\nmedia_content_objects" as media_content_objects {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * source_id : TEXT [FK]
+  * asset_id : TEXT [FK]
+  * publication_id : TEXT [FK]
+  * state : TEXT
+  * document : BLOB
+  * created_at : TEXT
+}
+entity "内容绑定历史\nmedia_content_bindings" as media_content_bindings {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * source_id : TEXT [FK]
+  * object_id : TEXT [FK]
+  * asset_id : TEXT [FK]
+  * field : TEXT
+  * language : TEXT
+  * current : INTEGER
+  * document : BLOB
+  * created_at : TEXT
+}
+entity "当前内容选择\nmedia_content_slots" as media_content_slots {
+  * owner : TEXT [PK1]
+  * source_id : TEXT [PK2, FK]
+  * field : TEXT [PK3]
+  * language : TEXT [PK4]
+  * binding_id : TEXT [FK]
+  * manual_locked : INTEGER
+}
+entity "内容选择修订\nmedia_selection_revisions" as media_selection_revisions {
+  * owner : TEXT [PK1]
+  * source_id : TEXT [PK2, FK]
+  * revision : INTEGER
+}
+entity "内容选择变更\nmedia_selection_changes" as media_selection_changes {
+  * owner : TEXT [PK1]
+  * source_id : TEXT [PK2, FK]
+  * revision : INTEGER [PK3]
+  * operation : TEXT
+  * field : TEXT [PK4]
+  * language : TEXT [PK5]
+    previous_binding_id : TEXT
+    next_binding_id : TEXT
+  * manual_locked : INTEGER
+  * created_at : TEXT
+}
+entity "派生媒体索引\nmedia_derived_objects" as media_derived_objects {
+    id : TEXT [PK1]
+  * owner : TEXT
+  * publication_id : TEXT [FK]
+  * relationship_key : TEXT
+  * transform : TEXT
+    parent_object_id : TEXT
+    job_id : TEXT
+    source_id : TEXT
+  * generation : INTEGER
+  * state : TEXT
+  * document : BLOB
+  * created_at : TEXT
+}
+entity "媒体回收状态\nmedia_garbage" as media_garbage {
+    id : TEXT [PK1]
+  * publication_id : TEXT [FK]
+  * object_id : TEXT
+  * state : TEXT
+  * created_at : TEXT
+  * updated_at : TEXT
+}
+entity "媒体备份任务\nmedia_backups" as media_backups {
+    id : TEXT [PK1]
+  * database_path : TEXT
+  * state : TEXT
+  * object_count : INTEGER
+  * missing_count : INTEGER
+  * created_at : TEXT
+  * updated_at : TEXT
+}
+entity "备份对象清单\nmedia_backup_objects" as media_backup_objects {
+  * backup_id : TEXT [PK1, FK]
+  * object_id : TEXT [PK2]
+  * owner : TEXT
+  * publication_id : TEXT
+  * state : TEXT
+  * document : BLOB
+}
+}
+package "其他领域 · 仅列主键" #FAFAFA {
+entity "不可变资产版本\nsource_assets" as source_assets <<跨域引用>> #F1F1F1 {
+    id : TEXT [PK1]
+}
+entity "来源观测\ntracks" as tracks <<跨域引用>> #F1F1F1 {
+    id : TEXT [PK1]
+}
+}
+media_content_objects --> media_publications : "publication_id"
+media_content_objects --> source_assets : "asset_id"
+media_content_objects --> tracks : "source_id"
+media_content_bindings --> source_assets : "asset_id"
+media_content_bindings --> media_content_objects : "object_id"
+media_content_bindings --> tracks : "source_id"
+media_content_slots --> media_content_bindings : "binding_id"
+media_content_slots --> tracks : "source_id"
+media_selection_revisions --> tracks : "source_id"
+media_selection_changes --> tracks : "source_id"
+media_derived_objects --> media_publications : "publication_id"
+media_garbage --> media_publications : "publication_id"
+media_backup_objects --> media_backups : "backup_id"
+legend bottom left
+  PK序号 = 复合主键顺序；FK = SQL 外键列；* = DDL 显式 NOT NULL
+  实线箭头：子表 → 被引用表；标签包含复合列及级联删除
+  灰色表仅为跨域引用；虚线仅表示视图依赖
+  未画业务逻辑引用、唯一索引、CHECK、默认值和触发器；以 SQL 为准
+endlegend
+@enduml

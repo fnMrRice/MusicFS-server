@@ -1,0 +1,27 @@
+@startuml
+title MusicFS 数据库 · 独立实例状态库（独立建表）
+' 由 scripts/generate-database-diagrams.py 从当前 SQL 和建表代码生成。
+hide circle
+skinparam defaultFontName Microsoft YaHei
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam linetype polyline
+skinparam nodesep 35
+skinparam ranksep 55
+skinparam entityBackgroundColor #F0F7FF
+skinparam entityBorderColor #6487AB
+skinparam ArrowColor #6487AB
+skinparam packageStyle rectangle
+skinparam backgroundColor #FFFFFF
+entity "插件私有状态\nplugin_values" as plugin_values {
+  * scope : TEXT [PK1]
+  * key : TEXT [PK2]
+  * revision : INTEGER
+  * value : BLOB
+}
+note right of plugin_values
+  独立于主数据库，不建立跨库外键。
+  scope = 插件 ID + NUL + 实例 UUID。
+  value 保存经校验的 JSON，revision 用于原子比较更新。
+end note
+@enduml

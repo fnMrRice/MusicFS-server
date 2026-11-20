@@ -9,7 +9,7 @@
 | 运行服务 | [本地启动](operations/running.md) · [部署与 TLS](operations/deployment.md) · [配置](operations/configuration.md) · [生命周期](operations/lifecycle.md) |
 | 运维 | [日志](operations/logging.md) · [备份与恢复](operations/backup.md) |
 | 开发 | [Server 架构](architecture.md) · [源码导航](../src/README.md) · [开发与检查](development/README.md) · [依赖与工具](development/dependencies.md) |
-| 数据库 | [SQLite 迁移](../plugins/database/sqlite/migrations/README.md) |
+| 数据库 | [数据库结构图](development/database.md) · [SQLite 迁移](../plugins/database/sqlite/migrations/README.md) |
 | 协议 | [OpenAPI 与 Schema](contracts/README.md) · [WebSocket 控制通道](contracts/control-channel.md) · [Web 接入](contracts/web-integration.md) |
 | 验证 | [待验收清单](validation/README.md) · [复验方法](validation/verification.md) · [测试夹具](validation/fixtures.md) |
 
