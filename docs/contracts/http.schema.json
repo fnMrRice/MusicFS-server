@@ -608,7 +608,8 @@
         "createdAt": {"$ref": "#/$defs/Timestamp"}, "updatedAt": {"$ref": "#/$defs/Timestamp"}
       }
     },
-    "ErrorDetail": {"type": "object", "required": ["code", "message", "requestId", "retryAfter"], "properties": {"code": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]+$", "description": "RISK_CONTROL 表示上游风控拒绝访问，HTTP 403；不能转换为空结果或绕过限制。"}, "message": {"type": "string", "minLength": 1}, "requestId": {"$ref": "#/$defs/ID"}, "retryAfter": {"type": ["number", "null"], "minimum": 0, "description": "建议等待秒数；null 表示没有重试建议。"}}},
+    "ScraperFailure": {"type": "object", "additionalProperties": false, "required": ["pluginId", "reason"], "properties": {"pluginId": {"$ref": "#/$defs/ID"}, "reason": {"enum": ["upstream", "cooldown", "busy"], "description": "平台本次返回 429 时为 RATE_LIMITED，返回 503 时为 SOURCE_UNAVAILABLE；两者均可提供 retryAfter。cooldown 与 busy 表示本次查询被宿主拦下，返回 RATE_LIMITED。"}, "upstreamStatus": {"type": "integer", "minimum": 100, "maximum": 599, "description": "上游响应状态码。冷却期间为此前触发冷却的状态码。"}}},
+    "ErrorDetail": {"type": "object", "required": ["code", "message", "requestId", "retryAfter"], "properties": {"code": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]+$", "description": "RISK_CONTROL 表示上游风控拒绝访问，HTTP 403；不能转换为空结果或绕过限制。"}, "message": {"type": "string", "minLength": 1}, "requestId": {"$ref": "#/$defs/ID"}, "retryAfter": {"type": ["number", "null"], "minimum": 0, "description": "建议等待秒数；null 表示没有重试建议。"}, "scraper": {"$ref": "#/$defs/ScraperFailure"}}},
     "Error": {"type": "object", "required": ["error"], "properties": {"error": {"$ref": "#/$defs/ErrorDetail"}}},
     "Health": {
       "type": "object", "required": ["product", "instanceId", "apiVersion", "ready"],

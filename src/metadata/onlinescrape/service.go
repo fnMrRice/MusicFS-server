@@ -14,6 +14,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/fault"
 	"github.com/fnMrRice/MusicFS-server/sdk/scraper"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
@@ -107,7 +108,8 @@ func (s *Service) Search(ctx context.Context, owner, id, field string, q scraper
 	case s.gate <- struct{}{}:
 		defer func() { <-s.gate }()
 	default:
-		return nil, domain.Fail("RATE_LIMITED", "Scraper search is busy")
+		return nil, &domain.Error{Code: "RATE_LIMITED", Message: "Scraper search is busy",
+			Scraper: &fault.ScraperFailure{PluginID: id, Reason: "busy"}}
 	}
 	p, _, release, err := s.configured(ctx, owner, id, nil)
 	if err != nil {
@@ -118,6 +120,12 @@ func (s *Service) Search(ctx context.Context, owner, id, field string, q scraper
 	if err != nil {
 		var failure *domain.Error
 		if errors.As(err, &failure) {
+			if failure.Scraper != nil {
+				out, info := *failure, *failure.Scraper
+				info.PluginID = id
+				out.Scraper = &info
+				return nil, &out
+			}
 			return nil, failure
 		}
 		return nil, domain.Fail("SOURCE_UNAVAILABLE", "Scraper source request failed")

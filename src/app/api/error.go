@@ -49,6 +49,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	if errors.As(err, &failure) && code == failure.Code {
 		detail.Message = failure.Message
 		detail.RetryAfter = failure.RetryAfter
+		detail.Scraper = failure.Scraper
 	}
 	if detail.RetryAfter != nil && *detail.RetryAfter >= 0 {
 		w.Header().Set("Retry-After", strconv.Itoa(*detail.RetryAfter))

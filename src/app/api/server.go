@@ -3,6 +3,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"regexp"
@@ -151,7 +152,19 @@ func (s *Server) fail(w http.ResponseWriter, r *http.Request, err error) {
 	if status >= 500 {
 		level = slog.LevelError
 	}
-	s.options.Logger.Log(r.Context(), level, "HTTP request failed", "requestId", RequestID(r), "code", code)
+	attrs := []slog.Attr{slog.String("requestId", RequestID(r)), slog.String("code", code)}
+	var failure *domain.Error
+	if errors.As(err, &failure) && failure.Scraper != nil {
+		detail := failure.Scraper
+		attrs = append(attrs, slog.String("pluginId", detail.PluginID), slog.String("scraperReason", detail.Reason))
+		if detail.UpstreamStatus != 0 {
+			attrs = append(attrs, slog.Int("upstreamStatus", detail.UpstreamStatus))
+		}
+		if failure.RetryAfter != nil {
+			attrs = append(attrs, slog.Int("retryAfter", *failure.RetryAfter))
+		}
+	}
+	s.options.Logger.LogAttrs(r.Context(), level, "HTTP request failed", attrs...)
 	if response, ok := w.(*responseWriter); ok && response.wroteHeader {
 		panic(http.ErrAbortHandler)
 	}

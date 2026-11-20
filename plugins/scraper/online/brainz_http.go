@@ -52,14 +52,19 @@ var (
 
 const catalogUserAgent = "fnMrRice/MusicFS/0.1 (https://github.com/fnMrRice/MusicFS)"
 
+type cooldown struct {
+	until  time.Time
+	status int
+}
+
 // 同一服务返回退避提示后，所有实例在规定时间内停止向该主机发送请求。
 var catalogCooldown = struct {
 	sync.Mutex
-	until map[string]time.Time
-}{until: make(map[string]time.Time)}
+	byHost map[string]cooldown
+}{byHost: make(map[string]cooldown)}
 
 func retryDeadline(value string, now time.Time) time.Time {
-	if seconds, err := strconv.ParseInt(value, 10, 32); err == nil && seconds > 0 {
+	if seconds, err := strconv.ParseUint(value, 10, 32); err == nil {
 		return now.Add(time.Duration(seconds) * time.Second)
 	}
 	deadline, _ := http.ParseTime(value)
@@ -69,11 +74,12 @@ func retryDeadline(value string, now time.Time) time.Time {
 func catalogRequest(client *http.Client, req *http.Request) (*http.Response, error) {
 	host := req.URL.Hostname()
 	catalogCooldown.Lock()
-	until := catalogCooldown.until[host]
+	prior := catalogCooldown.byHost[host]
 	catalogCooldown.Unlock()
-	if remaining := time.Until(until); remaining > 0 {
-		seconds := int(remaining/time.Second) + 1
-		return nil, &fault.Error{Code: "RATE_LIMITED", Message: "catalog service is temporarily rate limited", RetryAfter: &seconds}
+	if remaining := time.Until(prior.until); remaining > 0 {
+		seconds := int((remaining-1)/time.Second) + 1
+		return nil, &fault.Error{Code: "RATE_LIMITED", Message: "Catalog lookup is waiting for the upstream cooldown", RetryAfter: &seconds,
+			Scraper: &fault.ScraperFailure{Reason: "cooldown", UpstreamStatus: prior.status}}
 	}
 	if client == nil {
 		client = http.DefaultClient
@@ -88,26 +94,30 @@ func catalogRequest(client *http.Client, req *http.Request) (*http.Response, err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		resp.Body.Close()
-		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusServiceUnavailable {
-			now := time.Now()
-			var retry *int
-			if deadline := retryDeadline(resp.Header.Get("Retry-After"), now); deadline.After(now) {
-				catalogCooldown.Lock()
-				if deadline.After(catalogCooldown.until[host]) {
-					catalogCooldown.until[host] = deadline
-				}
-				catalogCooldown.Unlock()
-				seconds := int(deadline.Sub(now).Round(time.Second) / time.Second)
-				retry = &seconds
-			}
-			if resp.StatusCode == http.StatusTooManyRequests || retry != nil {
-				return nil, &fault.Error{Code: "RATE_LIMITED", Message: "catalog service is temporarily rate limited", RetryAfter: retry}
-			}
-		}
 		if resp.StatusCode == http.StatusNotFound {
 			return nil, errCatalogMissing
 		}
-		return nil, fault.Fail("SOURCE_UNAVAILABLE", fmt.Sprintf("catalog service returned HTTP %d", resp.StatusCode))
+		failure := &fault.Error{Code: "SOURCE_UNAVAILABLE", Message: fmt.Sprintf("Catalog service returned HTTP %d", resp.StatusCode),
+			Scraper: &fault.ScraperFailure{Reason: "upstream", UpstreamStatus: resp.StatusCode}}
+		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusServiceUnavailable {
+			now := time.Now()
+			if deadline := retryDeadline(resp.Header.Get("Retry-After"), now); !deadline.IsZero() {
+				seconds := 0
+				failure.RetryAfter = &seconds
+				if remaining := deadline.Sub(now); remaining > 0 {
+					seconds = int((remaining-1)/time.Second) + 1
+					catalogCooldown.Lock()
+					if deadline.After(catalogCooldown.byHost[host].until) {
+						catalogCooldown.byHost[host] = cooldown{until: deadline, status: resp.StatusCode}
+					}
+					catalogCooldown.Unlock()
+				}
+			}
+			if resp.StatusCode == http.StatusTooManyRequests {
+				failure.Code = "RATE_LIMITED"
+			}
+		}
+		return nil, failure
 	}
 	return resp, nil
 }

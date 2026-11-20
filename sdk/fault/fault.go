@@ -15,10 +15,18 @@ func NewID() string {
 }
 
 type Error struct {
-	Code       string `json:"code"`
-	Message    string `json:"message"`
-	RequestID  string `json:"requestId"`
-	RetryAfter *int   `json:"retryAfter"`
+	Code       string          `json:"code"`
+	Message    string          `json:"message"`
+	RequestID  string          `json:"requestId"`
+	RetryAfter *int            `json:"retryAfter"`
+	Scraper    *ScraperFailure `json:"scraper,omitempty"`
+}
+
+// ScraperFailure 标明本次查询失败的位置。冷却中的状态码来自此前的平台响应。
+type ScraperFailure struct {
+	PluginID       string `json:"pluginId"`
+	Reason         string `json:"reason"`
+	UpstreamStatus int    `json:"upstreamStatus,omitempty"`
 }
 
 func (e *Error) Error() string        { return e.Code + ": " + e.Message }
