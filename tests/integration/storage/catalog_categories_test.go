@@ -10,6 +10,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/catalog"
+	"github.com/fnMrRice/MusicFS-server/src/library/music"
 )
 
 func categorySearch(t *testing.T, service *catalog.Service, query catalog.Query) []catalog.Category {
@@ -216,6 +217,67 @@ func TestCatalogFolderCategoriesTreeBreadcrumbsAndUnsafePaths(t *testing.T) {
 	root := categorySearch(t, service, catalog.Query{CategoryKind: "folder", ProviderInstanceID: "local"})
 	if len(root) != 1 || root[0].TrackCount != 1 || root[0].ID != roots[0].ID {
 		t.Fatal(root)
+	}
+}
+
+func TestCatalogFolderMusicRelations(t *testing.T) {
+	store, service, _ := catalogFixture(t)
+	ctx := t.Context()
+	roots := categorySearch(t, service, catalog.Query{CategoryKind: "folder", ProviderInstanceID: "local"})
+	query := catalog.Query{CategoryKind: "folder", CategoryID: roots[0].ID}
+	read := func() catalog.Track {
+		t.Helper()
+		page, err := service.Search(ctx, "admin", query, "", 10)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, raw := range page.Items {
+			var item catalog.Track
+			if err := json.Unmarshal(raw, &item); err != nil {
+				t.Fatal(err)
+			}
+			if item.DisplayName == "C selected.flac" {
+				return item
+			}
+		}
+		t.Fatal("folder track not found")
+		return catalog.Track{}
+	}
+	source := read()
+	if len(source.Albums) != 0 || len(source.CatalogArtists) != 0 {
+		t.Fatal("expected a track without catalog relations", source)
+	}
+	track, err := store.MusicTrackForSource(ctx, "admin", source.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := []string{}
+	for _, key := range []string{"same-name-first", "same-name-second"} {
+		album, err := store.SaveMusicAlbum(ctx, "admin", "", 0, music.AlbumFields{Name: "Same name"}, key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, album.ID)
+	}
+	updated, err := store.SaveMusicTrack(ctx, "admin", track.ID, track.Revision, music.TrackInput{
+		TrackFields: track.TrackFields, AlbumIDs: ids, ArtistNames: []string{"Second", "First"},
+	}, "folder-credits")
+	if err != nil {
+		t.Fatal(err)
+	}
+	item := read()
+	if len(item.Albums) != 2 || len(item.CatalogArtists) != 2 || len(item.Artists) != 0 || item.Album != nil {
+		t.Fatal("expected catalog credits alongside the original empty tags", item)
+	}
+	for i, album := range updated.Albums {
+		if item.Albums[i].ID != album.ID || item.Albums[i].Name != album.Name {
+			t.Fatal("wrong album reference", item.Albums, updated.Albums)
+		}
+	}
+	for i, artist := range updated.Artists {
+		if item.CatalogArtists[i].ID != artist.ID || item.CatalogArtists[i].Name != artist.Name {
+			t.Fatal("wrong artist reference or credit order", item.CatalogArtists, updated.Artists)
+		}
 	}
 }
 

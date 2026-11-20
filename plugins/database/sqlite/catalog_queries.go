@@ -67,7 +67,7 @@ func (s *Store) CreateCatalogQuery(ctx context.Context, owner string, input cata
 	if err != nil {
 		return catalog.Page{}, err
 	}
-	items, err := catalogResults(ctx, owner, data, q)
+	items, err := catalogResults(ctx, tx, owner, data, q)
 	if err != nil {
 		return catalog.Page{}, err
 	}

@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"slices"
 	"sort"
@@ -112,7 +113,7 @@ type catalogResult struct {
 	track    *catalogTrack
 }
 
-func catalogResults(ctx context.Context, owner string, data catalogData, q catalog.Query) ([]json.RawMessage, error) {
+func catalogResults(ctx context.Context, tx *sql.Tx, owner string, data catalogData, q catalog.Query) ([]json.RawMessage, error) {
 	var categories catalogCategoryIndex
 	if q.Type == "categories" || q.CategoryID != "" {
 		var err error
@@ -139,6 +140,11 @@ func catalogResults(ctx context.Context, owner string, data catalogData, q catal
 			return nil, err
 		}
 	case "tracks":
+		if q.CategoryKind == "folder" {
+			if err := populateCatalogMusicRelations(ctx, tx, owner, tracks); err != nil {
+				return nil, err
+			}
+		}
 		for i := range tracks {
 			t := &tracks[i]
 			if catalogMatches(strings.Join(append([]string{t.DisplayName, catalogText(t.Title), catalogText(t.Album)}, append(t.Artists, t.albumNames...)...), " "), q.Q) {

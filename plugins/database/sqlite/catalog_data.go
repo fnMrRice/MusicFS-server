@@ -232,3 +232,44 @@ func readCatalogData(ctx context.Context, tx *sql.Tx, owner, provider string) (c
 	data.revision = hex.EncodeToString(digest[:])
 	return data, nil
 }
+
+// 文件夹按来源展示文件，通过逻辑曲目读取当前的歌手与专辑，避免按原始标签匹配同名实体。
+func populateCatalogMusicRelations(ctx context.Context, tx *sql.Tx, owner string, tracks []catalogTrack) error {
+	if len(tracks) == 0 {
+		return nil
+	}
+	ids := make([]string, len(tracks))
+	bySource := make(map[string]*catalogTrack, len(tracks))
+	for i := range tracks {
+		ids[i] = tracks[i].ID
+		bySource[ids[i]] = &tracks[i]
+	}
+	raw, _ := json.Marshal(ids)
+	bytes := 0
+	return musicRows(ctx, tx, `WITH selected AS (
+ SELECT id,owner,track_id FROM music_sources WHERE owner=? AND id IN (SELECT value FROM json_each(?))
+), relations AS (
+ SELECT s.id AS source_id,'artist' AS kind,a.id,a.name,x.position FROM selected s
+ JOIN music_track_artists x ON x.track_id=s.track_id JOIN music_artists a ON a.owner=s.owner AND a.id=x.artist_id
+ UNION ALL
+ SELECT s.id,'album',a.id,a.name,0 FROM selected s
+ JOIN music_album_tracks x ON x.track_id=s.track_id JOIN music_albums a ON a.owner=s.owner AND a.id=x.album_id
+ WHERE `+ordinaryMusicAlbumMetadata+`
+) SELECT source_id,kind,id,name FROM relations ORDER BY source_id,kind,position,name COLLATE NOCASE,id`, func(rows *sql.Rows) error {
+		var sourceID, kind, id, name string
+		if err := rows.Scan(&sourceID, &kind, &id, &name); err != nil {
+			return err
+		}
+		bytes += 64 + len(id) + len(name)
+		if bytes > catalog.MaxSnapshotBytes {
+			return domain.Fail("RATE_LIMITED", "Catalog track relations exceed their resource budget")
+		}
+		track := bySource[sourceID]
+		if kind == "album" {
+			track.Albums = append(track.Albums, catalog.MusicAlbumRef{ID: id, Name: name})
+		} else {
+			track.CatalogArtists = append(track.CatalogArtists, catalog.MusicArtistRef{ID: id, Name: name})
+		}
+		return nil
+	}, owner, string(raw))
+}

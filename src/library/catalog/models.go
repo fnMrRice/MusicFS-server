@@ -58,10 +58,22 @@ type Page struct {
 
 type Track struct {
 	library.Track
-	Source      playlists.SourceRef `json:"source"`
-	RootID      string              `json:"rootId"`
-	DirectoryID string              `json:"directoryId"`
-	Favorite    bool                `json:"favorite"`
+	Source         playlists.SourceRef `json:"source"`
+	RootID         string              `json:"rootId"`
+	DirectoryID    string              `json:"directoryId"`
+	Favorite       bool                `json:"favorite"`
+	Albums         []MusicAlbumRef     `json:"albums,omitempty"`
+	CatalogArtists []MusicArtistRef    `json:"catalogArtists,omitempty"`
+}
+
+type MusicAlbumRef struct {
+	ID   string `json:"albumId"`
+	Name string `json:"name"`
+}
+
+type MusicArtistRef struct {
+	ID   string `json:"artistId"`
+	Name string `json:"name"`
 }
 
 // Artist identifies an exact local credit within one provider, not a verified
