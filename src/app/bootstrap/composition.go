@@ -218,7 +218,8 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	handler.RegisterHashing(hashes)
 	handler.RegisterFingerprinting(fingerprints)
 	handler.RegisterMedia(content)
-	if err = configureOnlineScrapers(handler, store, content); err != nil {
+	scraperSettings, err := configureOnlineScrapers(handler, store, content)
+	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
@@ -245,6 +246,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	handler.RegisterMatching(matchingService)
 	matchingAutomation := matching.NewAutomation(store, store, matchingService, standard.Detector())
 	settingsProviders := append(codecsettings.Providers(), matchingAutomation.Provider())
+	settingsProviders = append(settingsProviders, scraperSettings...)
 	handler.RegisterPluginSettings(settings.New(store, settingsProviders...))
 	beforeMatching := cleanup
 	cleanup = func() { matchingAutomation.Close(); beforeMatching() }

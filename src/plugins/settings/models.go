@@ -37,8 +37,9 @@ type Repository interface {
 	PutPluginSettings(context.Context, string, string, int64, Values) (Record, error)
 }
 type Provider struct {
-	ID     string
-	Schema pluginsettings.Schema
-	Job    func(context.Context, string) (Job, error)
-	Action func(context.Context, string, string, string) (Job, error)
+	ID       string
+	Schema   pluginsettings.Schema
+	Validate func(Values) error
+	Job      func(context.Context, string) (Job, error)
+	Action   func(context.Context, string, string, string) (Job, error)
 }

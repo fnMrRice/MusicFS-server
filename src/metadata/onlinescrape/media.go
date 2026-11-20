@@ -13,7 +13,7 @@ import (
 )
 
 // OpenMedia 只读取已选插件所声明的图片主机。每次重定向重新校验目标。
-func (s *Service) OpenMedia(ctx context.Context, selected works.ScrapedField, client *http.Client) (io.ReadCloser, string, error) {
+func (s *Service) OpenMedia(ctx context.Context, owner string, selected works.ScrapedField, client *http.Client) (io.ReadCloser, string, error) {
 	if selected.Field == "lyrics" {
 		return io.NopCloser(strings.NewReader(selected.Item.Lyrics)), "text/plain", nil
 	}
@@ -28,6 +28,13 @@ func (s *Service) OpenMedia(ctx context.Context, selected works.ScrapedField, cl
 	if !scraper.AllowsImageURL(selected.Item.ImageURL, hosts) {
 		return nil, "", domain.Fail("UNSUPPORTED", "Unrecognized scraper image host")
 	}
+	_, client, release, err := s.configured(ctx, owner, selected.PluginID, client)
+	if err != nil {
+		return nil, "", err
+	}
+	if client == nil {
+		client = http.DefaultClient
+	}
 	c := *client
 	c.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		if len(via) > 6 || !scraper.AllowsImageURL(req.URL.String(), hosts) {
@@ -37,15 +44,25 @@ func (s *Service) OpenMedia(ctx context.Context, selected works.ScrapedField, cl
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, selected.Item.ImageURL, nil)
 	if err != nil {
+		release()
 		return nil, "", err
 	}
 	resp, err := c.Do(req)
 	if err != nil {
+		release()
 		return nil, "", domain.Fail("SOURCE_UNAVAILABLE", "Artwork request failed")
 	}
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
+		release()
 		return nil, "", domain.Fail("SOURCE_UNAVAILABLE", "Artwork unavailable")
 	}
-	return resp.Body, resp.Header.Get("Content-Type"), nil
+	return &configuredMediaBody{ReadCloser: resp.Body, release: release}, resp.Header.Get("Content-Type"), nil
 }
+
+type configuredMediaBody struct {
+	io.ReadCloser
+	release func()
+}
+
+func (b *configuredMediaBody) Close() error { err := b.ReadCloser.Close(); b.release(); return err }

@@ -17,6 +17,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/sdk/scraper"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 )
 
 type Candidate struct {
@@ -37,6 +38,7 @@ type Service struct {
 	mu       sync.Mutex
 	previews []preview
 	bytes    int
+	settings settings.Repository
 }
 
 func New(plugins []scraper.Plugin) (*Service, error) {
@@ -107,6 +109,11 @@ func (s *Service) Search(ctx context.Context, owner, id, field string, q scraper
 	default:
 		return nil, domain.Fail("RATE_LIMITED", "Scraper search is busy")
 	}
+	p, _, release, err := s.configured(ctx, owner, id, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
 	items, err := p.Search(ctx, field, q)
 	if err != nil {
 		var failure *domain.Error
