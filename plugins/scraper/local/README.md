@@ -1,20 +1,28 @@
-# 本地歌词与封面插件
+# 本地歌词与封面
 
-`musicfs.scraper.local` 默认编入 Server 主进程；只有显式配置 `execution: process` 才运行外部插件程序并校验其 SHA-256。宿主以 `Open` 创建最长 30 秒的任务会话。`Search` 返回候选描述，`Fetch` 返回经过宿主二次内容验证的正文；正文不进入控制协议、候选数据库字段或日志。调用方负责预览、人工选择与持久发布，必须保留来源稳定保护直到引用发布完成。
+`musicfs.scraper.local` 从宿主授权的音频和同目录文件提取歌词与封面。扫描时可自动补齐缺项，手动搜索则先返回候选，由用户预览、选用。
 
-本插件向 `enrichment` 注册工厂并实现公共 `Host/Session` 契约；`Descriptor` 声明本地身份、歌词/封面字段及不支持查询修正。任务输入使用公共 `enrichment.Input`，宿主业务层不引用本插件的具体 Host 或 Session。具体握手、本地资源来源校验和二进制通道仍由本插件维护。
+| 输入 | 读取内容 |
+| --- | --- |
+| MP3 | ID3v2.3/v2.4 的 `USLT` 歌词和 `APIC` 图片。支持未压缩、未加密的帧 |
+| FLAC | Vorbis `LYRICS`、`UNSYNCEDLYRICS` 注释和 `PICTURE` 块 |
+| 同目录旁置文件 | 音频同名的 `.lrc`、`.txt`、`.jpg`、`.jpeg`、`.png`，以及 `cover.jpg/png`、`folder.jpg/png` |
+| 容器封面 | 上游解码器提供的独立附件，例如 NCM 外层封面。候选标记为 `origin=container`、`basis=containerEmbedded` |
 
-已支持的读取范围：
+旁置歌词接受 UTF-8 或带 BOM 的 UTF-16。ID3 歌词也按帧声明接受 Latin-1。歌词中的时间标记按原文保留。图片须通过 JPEG/PNG 完整解码检查。
 
-- MP3 的 ID3v2.3/v2.4 `USLT` 歌词与 `APIC` 图片；不转换 `SYLT`，不处理压缩或加密帧。
-- 原生 FLAC 的 Vorbis `LYRICS`、`UNSYNCEDLYRICS` 注释与 `PICTURE` 块。
-- 宿主授权的同目录同名 `.lrc`、`.txt`，同名 `.jpg`、`.jpeg`、`.png`，以及 `cover.jpg/png`、`folder.jpg/png`。不递归查找，不接受插件提供的路径。
-- 容器封面由宿主作为 `kind=artwork`、`match=containerEmbedded` 的独立有界资源提供；候选记录 `origin=container`、`basis=containerEmbedded`。例如 NCM 插件提供解密后的 MP3/FLAC 和外层封面附件，本插件验证附件图片并独立提取音频标签，不需要认识 NCM 格式。
+## 接口与限制
 
-旁置歌词只接受 UTF-8 或带 BOM 的 UTF-16；ID3 另外按声明接受 Latin-1。未知编码、空内容、损坏图片或不支持的帧成为不可用候选，不覆盖现有选择。图片只接受经过完整解码检查的 JPEG/PNG；歌词中的时间标记保留，正文不被改写成其他歌词时间轴。
+宿主通过 `Open` 建立最长 30 秒的任务会话，`Search` 返回候选描述，`Fetch` 读取同一会话的候选正文。插件使用任务绑定的资源引用，不接收任意文件路径。二进制通道限定为本机回环，禁用代理和重定向。宿主二次校验正文，并在发布引用前保护来源文件和容器附件。
 
-单份歌词上限 1 MiB，图片上限 8 MiB、1600 万像素且单边不超过 8192。单次最多 32 个资源（其中最多一个音频）、64 个候选、32 MiB 候选正文，音频元数据扫描上限 16 MiB。宿主默认最多两会话，允许配置一至四会话。
+| 项目 | 上限 |
+| --- | --- |
+| 单份歌词 | 1 MiB |
+| 单张图片 | 8 MiB、1600 万像素、单边 8192 像素 |
+| 单次会话 | 32 个资源（最多一个音频）、64 个候选、32 MiB 候选正文 |
+| 音频标签扫描 | 16 MiB |
+| 并发会话 | 默认 2，可配置为 1–4 |
 
-资源引用与输出引用是随机任务内标识，绑定 owner、实例、任务、SourceTrack、SourceAsset、来源版本及媒体选择修订。容器附件随解码结果保留至使用结束，不能在交给本插件前关闭上游解码任务。二进制通道只连接本次会话的 loopback 地址，禁用代理和重定向；外部图片 URL 被拒绝。原文件不写入，路径不传入插件。稳定保护由宿主提供；内置代码共享 Server 地址空间，外部模式的进程隔离、干净环境和有界回收也不等于操作系统网络沙箱。
+## 格式依据
 
-格式依据为 [ID3v2.3](https://id3.org/id3v2.3.0)、[ID3v2.4 帧](https://id3.org/id3v2.4.0-frames)、[ID3v2.4 结构](https://id3.org/id3v2.4.0-structure) 与 [FLAC RFC 9639](https://www.rfc-editor.org/rfc/rfc9639.html)。测试使用合成元数据和生成的图片；不使用私人歌词或封面素材。
+[ID3v2.3](https://id3.org/id3v2.3.0) · [ID3v2.4 帧定义](https://id3.org/id3v2.4.0-frames) · [ID3v2.4 结构](https://id3.org/id3v2.4.0-structure) · [FLAC（RFC 9639）](https://www.rfc-editor.org/rfc/rfc9639.html)。在线刮削插件使用的资料接口另见[来源与公开 API](../../../docs/plugins/provider-api-sources.md)。宿主的选用、人工锁定与自动补缺见[资料补全](../../../docs/metadata/metadata.md)。

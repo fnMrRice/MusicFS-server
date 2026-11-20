@@ -1,5 +1,7 @@
 # 在线来源接口
 
+各平台使用的账号、目录及音频接口见[刮削与在线音乐源的接口来源](../plugins/provider-api-sources.md)。
+
 Bilibili 已接入匿名公开资料、收藏夹/音频歌单及按需音频播放，独立范围见 [Bilibili 来源](bilibili.md)。所有来源插件必须声明 `sourceType`；在线来源声明 `network`。匿名插件仍要求 MusicFS 用户身份与实例归属验证，但不要求平台账号。以下账号流程适用于网易云、QQ 音乐和 Apple Music。
 
 网易云、QQ 音乐和 Apple Music 由统一插件程序启动各自的独立 Worker。[账号控制面](platform-login.md)已接入，真实用户授权仍待验收。所有业务接口要求已校验的平台账号；网易云使用带会话的客户端 EAPI，QQ 搜索使用桌面 RPC，不回退匿名接口。完整音频交付尚未实现，订阅及地区权益仍需实测。

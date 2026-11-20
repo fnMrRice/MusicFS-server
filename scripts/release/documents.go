@@ -48,18 +48,38 @@ func (b builder) documents() error {
 	if err = b.containerConfiguration(); err != nil {
 		return err
 	}
-	programNote := "默认包含 musicfs 和 musicfs-plugins 两个程序。"
-	if b.splitPlugins {
-		programNote = "本包显式启用分拆构建，除 musicfs 和 musicfs-plugins 外，附带 SQLite、DSP gain、三个在线平台和在线统一入口，共八个程序。"
-	}
-	readme := "# MusicFS 私有安装包\n\n" + programNote + "官方插件默认编译进 musicfs，在 Server 主进程内运行。musicfs-plugins 保留九种角色的可选外部进程入口，默认配置不会启动它。不包含音乐、账号凭据或开发数据库。\n\n" +
-		"配置示例为 configs/server.example.yaml，内置插件自动发现，配置齐全且未显式禁用时自动启动。手动扫描使用 [PowerShell 扫描脚本](scripts/scan.ps1)。\n\n" +
-		"在线平台在主进程中按用户和实例分别维护账号状态。普通插件只有显式配置 execution: process 才启动经过摘要校验的外部程序。\n\n" +
-		"SQLite 是主进程内必需基础设施，不进入普通插件启停列表，不提供禁用开关；后端加载失败时拒绝启动。服务端听感效果默认禁用；显式开启 audioDSP.enabled 并配置链后才执行，必要声道转换独立保留。指纹分析、FLAC 标签处理、匹配评分和缩略图变换也通过内置插件接口调用；FFmpeg、ffprobe、fpcalc 外部工具仍需相应安装和验证。\n\n" +
-		"容器只能使用 Linux 安装包；容器配置同样默认使用内置 SQLite 与插件。Windows 制品不能直接用作 Linux 容器安装。\n\n" +
-		"安装包不包含 docs 目录；安装部署、配置、运行扫描及备份恢复说明请在对应 revision 的 Server 私有源仓库 docs 目录查阅。\n\n" +
-		"release.json 记录版本、构建平台、Server/SDK/在线插件各模块及依赖许可证；各模块的 go.mod/go.sum 随包保留。SHA256SUMS 校验文件一致性。Go 工具链许可证位于 licenses/go。\n\n" +
-		"该制品仅供私有安装验证，不自动上传或公开分发。\n"
+	const readme = `# MusicFS Server 安装包
+
+简体中文 · [English project guide](https://github.com/fnMrRice/MusicFS-server/blob/main/docs/README.en.md)
+
+MusicFS Server 扫描音乐目录，管理曲库、歌词与封面，并为客户端提供音频。官方插件默认随服务端启动。包内程序与版本见[构建清单](release.json)，文件摘要见 [SHA256SUMS](SHA256SUMS)。
+
+## 本机启动
+
+如果安装目录有 start.bat 或 start.sh，直接使用对应启动脚本即可。单独运行 Server 时，首次先将[配置示例](configs/server.example.yaml)复制为 configs/server.yaml，然后在安装目录执行对应平台的命令。
+
+**Windows PowerShell**
+
+~~~powershell
+$env:MUSICFS_ADMIN_TOKEN = (& ./bin/musicfs.exe token).Trim()
+./bin/musicfs.exe serve --config ./configs/server.yaml
+~~~
+
+**Linux**
+
+~~~sh
+export MUSICFS_ADMIN_TOKEN="$(./bin/musicfs token)"
+./bin/musicfs serve --config ./configs/server.yaml
+~~~
+
+上述第一行生成管理员令牌。已有令牌时，在环境变量 MUSICFS_ADMIN_TOKEN 中设置原值即可。启动前请将令牌保存在自己的密码管理器中，用于登录。
+
+默认地址为 <http://127.0.0.1:8080>，可通过[就绪检查](http://127.0.0.1:8080/api/v1/health/ready)确认服务状态。带 Web 的安装包可以直接在该地址登录，进入「设置 → 音乐源 → 本地音乐」添加音乐目录。需要格式探测和转码时，请安装并配置 FFmpeg 和 ffprobe。
+
+[配置指南](https://github.com/fnMrRice/MusicFS-server/blob/main/docs/operations/configuration.md) · [备份与恢复](https://github.com/fnMrRice/MusicFS-server/blob/main/docs/operations/backup.md) · [许可证](LICENSE)
+
+本项目几乎完全由 AI 生成。
+`
 	return os.WriteFile(filepath.Join(b.out, "README.md"), []byte(readme), 0600)
 }
 

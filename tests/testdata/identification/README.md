@@ -1,9 +1,19 @@
-# 候选指纹测试向量
+# 指纹匹配测试向量
 
-`candidate-fingerprints.json` 保存 14 个 Chromaprint 1.6.1 原始输出，输入全部是数学合成音频，以 CC0-1.0 提供，不包含私人音乐、第三方录音或工具二进制。`name` 是合成变体名称，`pcmSha256` 是规范 PCM 的摘要，**不是**候选模块的完整源文件 SHA-512。
+[candidate-fingerprints.json](candidate-fingerprints.json) 包含 14 组数学合成音频的 Chromaprint 原始输出，按 CC0-1.0 提供。Go 单元测试直接读取这些向量。字段 `name` 标识变体，`pcmSha256` 校验规范 PCM 字节；完整源文件的匹配另用 SHA-512。
 
-原曲为 32 秒合成旋律、和弦与节奏；变体包含 FLAC、MP3 64k/192k、AAC 128k、前导静音 3 秒、10–30 秒局部、另一次合成演绎、现场式变速/回声、不同混音、不同旋律、静音和 440/880 Hz 纯音。规范输入为 FFmpeg 6.1.1 的 mono/s16le/11025 Hz；独立 Linux FFmpeg 6.1.6 实验核对了全部 PCM 字节与原始指纹的一致性。
+## 样本与生成参数
 
-工具为官方 `fpcalc 1.6.1`，参数 `-format s16le -rate 11025 -channels 1 -algorithm 2 -length 0 -raw -json -`，只读标准输入。详细来源与许可见 [提取模块说明](../../../src/metadata/identification/fingerprint/REFERENCES.md)。Go 单元测试只读取固定向量，不需要运行或下载音频工具。
+基准样本是一段 32 秒的合成旋律、和弦与节奏。变体覆盖 FLAC、MP3（64/192 kbit/s）、AAC（128 kbit/s）、3 秒前导静音、10–30 秒片段、不同演绎、变速和回声、混音、不同旋律、静音以及 440/880 Hz 纯音。
 
-这些数据证明具体边界，并不建立录音识别的准确率：440 与 880 Hz 纯音指纹完全相同，另一次合成演绎也足够接近而成为待确认候选。局部范围不同、低信息片段和版本不兼容不能贡献指纹匹配依据。实验的“现场式”与“混音”变体不是有录音版本标注的真实演出语料。
+FFmpeg 6.1.1 将输入转为单声道、11025 Hz、s16le PCM。使用 `fpcalc 1.6.1` 从标准输入读取：
+
+```sh
+fpcalc -format s16le -rate 11025 -channels 1 -algorithm 2 -length 0 -raw -json -
+```
+
+Linux 上使用 FFmpeg 6.1.6 复核过 PCM 字节与指纹。[工具来源与许可](../../../src/metadata/identification/fingerprint/REFERENCES.md)
+
+## 已知反例
+
+440 Hz 与 880 Hz 的纯音产生相同指纹，另一种合成演绎也能进入待确认列表。这些样本用于验证比较边界，真实录音的识别准确率仍需独立语料评估。[候选评分规则](../../../src/metadata/identification/candidates/README.md)

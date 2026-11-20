@@ -1,5 +1,7 @@
 # Bilibili 公开音频来源
 
+网页端点和社区参考实现见[刮削与在线音乐源的接口来源](../plugins/provider-api-sources.md)。
+
 插件 ID 为 `musicfs.plugin.source.bilibili`，独立版本 `0.1.0`。实现位于 `plugins/source/online/bilibili`，支持官方主进程装配、统一插件程序和独立 `musicfs-plugin-bilibili` 入口。当前仍在 Server 仓库维护，**尚未拆分独立仓库或发行**；风险与拆分建议见[可选插件发行](../plugins/optional-distribution.md)。
 
 ## 已实现的范围

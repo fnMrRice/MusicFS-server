@@ -1,30 +1,34 @@
 # 插件控制协议 1.0
 
+服务端与 Worker 使用 JSON-RPC 2.0 协商能力、提交任务和取消调用。内置实现使用内存流，外部进程使用标准输入输出。实现新适配器时，先核对对应角色的 Schema。
+
+| 角色或模型 | 协议定义 |
+| --- | --- |
+| 帧、握手、来源、音频与本地刮削 | [公共 Schema](protocol.schema.json) · [消息样本](fixtures/) |
+| 在线来源描述与账号 | [在线来源 Schema](online.schema.json) · [账号 Schema](account.schema.json) · [账号作用域](account.md) |
+| 目录来源身份 | [目录身份与重新绑定](directory-identity.md) |
+| 专用工作进程 | [DSP 帧协议](../../../plugins/dsp-plugins.md) · [存储后端协议](../../../plugins/storage-plugins.md) |
+
 ## 帧与握手
 
-官方 Worker 与 Host 使用 JSON-RPC 2.0。每帧为 `Content-Length: <UTF-8 正文字节数>\r\n\r\n` 后跟 JSON 正文；单帧最多 1 MiB，每页最多 200 项。stdout 只承载帧，英文诊断写 stderr；大块音频、PCM、图片与文件正文不能进入 JSON/Base64。
-
-Host 发出的 ID 为 `h-` 前缀，Worker 调用 Host 时用 `w-`。一帧只承载一个请求、响应或取消通知，不支持 batch。干净 EOF 表示对端结束；标头/正文半帧 EOF 是协议失败。必须设置握手及请求 deadline，读取取消/超时由关闭受控通道传播，不无限等待部分帧。
-
-`host.hello` 请求绑定 instanceId、配置修订和本次随机 nonce。成功结果为 Ready（逻辑上的 worker.ready），必须回显 instanceId、nonce，并用 manifest 声明精确 protocolVersion。1.0 只协商 1.0；主版本不匹配必须拒绝。每个角色实例独立 Worker，实例/账号权限由 Host 启动上下文固定，不能被请求字段切换。账户引用不是凭据。
-
-Manifest 的 `pluginVersion` 对 Provider、音频和 Scraper 都是必填项，必须是最多 128 字符的有效 SemVer；缺失、空白、不完整版本及带前导零的纯数字预发行标识均被拒绝。`pluginVersion` 是插件发行版本，独立于 `protocolVersion=1.0`、Server 版本和配置修订；发行号有效不代表协议兼容，角色的其他握手约束仍须满足。随包 Worker 与宿主元数据共用 [sdk/bundledplugin/releases.go](../../../../sdk/bundledplugin/releases.go) 的各插件声明。
-
-`GET /api/v1/admin/plugins` 的插件项 `version` 同样必填；尚无有效握手版本时使用随包声明，覆盖没有实例、未启动、待配置、已禁用或启动失败的状态，有效握手版本优先。该展示字段不授予运行能力，也不以宿主版本填充。独立 DSP 和存储采用专用握手，同样要求必填 `pluginVersion`；新宿主拒绝缺少发行号的旧 Worker，须配套升级，具体见 [DSP 插件](../../../plugins/dsp-plugins.md)与[存储插件](../../../plugins/storage-plugins.md)。
+- 每帧以 `Content-Length: <UTF-8 正文字节数>\r\n\r\n` 开头，后跟一个 JSON 请求、响应或取消通知。单帧最多 1 MiB，每页最多 200 项。外部进程的 stdout 专用于协议，英文诊断写 stderr。音频、PCM、图片等正文使用二进制通道。
+- 宿主请求的 ID 前缀为 `h-`，Worker 请求为 `w-`。协议不接受 batch。帧间 EOF 表示对端结束，帧内 EOF 表示协议失败。握手与调用均有截止时间，取消或超时通过关闭受控通道唤醒读取。
+- `host.hello` 绑定实例 UUID、配置修订和本次随机 nonce。响应须回显 `instanceId` 与 nonce，并在清单中声明 `protocolVersion=1.0`。每个角色实例使用独立 Worker，用户和账号取自固定的启动上下文。
+- 清单中的 `pluginVersion` 为至多 128 字符的有效 SemVer。宿主分别校验协议、插件发行版本和配置修订。管理接口优先返回有效握手版本，未取得握手结果时使用[随包版本声明](../../../../sdk/bundledplugin/releases.go)。
 
 ## 身份、能力与展示
 
-`instanceId` 使用规范小写、非空 UUID，与插件 ID 和显示别名分离。Manifest 必须包含 `plugin`（`id/name/localizedNames/features`）与 `supportsMultipleInstances`；`name` 是插件提供的默认别名，`localizedNames` 提供语言别名。SDK 的多实例布尔值默认 `false`，官方在线来源和本地元数据提取声明 `true`，本地音乐、FFmpeg、NCM 声明 `false`。单实例插件最多保存一个实例，禁用实例同样计数。宿主核验握手声明，管理接口 `/admin/plugins` 对每个插件返回同名字段，客户端据此决定是否展示多实例入口。在线实例名称优先使用当前用户已验证的平台账号用户名，退出登录后不保留账号名，也不以 UUID 替代显示别名。
+| 字段 | 语义 |
+| --- | --- |
+| `instanceId` | 规范小写的非空 UUID，在实例配置生命周期内保持稳定 |
+| `plugin` | 必须提供 `id/name/localizedNames/features`，名称及翻译由插件提供。在线实例优先展示已验证账号的用户名 |
+| `supportsMultipleInstances` | 来源与刮削等插件按实际能力声明。单实例插件至多保存一个实例，包括已禁用实例 |
+| `sourceType` | 来源插件须声明 `local` 或 `network`，宿主据此选择播放路径 |
+| `taskId` | FFmpeg/NCM 的 `DecoderHello` 必填，与请求及 nonce 一起绑定任务通道；本地与在线来源握手省略 |
 
-FFmpeg/NCM 的单次任务握手使用 `DecoderHello`，额外必需 `taskId`。实例 UUID 在该配置生命周期内保持稳定；请求的任务 ID 必须匹配握手任务 ID，nonce 继续绑定本次通道。本地音乐和在线来源握手不传此字段。
+在线来源的描述修订为 `online-declared-v4`。`provider.online.describe` 须返回与握手一致的身份，清单中启用的能力须与描述中 `supported=true` 的集合一致。必需的 `resources` 提供资源规则，可选的 `login` 描述登录方式；宿主检查规则和结果。[身份与名称](../../../plugins/plugin-identity.md) · [Go SDK](../../../plugins/plugin-sdk.md)
 
-在线 Provider 的资料修订为 `online-declared-v4`，`provider.online.describe` 必须返回插件提供的 `plugin: {id,name,localizedNames,features}`，其 ID 与握手身份一致；Host 缓存并透传已验证值，不自行生成平台名称。显示语义、生命周期与版本兼容见 [插件身份与名称](../../../plugins/plugin-identity.md)，具体 wire 模型见 [online.schema.json](online.schema.json)。
-
-音乐来源可提供独立的展示统计 `{value, unit, localizedUnits}`；在线来源的数字、默认单位与译名由插件负责。本地音乐的管理摘要由宿主按有效部署权限生成允许访问目录数，这是权限展示的例外；包含零值、待配置与未启动状态，不使用已添加目录数量，也不向 Worker 传递未选授权路径。`value` 是 0—9007199254740991 的整数，`unit` 及每项译名是 1—128 个 Unicode 字符的纯文本；语言标签与身份译名采用相同校验，`localizedUnits` 必需且可为空对象。统计不能代替实例身份或权限。Web 不显示实例数量；插件上报的“个用户”“个来源”等单位也不由前端固定映射。
-
-兼容接口 `plugin.displayCount` 接受 `{instanceId, rootIds}`，仅传当前选中根 ID 并返回旧的来源统计，保留进程协议兼容。当前管理列表不使用这项统计，而由宿主返回允许访问目录数及“个允许访问的目录”译名，新增或移除已添加目录不影响权限数量。在线来源仍通过[账号响应](account.md)的可选 `displayCount` 提供统计；管理查询读取缓存、不触发 RPC。此展示字段不增加目录访问能力或账号权限。
-
-Go 消费入口位于独立 `sdk` 模块，见 [SDK 使用与分发](../../../plugins/plugin-sdk.md)。在线插件的 `pluginVersion` 接受合法语义版本；通信版本与资料修订仍精确校验。能力可声明通用在线协议方法的子集，Manifest 启用能力须与描述中的 `supported=true` 集合一致；未知方法仍被拒绝。平台资料规则由必需的 `resources` 提供，登录方式由可选 `login` 提供；宿主核验规则边界及结果一致性，不维护每个平台的能力上限、ID 或 CDN 列表。平台账号作用域保持不变；插件管理 `version` 必填规则见前文。
+可选展示统计为 `{value,unit,localizedUnits}`。`value` 的整数范围为 0–9007199254740991，单位及每项译名限 1–128 个 Unicode 字符，`localizedUnits` 必填且可为空。在线插件通过[账号响应](account.md)提供统计，管理查询使用缓存。本地音乐由宿主统计允许访问的目录数，包含零值；已添加的音乐目录另行保存。兼容接口 `plugin.displayCount` 仅接受当前选中根的 `{instanceId,rootIds}`。管理摘要不调用它，也不向 Worker 公开尚未选中的授权路径。
 
 ## Local Files 配置与扫描
 
@@ -72,6 +76,8 @@ Capabilities 的 `normalization` 明确报告是否具备指纹 PCM 规范化能
 
 ## NCM
 
+此节定义 NCM 解密 Worker 的任务绑定与二进制通道。[容器格式与播放路径](../../../playback/ncm.md)
+
 NCM Worker 使用 `musicfs.plugin.decoder.ncm` 标识、`audio` 角色与 `audio.decrypt` 能力，默认在主进程运行，不依赖 FFmpeg。`host.hello` 的 instanceId 为配置实例 UUID，configRevision 为 `1`；nonce 是 24 个随机字节的 48 位小写十六进制串。一个 Worker 只接受一次 `ncm.open`，绑定 taskId、assetId、nonce、inputUrl 和加密输入 size，拒绝重新绑定。返回同一任务身份、outputUrl、解密后的 size 与 metadata；format/MIME 由解密正文确认，仅支持 MP3/FLAC，未知标签省略，不下载封面或任何外部资源。请求中没有源路径、原始音频或密钥。
 
 外层有封面时，`ncm.open` 额外返回可选 `artwork: {url, size}`。封面服务使用独立的随机 loopback 端口，URL 必须为 `http://127.0.0.1:<port>/<nonce>/artwork`，固定本次任务的 nonce 和 artwork 路径；`size` 为有效 `coverLength`，不包含预留容量，缺少封面则省略整个字段。音频偏移仍按 `coverCapacity` 计算，封面通过独立 Range 读取器提供，不改写 MP3/FLAC。Host 将其转换为音频 SDK 的 `artwork` 附件，再交本地 Scraper 验证；NCM Worker 不生成图片候选或缩略图。内置与显式外部执行使用同一字段及通道约束。
@@ -80,13 +86,15 @@ NCM 的 input、output 及可选 artwork 通道均只监听 `127.0.0.1` 随机�
 
 ## 本地 Scraper
 
+本节定义本地提取协议。支持的标签、图片格式和依据见[本地歌词与封面](../../../../plugins/scraper/local/README.md)。
+
 独立 `musicfs.scraper.local` 使用 `scraper` 角色和 `scrape.search/scrape.fetch/lyrics/artwork` 声明。专用 `host.hello` 固定实例、owner/task上下文、来源/资产版本、媒体修订及一次性 loopback baseUrl。一次会话最多30秒，只能搜索一次；`scrape.search` 接受已授权资源描述、字段、语言和可选查询信息，返回最多64个候选及问题。候选以字段、声明语言、格式、大小、SHA-256、embedded/container/sidecar 来源依据和资源版本描述内容，不含正文。当前wire保留原声明语言，业务层将常见ID3别名规范为主语言，封面语言归空，并明确拒绝不支持的非空查询修正。
 
 容器封面使用 `Resource.kind=artwork`、`Resource.match=containerEmbedded`，与音频资源独立传入；正文读取仍受任务资源引用、大小和来源版本约束。Scraper 校验图片后返回 `origin=container`、`basis=containerEmbedded` 候选，不能将容器附件伪装成音频标签或同目录文件。附件由宿主从解码链汇集，Scraper 不连接 NCM 专用通道，也不需要解析 NCM。
 
 `scrape.fetch` 只能提取同会话已搜索的候选，目标及输出引用必须匹配。Host 提供最多32个资源，资源/输出引用均为48位小写随机十六进制标识，不是路径；旁置输入总预算32 MiB，音频仅通过受限读取器访问。正文走本次nonce限定的 `127.0.0.1` 二进制通道，每段读取最多64 KiB，不经控制JSON/Base64。禁止代理、重定向和插件指定路径，宿主二次校验实际格式、长度、摘要及源稳定状态。公开HTTP候选移除内部资源引用/版本，预览内容交由MediaStore权限管理；插件本身不能选择内容、写原文件或合并录音。
 
-本版本已定义首个 Provider、Host 状态/资源、音频处理、NCM 解密和本地 Scraper 的具体 wire 模型。Schema 可验证模型，但跨字段 nonce 相等、端口范围、输入/输出长度关系和生命周期由运行时继续检查。manifest 的系统/架构/profile 声明不是浏览器或实机验收证据。受信任进程拥有自身 OS 权限，当前协议不隔离恶意插件。
+Schema 校验消息结构，运行时另行检查 nonce、端口、输入输出长度和会话生命周期。内置插件共享宿主进程，显式外部进程使用其操作系统账户权限。
 
 ## 本地插件配置持久化
 

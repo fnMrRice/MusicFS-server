@@ -1,72 +1,43 @@
 # 开发与检查
 
-源码职责见[源码导航](../../src/README.md)，插件扩展见[SDK](../plugins/plugin-sdk.md)，对外接口以[协议目录](../contracts/README.md)为准。
+在 Server 根目录使用 [go.mod](../../go.mod) 指定的 Go 工具链。仓库包含三个 Go 模块，通过本地 `replace` 关联。
 
-## 模块与目录
-
-| 位置 | 边界 |
+| 模块 | 职责 |
 | --- | --- |
-| 根 `go.mod` | Server、宿主及本地来源、解码、刮削、SQLite、DSP 实现 |
-| `sdk/go.mod` | 公共协议、DTO 与 Worker 基础能力，不导入宿主业务 |
-| `plugins/source/online/go.mod` | 在线平台实现，只依赖 SDK，不导入 Server 的 src |
-| `src/app`、`src/core` | 程序入口、组装、API，以及鉴权、配置与生命周期 |
-| `src/library`、`src/metadata` | 曲库、扫描、歌单，以及识别、补全和写回 |
-| `src/playback`、`src/storage` | 播放、流、时间映射，以及持久化契约、后端选择和备份 |
-| `src/plugins` | 宿主侧插件管理、通信、账号与授权资源 |
-| `plugins` | 按 source、decoder、scraper、database、dsp 分类的具体实现；unified 装配九种角色 |
+| [Server](../../src/README.md) | 服务入口、HTTP API、曲库、音频交付、存储接口及编译内插件 |
+| [SDK](../../sdk/README.md) | 公共协议、数据模型、Worker 与插件接口 |
+| [在线音乐来源](../../plugins/source/online/README.md) | 平台驱动及测试，仅依赖 SDK |
 
-数据库 Schema、建库与迁移资源归具体数据库插件：SQLite 主库位于 `plugins/database/sqlite/migrations`，实例状态库位于 `plugins/database/sqlite/state`。宿主维护业务契约、实例隔离、启动锁及生命周期协调。
+## 构建与测试
 
-三个 Go 模块通过明确的本地 `replace` 关联，构建和检查使用 `GOWORK=off`。src 的目录分组不构成严格分层，也不新增模块；例如 core/config 仍使用业务配置模型。生产包不得导入测试或程序入口包。
-
-宿主测试放根 tests/，不在 src/ 放测试、辅助代码或夹具；SDK 和插件保持各自测试边界。测试通过真实业务接口验证行为，不为访问私有状态增加导出接口。
-
-| 测试目录 | 用途 |
-| --- | --- |
-| `tests/unit` | 业务单元测试 |
-| `tests/contract` | HTTP、Schema 与插件协议一致性 |
-| `tests/integration` | 数据库、文件系统与真实进程组合 |
-| `tests/e2e` | 跨制品服务流程；浏览器测试由 Web 仓库维护 |
-| `tests/testkit`、`tests/testapps`、`tests/testdata` | 辅助代码、测试程序和共享夹具 |
-
-## 构建与检查
-
-在 Server 根目录运行：
+Windows PowerShell：
 
 ```powershell
 ./scripts/build.ps1
 ./scripts/check.ps1
 ```
 
+Linux：
+
 ```sh
 sh scripts/build.sh
 sh scripts/check.sh
 ```
 
-默认构建 musicfs、musicfs-plugins 两个文件；默认只启动 musicfs，所有官方内置实现运行于 Server 主进程，后者保留显式外部兼容入口。`-SplitPlugins` / `--split-plugins` 额外生成六个分拆程序；正式制品见[部署](../operations/deployment.md)。检查脚本覆盖三个模块，根目录的 `go test ./...` 不会跨越子模块。
+构建默认生成 `musicfs` 与显式外部插件模式使用的 `musicfs-plugins`。需要独立插件程序时，可添加 `-SplitPlugins` 或 `--split-plugins`。检查脚本以 `GOWORK=off` 覆盖三个模块；单独执行 `go test ./...` 只覆盖当前模块。[部署与制品](../operations/deployment.md)
 
-真实音频测试按需设置 MUSICFS_FFMPEG、MUSICFS_FFPROBE，指纹测试另设 MUSICFS_FPCALC。缺少工具时跳过的测试不计为通过；公网或真实账号测试先核对[验证方法](../validation/verification.md)中的入口限制。
+宿主测试在 [tests](../../tests/) 下按 `unit`、`contract`、`integration`、`e2e` 划分，辅助程序与数据在 `testkit`、`testapps`、`testdata`。SDK 与在线来源在各自模块内测试。实音频测试按需配置 `MUSICFS_FFMPEG`、`MUSICFS_FFPROBE`，指纹测试另需 `MUSICFS_FPCALC`。真实账号开关和测试素材见[复验方法](../validation/verification.md)与[夹具说明](../validation/fixtures.md)。
 
-覆盖率按改动范围运行：
-
-```text
-go test -coverpkg=./src/...,./plugins/... -coverprofile=build/coverage.out ./tests/...
-```
-
-竞争检查需要支持的平台、本机 C 编译器与 CGO。PowerShell 构建脚本会设置 CGO_ENABLED=0，执行竞争检查前切换为 1，并使用覆盖三个模块的检查入口：
+构建后可生成宿主测试覆盖率。竞争检查需支持的平台及本机 C 编译器。
 
 ```powershell
+go test -coverpkg=./src/...,./plugins/... -coverprofile=build/coverage.out ./tests/...
 $env:CGO_ENABLED = '1'
 ./scripts/check.ps1 -Race
 ```
 
-集成测试的开关、实际工具、跳过项和目标平台必须明确；交叉编译不代替目标机运行。共享素材及生成方法见[夹具](../validation/fixtures.md)，未完成环境验收见[待验收清单](../validation/README.md)。
+## 协议与数据库
 
-## 契约与维护
+[协议目录](../contracts/README.md)维护 OpenAPI、事件与插件 Schema。改动时核对 SDK、客户端和[总体架构](https://github.com/fnMrRice/MusicFS/blob/main/docs/architecture.md)。主库和实例库的结构由 SQLite 插件维护，结构变化以 [SQL 迁移](../../plugins/database/sqlite/migrations/README.md)交付。
 
-- 文档移动后运行 `python scripts/check-docs.py`，检查分类导航、相对链接及跨仓库入站链接；原分类与合并工具保留在 `scripts/reorganize-docs.py`，只有显式传入 `--apply` 才修改文件。
-- Server 仓库维护 OpenAPI、事件 Schema、插件协议、数据契约及数据库插件中的迁移；变更须同步检查 SDK、客户端兼容性及总体架构。
-- 协议版本与实现版本分别维护；未知能力返回明确错误，不以空结果冒充支持。
-- 发布时重新校验资产、任务代次、修订和权限；数据库事务不跨平台网络或普通 Provider 调用持有，存储后端的受控回调按 Backend 契约协调。
-- 新的 C++ 插件使用 CMake/C++23 独立 Worker，遵循[共同构建约定](../../../docs/native-plugins.md)，与 Client 原生库分别构建和验收。
-- 文件拆分、移动和提交遵循[工作约定](../../AGENTS.md)。
+在完整 MusicFS 工作区中运行 `python scripts/check-docs.py` 可检查文档导航、相对链接及跨仓库引用。其他开发约定见[仓库说明](../../AGENTS.md)。

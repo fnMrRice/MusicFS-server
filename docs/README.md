@@ -1,103 +1,43 @@
-# 服务端文档导航
+# 服务端文档
 
-首次使用从[运行与扫描](operations/running.md)开始；理解职责看[Server 架构](architecture.md)，开发看[源码导航](../src/README.md)。当前接口以 [OpenAPI 与 Schema](contracts/README.md)为准，尚未完成的能力和环境验收集中在[待验收清单](validation/README.md)。
+第一次启动服务，请从[本地运行与扫描](operations/running.md)开始。编写客户端可直接查阅 [HTTP 与 WebSocket 协议](contracts/README.md)，开发插件可从[插件架构](plugins/plugin-architecture.md)了解宿主和插件各自负责的部分。[English project overview](README.en.md)
 
-## 运行与部署
+## 部署与开发
 
-| 文档 | 内容 |
+| 主题 | 文档 |
 | --- | --- |
-| [本地运行与扫描](operations/running.md) | 构建、启动、目录选择与扫描 |
-| [部署](operations/deployment.md) | 双程序制品、外部工具、容器与 TLS 示例 |
-| [配置](operations/configuration.md) | YAML、覆盖顺序、权限、自动发现与应用方式 |
-| [日志](operations/logging.md) | 服务端与插件文件、按日合并压缩保留30天、等级与运行时管理 |
-| [备份与恢复](operations/backup.md) | 停服备份、校验、新目录恢复与回滚 |
-| [生命周期](operations/lifecycle.md) | 启动归属、本机租约、多客户端与退出 |
+| 运行服务 | [本地启动](operations/running.md) · [部署与 TLS](operations/deployment.md) · [配置](operations/configuration.md) · [生命周期](operations/lifecycle.md) |
+| 运维 | [日志](operations/logging.md) · [备份与恢复](operations/backup.md) |
+| 开发 | [Server 架构](architecture.md) · [源码导航](../src/README.md) · [开发与检查](development/README.md) · [依赖与工具](development/dependencies.md) |
+| 数据库 | [SQLite 迁移](../plugins/database/sqlite/migrations/README.md) |
+| 协议 | [OpenAPI 与 Schema](contracts/README.md) · [WebSocket 控制通道](contracts/control-channel.md) · [Web 接入](contracts/web-integration.md) |
+| 验证 | [待验收清单](validation/README.md) · [复验方法](validation/verification.md) · [测试夹具](validation/fixtures.md) |
 
-## 开发与协议
+## 曲库、资料与播放
 
-| 文档 | 内容 |
+| 主题 | 文档 |
 | --- | --- |
-| [Server 架构](architecture.md) | 模块、身份、状态与信任边界 |
-| [开发与检查](development/README.md) | 三个 Go 模块、测试布局及检查入口 |
-| [依赖与工具](development/dependencies.md) | 当前依赖用途与工具版本 |
-| [协议导航](contracts/README.md) | OpenAPI、HTTP 模型、事件及插件 Schema |
-| [控制通道](contracts/control-channel.md) | WebSocket 鉴权、心跳、播放控制、租约和状态通知；音频仍走 HTTP |
-| [Web 接入](contracts/web-integration.md) | 接口场景索引和前端必须保留的语义 |
-| [插件协议](contracts/plugins/v1/README.md) | 握手、角色、资源、扫描与配置协议 |
-| [平台账号协议](contracts/plugins/v1/account.md) | 登录挑战、账号状态和凭据边界 |
+| 入库与查询 | [扫描](library/scanning.md) · [目录刷新任务](library/tasks.md) · [曲库查询](library/catalog-query.md) · [歌手、专辑、曲目与来源](library/music-catalog.md) · [批量选择](library/track-selection.md) |
+| 曲目与专辑 | [来源曲目详情](library/source-track-details.md) · [来源专辑](library/albums.md) · [录音聚合](library/recording-groups.md) · [自动重复识别](library/duplicate-detection.md) |
+| 作品库 | [内容类型与作品资料](library/works.md) · [本地作品包](library/work-packages.md) |
+| 收藏与歌单 | [个人资料与播放历史](library/personal-library.md) · [个人与聚合歌单](library/playlists.md) · [来源歌单](library/source-playlists.md) · [远程同步](library/remote-playlists.md) · [推荐](library/recommendations.md) |
+| 识别与匹配 | [资产摘要与指纹](metadata/identification.md) · [录音匹配](metadata/matching.md) · [候选评分](../src/metadata/identification/candidates/README.md) · [指纹算法来源](../src/metadata/identification/fingerprint/REFERENCES.md) · [测试向量](../tests/testdata/identification/README.md) |
+| 歌词、封面与标签 | [资料补全](metadata/metadata.md) · [在线资料来源](metadata/online-scrapers.md) · [媒体对象](metadata/media.md) · [原件写回](metadata/writeback.md) · [补全任务](../src/metadata/enrichmentworker/README.md) |
+| 音频播放 | [音频处理](playback/audio-processing.md) · [网络来源播放](playback/network-sources.md) · [本地音效](playback/local-dsp.md) · [NCM 解密](playback/ncm.md) · [格式来源](../plugins/decoder/ncm/REFERENCES.md) · [处理缓存](playback/processed-cache.md) · [播放恢复](playback/recovery.md) |
 
-## 插件
+## 来源与插件
 
-| 文档 | 内容 |
+| 主题 | 文档 |
 | --- | --- |
-| [插件架构](plugins/plugin-architecture.md) | 当前能力、宿主责任与扩展前置条件 |
-| [SDK](plugins/plugin-sdk.md) | 公共模块、协议版本及发布兼容 |
-| [身份与名称](plugins/plugin-identity.md) | 插件 ID、实例 UUID、显示名与多实例声明 |
-| [管理](plugins/plugin-management.md) | 状态、操作、启用、重启停用和 WS 能力通知 |
-| [实例配置与目录](plugins/plugin-configuration.md) | 插件配置数据库、目录授权与管理 API |
-| [声明式设置页面](plugins/settings.md) | 插件字段、按钮、值校验与持久化 |
-| [DSP](plugins/dsp-plugins.md) | 有序处理链、PCM Worker 与定位限制 |
-| [音频编解码插件](plugins/audio-codecs.md) | 格式识别、解码链和显式转码能力 |
-| [常见 DSP 与声道转换](plugins/dsp-effects.md) | EQ、压缩器、混响，独立声道转换及 stereo/5.1/7.1 输出配置 |
-| [DSP 配置页面](plugins/dsp-settings.md) | 每用户链、管理员全局默认、输入输出协商与可调缓冲区 |
-| [存储后端](plugins/storage-plugins.md) | 必需 SQLite、Backend 契约与独立 Worker |
+| 来源 | [在线来源](providers/online.md) · [平台账号登录](providers/platform-login.md) · [Bilibili 公开音轨](providers/bilibili.md) · [在线来源模块](../plugins/source/online/README.md) · [刮削与在线插件的 API 来源](plugins/provider-api-sources.md) |
+| 开发插件 | [架构](plugins/plugin-architecture.md) · [SDK 说明](plugins/plugin-sdk.md) · [SDK 源码](../sdk/README.md) · [插件源码](../plugins/README.md) · [可选插件发行](plugins/optional-distribution.md) |
+| 插件协议 | [握手与资源访问](contracts/plugins/v1/README.md) · [平台账号协议](contracts/plugins/v1/account.md) · [目录身份](contracts/plugins/v1/directory-identity.md) |
+| 身份与配置 | [插件身份与名称](plugins/plugin-identity.md) · [插件管理](plugins/plugin-management.md) · [目录授权](plugins/plugin-configuration.md) · [声明式设置](plugins/settings.md) |
+| 音频插件 | [编解码](plugins/audio-codecs.md) · [播放插件职责](playback/plugin-boundaries.md) · [DSP 协议](plugins/dsp-plugins.md) · [效果与声道转换](plugins/dsp-effects.md) · [DSP 配置](plugins/dsp-settings.md) |
+| 其他插件 | [存储后端](plugins/storage-plugins.md) · [本地歌词与封面提取](../plugins/scraper/local/README.md) |
 
-## 曲库与歌单
+## 设计与图示
 
-| 文档 | 内容 |
-| --- | --- |
-| [扫描](library/scanning.md) | 范围、排除、监听、重试与完整发布 |
-| [目录刷新任务](library/tasks.md) | 按目录入队、本人与管理员查询、进度汇总和持久取消 |
-| [曲库查询](library/catalog-query.md) | 搜索、筛选、排序和固定结果分页 |
-| [录音聚合曲库](library/recording-groups.md) | 人工合并后按歌曲显示与多版本展开 |
-| [来源曲目详情](library/source-track-details.md) | 对应来源插件提供的分组字段、身份与版本校验 |
-| [自动重复识别](library/duplicate-detection.md) | 插件候选、后台识别、进度与人工确认 |
-| [来源专辑](library/albums.md) | 显式成员、发行关联和专辑封面 |
-| [内容类型与作品资料](library/works.md) | CD 专辑、ASMR、电台插件声明，按专辑选择普通曲目展示及作品资料管理 |
-| [本地作品包](library/work-packages.md) | 授权目录预览与导入、多层目录、音轨关联、附件及重导入 |
-| [个人数据](library/personal-library.md) | 资料、收藏与最近播放 |
-| [个人与聚合歌单](library/playlists.md) | 本地编辑、出处、隐藏与重建 |
-| [来源歌单列表](library/source-playlists.md) | 插件当前账号可见的歌单 |
-| [远程歌单同步](library/remote-playlists.md) | 显式导入、快照、保守移除与取消 |
-| [推荐](library/recommendations.md) | 按来源聚合、账号缓存及失败边界 |
+[当前组件图](diagrams/components.puml)展示服务端模块。[NFS / SMB 直连设计](design/nas-providers.md)、[Bilibili 来源设计](design/bilibili-provider.md)、[分阶段实施计划](design/nas-bilibili.md)及[设计图](diagrams/nas-bilibili.puml)记录扩展方案。Bilibili 已接入的能力以[实现说明](providers/bilibili.md)为准。
 
-## 识别与内容
-
-| 文档 | 内容 |
-| --- | --- |
-| [资产识别](metadata/identification.md) | 码率、SHA-512、本地指纹和后台任务 |
-| [录音匹配](metadata/matching.md) | 候选、人工关联、排除、解除与拆分 |
-| [资料补全](metadata/metadata.md) | Scraper、预览、人工选用与自动补缺 |
-| [媒体内容与存储](metadata/media.md) | 歌词/封面、缩略图、刮削文档、发布与回收 |
-| [原件写回](metadata/writeback.md) | Windows 本地 NTFS FLAC 的授权与恢复 |
-
-## 播放
-
-| 文档 | 内容 |
-| --- | --- |
-| [音频处理](playback/audio-processing.md) | 原流、处理链、输出表示和定位 |
-| [本地音效执行边界](playback/local-dsp.md) | 浏览器音效归属与服务端处理协商 |
-| [NCM](playback/ncm.md) | 本地解密 Worker、独立表示及资源限制 |
-| [处理缓存](playback/processed-cache.md) | 完整发布、私有复用、配额与回收 |
-| [播放恢复](playback/recovery.md) | 恢复预算、独立时间证据和重播提示 |
-
-## 在线来源与设计
-
-| 文档 | 内容 |
-| --- | --- |
-| [在线来源](providers/online.md) | 当前账号资料接口和各平台能力限制 |
-| [平台登录](providers/platform-login.md) | 三平台授权流程、隔离及未验范围 |
-| [NAS Provider 设计](design/nas-providers.md) | 尚未实现的 NFS/SMB 直连 |
-| [Bilibili 设计](design/bilibili-provider.md) | 尚未实现的视频音轨、收藏夹和音频歌单 |
-| [NAS / Bilibili 实施](design/nas-bilibili.md) | 资源协议前置项、任务与候选依赖 |
-
-设计方案不表示已实现；登录接口存在不表示真实账号已通过验收，在线整曲交付尚未实现。
-
-## 验收、源码与图示
-
-- [待验收清单](validation/README.md)、[复验方法](validation/verification.md)、[测试夹具](validation/fixtures.md)：只保留未关闭项目与可复用方法。
-- [源码导航](../src/README.md)、[插件源码](../plugins/README.md)、[SDK 源码](../sdk/README.md)、[在线插件模块](../plugins/source/online/README.md)。
-- [补全任务内部说明](../src/metadata/enrichmentworker/README.md)、[候选比较](../src/metadata/identification/candidates/README.md)、[指纹算法来源](../src/metadata/identification/fingerprint/REFERENCES.md)、[指纹夹具](../tests/testdata/identification/README.md)。
-- [数据库迁移](../plugins/database/sqlite/migrations/README.md)、[本地 Scraper](../plugins/scraper/local/README.md)、[NCM 格式来源](../plugins/decoder/ncm/REFERENCES.md)。
-- PlantUML 源码：[当前组件](diagrams/components.puml)、[NAS / Bilibili 设计](diagrams/nas-bilibili.puml)。
-- 跨仓库入口：[总体架构](../../docs/architecture.md)、[共同插件边界](../../docs/plugin-boundaries.md)、[C++ 构建约定](../../docs/native-plugins.md)、[Web](../../web/README.md)、[Client](../../client/README.md)。
+跨端文档由主仓库维护。[总体架构](https://github.com/fnMrRice/MusicFS/blob/main/docs/architecture.md) · [插件职责](https://github.com/fnMrRice/MusicFS/blob/main/docs/plugin-boundaries.md) · [C++ 构建约定](https://github.com/fnMrRice/MusicFS/blob/main/docs/native-plugins.md)
