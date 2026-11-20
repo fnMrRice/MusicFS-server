@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/scraper"
+	"github.com/fnMrRice/MusicFS-server/src/library/music"
 )
 
 type lookupTestTransport func(*http.Request) (*http.Response, error)
@@ -132,6 +133,40 @@ func TestBangumiSeparatesPortraitAndSubjectData(t *testing.T) {
 	track := items[0].Tracks[1]
 	if track.ExternalID != "123" || len(track.LocalizedTitles) != 1 || track.LocalizedTitles[0] != (scraper.LocalizedTitle{Language: "zh", Title: "乙"}) {
 		t.Fatalf("missing episode identity or translated title: %#v", track)
+	}
+}
+
+func TestBangumiChapterLayoutProducesValidTrackNames(t *testing.T) {
+	client := lookupTestClient(t, "api.bgm.tv", func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v0/subjects/2584":
+			fmt.Fprint(w, `{"id":2584,"name":"初音ミク ベスト～impacts～","type":3}`)
+		case "/v0/episodes":
+			fmt.Fprint(w, `{"total":2,"data":[
+				{"id":15946,"sort":17,"name":"Special Track:\t卑怯戦隊うろたんだー / シンP feat.MEIKO,KAITO,ミク,リン&amp;レン"},
+				{"id":20000,"sort":18,"name":" \r\n ","name_cn":"曲名  A　 B　\t \r\n　副题"}
+			]}`)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+	items, err := Bangumi(client).Search(t.Context(), "albumTracks", scraper.Query{ExternalID: "2584"})
+	if err != nil || len(items) != 1 || len(items[0].Tracks) != 2 {
+		t.Fatalf("unexpected album tracks: %#v %v", items, err)
+	}
+	first, second := items[0].Tracks[0], items[0].Tracks[1]
+	if first.ExternalID != "15946" || first.Title != "Special Track: 卑怯戦隊うろたんだー / シンP feat.MEIKO,KAITO,ミク,リン&amp;レン" {
+		t.Errorf("unexpected special track title: %#v", first)
+	}
+	if second.Title != "曲名  A　 B 副题" || len(second.LocalizedTitles) != 1 ||
+		second.LocalizedTitles[0] != (scraper.LocalizedTitle{Language: "zh", Title: second.Title}) {
+		t.Errorf("unexpected Chinese fallback or localized title: %#v", second)
+	}
+	for _, track := range items[0].Tracks {
+		fields := music.TrackFields{Title: track.Title, LocalizedTitles: track.LocalizedTitles}
+		if _, err := (music.TrackInput{TrackFields: fields}).Normalize(); err != nil {
+			t.Errorf("unusable track metadata for episode %s: %v", track.ExternalID, err)
+		}
 	}
 }
 
