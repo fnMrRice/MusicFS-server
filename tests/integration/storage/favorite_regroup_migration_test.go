@@ -52,7 +52,7 @@ func TestFavoriteRegroupMigrationUpgradesExistingCollections(t *testing.T) {
 	}
 	defer store.Close()
 	var version int
-	if err = store.DB.QueryRowContext(t.Context(), "SELECT MAX(version) FROM schema_migrations").Scan(&version); err != nil || version != 39 {
+	if err = store.DB.QueryRowContext(t.Context(), "SELECT MAX(version) FROM schema_migrations").Scan(&version); err != nil || version < 39 {
 		t.Fatalf("favorite migration was not applied: %d %v", version, err)
 	}
 	_, err = store.ManualLink(t.Context(), "admin", matching.LinkRequest{SourceTrackIDs: []string{"source-a", "source-b"}}, "upgraded-favorites")

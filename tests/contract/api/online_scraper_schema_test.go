@@ -20,16 +20,23 @@ func TestOnlineScraperModels(t *testing.T) {
 	candidate := onlinescrape.Candidate{Item: item, Token: "token"}
 	selected := works.ScrapedField{Field: "albumTracks", PluginID: "musicfs.scraper.musicbrainz", Item: item}
 	for name, value := range map[string]any{
-		"OnlineScrapers":          map[string]any{"items": service.List()},
-		"OnlineScraperSearch":     map[string]any{"field": "artistImage", "query": scraper.Query{Artist: "歌手"}},
-		"OnlineScraperCandidates": map[string]any{"items": []onlinescrape.Candidate{candidate}},
-		"WorkScrapedFields":       map[string]any{"items": []works.ScrapedField{selected}},
+		"OnlineScrapers":              map[string]any{"items": service.List()},
+		"OnlineScraperSearch":         map[string]any{"field": "artistImage", "query": scraper.Query{Artist: "歌手"}},
+		"OnlineScraperCandidates":     map[string]any{"items": []onlinescrape.Candidate{candidate}},
+		"WorkScrapedFields":           map[string]any{"items": []works.ScrapedField{selected}},
+		"MusicAlbumScrapedFields":     map[string]any{"items": []works.ScrapedField{selected}},
+		"MusicAlbumScrapedFieldInput": map[string]any{"expectedRevision": 1, "pluginId": "musicfs.scraper.musicbrainz", "candidateToken": "token"},
+		"ScrapedMusicAlbumRevision":   map[string]any{"revision": 2},
 	} {
 		b, err := json.Marshal(value)
 		if err != nil {
 			t.Fatal(err)
 		}
 		testkit.ValidateHTTP(t, name, b)
+	}
+	albumFields := testkit.ContractSchema(t, "http", "MusicAlbumScrapedFields")
+	if err := albumFields.Validate(testkit.DecodeJSON(t, []byte(`{"items":[{"field":"lyrics","pluginId":"fixture","item":{"id":"one","title":"Wrong field"}}]}`))); err == nil {
+		t.Fatal("album fields accepted track lyrics")
 	}
 	schema := testkit.ContractSchema(t, "http", "OnlineScraperSearch")
 	for _, data := range []string{`{"field":"albumTracks","query":{}}`, `{"field":"unknown","query":{"title":"x"}}`, `{"field":"lyrics","query":{"country":"tw"}}`} {

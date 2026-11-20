@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/library/works"
 )
 
 type Artist struct {
@@ -115,4 +116,6 @@ type Repository interface {
 	MusicAlbum(context.Context, string, string) (Album, error)
 	MusicAlbums(context.Context, string, Query) (AlbumPage, error)
 	SaveMusicAlbum(context.Context, string, string, int64, AlbumFields, string) (Album, error)
+	MusicAlbumScrapedFields(context.Context, string, string) ([]works.ScrapedField, error)
+	SelectMusicAlbumScrapedField(context.Context, string, string, int64, works.ScrapedField, string) (int64, error)
 }

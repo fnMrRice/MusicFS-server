@@ -2,6 +2,8 @@
 
 打开作品详情中的「搜索在线资料」，或从曲目入口搜索歌词、封面。选择内容和来源，核对候选的版本、来源页面及预览后选用。作品资料按字段保存，并保留来源编号；后续编辑作品标题或简介会保留已选曲目表和图像。选用来源曲目的歌词或封面会发布到媒体对象库，并通过现有媒体修订与人工锁生效。
 
+「曲目列表 → 专辑」打开具体专辑后，也可使用「搜索在线资料」查询专辑详情、专辑曲目和专辑封面。选用结果按当前音乐专辑和字段独立保存，刷新或重启后仍可读取；每次选用校验并递增专辑修订，同时更新曲库修订。已有专辑名称、手填资料、曲目标签与关联保留；刮削曲目表作为资料预览，不自动创建、删除或重排曲库曲目。「未知专辑」没有独立专辑身份，不提供此入口。
+
 | 插件 | 声明的内容 | 查询方式 |
 | --- | --- | --- |
 | MusicBrainz | 曲目详情、专辑详情、专辑曲目、歌手详情 | 名称、对应实体的 MBID，或录音的 ISRC。[接口](https://musicbrainz.org/doc/MusicBrainz_API) |
@@ -21,4 +23,5 @@
 - `GET /api/v1/scrapers` 列出在线插件及其字段。本地提取实例按原有 `GET /api/v1/scraper-instances` 查询。
 - `POST /api/v1/scrapers/{id}/search` 接受一个字段和结构化查询，查询结果包括来源信息及短期候选令牌。预览绑定当前用户、插件和字段，过期或 Server 重启后可重新搜索。
 - `PUT /api/v1/works/{id}/scraped-fields/{field}` 人工选用作品的一个字段。请求提供 `pluginId`、`candidateToken`、`expectedRevision` 和幂等键。用 `GET /api/v1/works/{id}/scraped-fields` 读取已保存的资料。
+- `GET /api/v1/library/albums/{id}/scraped-fields` 读取当前用户音乐专辑已选用的资料；`PUT /api/v1/library/albums/{id}/scraped-fields/{field}` 按音乐专辑修订选用 `albumDetails`、`albumTracks` 或 `artwork`，请求提供 `pluginId`、`candidateToken`、`expectedRevision` 和幂等键，成功返回新的 `revision`。重放相同成功请求不依赖短期候选仍然有效。
 - `PUT /api/v1/source-tracks/{id}/scraped-fields/{field}` 支持 `lyrics` 和 `artwork`。请求还需提供 `assetId` 与 `assetVersion`；修订从该来源曲目的媒体选择接口读取。成功后通过现有媒体接口读取正文与来源。

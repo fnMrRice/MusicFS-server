@@ -6,6 +6,7 @@ import (
 	"context"
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/library/albums"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/music"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
@@ -17,8 +18,12 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
-	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) Releases(a0 context.Context, a1 string, a2 string, a3 int) (r0 []albums.Release, err error) {
+	err = c.Invoke(a0, "Releases", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) RemotePlaylist(a0 context.Context, a1 string, a2 string) (r0 playlists.RemotePlaylist, err error) {
 	err = c.Invoke(a0, "RemotePlaylist", []any{a1, a2}, []any{&r0})
@@ -132,10 +137,5 @@ func (c *Client) ScanStatus(a0 context.Context, a1 string, a2 string) (r0 jobs.S
 
 func (c *Client) SearchPlaylists(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 []playlists.Playlist, err error) {
 	err = c.Invoke(a0, "SearchPlaylists", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SelectContent(a0 context.Context, a1 string, a2 mediastore.SelectRequest, a3 string) (r0 mediastore.Selection, err error) {
-	err = c.Invoke(a0, "SelectContent", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
 }
