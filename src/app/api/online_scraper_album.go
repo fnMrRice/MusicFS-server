@@ -2,7 +2,9 @@ package api
 
 import (
 	"net/http"
+	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library/music"
@@ -13,6 +15,30 @@ import (
 // RegisterOnlineAlbumScrapers 为曲目列表中的专辑保存逐字段刮削资料。
 func (s *Server) RegisterOnlineAlbumScrapers(catalog *onlinescrape.Service, repo music.Repository) {
 	s.registerAlbumMetadataMerge(catalog, repo)
+	s.register("POST /api/v1/library/albums/{id}/auto-scrape", true, true, 90*time.Second, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
+		var input struct {
+			ProviderInstanceID *string `json:"providerInstanceId"`
+		}
+		if err := DecodeJSON(w, r, &input); err != nil {
+			return err
+		}
+		var provider string
+		if input.ProviderInstanceID != nil {
+			provider = *input.ProviderInstanceID
+			if !instanceid.Valid(provider) {
+				return domain.Fail("INVALID_ARGUMENT", "Invalid provider instance identifier")
+			}
+		}
+		target, err := repo.MusicAlbumScrapeTarget(r.Context(), session.User.ID, r.PathValue("id"), provider)
+		if err != nil {
+			return err
+		}
+		items, err := catalog.SearchAlbum(r.Context(), session.User.ID, target)
+		if err != nil {
+			return err
+		}
+		return WriteJSON(w, http.StatusOK, map[string]any{"items": items})
+	})
 	s.Handle("GET /api/v1/library/albums/{id}/scraped-fields", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		items, err := repo.MusicAlbumScrapedFields(r.Context(), session.User.ID, r.PathValue("id"))
 		if err != nil {

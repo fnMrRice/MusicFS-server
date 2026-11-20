@@ -120,6 +120,11 @@ func (c *Client) MusicAlbum(a0 context.Context, a1 string, a2 string) (r0 music.
 	return r0, err
 }
 
+func (c *Client) MusicAlbumScrapeTarget(a0 context.Context, a1 string, a2 string, a3 string) (r0 music.AlbumScrapeTarget, err error) {
+	err = c.Invoke(a0, "MusicAlbumScrapeTarget", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) MusicAlbumScrapedFields(a0 context.Context, a1 string, a2 string) (r0 []works.ScrapedField, err error) {
 	err = c.Invoke(a0, "MusicAlbumScrapedFields", []any{a1, a2}, []any{&r0})
 	return r0, err
@@ -127,10 +132,5 @@ func (c *Client) MusicAlbumScrapedFields(a0 context.Context, a1 string, a2 strin
 
 func (c *Client) MusicAlbums(a0 context.Context, a1 string, a2 music.Query) (r0 music.AlbumPage, err error) {
 	err = c.Invoke(a0, "MusicAlbums", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) MusicArtist(a0 context.Context, a1 string, a2 string) (r0 music.Artist, err error) {
-	err = c.Invoke(a0, "MusicArtist", []any{a1, a2}, []any{&r0})
 	return r0, err
 }

@@ -16,8 +16,12 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
+
+func (c *Client) RecoverWritebackQueue(a0 context.Context, a1 map[string]bool) (err error) {
+	err = c.Invoke(a0, "RecoverWritebackQueue", []any{a1}, []any{})
+	return err
+}
 
 func (c *Client) ReferencePublication(a0 context.Context, a1 string, a2 string) (err error) {
 	err = c.Invoke(a0, "ReferencePublication", []any{a1, a2}, []any{})
@@ -132,9 +136,4 @@ func (c *Client) SaveMusicTrack(a0 context.Context, a1 string, a2 string, a3 int
 func (c *Client) SavePersonalProfile(a0 context.Context, a1 string, a2 *string) (r0 personal.Profile, err error) {
 	err = c.Invoke(a0, "SavePersonalProfile", []any{a1, a2}, []any{&r0})
 	return r0, err
-}
-
-func (c *Client) SavePluginOperation(a0 context.Context, a1 plugincontrol.Operation) (err error) {
-	err = c.Invoke(a0, "SavePluginOperation", []any{a1}, []any{})
-	return err
 }

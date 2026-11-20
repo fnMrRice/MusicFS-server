@@ -14,8 +14,14 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) SavePluginOperation(a0 context.Context, a1 plugincontrol.Operation) (err error) {
+	err = c.Invoke(a0, "SavePluginOperation", []any{a1}, []any{})
+	return err
+}
 
 func (c *Client) SaveResult(a0 context.Context, a1 string, a2 string, a3 string, a4 string, a5 []uint8) (err error) {
 	err = c.Invoke(a0, "SaveResult", []any{a1, a2, a3, a4, a5}, []any{})
@@ -129,10 +135,5 @@ func (c *Client) Split(a0 context.Context, a1 string, a2 matching.SplitRequest, 
 
 func (c *Client) Timeline(a0 context.Context, a1 string, a2 string) (r0 timeline.Evidence, err error) {
 	err = c.Invoke(a0, "Timeline", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) Unlink(a0 context.Context, a1 string, a2 matching.UnlinkRequest, a3 string) (r0 matching.Mutation, err error) {
-	err = c.Invoke(a0, "Unlink", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
 }

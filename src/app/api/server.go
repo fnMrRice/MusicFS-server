@@ -57,19 +57,19 @@ func New(options Options) *Server {
 
 // Handle registers a bounded control request. Register routes before serving.
 func (s *Server) Handle(pattern string, authenticated, mutation bool, handler Handler) {
-	s.register(pattern, authenticated, mutation, false, handler)
+	s.register(pattern, authenticated, mutation, s.options.ControlTimeout, handler)
 }
 
 // HandleStream keeps request cancellation without imposing a control deadline.
 func (s *Server) HandleStream(pattern string, handler Handler) {
-	s.register(pattern, true, false, true, handler)
+	s.register(pattern, true, false, 0, handler)
 }
 
-func (s *Server) register(pattern string, authenticated, mutation, stream bool, handler Handler) {
+func (s *Server) register(pattern string, authenticated, mutation bool, timeout time.Duration, handler Handler) {
 	authenticated = authenticated || mutation
 	s.mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
-		if !stream {
-			ctx, cancel := context.WithTimeout(r.Context(), s.options.ControlTimeout)
+		if timeout > 0 {
+			ctx, cancel := context.WithTimeout(r.Context(), timeout)
 			defer cancel()
 			r = r.WithContext(ctx)
 			r.Body = http.MaxBytesReader(w, r.Body, MaxRequestBytes)

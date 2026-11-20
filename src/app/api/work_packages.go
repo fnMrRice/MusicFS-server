@@ -75,7 +75,7 @@ func (s *Server) RegisterWorkPackages(service *workpackages.Service) {
 
 // packageMutation 允许有界的目录枚举与音频探测，仍保留鉴权、CSRF、排空和正文限制。
 func (s *Server) packageMutation(pattern string, handler Handler) {
-	s.register(pattern, true, true, true, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
+	s.register(pattern, true, true, 0, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		if r.URL.RawQuery != "" {
 			return invalidWorkInput()
 		}

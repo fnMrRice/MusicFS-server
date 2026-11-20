@@ -8,9 +8,15 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) Unlink(a0 context.Context, a1 string, a2 matching.UnlinkRequest, a3 string) (r0 matching.Mutation, err error) {
+	err = c.Invoke(a0, "Unlink", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) UnlockContent(a0 context.Context, a1 string, a2 mediastore.UnlockRequest, a3 string) (r0 mediastore.Selection, err error) {
 	err = c.Invoke(a0, "UnlockContent", []any{a1, a2, a3}, []any{&r0})

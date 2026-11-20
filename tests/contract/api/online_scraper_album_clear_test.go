@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -21,6 +22,7 @@ func TestClearAlbumScrapedFieldsHTTP(t *testing.T) {
 		t.Fatal(err)
 	}
 	server.RegisterOnlineAlbumScrapers(service, store)
+	server.RegisterMusicLibrary(store)
 	ctx := t.Context()
 	album := func(owner string) string {
 		t.Helper()
@@ -31,6 +33,21 @@ func TestClearAlbumScrapedFieldsHTTP(t *testing.T) {
 		return created.ID
 	}
 	id, other := album("admin"), album("other")
+	if _, err := store.SaveMusicTrack(ctx, "admin", "", 0, music.TrackInput{TrackFields: music.TrackFields{Title: "No album"}}, "unassigned-track"); err != nil {
+		t.Fatal(err)
+	}
+	checkUnscraped := func(count int) {
+		t.Helper()
+		r := httptest.NewRequest(http.MethodGet, "/api/v1/library/albums?unscrapedOnly=true&limit=1", nil)
+		r.AddCookie(cookie)
+		w := httptest.NewRecorder()
+		server.ServeHTTP(w, r)
+		var page music.AlbumPage
+		if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &page) != nil || len(page.Items) != count || page.NextAfter != nil || count > 0 && page.Items[0].ID != id {
+			t.Fatalf("unexpected unscraped albums: %d %s", w.Code, w.Body.String())
+		}
+	}
+	checkUnscraped(1)
 	selectDetails := func(id, owner string, revision int64, key string) {
 		t.Helper()
 		field := works.ScrapedField{Field: "albumDetails", PluginID: "album-fixture", CandidateToken: "details-token",
@@ -41,6 +58,7 @@ func TestClearAlbumScrapedFieldsHTTP(t *testing.T) {
 	}
 	selectDetails(id, "admin", 1, "add-details")
 	selectDetails(other, "other", 1, "add-details")
+	checkUnscraped(0)
 	clear := func(id, body, key string, auth bool, csrf string, want int) []byte {
 		t.Helper()
 		r := httptest.NewRequest(http.MethodDelete, "/api/v1/library/albums/"+id+"/scraped-fields", strings.NewReader(body))
@@ -68,6 +86,7 @@ func TestClearAlbumScrapedFieldsHTTP(t *testing.T) {
 	clear(other, body, "foreign-album", true, token, 404)
 	clear(id, `{"expectedRevision":1}`, "stale-clear", true, token, 409)
 	first := clear(id, body, "clear-album", true, token, 200)
+	checkUnscraped(1)
 	testkit.ValidateHTTP(t, "ScrapedMusicAlbumRevision", first)
 	if !strings.Contains(string(first), `"revision":3`) {
 		t.Fatalf("unexpected clear revision: %s", first)

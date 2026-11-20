@@ -17,6 +17,7 @@ type scrapedFieldInput struct {
 }
 
 func (s *Server) RegisterOnlineScrapers(catalog *onlinescrape.Service, repo works.Repository, media onlineTrackMedia, client *http.Client) {
+	s.registerAlbumAutoSettings(catalog)
 	s.Handle("GET /api/v1/scrapers", true, false, func(w http.ResponseWriter, r *http.Request, _ auth.Session) error {
 		return WriteJSON(w, http.StatusOK, map[string]any{"items": catalog.List()})
 	})

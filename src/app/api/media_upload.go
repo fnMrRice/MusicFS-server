@@ -17,7 +17,7 @@ const MediaUploadTimeout = 30 * time.Second
 // HandleMediaUpload is the only larger request-body registration. Authentication,
 // Origin/CSRF and draining checks still run before the body can reach the service.
 func (s *Server) HandleMediaUpload(pattern string, handler Handler) {
-	s.register(pattern, true, true, true, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
+	s.register(pattern, true, true, 0, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		if r.ContentLength > MaxMediaUploadBytes {
 			return domain.Fail("INVALID_ARGUMENT", "Media upload exceeds the HTTP size limit")
 		}

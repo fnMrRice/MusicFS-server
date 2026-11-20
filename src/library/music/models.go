@@ -82,6 +82,7 @@ type Query struct {
 	After, Q, ProviderID, ArtistID, AlbumID, Genre, Unknown string
 	Limit                                                   int
 	SourceOnly                                              bool
+	UnscrapedOnly                                           bool
 }
 
 type ArtistItem struct {
@@ -92,6 +93,11 @@ type ArtistItem struct {
 type AlbumItem struct {
 	Album
 	TrackCount int `json:"trackCount"`
+}
+
+// AlbumScrapeTarget 从可见的专辑成员取得真实音乐源和最常见的艺人署名。
+type AlbumScrapeTarget struct {
+	Name, Artist, SourcePluginID string
 }
 
 type ArtistPage struct {
@@ -132,6 +138,7 @@ type Repository interface {
 	SaveMusicArtistNames(context.Context, string, string, int64, ArtistNamesInput, string) (Artist, error)
 	MusicGenres(context.Context, string, Query) (GenrePage, error)
 	MusicAlbum(context.Context, string, string) (Album, error)
+	MusicAlbumScrapeTarget(context.Context, string, string, string) (AlbumScrapeTarget, error)
 	MusicAlbums(context.Context, string, Query) (AlbumPage, error)
 	SaveMusicAlbum(context.Context, string, string, int64, AlbumFields, string) (Album, error)
 	MusicAlbumScrapedFields(context.Context, string, string) ([]works.ScrapedField, error)

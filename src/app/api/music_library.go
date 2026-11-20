@@ -128,17 +128,23 @@ func registerMusicList[T any](s *Server, kind string, load func(context.Context,
 				allowed[field] = false
 			}
 		}
+		if kind == "albums" {
+			allowed["unscrapedOnly"] = false
+		}
 		if err = catalogParameters(params, allowed); err != nil {
 			return err
 		}
-		if params.Has("sourceOnly") && params.Get("sourceOnly") != "true" && params.Get("sourceOnly") != "false" {
-			return invalidCatalogParameter()
+		for _, key := range []string{"sourceOnly", "unscrapedOnly"} {
+			if params.Has(key) && params.Get(key) != "true" && params.Get(key) != "false" {
+				return invalidCatalogParameter()
+			}
 		}
 		limit, err := catalogLimit(params)
 		if err != nil {
 			return err
 		}
 		query := music.Query{Limit: limit, After: params.Get("after"), Q: params.Get("q"), ProviderID: params.Get("providerInstanceId"), ArtistID: params.Get("artistId"), AlbumID: params.Get("albumId"), Genre: params.Get("genre"), Unknown: params.Get("unknown"), SourceOnly: params.Get("sourceOnly") == "true"}
+		query.UnscrapedOnly = params.Get("unscrapedOnly") == "true"
 		res, err := load(r.Context(), a.User.ID, query)
 		if err != nil {
 			return err

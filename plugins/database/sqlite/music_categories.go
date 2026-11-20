@@ -77,6 +77,7 @@ func (s *Store) MusicAlbums(ctx context.Context, owner string, q music.Query) (m
 	err = musicRows(ctx, tx, musicCategoryScope+`SELECT `+albumColumns+`,COUNT(DISTINCT scope.id) FROM music_albums a
  LEFT JOIN music_album_tracks x ON x.album_id=a.id LEFT JOIN scope ON scope.id=x.track_id
  WHERE a.owner=? AND a.id>? AND instr(lower(a.name),lower(?))>0 AND `+ordinaryMusicAlbumMetadata+`
+ AND (NOT ? OR NOT EXISTS(SELECT 1 FROM music_album_scraped_fields f WHERE f.album_id=a.id))
  GROUP BY a.id HAVING COUNT(scope.id)>0 OR (?='' AND a.origin='manual' AND COUNT(x.track_id)=0)
  ORDER BY a.id LIMIT ?`, func(r *sql.Rows) error {
 		var a music.AlbumItem
@@ -85,16 +86,18 @@ func (s *Store) MusicAlbums(ctx context.Context, owner string, q music.Query) (m
 		}
 		res.Items = append(res.Items, a)
 		return nil
-	}, owner, owner, owner, q.ProviderID, q.ProviderID, owner, q.After, q.Q, q.ProviderID, q.Limit+1)
+	}, owner, owner, owner, q.ProviderID, q.ProviderID, owner, q.After, q.Q, q.UnscrapedOnly, q.ProviderID, q.Limit+1)
 	if err != nil {
 		return res, err
 	}
-	n, err := missingMusic(ctx, tx, owner, q, "NOT EXISTS(SELECT 1 FROM music_album_tracks x JOIN music_albums a ON a.id=x.album_id WHERE x.track_id=m.id AND "+ordinaryMusicAlbumMetadata+")")
-	if err != nil {
-		return res, err
-	}
-	if n > 0 {
-		res.Items = append(res.Items, music.AlbumItem{Album: music.Album{AlbumFields: music.AlbumFields{SourceLinks: []music.AlbumSourceLink{}}}, TrackCount: n})
+	if !q.UnscrapedOnly {
+		n, err := missingMusic(ctx, tx, owner, q, "NOT EXISTS(SELECT 1 FROM music_album_tracks x JOIN music_albums a ON a.id=x.album_id WHERE x.track_id=m.id AND "+ordinaryMusicAlbumMetadata+")")
+		if err != nil {
+			return res, err
+		}
+		if n > 0 {
+			res.Items = append(res.Items, music.AlbumItem{Album: music.Album{AlbumFields: music.AlbumFields{SourceLinks: []music.AlbumSourceLink{}}}, TrackCount: n})
+		}
 	}
 	if len(res.Items) > q.Limit {
 		res.Items = res.Items[:q.Limit]

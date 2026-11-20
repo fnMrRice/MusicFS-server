@@ -7,6 +7,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
@@ -18,6 +19,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 )
+
+func (c *Client) Publish(a0 context.Context, a1 jobs.Job, a2 library.ScanPublication) (err error) {
+	err = c.Invoke(a0, "Publish", []any{a1, a2}, []any{})
+	return err
+}
 
 func (c *Client) PublishEvidence(a0 context.Context, a1 string, a2 identification.Ticket, a3 identification.Result) (err error) {
 	err = c.Invoke(a0, "PublishEvidence", []any{a1, a2, a3}, []any{})
@@ -131,10 +137,5 @@ func (c *Client) RecoverPluginOperations(a0 context.Context) (err error) {
 
 func (c *Client) RecoverRemoteSync(a0 context.Context) (err error) {
 	err = c.Invoke(a0, "RecoverRemoteSync", []any{}, []any{})
-	return err
-}
-
-func (c *Client) RecoverWritebackQueue(a0 context.Context, a1 map[string]bool) (err error) {
-	err = c.Invoke(a0, "RecoverWritebackQueue", []any{a1}, []any{})
 	return err
 }

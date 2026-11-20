@@ -5,8 +5,6 @@ package rpcbackend
 import (
 	"context"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
-	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/music"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
@@ -15,6 +13,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"time"
 )
+
+func (c *Client) MusicArtist(a0 context.Context, a1 string, a2 string) (r0 music.Artist, err error) {
+	err = c.Invoke(a0, "MusicArtist", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) MusicArtists(a0 context.Context, a1 string, a2 music.Query) (r0 music.ArtistPage, err error) {
 	err = c.Invoke(a0, "MusicArtists", []any{a1, a2}, []any{&r0})
@@ -131,9 +134,4 @@ func (c *Client) ProviderScanState(a0 context.Context, a1 string, a2 string) (r0
 		return "failed"
 	}
 	return r0
-}
-
-func (c *Client) Publish(a0 context.Context, a1 jobs.Job, a2 library.ScanPublication) (err error) {
-	err = c.Invoke(a0, "Publish", []any{a1, a2}, []any{})
-	return err
 }
