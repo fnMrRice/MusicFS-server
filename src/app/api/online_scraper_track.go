@@ -49,7 +49,7 @@ func (s *Server) registerScrapedTrack(catalog *onlinescrape.Service, media onlin
 		if err != nil {
 			return err
 		}
-		body, mime, err := catalog.OpenMedia(ctx, selected, client)
+		body, mime, err := catalog.OpenMedia(ctx, owner, selected, client)
 		if err != nil {
 			return err
 		}

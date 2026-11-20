@@ -91,6 +91,11 @@ func (s *Service) Read(ctx context.Context, owner, id string) (Page, error) {
 			return Page{}, err
 		}
 	}
+	if p.Validate != nil {
+		if err := p.Validate(r.Values); err != nil {
+			return Page{}, err
+		}
+	}
 	job := Job{Status: "idle"}
 	if p.Job != nil {
 		job, err = p.Job(ctx, owner)
@@ -108,6 +113,11 @@ func (s *Service) Update(ctx context.Context, owner, id string, r Request) (Page
 	values, err := Normalize(p.Schema, r.Values)
 	if err != nil {
 		return Page{}, err
+	}
+	if p.Validate != nil {
+		if err := p.Validate(values); err != nil {
+			return Page{}, err
+		}
 	}
 	if _, err = s.repo.PutPluginSettings(ctx, owner, id, *r.ExpectedRevision, values); err != nil {
 		return Page{}, err
