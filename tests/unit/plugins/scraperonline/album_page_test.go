@@ -90,6 +90,22 @@ func TestAlbumPageLookupRejectsForeignAndAmbiguousPagesWithoutRequests(t *testin
 			t.Fatal("non-album or conflicting page identity was accepted")
 		}
 	}
+	for _, tc := range []struct {
+		plugin   scraper.Plugin
+		page, id string
+	}{
+		{online.NetEase(client), "https://music.163.com/album?id=12&id=23", ""},
+		{online.NetEase(client), "https://music.163.com/album?id=12#/album?id=23", ""},
+		{online.NetEase(client), "https://music.163.com/#/song?id=23", ""},
+		{online.NetEase(client), "https://music.163.com.example/album?id=23", ""},
+		{online.QQMusic(client), "https://y.qq.com/n/ryqq/albumDetail/0Ab", "0ab"},
+		{online.QQMusic(client), "https://y.qq.com/n/ryqq/songDetail/0Ab", ""},
+		{online.QQMusic(client), "https://y.qq.com/n/ryqq/albumDetail/x%2Fy", ""},
+	} {
+		if _, err := tc.plugin.Search(t.Context(), "albumDetails", scraper.Query{SourceURL: tc.page, ExternalID: tc.id}); err == nil {
+			t.Fatal("invalid or conflicting album page accepted", tc.page)
+		}
+	}
 }
 
 func TestAlbumTracksRejectIncompleteCatalogResponses(t *testing.T) {

@@ -46,7 +46,8 @@ func Version(pluginID string) string {
 	case "musicfs.scraper.local":
 		return LocalScraperVersion
 	case "musicfs.scraper.musicbrainz", "musicfs.scraper.coverartarchive", "musicfs.scraper.acoustid",
-		"musicfs.scraper.lrclib", "musicfs.scraper.itunes", "musicfs.scraper.bangumi", "musicfs.scraper.dlsite":
+		"musicfs.scraper.lrclib", "musicfs.scraper.itunes", "musicfs.scraper.bangumi", "musicfs.scraper.dlsite",
+		"musicfs.scraper.netease", "musicfs.scraper.qqmusic":
 		return OnlineScrapersVersion
 	case "musicfs.plugin.source.netease":
 		return NetEaseVersion

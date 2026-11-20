@@ -108,17 +108,21 @@ func TestScraperProxySettingsHTTPSchemaAuthorizationRevisionAndIsolation(t *test
 	if err := json.Unmarshal(managed.Body.Bytes(), &management); err != nil {
 		t.Fatal(err)
 	}
-	found := 0
+	configurable := make(map[string]bool)
 	for _, item := range management.Items {
-		if strings.HasPrefix(item.PluginID, "musicfs.scraper.") && !item.SettingsAvailable {
-			t.Fatal("scraper management snapshot omitted settings", item.PluginID)
-		}
 		if strings.HasPrefix(item.PluginID, "musicfs.scraper.") {
-			found++
+			configurable[item.PluginID] = item.SettingsAvailable
 		}
 	}
-	if found != 7 {
-		t.Fatalf("expected seven configurable scrapers, got %d", found)
+	for _, source := range scrapers.List() {
+		if !configurable[source.PluginID] {
+			t.Fatal("scraper management snapshot omitted settings", source.PluginID)
+		}
+	}
+	for _, id := range []string{"musicfs.scraper.netease", "musicfs.scraper.qqmusic"} {
+		if !configurable[id] {
+			t.Fatal("missing bundled platform scraper", id)
+		}
 	}
 	if strings.Contains(managed.Body.String(), "17890") || strings.Contains(managed.Body.String(), "proxyUrl") {
 		t.Fatal("management snapshot disclosed proxy settings")

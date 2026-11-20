@@ -9,7 +9,7 @@ import (
 
 func Catalog(client *http.Client, acoustIDKey string) []scraper.Plugin {
 	factories := []func(*http.Client) scraper.Plugin{
-		MusicBrainz, CoverArtArchive, LRCLIB, ITunes, Bangumi, DLsite,
+		MusicBrainz, CoverArtArchive, LRCLIB, ITunes, Bangumi, DLsite, NetEase, QQMusic,
 		func(client *http.Client) scraper.Plugin { return AcoustID(client, acoustIDKey) },
 	}
 	plugins := make([]scraper.Plugin, 0, len(factories))
