@@ -19,6 +19,41 @@ func (s *Server) RegisterMusicLibrary(repo music.Repository) {
 	registerMusicDetail(s, "tracks", repo.MusicTrack)
 	registerMusicDetail(s, "albums", repo.MusicAlbum)
 	registerMusicDetail(s, "artists", repo.MusicArtist)
+	s.Handle("POST /api/v1/library/albums/{id}/merge-tracks", true, true, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
+		var input struct {
+			music.MergeTracksInput
+			ExpectedMatchingRevision *int64 `json:"expectedMatchingRevision"`
+		}
+		if err := DecodeJSON(w, r, &input); err != nil {
+			return err
+		}
+		if input.ExpectedMatchingRevision == nil {
+			return domain.Fail("INVALID_ARGUMENT", "Expected matching revision is required")
+		}
+		input.MergeTracksInput.ExpectedMatchingRevision = *input.ExpectedMatchingRevision
+		if err := input.MergeTracksInput.Validate(); err != nil {
+			return err
+		}
+		track, err := repo.MergeMusicAlbumTracks(r.Context(), a.User.ID, r.PathValue("id"), input.MergeTracksInput, r.Header.Get("Idempotency-Key"))
+		if err != nil {
+			return err
+		}
+		return WriteJSON(w, http.StatusOK, track)
+	})
+	s.Handle("PUT /api/v1/library/artists/{id}/names", true, true, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
+		var in struct {
+			music.ArtistNamesInput
+			ExpectedRevision int64 `json:"expectedRevision"`
+		}
+		if err := DecodeJSON(w, r, &in); err != nil {
+			return err
+		}
+		item, err := repo.SaveMusicArtistNames(r.Context(), a.User.ID, r.PathValue("id"), in.ExpectedRevision, in.ArtistNamesInput, r.Header.Get("Idempotency-Key"))
+		if err != nil {
+			return err
+		}
+		return WriteJSON(w, http.StatusOK, item)
+	})
 	s.Handle("GET /api/v1/library/sources/{id}/track", true, false, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
 		if r.URL.RawQuery != "" {
 			return invalidCatalogParameter()

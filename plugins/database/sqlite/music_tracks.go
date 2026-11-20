@@ -24,13 +24,17 @@ const musicVisible = ordinaryMusicSources + `, visible_music_sources AS (
  OR ((m.origin='manual' OR (m.origin='recording' AND m.metadata_locked=1)) AND NOT EXISTS(SELECT 1 FROM music_sources s WHERE s.track_id=m.id)))
 ) `
 
-const musicTrackColumns = "m.id,m.title,m.cover_path,m.genre,m.year,m.rating,m.revision,m.created_at,m.updated_at"
+const musicTrackColumns = "m.id,m.title,m.localized_titles,m.cover_path,m.genre,m.year,m.rating,m.revision,m.created_at,m.updated_at"
 
 type musicScanner interface{ Scan(...any) error }
 
 func scanMusicTrack(row musicScanner) (music.Track, error) {
 	t := music.Track{Artists: []music.Artist{}, Albums: []music.Album{}, Sources: []music.Source{}}
-	err := row.Scan(&t.ID, &t.Title, &t.CoverPath, &t.Genre, &t.Year, &t.Rating, &t.Revision, &t.CreatedAt, &t.UpdatedAt)
+	var titles []byte
+	if err := row.Scan(&t.ID, &t.Title, &titles, &t.CoverPath, &t.Genre, &t.Year, &t.Rating, &t.Revision, &t.CreatedAt, &t.UpdatedAt); err != nil {
+		return t, err
+	}
+	err := json.Unmarshal(titles, &t.LocalizedTitles)
 	return t, err
 }
 
@@ -88,7 +92,7 @@ func (s *Store) MusicTracks(ctx context.Context, owner string, q music.Query) (m
 		cursor = "(?='' OR (" + position + ",m.id)>(SELECT position,track_id FROM music_album_tracks WHERE album_id=? AND track_id=?))"
 		args = []any{owner, owner, owner, after, q.AlbumID, q.AlbumID, after}
 	}
-	args = append(args, q.SourceOnly, q.ProviderID, q.ProviderID, q.ArtistID, q.ArtistID, q.AlbumID, q.AlbumID, q.Genre, q.Genre, q.Unknown, q.Unknown, q.Unknown, q.Unknown, q.Q, q.Q, q.Q, q.Q)
+	args = append(args, q.SourceOnly, q.ProviderID, q.ProviderID, q.ArtistID, q.ArtistID, q.AlbumID, q.AlbumID, q.Genre, q.Genre, q.Unknown, q.Unknown, q.Unknown, q.Unknown, q.Q, q.Q, q.Q, q.Q, q.Q, q.Q)
 	if q.AlbumID != "" {
 		args = append(args, q.AlbumID)
 	}
@@ -104,7 +108,9 @@ func (s *Store) MusicTracks(ctx context.Context, owner string, q music.Query) (m
  (?='artist' AND NOT EXISTS(SELECT 1 FROM music_track_artists x WHERE x.track_id=m.id)) OR
  (?='album' AND NOT EXISTS(SELECT 1 FROM music_album_tracks x JOIN music_albums a ON a.id=x.album_id WHERE x.track_id=m.id AND `+ordinaryMusicAlbumMetadata+`)))
  AND (?='' OR instr(lower(m.title),lower(?))>0
+ OR EXISTS(SELECT 1 FROM json_each(m.localized_titles) t WHERE instr(lower(json_extract(t.value,'$.title')),lower(?))>0)
  OR EXISTS(SELECT 1 FROM music_track_artists x JOIN music_artists a ON x.artist_id=a.id WHERE x.track_id=m.id AND instr(lower(a.name),lower(?))>0)
+ OR EXISTS(SELECT 1 FROM music_track_artists x JOIN music_artist_localized_names n ON n.artist_id=x.artist_id WHERE x.track_id=m.id AND instr(lower(n.name),lower(?))>0)
  OR EXISTS(SELECT 1 FROM music_album_tracks x JOIN music_albums a ON x.album_id=a.id WHERE x.track_id=m.id AND `+ordinaryMusicAlbumMetadata+` AND instr(lower(a.name),lower(?))>0))
  ORDER BY `+order+` LIMIT ?`, args...)
 	if err != nil {

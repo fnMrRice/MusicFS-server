@@ -25,10 +25,20 @@ func musicRows(ctx context.Context, tx *sql.Tx, query string, scan func(*sql.Row
 	return rows.Err()
 }
 
-const albumColumns = "a.id,a.name,a.external_id,a.is_external,a.cover_path,a.publisher,a.release_date,a.source_url,a.source_plugin_id,a.original_name,a.revision"
+const albumColumns = "a.id,a.name,a.external_id,a.is_external,a.cover_path,a.publisher,a.release_date,a.source_links,a.original_name,a.revision"
+
+type albumLinksColumn struct{ links *[]music.AlbumSourceLink }
+
+func (column albumLinksColumn) Scan(value any) error {
+	raw, ok := value.(string)
+	if !ok {
+		return domain.Fail("INVALID_RESPONSE", "Invalid stored album links")
+	}
+	return json.Unmarshal([]byte(raw), column.links)
+}
 
 func albumFields(a *music.Album) []any {
-	return []any{&a.ID, &a.Name, &a.ExternalID, &a.IsExternal, &a.CoverPath, &a.Publisher, &a.ReleaseDate, &a.SourceURL, &a.SourcePluginID, &a.OriginalName, &a.Revision}
+	return []any{&a.ID, &a.Name, &a.ExternalID, &a.IsExternal, &a.CoverPath, &a.Publisher, &a.ReleaseDate, albumLinksColumn{&a.SourceLinks}, &a.OriginalName, &a.Revision}
 }
 
 func loadMusicRelations(ctx context.Context, tx *sql.Tx, owner string, items []music.Track, ordinary bool) error {
@@ -42,11 +52,11 @@ func loadMusicRelations(ctx context.Context, tx *sql.Tx, owner string, items []m
 		byID[ids[i]] = &items[i]
 	}
 	raw, _ := json.Marshal(ids)
-	err := musicRows(ctx, tx, `SELECT x.track_id,a.id,a.name FROM music_track_artists x JOIN music_artists a ON a.id=x.artist_id
+	err := musicRows(ctx, tx, `SELECT x.track_id,`+artistNameColumns+` FROM music_track_artists x JOIN music_artists a ON a.id=x.artist_id
  WHERE a.owner=? AND x.track_id IN(SELECT value FROM json_each(?)) ORDER BY x.track_id,x.position,a.id`, func(r *sql.Rows) error {
 		var id string
 		var a music.Artist
-		if err := r.Scan(&id, &a.ID, &a.Name); err != nil {
+		if err := scanArtistNames(r, &a, &id); err != nil {
 			return err
 		}
 		byID[id].Artists = append(byID[id].Artists, a)

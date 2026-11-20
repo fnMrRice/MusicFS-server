@@ -7,7 +7,6 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
-	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/music"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
@@ -19,6 +18,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 )
+
+func (c *Client) RefreshTaskMetadataJobs(a0 context.Context, a1 string, a2 string) (r0 []string, err error) {
+	err = c.Invoke(a0, "RefreshTaskMetadataJobs", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) Release(a0 context.Context, a1 string, a2 string) (r0 albums.Release, err error) {
 	err = c.Invoke(a0, "Release", []any{a1, a2}, []any{&r0})
@@ -110,6 +114,11 @@ func (c *Client) SaveMusicAlbum(a0 context.Context, a1 string, a2 string, a3 int
 	return r0, err
 }
 
+func (c *Client) SaveMusicArtistNames(a0 context.Context, a1 string, a2 string, a3 int64, a4 music.ArtistNamesInput, a5 string) (r0 music.Artist, err error) {
+	err = c.Invoke(a0, "SaveMusicArtistNames", []any{a1, a2, a3, a4, a5}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) SaveMusicTrack(a0 context.Context, a1 string, a2 string, a3 int64, a4 music.TrackInput, a5 string) (r0 music.Track, err error) {
 	err = c.Invoke(a0, "SaveMusicTrack", []any{a1, a2, a3, a4, a5}, []any{&r0})
 	return r0, err
@@ -128,14 +137,4 @@ func (c *Client) SavePluginOperation(a0 context.Context, a1 plugincontrol.Operat
 func (c *Client) SaveResult(a0 context.Context, a1 string, a2 string, a3 string, a4 string, a5 []uint8) (err error) {
 	err = c.Invoke(a0, "SaveResult", []any{a1, a2, a3, a4, a5}, []any{})
 	return err
-}
-
-func (c *Client) ScanAutomationResults(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 enrichment.AutomationPage, err error) {
-	err = c.Invoke(a0, "ScanAutomationResults", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) ScanStatus(a0 context.Context, a1 string, a2 string) (r0 jobs.ScanStatus, err error) {
-	err = c.Invoke(a0, "ScanStatus", []any{a1, a2}, []any{&r0})
-	return r0, err
 }

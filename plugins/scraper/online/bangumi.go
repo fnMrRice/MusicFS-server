@@ -81,6 +81,9 @@ func searchBangumi(ctx context.Context, client *http.Client, field string, q scr
 		item := scraper.Item{ID: id, Title: title, Date: row.Date, Description: cmp.Or(row.Summary, row.ShortSummary)}
 		if isArtist {
 			item.Artist, item.SourceURL = title, "https://bgm.tv/person/"+id
+			if field == "artistDetails" {
+				item.LocalizedArtistNames = addPlatformName(nil, title, "zh", row.NameCN)
+			}
 		} else {
 			item.Album, item.SourceURL = title, "https://bgm.tv/subject/"+id
 		}
@@ -113,6 +116,7 @@ func bangumiTracks(ctx context.Context, client *http.Client, id string) ([]scrap
 		var page struct {
 			Total int
 			Data  []struct {
+				ID       int64
 				Name     string
 				NameCN   string `json:"name_cn"`
 				Disc     int
@@ -136,7 +140,10 @@ func bangumiTracks(ctx context.Context, client *http.Client, id string) ([]scrap
 			if title == "" {
 				return nil, errors.New("album track title is missing")
 			}
-			tracks = append(tracks, scraper.Track{Title: title, Disc: row.Disc, Number: int(row.Sort), Duration: float64(row.Duration)})
+			tracks = append(tracks, scraper.Track{
+				Title: title, LocalizedTitles: addPlatformName(nil, title, "zh", row.NameCN),
+				ExternalID: numericTrackID(row.ID), Disc: row.Disc, Number: int(row.Sort), Duration: float64(row.Duration),
+			})
 		}
 		offset += len(page.Data)
 		if offset >= page.Total {

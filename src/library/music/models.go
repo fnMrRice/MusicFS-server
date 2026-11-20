@@ -4,24 +4,35 @@ package music
 import (
 	"context"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/scraper"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
 )
 
 type Artist struct {
-	ID   string `json:"artistId"`
-	Name string `json:"name"`
+	ID             string                   `json:"artistId"`
+	Name           string                   `json:"name"`
+	Revision       int64                    `json:"namesRevision,omitempty"`
+	LocalizedNames []scraper.LocalizedTitle `json:"localizedNames,omitempty"`
+}
+
+type ArtistNamesInput struct {
+	LocalizedNames []scraper.LocalizedTitle `json:"localizedNames"`
 }
 
 type AlbumFields struct {
-	Name           string  `json:"name"`
-	ExternalID     *string `json:"externalId"`
-	IsExternal     bool    `json:"isExternal"`
-	CoverPath      *string `json:"coverPath"`
-	Publisher      *string `json:"publisher"`
-	ReleaseDate    *string `json:"releaseDate"`
-	SourceURL      *string `json:"sourceUrl"`
-	SourcePluginID *string `json:"sourcePluginId"`
+	Name        string            `json:"name"`
+	ExternalID  *string           `json:"externalId"`
+	IsExternal  bool              `json:"isExternal"`
+	CoverPath   *string           `json:"coverPath"`
+	Publisher   *string           `json:"publisher"`
+	ReleaseDate *string           `json:"releaseDate"`
+	SourceLinks []AlbumSourceLink `json:"sourceLinks"`
+}
+
+type AlbumSourceLink struct {
+	PluginID string `json:"pluginId"`
+	URL      string `json:"url"`
 }
 
 type Album struct {
@@ -41,11 +52,12 @@ type Source struct {
 }
 
 type TrackFields struct {
-	Title     string  `json:"title"`
-	CoverPath *string `json:"coverPath"`
-	Genre     *string `json:"genre"`
-	Year      *int    `json:"year"`
-	Rating    *int    `json:"rating"`
+	Title           string                   `json:"title"`
+	LocalizedTitles []scraper.LocalizedTitle `json:"localizedTitles,omitzero"`
+	CoverPath       *string                  `json:"coverPath"`
+	Genre           *string                  `json:"genre"`
+	Year            *int                     `json:"year"`
+	Rating          *int                     `json:"rating"`
 }
 
 type Track struct {
@@ -114,8 +126,10 @@ type Repository interface {
 	MusicTrackForSource(context.Context, string, string) (Track, error)
 	MusicTracks(context.Context, string, Query) (TrackPage, error)
 	SaveMusicTrack(context.Context, string, string, int64, TrackInput, string) (Track, error)
+	MergeMusicAlbumTracks(context.Context, string, string, MergeTracksInput, string) (Track, error)
 	MusicArtists(context.Context, string, Query) (ArtistPage, error)
 	MusicArtist(context.Context, string, string) (Artist, error)
+	SaveMusicArtistNames(context.Context, string, string, int64, ArtistNamesInput, string) (Artist, error)
 	MusicGenres(context.Context, string, Query) (GenrePage, error)
 	MusicAlbum(context.Context, string, string) (Album, error)
 	MusicAlbums(context.Context, string, Query) (AlbumPage, error)

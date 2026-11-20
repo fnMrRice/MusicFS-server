@@ -69,7 +69,7 @@ func TestOnlineScraperAlbumBundleRequiresCompleteTracksAndReplays(t *testing.T) 
 	if err != nil || len(saved) != 2 {
 		t.Fatalf("bundle fields: %+v %v", saved, err)
 	}
-	call("PUT", "/library/albums/"+album.ID, map[string]any{"name": "Manual alias", "expectedRevision": 2, "sourceUrl": "https://example.com/manual-page", "sourcePluginId": "album-fixture"}, "save-page-without-refresh", 200)
+	call("PUT", "/library/albums/"+album.ID, map[string]any{"name": "Manual alias", "expectedRevision": 2, "sourceLinks": []music.AlbumSourceLink{{URL: "https://example.com/manual-page", PluginID: "album-fixture"}}}, "save-page-without-refresh", 200)
 	mergePath := "/library/albums/" + album.ID + "/metadata-merge"
 	mergeInput := map[string]any{"expectedRevision": 2, "pluginId": "album-fixture", "candidates": map[string]string{"albumDetails": details, "albumTracks": tracks}, "fields": []string{"name", "publisher"}}
 	call("PUT", mergePath, mergeInput, "reject-old-comparison", 409)
@@ -78,7 +78,7 @@ func TestOnlineScraperAlbumBundleRequiresCompleteTracksAndReplays(t *testing.T) 
 	testkit.ValidateHTTP(t, "MusicAlbumMergeInput", raw)
 	merged := call("PUT", mergePath, mergeInput, "accept-selected-comparison", 200)
 	current, err := store.MusicAlbum(t.Context(), "admin", album.ID)
-	if err != nil || current.Name != "Online album" || current.OriginalName != "Original album" || current.SourceURL == nil || *current.SourceURL != "https://example.com/manual-page" {
+	if err != nil || current.Name != "Online album" || current.OriginalName != "Original album" || len(current.SourceLinks) != 1 || current.SourceLinks[0].URL != "https://example.com/manual-page" {
 		t.Fatalf("merged album/source link: %+v %v", current, err)
 	}
 	mergeInput["expectedRevision"] = 4

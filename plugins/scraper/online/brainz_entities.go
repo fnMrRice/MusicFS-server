@@ -13,6 +13,20 @@ type brainzCredit struct {
 	JoinPhrase string `json:"joinphrase"`
 }
 
+type brainzAlias struct {
+	Name, Locale, Type string
+}
+
+func brainzNames(primary string, aliases []brainzAlias) []scraper.LocalizedTitle {
+	var names []scraper.LocalizedTitle
+	for _, alias := range aliases {
+		if !strings.EqualFold(alias.Type, "Search hint") {
+			names = addPlatformName(names, primary, alias.Locale, alias.Name)
+		}
+	}
+	return names
+}
+
 type brainzEntity struct {
 	ID, Name, Title, Disambiguation, Country, Date, Type, Status string
 	Length                                                       int64
@@ -20,6 +34,7 @@ type brainzEntity struct {
 	LifeSpan                                                     struct{ Begin, End string } `json:"life-span"`
 	Area                                                         struct{ Name string }
 	ISRCs                                                        []string
+	Aliases                                                      []brainzAlias
 	Releases                                                     []struct{ Title string }
 	Labels                                                       []struct {
 		Catalog string `json:"catalog-number"`
@@ -29,12 +44,14 @@ type brainzEntity struct {
 		Position   int
 		TrackCount int `json:"track-count"`
 		Tracks     []struct {
+			ID        string
 			Position  int
 			Title     string
 			Length    int64
 			Artists   []brainzCredit `json:"artist-credit"`
 			Recording struct {
 				Title   string
+				Aliases []brainzAlias
 				Length  int64
 				Artists []brainzCredit `json:"artist-credit"`
 			}
@@ -88,8 +105,10 @@ func (row brainzEntity) item(entity string) scraper.Item {
 		item.Publisher = strings.Join(publishers, " / ")
 	case "artist":
 		item.Title, item.Artist, item.Date = row.Name, row.Name, row.LifeSpan.Begin
+		item.LocalizedArtistNames = brainzNames(row.Name, row.Aliases)
 		details = append(details, row.Type, row.Area.Name, row.Country)
 	case "recording":
+		item.LocalizedTitles = brainzNames(row.Title, row.Aliases)
 		item.Duration = float64(row.Length) / 1000
 		// 同一录音可以跨多张专辑，仅在归属唯一时填入专辑。
 		if len(row.Releases) == 1 {
@@ -122,7 +141,13 @@ func (row brainzEntity) trackList() []scraper.Track {
 				artists = t.Recording.Artists
 			}
 			if title != "" {
-				tracks = append(tracks, scraper.Track{Title: title, Artist: brainzCredits(artists),
+				names := brainzNames(title, t.Recording.Aliases)
+				names = addPlatformName(names, title, "und", t.Recording.Title)
+				var externalID string
+				if brainzID.MatchString(t.ID) {
+					externalID = t.ID
+				}
+				tracks = append(tracks, scraper.Track{ExternalID: externalID, Title: title, LocalizedTitles: names, Artist: brainzCredits(artists),
 					Number: t.Position, Disc: medium.Position, Duration: float64(length) / 1000})
 			}
 		}

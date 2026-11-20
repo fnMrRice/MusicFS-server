@@ -99,7 +99,7 @@ func searchITunes(ctx context.Context, client *http.Client, field string, q scra
 			}
 			for _, row := range rows {
 				if row.CollectionID == entry.CollectionID && row.Kind == "song" && row.WrapperType == "track" && row.TrackName != "" {
-					item.Tracks = append(item.Tracks, scraper.Track{Title: row.TrackName, Artist: row.ArtistName, Disc: row.DiscNumber, Number: row.TrackNumber, Duration: float64(row.TrackTimeMillis) / 1000})
+					item.Tracks = append(item.Tracks, scraper.Track{ExternalID: numericTrackID(row.TrackID), Title: row.TrackName, Artist: row.ArtistName, Disc: row.DiscNumber, Number: row.TrackNumber, Duration: float64(row.TrackTimeMillis) / 1000})
 				}
 			}
 			if len(item.Tracks) == 0 {
@@ -115,7 +115,8 @@ func searchITunes(ctx context.Context, client *http.Client, field string, q scra
 		}
 		results = append(results, item)
 	}
-	return results, nil
+	enrichStoreNames(ctx, client, country, field, entries, results)
+	return results, ctx.Err()
 }
 
 func (r itunesEntry) item(entity string) (scraper.Item, bool) {
