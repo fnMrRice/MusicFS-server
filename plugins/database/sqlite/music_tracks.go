@@ -14,7 +14,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/music"
 )
 
-// 先确定音乐库可见的来源，再按规范曲目聚合。没有来源的手工条目以自身身份出现。
+// 先确定音乐库可见的来源，再按规范曲目聚合。无来源的手工条目保留给分类及资料查询。
 const musicVisible = ordinaryMusicSources + `, visible_music_sources AS (
  SELECT s.id,s.track_id,s.provider_instance_id FROM music_sources s JOIN tracks t ON t.id=s.id AND t.owner=s.owner
  WHERE s.owner=? AND ` + ordinaryMusicTrack + `
@@ -82,6 +82,7 @@ func (s *Store) MusicTracks(ctx context.Context, owner string, q music.Query) (m
 	}
 	rows, err := tx.QueryContext(ctx, musicVisible+`SELECT `+musicTrackColumns+` FROM music_tracks m JOIN visible_music_tracks v ON v.id=m.id
  WHERE (?='' OR (m.title COLLATE NOCASE,m.id)>(SELECT title COLLATE NOCASE,id FROM music_tracks WHERE owner=? AND id=?))
+ AND (?=0 OR EXISTS(SELECT 1 FROM visible_music_sources s WHERE s.track_id=m.id))
  AND (?='' OR EXISTS(SELECT 1 FROM visible_music_sources s WHERE s.track_id=m.id AND s.provider_instance_id=?))
  AND (?='' OR EXISTS(SELECT 1 FROM music_track_artists a WHERE a.track_id=m.id AND a.artist_id=?))
  AND (?='' OR EXISTS(SELECT 1 FROM music_album_tracks x JOIN music_albums a ON a.id=x.album_id WHERE x.track_id=m.id AND a.id=? AND `+ordinaryMusicAlbumMetadata+`))
@@ -92,7 +93,7 @@ func (s *Store) MusicTracks(ctx context.Context, owner string, q music.Query) (m
  AND (?='' OR instr(lower(m.title),lower(?))>0
  OR EXISTS(SELECT 1 FROM music_track_artists x JOIN music_artists a ON x.artist_id=a.id WHERE x.track_id=m.id AND instr(lower(a.name),lower(?))>0)
  OR EXISTS(SELECT 1 FROM music_album_tracks x JOIN music_albums a ON x.album_id=a.id WHERE x.track_id=m.id AND `+ordinaryMusicAlbumMetadata+` AND instr(lower(a.name),lower(?))>0))
- ORDER BY m.title COLLATE NOCASE,m.id LIMIT ?`, owner, owner, owner, after, owner, after, q.ProviderID, q.ProviderID, q.ArtistID, q.ArtistID, q.AlbumID, q.AlbumID, q.Genre, q.Genre, q.Unknown, q.Unknown, q.Unknown, q.Unknown, q.Q, q.Q, q.Q, q.Q, q.Limit+1)
+ ORDER BY m.title COLLATE NOCASE,m.id LIMIT ?`, owner, owner, owner, after, owner, after, q.SourceOnly, q.ProviderID, q.ProviderID, q.ArtistID, q.ArtistID, q.AlbumID, q.AlbumID, q.Genre, q.Genre, q.Unknown, q.Unknown, q.Unknown, q.Unknown, q.Q, q.Q, q.Q, q.Q, q.Limit+1)
 	if err != nil {
 		return page, err
 	}

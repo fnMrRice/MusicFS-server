@@ -15,7 +15,7 @@
 ## 查询和建档
 
 - `POST /api/v1/library/tracks` 只需曲名即可创建。可传歌手名、已存在的专辑 ID、封面地址、流派、年份和星级。无来源时 `sources` 为空数组，`selectedSource` 为 `null`。
-- `GET /api/v1/library/tracks` 浏览可见曲目。可用歌手 ID、专辑 ID 或实例过滤。`GET /api/v1/library/tracks/{id}` 读取本人曲目；`PUT` 使用 `expectedRevision` 保存资料。
+- `GET /api/v1/library/tracks` 浏览可见曲目。可用歌手 ID、专辑 ID 或实例过滤。`sourceOnly=true` 在分页前只保留绑定普通音乐来源的曲目；来源离线或暂不可播放仍算有来源。省略或传 `false` 保留无来源的资料曲目，游标绑定此条件。「曲目列表 → 全部曲目」使用此过滤；专辑、歌手分类内保留无来源曲目并以灰色展示。`GET /api/v1/library/tracks/{id}` 读取本人曲目；`PUT` 使用 `expectedRevision` 保存资料。
 - `GET /api/v1/library/artists` 查询歌手；`GET /api/v1/library/albums` 查询专辑。专辑可用 `POST` 建档，在 `/library/albums/{id}` 读取及修改。专辑的可选外部编号与内部关联 ID 分开使用。
 - 手工建档后可通过现有录音关联操作指定真实来源。手动指定的默认来源优先，自动选择仍按可用性、码率、文件大小及稳定身份排序。[来源配置与默认策略](recording-groups.md)
 

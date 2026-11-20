@@ -60,6 +60,17 @@ func TestMusicLibraryMetadataWithoutSource(t *testing.T) {
 	if len(next.Items) != 1 || next.Items[0].ID != track.ID {
 		t.Fatal(next)
 	}
+	call("GET", "tracks?sourceOnly=true", nil, "", 200, &next)
+	if len(next.Items) != 0 || next.NextAfter != nil {
+		t.Fatal("source-only query returned metadata without a source", next)
+	}
+	call("GET", "tracks?sourceOnly=false", nil, "", 200, &next)
+	if len(next.Items) != 2 {
+		t.Fatal("false source-only query hid metadata", next)
+	}
+	for _, path := range []string{"tracks?sourceOnly=", "tracks?sourceOnly=1", "tracks?sourceOnly=TRUE", "tracks?sourceOnly=true&sourceOnly=false", "artists?sourceOnly=true", "albums?sourceOnly=true"} {
+		call("GET", path, nil, "", 400, nil)
+	}
 	in["rating"] = 6
 	in["expectedRevision"] = 1
 	call("PUT", "tracks/"+track.ID, in, "update-track-one", 400, nil)
