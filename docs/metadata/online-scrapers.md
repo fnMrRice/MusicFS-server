@@ -8,6 +8,10 @@
 
 专辑封面读取优先采用已选封面、专辑详情图像，再回退专辑原封面、普通曲目和当前可见来源封面。返回受鉴权媒体地址或有效 HTTPS 图片地址，不把文件系统路径当作网页图片。专辑名可用原有编辑接口手动修改；只读的 `originalName` 始终保留首次名称。
 
+专辑对应的平台页面也可在编辑资料时修改。`sourceUrl` 和 `sourcePluginId` 必须配对，页面只允许无凭据的 HTTPS 地址；保存关联不会查询平台或覆盖资料。已有专辑详情在数据库升级时回填关联，新选用完整发行版时自动记录其页面。用户点击刷新后才访问对应插件的固定平台 API，读取完整详情与曲目并展示比较；取消比较不修改资料。
+
+对比合并支持名称、歌手、发行日期、发行商、音乐风格、说明、封面和曲目表。只发布明确勾选的字段，未选的已保存详情也保持；部分日期保留年份／年月精度，完整日期才写主发行日期。选择封面时替换旧专辑封面选用，选择曲目表时才同步实际曲目与顺序。名称修改不改变原名，合并不修改用户已保存的关联页面。详情的来源编号与页面记录最近一次合并平台，保留下来的人工或旧字段不会因此被覆盖，也不表示这些字段全部来自最近平台。专辑修订保护关联变更后的旧比较，保存回执支持候选失效后的幂等重放。
+
 | 插件 | 声明的内容 | 查询方式 |
 | --- | --- | --- |
 | MusicBrainz | 曲目详情、专辑详情、专辑曲目、歌手详情 | 名称、对应实体的 MBID，或录音的 ISRC。[接口](https://musicbrainz.org/doc/MusicBrainz_API) |
@@ -29,4 +33,5 @@
 - `PUT /api/v1/works/{id}/scraped-fields/{field}` 人工选用作品的一个字段。请求提供 `pluginId`、`candidateToken`、`expectedRevision` 和幂等键。用 `GET /api/v1/works/{id}/scraped-fields` 读取已保存的资料。
 - `GET /api/v1/library/albums/{id}/scraped-fields` 读取当前用户音乐专辑已选用的资料；`PUT /api/v1/library/albums/{id}/scraped-fields/{field}` 按音乐专辑修订选用 `albumDetails`、`albumTracks` 或 `artwork`，请求提供 `pluginId`、`candidateToken`、`expectedRevision` 和幂等键，成功返回新的 `revision`。重放相同成功请求不依赖短期候选仍然有效。
 - `PUT /api/v1/library/albums/{id}/scraped-fields` 原子选用详情和全部曲目，请求为 `{expectedRevision,pluginId,candidates:{albumDetails,albumTracks,artwork?}}`，候选值均为短期令牌；要求同插件、同发行版，且曲目表非空。成功后统一递增专辑与曲库修订并返回 `{revision}`。单字段接口仍可独立选封面。
+- `PUT /api/v1/library/albums/{id}/metadata-merge` 请求为 `{expectedRevision,pluginId,candidates:{albumDetails,albumTracks},fields:[...]}`，完整两候选仍须同插件及发行版；`fields` 为非空去重白名单：`name`、`artist`、`releaseDate`、`publisher`、`genre`、`description`、`cover`、`tracks`。选中的可空值缺失时清空该字段；名称不能为空。预览和合并分别进行，保存成功返回新的 `{revision}`。
 - `PUT /api/v1/source-tracks/{id}/scraped-fields/{field}` 支持 `lyrics` 和 `artwork`。请求还需提供 `assetId` 与 `assetVersion`；修订从该来源曲目的媒体选择接口读取。成功后通过现有媒体接口读取正文与来源。

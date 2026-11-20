@@ -12,6 +12,7 @@ import (
 
 // RegisterOnlineAlbumScrapers 为曲目列表中的专辑保存逐字段刮削资料。
 func (s *Server) RegisterOnlineAlbumScrapers(catalog *onlinescrape.Service, repo music.Repository) {
+	s.registerAlbumMetadataMerge(catalog, repo)
 	s.Handle("GET /api/v1/library/albums/{id}/scraped-fields", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		items, err := repo.MusicAlbumScrapedFields(r.Context(), session.User.ID, r.PathValue("id"))
 		if err != nil {

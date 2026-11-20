@@ -1,6 +1,7 @@
 package music
 
 import (
+	"net/url"
 	"strings"
 	"time"
 	"unicode"
@@ -31,8 +32,17 @@ func optional(value **string, maximum int) bool {
 
 func (a AlbumFields) Normalize() (AlbumFields, error) {
 	a.Name = strings.TrimSpace(a.Name)
-	if a.Name == "" || !validText(a.Name, 256) || !optional(&a.ExternalID, 256) || !optional(&a.Publisher, 256) || !optional(&a.CoverPath, 4096) || !optional(&a.ReleaseDate, 10) {
+	if a.Name == "" || !validText(a.Name, 256) || !optional(&a.ExternalID, 256) || !optional(&a.Publisher, 256) || !optional(&a.CoverPath, 4096) || !optional(&a.ReleaseDate, 10) || !optional(&a.SourceURL, 4096) || !optional(&a.SourcePluginID, 128) {
 		return a, invalid()
+	}
+	if (a.SourceURL == nil) != (a.SourcePluginID == nil) {
+		return a, invalid()
+	}
+	if a.SourceURL != nil {
+		u, err := url.Parse(*a.SourceURL)
+		if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || !works.ValidID(*a.SourcePluginID) {
+			return a, invalid()
+		}
 	}
 	if a.ReleaseDate != nil {
 		if _, err := time.Parse(time.DateOnly, *a.ReleaseDate); err != nil {

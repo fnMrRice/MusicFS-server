@@ -90,12 +90,12 @@ func (s *Store) SaveMusicAlbum(ctx context.Context, owner, id string, revision i
 	return saveMusic(ctx, s, owner, "albums", id, key, revision, a, func(tx *sql.Tx, newID string) (music.Album, error) {
 		var err error
 		if id == "" {
-			_, err = tx.ExecContext(ctx, `INSERT INTO music_albums(id,owner,name,external_id,is_external,cover_path,publisher,release_date,origin,revision,metadata_locked)
- VALUES(?,?,?,?,?,?,?,?,'manual',1,1)`, newID, owner, a.Name, a.ExternalID, a.IsExternal, a.CoverPath, a.Publisher, a.ReleaseDate)
+			_, err = tx.ExecContext(ctx, `INSERT INTO music_albums(id,owner,name,external_id,is_external,cover_path,publisher,release_date,source_url,source_plugin_id,origin,revision,metadata_locked)
+ VALUES(?,?,?,?,?,?,?,?,?,?,'manual',1,1)`, newID, owner, a.Name, a.ExternalID, a.IsExternal, a.CoverPath, a.Publisher, a.ReleaseDate, a.SourceURL, a.SourcePluginID)
 		} else {
 			var result sql.Result
-			result, err = tx.ExecContext(ctx, `UPDATE music_albums SET name=?,external_id=?,is_external=CASE WHEN origin='cd' THEN 1 ELSE ? END,cover_path=?,publisher=?,release_date=?,revision=revision+1,metadata_locked=1 WHERE owner=? AND id=? AND revision=?`,
-				a.Name, a.ExternalID, a.IsExternal, a.CoverPath, a.Publisher, a.ReleaseDate, owner, newID, revision)
+			result, err = tx.ExecContext(ctx, `UPDATE music_albums SET name=?,external_id=?,is_external=CASE WHEN origin='cd' THEN 1 ELSE ? END,cover_path=?,publisher=?,release_date=?,source_url=?,source_plugin_id=?,revision=revision+1,metadata_locked=1 WHERE owner=? AND id=? AND revision=?`,
+				a.Name, a.ExternalID, a.IsExternal, a.CoverPath, a.Publisher, a.ReleaseDate, a.SourceURL, a.SourcePluginID, owner, newID, revision)
 			if err == nil {
 				err = checkMusicUpdate(ctx, tx, result, owner, newID, "music_albums")
 			}

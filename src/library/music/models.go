@@ -14,12 +14,14 @@ type Artist struct {
 }
 
 type AlbumFields struct {
-	Name        string  `json:"name"`
-	ExternalID  *string `json:"externalId"`
-	IsExternal  bool    `json:"isExternal"`
-	CoverPath   *string `json:"coverPath"`
-	Publisher   *string `json:"publisher"`
-	ReleaseDate *string `json:"releaseDate"`
+	Name           string  `json:"name"`
+	ExternalID     *string `json:"externalId"`
+	IsExternal     bool    `json:"isExternal"`
+	CoverPath      *string `json:"coverPath"`
+	Publisher      *string `json:"publisher"`
+	ReleaseDate    *string `json:"releaseDate"`
+	SourceURL      *string `json:"sourceUrl"`
+	SourcePluginID *string `json:"sourcePluginId"`
 }
 
 type Album struct {
@@ -121,4 +123,5 @@ type Repository interface {
 	MusicAlbumScrapedFields(context.Context, string, string) ([]works.ScrapedField, error)
 	SelectMusicAlbumScrapedField(context.Context, string, string, int64, works.ScrapedField, string) (int64, error)
 	SelectMusicAlbumScrapedFields(context.Context, string, string, int64, []works.ScrapedField, string) (int64, error)
+	MergeMusicAlbumMetadata(context.Context, string, string, int64, []works.ScrapedField, []string, string) (int64, error)
 }

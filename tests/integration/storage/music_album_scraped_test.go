@@ -37,7 +37,7 @@ func TestMusicAlbumScrapedMigrationPersistenceAndLifetime(t *testing.T) {
 	}
 	exec("INSERT INTO music_albums(id,owner,name) VALUES('existing-album','admin','Original album')")
 	exec(`INSERT INTO music_album_scraped_fields(album_id,field,document) VALUES('existing-album','albumDetails',
- '{"field":"albumDetails","pluginId":"musicfs.scraper.itunes","item":{"id":"old-release","title":"Original album","description":"Mandopop"}}')`)
+ '{"field":"albumDetails","pluginId":"musicfs.scraper.itunes","item":{"id":"old-release","title":"Original album","description":"Mandopop","sourceUrl":"https://music.apple.com/hk/album/original/123"}}')`)
 	if err = db.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -48,6 +48,9 @@ func TestMusicAlbumScrapedMigrationPersistenceAndLifetime(t *testing.T) {
 	upgraded, err := store.MusicAlbum(t.Context(), "admin", "existing-album")
 	if err != nil || upgraded.OriginalName != "Original album" {
 		t.Fatalf("original album name was not backfilled: %+v %v", upgraded, err)
+	}
+	if upgraded.SourceURL == nil || *upgraded.SourceURL != "https://music.apple.com/hk/album/original/123" || upgraded.SourcePluginID == nil || *upgraded.SourcePluginID != "musicfs.scraper.itunes" {
+		t.Fatalf("album source association was not backfilled: %+v", upgraded)
 	}
 	var genre string
 	var description any
