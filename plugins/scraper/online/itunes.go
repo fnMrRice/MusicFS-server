@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"errors"
+	"maps"
 	"net/http"
 	"net/url"
 	"slices"
@@ -37,6 +38,10 @@ func itunesQuery(ctx context.Context, client *http.Client, path string, params u
 	if err := itunesPacer.wait(ctx); err != nil {
 		return nil, err
 	}
+	if params.Get("country") == "JP" {
+		params = maps.Clone(params)
+		params.Set("lang", "ja_jp")
+	}
 	var response struct{ Results []itunesEntry }
 	err := lookupJSON(ctx, client, "https://itunes.apple.com/"+path, params, nil, &response)
 	return response.Results, err
@@ -66,6 +71,9 @@ func searchITunes(ctx context.Context, client *http.Client, field string, q scra
 		if field == "albumTracks" {
 			params.Set("entity", "song")
 			params.Set("limit", "200")
+		} else if field == "albumDetails" && country == "JP" {
+			params.Set("entity", "song")
+			params.Set("limit", "1")
 		}
 	} else {
 		if term == "" {
@@ -83,20 +91,28 @@ func searchITunes(ctx context.Context, client *http.Client, field string, q scra
 	if err != nil {
 		return nil, err
 	}
+	albumRows := entries
+	if country == "JP" && field == "albumDetails" && path == "search" {
+		albumRows = japaneseAlbumSearchRows(ctx, client, entries)
+	}
 	results := []scraper.Item{}
 	for _, entry := range entries {
 		item, ok := entry.item(entity)
 		if !ok || (path == "lookup" && item.ID != params.Get("id")) {
 			continue
 		}
-		if field == "albumTracks" {
-			rows := entries
-			if path == "search" {
-				rows, err = itunesQuery(ctx, client, "lookup", url.Values{"country": {country}, "id": {item.ID}, "entity": {"song"}, "limit": {"200"}})
-				if err != nil {
-					return nil, err
-				}
+		rows := albumRows
+		if field == "albumTracks" && path == "search" {
+			rows, err = itunesQuery(ctx, client, "lookup", url.Values{"country": {country}, "id": {item.ID}, "entity": {"song"}, "limit": {"200"}})
+			if err != nil {
+				return nil, err
 			}
+		}
+		if entity == "album" && country == "JP" {
+			item.Title = japaneseCollectionName(entry, rows)
+			item.Album = item.Title
+		}
+		if field == "albumTracks" {
 			for _, row := range rows {
 				if row.CollectionID == entry.CollectionID && row.Kind == "song" && row.WrapperType == "track" && row.TrackName != "" {
 					item.Tracks = append(item.Tracks, scraper.Track{ExternalID: numericTrackID(row.TrackID), Title: row.TrackName, Artist: row.ArtistName, Disc: row.DiscNumber, Number: row.TrackNumber, Duration: float64(row.TrackTimeMillis) / 1000})
@@ -117,6 +133,48 @@ func searchITunes(ctx context.Context, client *http.Client, field string, q scra
 	}
 	enrichStoreNames(ctx, client, country, field, entries, results)
 	return results, ctx.Err()
+}
+
+// 名称搜索只有专辑行，一次补查各候选的一首歌。出错或超时仍展示原有候选。
+func japaneseAlbumSearchRows(ctx context.Context, client *http.Client, entries []itunesEntry) []itunesEntry {
+	var ids []string
+	for _, entry := range entries {
+		if entry.WrapperType == "collection" && strings.EqualFold(entry.CollectionType, "Album") && entry.CollectionID > 0 {
+			ids = append(ids, strconv.FormatInt(entry.CollectionID, 10))
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	slices.Sort(ids)
+	params := url.Values{"country": {"JP"}, "id": {strings.Join(slices.Compact(ids), ",")}, "entity": {"song"}, "limit": {"1"}}
+	budget := 8 * time.Second
+	if deadline, ok := ctx.Deadline(); ok {
+		budget = min(budget, time.Until(deadline)-500*time.Millisecond)
+	}
+	if budget <= 0 {
+		return nil
+	}
+	optional, cancel := context.WithTimeout(ctx, budget)
+	defer cancel()
+	rows, _ := itunesQuery(optional, client, "lookup", params)
+	return rows
+}
+
+// 日区的专辑行有时使用英文，歌曲行的 collectionName 才含当地名称。
+func japaneseCollectionName(album itunesEntry, rows []itunesEntry) string {
+	name := ""
+	for _, row := range rows {
+		if row.CollectionID != album.CollectionID || row.WrapperType != "track" || row.Kind != "song" {
+			continue
+		}
+		value := strings.TrimSpace(row.CollectionName)
+		if value == "" || name != "" && value != name {
+			return album.CollectionName
+		}
+		name = value
+	}
+	return cmp.Or(name, album.CollectionName)
 }
 
 func (r itunesEntry) item(entity string) (scraper.Item, bool) {
