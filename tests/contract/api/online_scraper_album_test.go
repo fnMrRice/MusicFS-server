@@ -119,8 +119,12 @@ func TestOnlineScraperMusicAlbumSelection(t *testing.T) {
 	call("PUT", fields+"/albumTracks", selection(2, search("albumTracks")), "select-album-tracks", 200)
 	call("PUT", fields+"/artwork", selection(3, search("artwork")), "select-album-cover", 200)
 	result, err := store.MusicAlbum(ctx, "admin", album.ID)
-	if err != nil || result.Revision != 4 || result.Name != album.Name || result.CoverPath != nil {
+	if err != nil || result.Revision != 4 || result.Name != album.Name || result.CoverPath == nil || *result.CoverPath != "https://example.com/cover.jpg" {
 		t.Fatalf("unexpected album fields: %+v %v", result, err)
+	}
+	var storedCover *string
+	if err = store.DB.QueryRowContext(ctx, "SELECT cover_path FROM music_albums WHERE id=?", album.ID).Scan(&storedCover); err != nil || storedCover != nil {
+		t.Fatalf("computed album cover overwrote the stored main field: %v %v", storedCover, err)
 	}
 	var oldPage, newPage music.TrackPage
 	if err = json.Unmarshal(before, &oldPage); err != nil {

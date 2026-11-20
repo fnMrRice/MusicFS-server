@@ -15,7 +15,7 @@ import (
 )
 
 func TestMusicAlbumScrapedMigrationPersistenceAndLifetime(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "albums-v39.sqlite")
+	path := filepath.Join(t.TempDir(), "albums-v40.sqlite")
 	db := openMigrationFixture(t, path)
 	exec := func(statement string, args ...any) {
 		t.Helper()
@@ -29,19 +29,31 @@ func TestMusicAlbumScrapedMigrationPersistenceAndLifetime(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, step := range steps {
-		if step.Version > 39 {
+		if step.Version > 40 {
 			break
 		}
 		exec(step.SQL)
 		exec("INSERT INTO schema_migrations VALUES(?)", step.Version)
 	}
 	exec("INSERT INTO music_albums(id,owner,name) VALUES('existing-album','admin','Original album')")
+	exec(`INSERT INTO music_album_scraped_fields(album_id,field,document) VALUES('existing-album','albumDetails',
+ '{"field":"albumDetails","pluginId":"musicfs.scraper.itunes","item":{"id":"old-release","title":"Original album","description":"Mandopop"}}')`)
 	if err = db.Close(); err != nil {
 		t.Fatal(err)
 	}
 	store, err := sqlite.Open(t.Context(), path)
 	if err != nil {
 		t.Fatal(err)
+	}
+	upgraded, err := store.MusicAlbum(t.Context(), "admin", "existing-album")
+	if err != nil || upgraded.OriginalName != "Original album" {
+		t.Fatalf("original album name was not backfilled: %+v %v", upgraded, err)
+	}
+	var genre string
+	var description any
+	if err = store.DB.QueryRowContext(t.Context(), `SELECT json_extract(document,'$.item.genre'),json_extract(document,'$.item.description')
+ FROM music_album_scraped_fields WHERE album_id='existing-album'`).Scan(&genre, &description); err != nil || genre != "Mandopop" || description != nil {
+		t.Fatalf("iTunes genre was not migrated: %q %v %v", genre, description, err)
 	}
 	field := works.ScrapedField{Field: "albumDetails", PluginID: "fixture", CandidateToken: "short-lived-token",
 		Item: scraper.Item{ID: "edition", Title: "Online title", Description: "Online description"}}

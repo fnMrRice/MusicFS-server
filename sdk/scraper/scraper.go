@@ -21,6 +21,7 @@ type Query struct {
 	Artist      string  `json:"artist,omitempty"`
 	Album       string  `json:"album,omitempty"`
 	ExternalID  string  `json:"externalId,omitempty"`
+	SourceURL   string  `json:"sourceUrl,omitempty"`
 	Country     string  `json:"country,omitempty"`
 	Fingerprint string  `json:"fingerprint,omitempty"`
 	Duration    float64 `json:"duration,omitempty"`
@@ -41,6 +42,8 @@ type Item struct {
 	Artist      string  `json:"artist,omitempty"`
 	Album       string  `json:"album,omitempty"`
 	Description string  `json:"description,omitempty"`
+	Genre       string  `json:"genre,omitempty"`
+	Publisher   string  `json:"publisher,omitempty"`
 	Date        string  `json:"date,omitempty"`
 	SourceURL   string  `json:"sourceUrl,omitempty"`
 	ImageURL    string  `json:"imageUrl,omitempty"`

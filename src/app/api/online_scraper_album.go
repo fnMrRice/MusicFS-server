@@ -19,6 +19,40 @@ func (s *Server) RegisterOnlineAlbumScrapers(catalog *onlinescrape.Service, repo
 		}
 		return WriteJSON(w, http.StatusOK, map[string]any{"items": items})
 	})
+	s.Handle("PUT /api/v1/library/albums/{id}/scraped-fields", true, true, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
+		var input struct {
+			ExpectedRevision *int64 `json:"expectedRevision"`
+			PluginID         string `json:"pluginId"`
+			Candidates       struct {
+				Details string `json:"albumDetails"`
+				Tracks  string `json:"albumTracks"`
+				Artwork string `json:"artwork"`
+			} `json:"candidates"`
+		}
+		if err := DecodeJSON(w, r, &input); err != nil {
+			return err
+		}
+		if input.ExpectedRevision == nil || *input.ExpectedRevision < 1 || input.Candidates.Details == "" || input.Candidates.Tracks == "" {
+			return domain.Fail("INVALID_ARGUMENT", "Album revision, details and complete track list are required")
+		}
+		fields := []works.ScrapedField{}
+		for _, candidate := range []struct{ field, token string }{{"albumDetails", input.Candidates.Details}, {"albumTracks", input.Candidates.Tracks}, {"artwork", input.Candidates.Artwork}} {
+			if candidate.token == "" {
+				continue
+			}
+			field, err := catalog.Candidate(session.User.ID, input.PluginID, candidate.field, candidate.token)
+			if err != nil {
+				field = works.ScrapedField{Field: candidate.field, PluginID: input.PluginID}
+			}
+			field.CandidateToken = candidate.token
+			fields = append(fields, field)
+		}
+		revision, err := repo.SelectMusicAlbumScrapedFields(r.Context(), session.User.ID, r.PathValue("id"), *input.ExpectedRevision, fields, r.Header.Get("Idempotency-Key"))
+		if err != nil {
+			return err
+		}
+		return WriteJSON(w, http.StatusOK, map[string]int64{"revision": revision})
+	})
 	s.Handle("PUT /api/v1/library/albums/{id}/scraped-fields/{field}", true, true, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		var input scrapedFieldInput
 		if err := DecodeJSON(w, r, &input); err != nil {

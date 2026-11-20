@@ -2,14 +2,18 @@
 
 打开作品详情中的「搜索在线资料」，或从曲目入口搜索歌词、封面。选择内容和来源，核对候选的版本、来源页面及预览后选用。作品资料按字段保存，并保留来源编号；后续编辑作品标题或简介会保留已选曲目表和图像。选用来源曲目的歌词或封面会发布到媒体对象库，并通过现有媒体修订与人工锁生效。
 
-「曲目列表 → 专辑」打开具体专辑后，也可使用「搜索在线资料」查询专辑详情、专辑曲目和专辑封面。选用结果按当前音乐专辑和字段独立保存，刷新或重启后仍可读取；每次选用校验并递增专辑修订，同时更新曲库修订。已有专辑名称、手填资料、曲目标签与关联保留；刮削曲目表作为资料预览，不自动创建、删除或重排曲库曲目。「未知专辑」没有独立专辑身份，不提供此入口。
+「曲目列表 → 专辑」打开具体专辑后，专辑名右侧的「详情」展开已保存资料和相应平台页面；播放工具栏右侧的「刮削」查询专辑详情、完整曲目表和封面。先选择发行版，再以同一来源编号读取全部曲目，预览后一并保存；上游未返回完整曲目时不发布半份资料。MusicBrainz、iTunes 与 Bangumi 支持填写相应专辑页面，插件只解析本平台的 HTTPS 地址及实体编号，不把任意网址当作抓取地址。「未知专辑」没有独立专辑身份，不提供此入口。
+
+选用结果按当前音乐专辑和字段保存，并在同一事务补齐专辑曲目：优先复用专辑内唯一精确匹配的已有曲目，缺少音源的曲目建为资料条目，以灰色显示；按平台碟序和曲序排列。相同发行版重刮按位置复用身份，保留人工编辑及真实来源，不重复建档。原来额外关联的曲目继续保留，排在平台曲目之后。「全部曲目」仍使用有来源过滤。保存校验专辑修订并支持幂等重试，刷新、重启后仍可读取。
+
+专辑封面读取优先采用已选封面、专辑详情图像，再回退专辑原封面、普通曲目和当前可见来源封面。返回受鉴权媒体地址或有效 HTTPS 图片地址，不把文件系统路径当作网页图片。专辑名可用原有编辑接口手动修改；只读的 `originalName` 始终保留首次名称。
 
 | 插件 | 声明的内容 | 查询方式 |
 | --- | --- | --- |
 | MusicBrainz | 曲目详情、专辑详情、专辑曲目、歌手详情 | 名称、对应实体的 MBID，或录音的 ISRC。[接口](https://musicbrainz.org/doc/MusicBrainz_API) |
 | Cover Art Archive | 专辑封面 | 具体发行版 MBID，或用专辑名找到对应版本。[接口](https://musicbrainz.org/doc/Cover_Art_Archive/API) |
 | LRCLIB | 歌词 | 歌名、艺人、专辑、时长，或歌词记录编号；返回同步 LRC 或纯文本。[接口](https://lrclib.net/docs) |
-| iTunes Search | 曲目详情、专辑详情、专辑曲目、歌手详情 | 名称或商店编号。地区使用两位国家或地区代码，例如 HK、TW。仅取文字资料。[接口](https://performance-partners.apple.com/search-api) |
+| iTunes Search | 曲目详情、专辑详情、完整专辑曲目、歌手详情及接口提供的封面 | 名称、商店编号或专辑页面。地区使用两位国家或地区代码，例如 HK、TW；页面地区可直接用于查询。封面采用接口实际返回的地址，不猜测放大地址。[接口](https://performance-partners.apple.com/search-api) |
 | Bangumi | 作品及专辑详情、专辑曲目、封面、歌手详情和歌手图像 | 搜音乐条目或人物，或提供相应的条目／人物编号。图像取自条目封面或人物头像。[接口](https://bangumi.github.io/api/) |
 | DLsite | 作品详情、封面 | 用 RJ 作品编号精确查询，使用商店页面自身的 JSON 接口。字段和访问能力可能随商店变更。 |
 | AcoustID | 录音识别 | 提供整曲 Chromaprint 指纹与时长（秒），返回候选 MusicBrainz 录音编号。部署时在 Server 进程设置环境变量 `MUSICFS_ACOUSTID_API_KEY`，重启后启用。免费服务适用非商业使用。[接口与注册](https://acoustid.org/webservice) |
@@ -24,4 +28,5 @@
 - `POST /api/v1/scrapers/{id}/search` 接受一个字段和结构化查询，查询结果包括来源信息及短期候选令牌。预览绑定当前用户、插件和字段，过期或 Server 重启后可重新搜索。
 - `PUT /api/v1/works/{id}/scraped-fields/{field}` 人工选用作品的一个字段。请求提供 `pluginId`、`candidateToken`、`expectedRevision` 和幂等键。用 `GET /api/v1/works/{id}/scraped-fields` 读取已保存的资料。
 - `GET /api/v1/library/albums/{id}/scraped-fields` 读取当前用户音乐专辑已选用的资料；`PUT /api/v1/library/albums/{id}/scraped-fields/{field}` 按音乐专辑修订选用 `albumDetails`、`albumTracks` 或 `artwork`，请求提供 `pluginId`、`candidateToken`、`expectedRevision` 和幂等键，成功返回新的 `revision`。重放相同成功请求不依赖短期候选仍然有效。
+- `PUT /api/v1/library/albums/{id}/scraped-fields` 原子选用详情和全部曲目，请求为 `{expectedRevision,pluginId,candidates:{albumDetails,albumTracks,artwork?}}`，候选值均为短期令牌；要求同插件、同发行版，且曲目表非空。成功后统一递增专辑与曲库修订并返回 `{revision}`。单字段接口仍可独立选封面。
 - `PUT /api/v1/source-tracks/{id}/scraped-fields/{field}` 支持 `lyrics` 和 `artwork`。请求还需提供 `assetId` 与 `assetVersion`；修订从该来源曲目的媒体选择接口读取。成功后通过现有媒体接口读取正文与来源。

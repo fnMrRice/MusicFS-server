@@ -25,10 +25,10 @@ func musicRows(ctx context.Context, tx *sql.Tx, query string, scan func(*sql.Row
 	return rows.Err()
 }
 
-const albumColumns = "a.id,a.name,a.external_id,a.is_external,a.cover_path,a.publisher,a.release_date,a.revision"
+const albumColumns = "a.id,a.name,a.external_id,a.is_external,a.cover_path,a.publisher,a.release_date,a.original_name,a.revision"
 
 func albumFields(a *music.Album) []any {
-	return []any{&a.ID, &a.Name, &a.ExternalID, &a.IsExternal, &a.CoverPath, &a.Publisher, &a.ReleaseDate, &a.Revision}
+	return []any{&a.ID, &a.Name, &a.ExternalID, &a.IsExternal, &a.CoverPath, &a.Publisher, &a.ReleaseDate, &a.OriginalName, &a.Revision}
 }
 
 func loadMusicRelations(ctx context.Context, tx *sql.Tx, owner string, items []music.Track, ordinary bool) error {
@@ -70,6 +70,15 @@ func loadMusicRelations(ctx context.Context, tx *sql.Tx, owner string, items []m
 		return nil
 	}, owner, string(raw))
 	if err != nil {
+		return err
+	}
+	albumCovers := []*music.Album{}
+	for i := range items {
+		for j := range items[i].Albums {
+			albumCovers = append(albumCovers, &items[i].Albums[j])
+		}
+	}
+	if err = populateMusicAlbumCovers(ctx, tx, owner, albumCovers...); err != nil {
 		return err
 	}
 	prefix, where := "", ""

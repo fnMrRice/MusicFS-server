@@ -80,8 +80,21 @@ func (s *Store) MusicTracks(ctx context.Context, owner string, q music.Query) (m
 	if err != nil {
 		return page, err
 	}
+	position := `(SELECT position FROM music_album_tracks WHERE album_id=? AND track_id=m.id)`
+	order, cursor := "m.title COLLATE NOCASE,m.id", "(?='' OR (m.title COLLATE NOCASE,m.id)>(SELECT title COLLATE NOCASE,id FROM music_tracks WHERE owner=? AND id=?))"
+	args := []any{owner, owner, owner, after, owner, after}
+	if q.AlbumID != "" {
+		order = position + ",m.id"
+		cursor = "(?='' OR (" + position + ",m.id)>(SELECT position,track_id FROM music_album_tracks WHERE album_id=? AND track_id=?))"
+		args = []any{owner, owner, owner, after, q.AlbumID, q.AlbumID, after}
+	}
+	args = append(args, q.SourceOnly, q.ProviderID, q.ProviderID, q.ArtistID, q.ArtistID, q.AlbumID, q.AlbumID, q.Genre, q.Genre, q.Unknown, q.Unknown, q.Unknown, q.Unknown, q.Q, q.Q, q.Q, q.Q)
+	if q.AlbumID != "" {
+		args = append(args, q.AlbumID)
+	}
+	args = append(args, q.Limit+1)
 	rows, err := tx.QueryContext(ctx, musicVisible+`SELECT `+musicTrackColumns+` FROM music_tracks m JOIN visible_music_tracks v ON v.id=m.id
- WHERE (?='' OR (m.title COLLATE NOCASE,m.id)>(SELECT title COLLATE NOCASE,id FROM music_tracks WHERE owner=? AND id=?))
+ WHERE `+cursor+`
  AND (?=0 OR EXISTS(SELECT 1 FROM visible_music_sources s WHERE s.track_id=m.id))
  AND (?='' OR EXISTS(SELECT 1 FROM visible_music_sources s WHERE s.track_id=m.id AND s.provider_instance_id=?))
  AND (?='' OR EXISTS(SELECT 1 FROM music_track_artists a WHERE a.track_id=m.id AND a.artist_id=?))
@@ -93,7 +106,7 @@ func (s *Store) MusicTracks(ctx context.Context, owner string, q music.Query) (m
  AND (?='' OR instr(lower(m.title),lower(?))>0
  OR EXISTS(SELECT 1 FROM music_track_artists x JOIN music_artists a ON x.artist_id=a.id WHERE x.track_id=m.id AND instr(lower(a.name),lower(?))>0)
  OR EXISTS(SELECT 1 FROM music_album_tracks x JOIN music_albums a ON x.album_id=a.id WHERE x.track_id=m.id AND `+ordinaryMusicAlbumMetadata+` AND instr(lower(a.name),lower(?))>0))
- ORDER BY m.title COLLATE NOCASE,m.id LIMIT ?`, owner, owner, owner, after, owner, after, q.SourceOnly, q.ProviderID, q.ProviderID, q.ArtistID, q.ArtistID, q.AlbumID, q.AlbumID, q.Genre, q.Genre, q.Unknown, q.Unknown, q.Unknown, q.Unknown, q.Q, q.Q, q.Q, q.Q, q.Limit+1)
+ ORDER BY `+order+` LIMIT ?`, args...)
 	if err != nil {
 		return page, err
 	}

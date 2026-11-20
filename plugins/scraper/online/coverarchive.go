@@ -23,6 +23,11 @@ func (p coverArchivePlugin) Search(ctx context.Context, field string, q scraper.
 	if field != "artwork" {
 		return nil, fault.Fail("INVALID_ARGUMENT", "unsupported Cover Art Archive field")
 	}
+	var err error
+	q, err = albumPageQuery("musicfs.scraper.coverartarchive", field, q)
+	if err != nil {
+		return nil, err
+	}
 	var items []scraper.Item
 	if id := strings.TrimSpace(q.ExternalID); id != "" {
 		if !brainzID.MatchString(id) {
