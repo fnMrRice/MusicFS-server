@@ -27,7 +27,7 @@ go vet -mod=readonly @vetPackages
 if ($LASTEXITCODE) { throw 'go vet failed' }
 go test -mod=readonly -count=1 -v "-timeout=$TestTimeout" '-coverpkg=./src/...,./plugins/...' '-coverprofile=build/coverage.out' ./tests/...
 if ($LASTEXITCODE) { throw 'go test failed' }
-go test -mod=readonly -count=1 "-timeout=$TestTimeout" ./src/... ./plugins/... ./scripts/release
+go test -mod=readonly -count=1 "-timeout=$TestTimeout" ./src/... ./plugins/... ./scripts/release ./scripts/internal/pluginversions
 if ($LASTEXITCODE) { throw 'package tests failed' }
 foreach ($module in @('sdk', 'plugins/source/online')) {
     Push-Location $module

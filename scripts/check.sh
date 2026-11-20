@@ -16,7 +16,7 @@ set -- ./src/... ./plugins/... ./tests/...
 if [ -d scripts/release ]; then set -- "$@" ./scripts/release; fi
 go vet -mod=readonly "$@"
 go test -mod=readonly -count=1 -v -timeout="${TEST_TIMEOUT:-20m}" -coverpkg=./src/...,./plugins/... -coverprofile=build/coverage.out ./tests/...
-go test -mod=readonly -count=1 -timeout="${TEST_TIMEOUT:-20m}" ./src/... ./plugins/... ./scripts/release
+go test -mod=readonly -count=1 -timeout="${TEST_TIMEOUT:-20m}" ./src/... ./plugins/... ./scripts/release ./scripts/internal/pluginversions
 for module in sdk plugins/source/online; do
     (
         cd "$module"

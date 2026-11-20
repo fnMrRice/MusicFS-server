@@ -1,10 +1,14 @@
 param([ValidateSet('windows', 'linux')][string]$TargetOS = 'windows', [switch]$SplitPlugins)
 $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path $PSScriptRoot)
+$env:GOWORK = 'off'
+$env:GOOS = go env GOHOSTOS
+$env:GOARCH = go env GOHOSTARCH
+$pluginFlags = go run -mod=readonly ./scripts/pluginversions
+if ($LASTEXITCODE) { throw 'Cannot resolve plugin versions' }
 $env:GOOS = $TargetOS
 $env:GOARCH = 'amd64'
 $env:CGO_ENABLED = '0'
-$env:GOWORK = 'off'
 $suffix = if ($TargetOS -eq 'windows') { '.exe' } else { '' }
 $repositoryRoot = (Get-Location).Path
 $outputRoot = [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot "build/$TargetOS"))
@@ -24,7 +28,7 @@ if ($SplitPlugins) {
 }
 foreach ($program in $programs.Keys) {
     $packagePath = $programs[$program]
-    go build -mod=readonly -trimpath -o "build/$TargetOS/$program$suffix" $packagePath
+    go build -mod=readonly -trimpath "-ldflags=$pluginFlags" -o "build/$TargetOS/$program$suffix" $packagePath
     if ($LASTEXITCODE) { throw "Build failed: $program" }
 }
 $obsoleteNames = @('musicfs-plugin-local', 'musicfs-plugin-audio-ffmpeg', 'musicfs-plugin-ncm', 'musicfs-plugin-scraper-local')
@@ -45,7 +49,7 @@ if (-not $SplitPlugins) {
 Push-Location plugins/source/online
 try {
     foreach ($program in @('musicfs-plugin-netease', 'musicfs-plugin-qqmusic', 'musicfs-plugin-applemusic', 'musicfs-plugin-bilibili', 'musicfs-plugin-online')) {
-        go build -mod=readonly -trimpath -o "$outputRoot/$program$suffix" "./cmd/$program"
+        go build -mod=readonly -trimpath "-ldflags=$pluginFlags" -o "$outputRoot/$program$suffix" "./cmd/$program"
         if ($LASTEXITCODE) { throw "Build failed: $program" }
     }
 } finally {

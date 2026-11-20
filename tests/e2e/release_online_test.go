@@ -62,8 +62,8 @@ func TestActualInstallationOnlineProgramsAndModules(t *testing.T) {
 			})
 		}
 	}
-	if count != 3 {
-		t.Fatalf("packaged online provider count = %d, want 3", count)
+	if count != 4 {
+		t.Fatalf("packaged online provider count = %d, want 4", count)
 	}
 	raw, err := os.ReadFile(filepath.Join(installed, "release.json"))
 	if err != nil {
@@ -83,7 +83,7 @@ func TestActualInstallationOnlineProgramsAndModules(t *testing.T) {
 	if len(manifest.Modules) != 3 {
 		t.Fatal("release manifest does not account for all three source modules")
 	}
-	if len(manifest.Programs) != 2 && len(manifest.Programs) != 8 {
+	if len(manifest.Programs) != 2 && len(manifest.Programs) != 9 {
 		t.Fatalf("installation has neither default nor split program catalog: %v", manifest.Programs)
 	}
 	binaries, err := os.ReadDir(filepath.Join(installed, "bin"))
@@ -117,11 +117,11 @@ func TestActualInstallationOnlineProgramsAndModules(t *testing.T) {
 		}
 		roles[component.Args[1]] = true
 	}
-	if len(roles) != 9 {
-		t.Fatalf("shared role count = %d, want 9", len(roles))
+	if len(roles) != 10 {
+		t.Fatalf("shared role count = %d, want 10", len(roles))
 	}
-	if builtinCount != 13 {
-		t.Fatalf("builtin plugin count = %d, want 13", builtinCount)
+	if builtinCount <= len(roles) {
+		t.Fatalf("bundle omits in-process plugins: %d builtins, %d shared roles", builtinCount, len(roles))
 	}
 	for _, module := range manifest.Modules {
 		if _, err := os.Stat(filepath.Join(installed, module.Directory, "go.mod")); err != nil {

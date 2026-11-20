@@ -4,6 +4,7 @@ cd "$(dirname "$0")/.."
 export CGO_ENABLED=0
 export GOWORK=off
 target="${GOOS:-linux}"
+plugin_flags="$(GOOS="$(go env GOHOSTOS)" GOARCH="$(go env GOHOSTARCH)" go run -mod=readonly ./scripts/pluginversions)"
 case "$target" in windows|linux) ;; *) echo "Target OS must be windows or linux" >&2; exit 1 ;; esac
 split_plugins=false
 case "${1:-}" in
@@ -25,7 +26,7 @@ for entry in \
     musicfs-plugins:./src/app/musicfs-plugins; do
     name="${entry%%:*}"
     package_path="${entry#*:}"
-    go build -mod=readonly -trimpath -o "$output_root/$name$suffix" "$package_path"
+    go build -mod=readonly -trimpath -ldflags="$plugin_flags" -o "$output_root/$name$suffix" "$package_path"
 done
 obsolete_names="musicfs-plugin-local musicfs-plugin-audio-ffmpeg musicfs-plugin-ncm musicfs-plugin-scraper-local"
 if [ "$split_plugins" = false ]; then
@@ -43,11 +44,11 @@ for entry in \
     musicfs-plugin-dsp-gain:./plugins/dsp/gain/cmd/musicfs-plugin-dsp-gain; do
     name="${entry%%:*}"
     package_path="${entry#*:}"
-    go build -mod=readonly -trimpath -o "build/$target/$name$suffix" "$package_path"
+    go build -mod=readonly -trimpath -ldflags="$plugin_flags" -o "build/$target/$name$suffix" "$package_path"
 done
 (
     cd plugins/source/online
     for name in musicfs-plugin-netease musicfs-plugin-qqmusic musicfs-plugin-applemusic musicfs-plugin-bilibili musicfs-plugin-online; do
-        go build -mod=readonly -trimpath -o "$output_root/$name$suffix" "./cmd/$name"
+        go build -mod=readonly -trimpath -ldflags="$plugin_flags" -o "$output_root/$name$suffix" "./cmd/$name"
     done
 )

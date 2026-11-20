@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/scripts/internal/pluginversions"
 	"github.com/fnMrRice/MusicFS-server/src/core/version"
 )
 
@@ -98,6 +99,11 @@ func run() error {
 	if dirty && !*allowDirty {
 		return errors.New("working tree is dirty; commit the step or use --allow-dirty for validation")
 	}
+	pluginReleases, err := pluginversions.Resolve(b.root)
+	if err != nil {
+		return err
+	}
+	linkFlags := "-ldflags=-s -w " + pluginversions.LinkFlags(pluginReleases)
 	if err = os.MkdirAll(filepath.Dir(b.out), 0700); err != nil {
 		return err
 	}
@@ -112,7 +118,7 @@ func run() error {
 		if b.target == "windows" {
 			file += ".exe"
 		}
-		if _, err = b.moduleCommand(program.moduleDir, "go", "build", "-mod=readonly", "-trimpath", "-buildvcs=false", "-ldflags=-s -w", "-o", filepath.Join(b.out, "bin", file), program.packagePath); err != nil {
+		if _, err = b.moduleCommand(program.moduleDir, "go", "build", "-mod=readonly", "-trimpath", "-buildvcs=false", linkFlags, "-o", filepath.Join(b.out, "bin", file), program.packagePath); err != nil {
 			return err
 		}
 	}
@@ -141,6 +147,16 @@ func run() error {
 	}
 	m := manifest{Version: version.Server, Revision: strings.TrimSpace(string(rev)), Dirty: dirty, OS: b.target, Arch: b.arch, GoVersion: strings.TrimSpace(string(goVersion)), BuiltAt: time.Now().UTC(), APIVersion: "1", PluginProtocol: "1.0", Programs: b.programNames(), ExternalTools: []string{"FFmpeg/ffprobe: external, libmp3lame required", "Chromaprint fpcalc 1.6.1: external, optional"}, Dependencies: deps, GoLicenses: goLicenses}
 	m.Components = components(b.splitPlugins)
+	for i, item := range m.Components {
+		if item.PluginID == "" {
+			continue
+		}
+		v, ok := pluginReleases[item.PluginID]
+		if !ok {
+			return fmt.Errorf("missing plugin release for %s", item.PluginID)
+		}
+		m.Components[i].Version = v
+	}
 	m.Modules = sourceModules
 	m.SchemaVersion, err = b.schemaVersion()
 	if err != nil {

@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 )
 
 func TestDefaultAndSplitReleasePrograms(t *testing.T) {
@@ -54,12 +57,26 @@ func TestDefaultAndSplitReleasePrograms(t *testing.T) {
 
 func TestReleaseCatalogSeparatesBuiltinsAndOptionalProcessRoles(t *testing.T) {
 	expected := []string{"local", "audio-ffmpeg", "ncm", "scraper-local", "netease", "qqmusic", "applemusic", "bilibili", "storage-sqlite", "dsp-gain"}
+	raw, err := os.ReadFile(filepath.Join("..", "..", "sdk", "bundledplugin", "releases.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var declared struct{ Plugins map[string]json.RawMessage }
+	if err := json.Unmarshal(raw, &declared); err != nil {
+		t.Fatal(err)
+	}
 	for _, split := range []bool{false, true} {
 		roles := map[string]bool{}
-		builtinCount := 0
+		builtins := map[string]bool{}
 		for _, item := range components(split) {
+			if item.Execution != "" && (item.PluginID == "" || item.Version == "" || item.Version != bundledplugin.Version(item.PluginID)) {
+				t.Fatalf("missing or inconsistent plugin version: %+v", item)
+			}
 			if item.Execution == "builtin" {
-				builtinCount++
+				if builtins[item.PluginID] {
+					t.Fatalf("duplicate builtin plugin: %s", item.PluginID)
+				}
+				builtins[item.PluginID] = true
 				if item.Program != "musicfs" || len(item.Args) != 0 {
 					t.Fatalf("builtin plugin depends on a worker executable: %+v", item)
 				}
@@ -76,7 +93,7 @@ func TestReleaseCatalogSeparatesBuiltinsAndOptionalProcessRoles(t *testing.T) {
 			roles[item.Args[1]] = true
 			switch item.Args[1] {
 			case "storage-sqlite":
-				if item.Required || item.PluginID != "" {
+				if item.Required || item.PluginID != "musicfs.plugin.storage.sqlite" {
 					t.Fatalf("standalone SQLite must remain an optional alternative: %+v", item)
 				}
 			case "dsp-gain":
@@ -88,8 +105,10 @@ func TestReleaseCatalogSeparatesBuiltinsAndOptionalProcessRoles(t *testing.T) {
 		if len(roles) != len(expected) {
 			t.Fatalf("split=%v bundled roles = %d, want %d", split, len(roles), len(expected))
 		}
-		if builtinCount != 14 {
-			t.Fatalf("release omits builtin capabilities: count=%d", builtinCount)
+		for id := range declared.Plugins {
+			if !builtins[id] {
+				t.Errorf("release omits builtin plugin %s", id)
+			}
 		}
 	}
 	t.Setenv("GOWORK", "/untrusted/go.work")

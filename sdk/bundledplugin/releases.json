@@ -1,0 +1,43 @@
+{
+  "groups": {
+    "worker": ["unified/select.go"],
+    "provider": ["source/online/internal/adapter/", "source/online/internal/session/", "source/online/internal/policies/policies.go", "source/online/plugin.go", "source/online/registry.go", "source/online/unified/", "source/online/cmd/musicfs-plugin-online/", "source/online/go.mod", "source/online/go.sum", "@worker"],
+    "scraper": ["scraper/online/catalog.go", "scraper/online/settings.go", "scraper/online/brainz_http.go"],
+    "lookup": ["@scraper", "scraper/online/lookup.go", "scraper/online/album_page.go"],
+    "dsp": ["dsp/builtin/"],
+    "effect": ["@dsp", "dsp/effects/effects.go"]
+  },
+  "plugins": {
+    "musicfs.plugin.source.localfiles": {"version": "0.3.0", "sources": ["source/localfiles/", "@worker"]},
+    "musicfs.plugin.decoder.ffmpeg": {"version": "0.7.0", "sources": ["decoder/ffmpeg/", "@worker"]},
+    "musicfs.plugin.decoder.ncm": {"version": "0.1.0", "sources": ["decoder/ncm/", "@worker"]},
+    "musicfs.scraper.local": {"version": "0.1.0", "sources": ["scraper/local/", "@worker"]},
+    "musicfs.plugin.source.netease": {"version": "0.1.0", "sources": ["source/online/netease/", "source/online/internal/policies/netease.go", "source/online/cmd/musicfs-plugin-netease/", "@provider"]},
+    "musicfs.plugin.source.qqmusic": {"version": "0.1.0", "sources": ["source/online/qqmusic/", "source/online/internal/policies/qqmusic.go", "source/online/cmd/musicfs-plugin-qqmusic/", "@provider"]},
+    "musicfs.plugin.source.applemusic": {"version": "0.1.0", "sources": ["source/online/applemusic/", "source/online/internal/policies/applemusic.go", "source/online/cmd/musicfs-plugin-applemusic/", "@provider"]},
+    "musicfs.plugin.source.bilibili": {"version": "0.1.0", "sources": ["source/online/bilibili/", "source/online/internal/policies/bilibili.go", "source/online/cmd/musicfs-plugin-bilibili/", "@provider"]},
+    "musicfs.dsp.gain": {"version": "0.1.0", "sources": ["dsp/gain/", "@dsp", "unified/gain.go", "@worker"]},
+    "musicfs.dsp.equalizer": {"version": "0.1.0", "sources": ["dsp/effects/equalizer.go", "@effect"]},
+    "musicfs.dsp.compressor": {"version": "0.1.0", "sources": ["dsp/effects/compressor.go", "@effect"]},
+    "musicfs.dsp.reverb": {"version": "0.1.0", "sources": ["dsp/effects/reverb.go", "@effect"]},
+    "musicfs.plugin.decoder.channelmix": {"version": "0.1.0", "sources": ["dsp/channelmix/", "@dsp"]},
+    "musicfs.plugin.storage.sqlite": {"version": "0.1.0", "sources": ["database/sqlite/", "@worker"]},
+    "musicfs.plugin.analysis.chromaprint": {"version": "0.1.0", "sources": ["analysis/chromaprint/"]},
+    "musicfs.plugin.tags.flac": {"version": "0.1.0", "sources": ["tags/flac/"]},
+    "musicfs.plugin.matching.standard": {"version": "0.1.0", "sources": ["matching/standard/"]},
+    "musicfs.plugin.transform.thumbnail": {"version": "0.1.0", "sources": ["transform/thumbnail/"]},
+    "musicfs.plugin.content.music": {"version": "0.1.0", "sources": ["content/music/"]},
+    "musicfs.plugin.content.asmr": {"version": "0.1.0", "sources": ["content/asmr/", "content/history/"]},
+    "musicfs.plugin.content.cd_album": {"version": "0.1.0", "sources": ["content/cdalbum/", "content/history/", "content/music/descriptor.go"]},
+    "musicfs.plugin.content.radio": {"version": "0.1.0", "sources": ["content/radio/", "content/history/"]},
+    "musicfs.scraper.musicbrainz": {"version": "0.1.0", "sources": ["scraper/online/brainz.go", "scraper/online/brainz_entities.go", "scraper/online/album_page.go", "@scraper"]},
+    "musicfs.scraper.coverartarchive": {"version": "0.1.0", "sources": ["scraper/online/coverarchive.go", "scraper/online/album_page.go", "@scraper"]},
+    "musicfs.scraper.acoustid": {"version": "0.1.0", "sources": ["scraper/online/acoustid.go", "@scraper"]},
+    "musicfs.scraper.bangumi": {"version": "0.1.0", "sources": ["scraper/online/bangumi*.go", "@lookup"]},
+    "musicfs.scraper.dlsite": {"version": "0.1.0", "sources": ["scraper/online/dlsite*.go", "@lookup"]},
+    "musicfs.scraper.lrclib": {"version": "0.1.0", "sources": ["scraper/online/lrclib*.go", "@lookup"]},
+    "musicfs.scraper.itunes": {"version": "0.1.0", "sources": ["scraper/online/itunes*.go", "scraper/online/names.go", "@lookup"]},
+    "musicfs.scraper.netease": {"version": "0.1.0", "sources": ["scraper/online/netease*.go", "scraper/online/names.go", "@lookup"]},
+    "musicfs.scraper.qqmusic": {"version": "0.1.0", "sources": ["scraper/online/qqmusic*.go", "scraper/online/names.go", "@lookup"]}
+  }
+}

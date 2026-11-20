@@ -9,6 +9,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/plugins/content/cdalbum"
 	"github.com/fnMrRice/MusicFS-server/plugins/content/music"
 	"github.com/fnMrRice/MusicFS-server/plugins/content/radio"
+	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/sdk/contenttype"
 	"github.com/fnMrRice/MusicFS-server/src/library/contenttypes"
 )
@@ -43,7 +44,7 @@ func TestRegistryListsBuiltinDeclarationsInRegistrationOrder(t *testing.T) {
 		t.Fatalf("unexpected ASMR metadata: %+v", listed[2])
 	}
 	for _, descriptor := range listed {
-		if descriptor.PluginVersion != "0.1.0" || descriptor.PluginID != "musicfs.plugin.content."+descriptor.ID {
+		if descriptor.PluginID != "musicfs.plugin.content."+descriptor.ID || descriptor.PluginVersion != bundledplugin.Version(descriptor.PluginID) {
 			t.Fatalf("unexpected built-in plugin identity: %+v", descriptor)
 		}
 		found, ok := registry.Get(descriptor.ID)

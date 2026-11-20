@@ -12,6 +12,7 @@ import (
 	_ "github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/version"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
@@ -149,7 +150,7 @@ func Create(ctx context.Context, doc *config.Document, parent string) (Result, e
 }
 
 func dependencies(ctx context.Context, c config.Config) []Dependency {
-	items := []Dependency{{Name: "musicfs", Version: "0.1.0/API-v1"}, {Name: "go", Version: runtime.Version()}}
+	items := []Dependency{{Name: "musicfs", Version: version.Server + "/API-v1"}, {Name: "go", Version: runtime.Version()}}
 	if info, ok := debug.ReadBuildInfo(); ok {
 		for _, module := range info.Deps {
 			version := module.Version

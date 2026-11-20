@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
@@ -156,7 +157,7 @@ func assertStorageCannotBeDisabled(t *testing.T, c *client, managed plugincontro
 	for _, plugin := range managed.Items {
 		if plugin.Storage != nil {
 			storageID = plugin.PluginID
-			if !plugin.Required || plugin.StateMutable || plugin.Storage.Mode != "process" || plugin.Storage.RuntimeState != "ready" || plugin.Version != "0.1.0" || len(plugin.Instances) != 0 {
+			if !plugin.Required || plugin.StateMutable || plugin.Storage.Mode != "process" || plugin.Storage.RuntimeState != "ready" || plugin.Version != bundledplugin.SQLiteVersion || len(plugin.Instances) != 0 {
 				t.Fatalf("mandatory storage metadata is invalid: %+v", plugin)
 			}
 		}

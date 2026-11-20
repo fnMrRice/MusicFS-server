@@ -59,7 +59,7 @@ Windows PowerShell 先执行 `$env:GOWORK = 'off'`，再执行对应 `go build` 
 
 所有插件必须声明发行版本，格式为最多 128 字符的有效语义版本（SemVer）；缺失、空白、无效格式及带前导零的纯数字预发行标识均拒绝。通用 Manifest 的 `pluginVersion` 由 `ValidPluginVersion` 统一校验，适用于 Provider、音频和 Scraper。发行版本独立于 Server 版本、SDK 模块依赖版本和通信协议；在线插件不要求精确等于 `0.1.0`，通信兼容仍由 `protocolVersion=1.0` 和 `schemaRevision=online-declared-v4` 严格判断。版本号变化不会自动获得新方法或权限；FFmpeg 等角色已有的精确版本约束仍保留。
 
-随包七种普通插件、DSP gain、SQLite 和新增的分析、标签、评分、缩略图四项实现的发行版本统一定义在 [sdk/bundledplugin/releases.go](../../sdk/bundledplugin/releases.go)，各插件独立演进。普通 Worker 和管理快照引用同一声明；`GET /admin/plugins` 的每项 `version` 必填，尚无有效握手版本时返回随包声明，包括未启动、待配置、已禁用或启动失败的情况；取得有效握手版本后优先返回实际版本。当前配置仅支持已声明的官方普通插件，未知 ID 仍被拒绝，不以 Server 版本或占位字符串代替插件版本。
+官方插件在[版本清单](../../sdk/bundledplugin/releases.json)中声明各自的初始版本和实现文件。构建时按[插件版本规则](../development/README.md)计算发行号，供 Worker、宿主和发行清单共用。插件管理接口 `GET /admin/plugins` 的每项 `version` 必填。已完成握手的实例返回实际运行版本，未启动、待配置、已禁用或启动失败的实例使用随包版本。
 
 在线声明可以提供通用协议能力的子集。宿主分别验证 Manifest 与描述，并核对启用能力集合和显示身份一致；重复能力、未知方法、错误协议或声明不一致均拒绝启动。平台自己的 `resources` 声明 ID 与规范资料 URL 的绑定规则、占位条目和图片主机，`login` 声明交互登录方法与验收状态；SDK 统一检查有界规则、HTTPS、固定主机及结果身份。平台新增既有协议能力或新的 ID/CDN 规则只需更新插件实现与声明，不修改通用校验器。新增协议方法仍须更新 SDK 和契约。运行期间以握手通过的实际声明执行，不以宿主默认能力覆盖插件限制。
 

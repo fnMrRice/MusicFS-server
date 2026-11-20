@@ -1,75 +1,59 @@
-// Package bundledplugin declares the release versions of the official bundled
-// plugins. Workers and host metadata use these same declarations; each plugin
-// release evolves independently of its wire protocol and the server version.
+// Package bundledplugin 提供当前构建中各官方插件的实现版本。
 package bundledplugin
 
-const (
-	LocalFilesVersion     = "0.3.0"
-	FFmpegVersion         = "0.7.0"
-	NCMVersion            = "0.1.0"
-	LocalScraperVersion   = "0.1.0"
-	OnlineScrapersVersion = "0.1.0"
-	NetEaseVersion        = "0.1.0"
-	QQMusicVersion        = "0.1.0"
-	AppleMusicVersion     = "0.1.0"
-	BilibiliVersion       = "0.1.0"
-	GainVersion           = "0.1.0"
-	EqualizerVersion      = "0.1.0"
-	CompressorVersion     = "0.1.0"
-	ReverbVersion         = "0.1.0"
-	ChannelMixVersion     = "0.1.0"
-	SQLiteVersion         = "0.1.0"
-	ChromaprintVersion    = "0.1.0"
-	FLACVersion           = "0.1.0"
-	MatchingVersion       = "0.1.0"
-	ThumbnailVersion      = "0.1.0"
+import (
+	_ "embed"
+	"encoding/json"
+	"strings"
 )
 
-// Version returns the package's declared release, including before a worker
-// starts. Unknown plugins have no declaration and must supply their own version.
-func Version(pluginID string) string {
-	switch pluginID {
-	case "musicfs.plugin.analysis.chromaprint":
-		return ChromaprintVersion
-	case "musicfs.plugin.tags.flac":
-		return FLACVersion
-	case "musicfs.plugin.matching.standard":
-		return MatchingVersion
-	case "musicfs.plugin.transform.thumbnail":
-		return ThumbnailVersion
-	case "musicfs.plugin.source.localfiles":
-		return LocalFilesVersion
-	case "musicfs.plugin.decoder.ffmpeg":
-		return FFmpegVersion
-	case "musicfs.plugin.decoder.ncm":
-		return NCMVersion
-	case "musicfs.scraper.local":
-		return LocalScraperVersion
-	case "musicfs.scraper.musicbrainz", "musicfs.scraper.coverartarchive", "musicfs.scraper.acoustid",
-		"musicfs.scraper.lrclib", "musicfs.scraper.itunes", "musicfs.scraper.bangumi", "musicfs.scraper.dlsite",
-		"musicfs.scraper.netease", "musicfs.scraper.qqmusic":
-		return OnlineScrapersVersion
-	case "musicfs.plugin.source.netease":
-		return NetEaseVersion
-	case "musicfs.plugin.source.qqmusic":
-		return QQMusicVersion
-	case "musicfs.plugin.source.applemusic":
-		return AppleMusicVersion
-	case "musicfs.plugin.source.bilibili":
-		return BilibiliVersion
-	case "musicfs.dsp.gain":
-		return GainVersion
-	case "musicfs.dsp.equalizer":
-		return EqualizerVersion
-	case "musicfs.dsp.compressor":
-		return CompressorVersion
-	case "musicfs.dsp.reverb":
-		return ReverbVersion
-	case "musicfs.plugin.decoder.channelmix":
-		return ChannelMixVersion
-	case "musicfs.plugin.storage.sqlite":
-		return SQLiteVersion
-	default:
-		return ""
+//go:embed releases.json
+var declarations []byte
+
+// 构建工具以 -ldflags 注入当前提交与工作树对应的插件版本。
+var buildVersions string
+
+var releases = loadVersions()
+
+func loadVersions() map[string]string {
+	var catalog struct {
+		Plugins map[string]struct{ Version string }
 	}
+	if err := json.Unmarshal(declarations, &catalog); err != nil {
+		panic(err)
+	}
+	versions := make(map[string]string, len(catalog.Plugins))
+	for id, plugin := range catalog.Plugins {
+		versions[id] = plugin.Version
+	}
+	for pair := range strings.SplitSeq(buildVersions, ",") {
+		if id, version, ok := strings.Cut(pair, "="); ok {
+			versions[id] = version
+		}
+	}
+	return versions
 }
+
+// Version 返回构建所包含的实现版本，第三方插件由其自身声明版本。
+func Version(id string) string { return releases[id] }
+
+var (
+	LocalFilesVersion   = Version("musicfs.plugin.source.localfiles")
+	FFmpegVersion       = Version("musicfs.plugin.decoder.ffmpeg")
+	NCMVersion          = Version("musicfs.plugin.decoder.ncm")
+	LocalScraperVersion = Version("musicfs.scraper.local")
+	NetEaseVersion      = Version("musicfs.plugin.source.netease")
+	QQMusicVersion      = Version("musicfs.plugin.source.qqmusic")
+	AppleMusicVersion   = Version("musicfs.plugin.source.applemusic")
+	BilibiliVersion     = Version("musicfs.plugin.source.bilibili")
+	GainVersion         = Version("musicfs.dsp.gain")
+	EqualizerVersion    = Version("musicfs.dsp.equalizer")
+	CompressorVersion   = Version("musicfs.dsp.compressor")
+	ReverbVersion       = Version("musicfs.dsp.reverb")
+	ChannelMixVersion   = Version("musicfs.plugin.decoder.channelmix")
+	SQLiteVersion       = Version("musicfs.plugin.storage.sqlite")
+	ChromaprintVersion  = Version("musicfs.plugin.analysis.chromaprint")
+	FLACVersion         = Version("musicfs.plugin.tags.flac")
+	MatchingVersion     = Version("musicfs.plugin.matching.standard")
+	ThumbnailVersion    = Version("musicfs.plugin.transform.thumbnail")
+)

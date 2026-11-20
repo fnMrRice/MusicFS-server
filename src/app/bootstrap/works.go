@@ -17,13 +17,14 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/builtinplugins"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
 )
 
 // configureWorks 在装配层注册作品库插件与普通音乐的资料声明。
 func configureWorks(ctx context.Context, cfg config.Config, handler *api.Server, repository storage.Backend, sources *library.Service) (func(), error) {
-	registry, err := contenttypes.New(cdalbum.Descriptor(), asmr.Descriptor(), radio.Descriptor(), music.Descriptor())
+	registry, err := contenttypes.New(builtinplugins.ContentTypes()...)
 	if err != nil {
 		return nil, err
 	}

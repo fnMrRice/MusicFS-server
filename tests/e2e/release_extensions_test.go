@@ -50,7 +50,7 @@ func assertInstallationPersistence(t *testing.T, installed string, cfg config.Co
 			storageRequired = item.Required && len(item.Args) == 0
 		}
 		if item.PluginID == "musicfs.plugin.decoder.ffmpeg" {
-			compatibleAudio = item.Version == "0.2.0"
+			compatibleAudio = pluginproto.ValidPluginVersion(item.Version)
 		}
 		if _, ok := algorithms[item.PluginID]; ok {
 			if algorithms[item.PluginID] || !pluginproto.ValidPluginVersion(item.Version) || len(item.Args) != 0 {

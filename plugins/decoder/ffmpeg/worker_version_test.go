@@ -94,9 +94,6 @@ func TestAudioVersionAvailableOnlyAfterVerifiedHandshake(t *testing.T) {
 }
 
 func TestOldAudioWorkerRejectedBeforeProcessing(t *testing.T) {
-	if audioPluginVersion != "0.7.0" {
-		t.Fatal("channel plugin bypass requires implementation version 0.7.0")
-	}
 	path, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)

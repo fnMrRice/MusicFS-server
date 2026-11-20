@@ -3,14 +3,18 @@ package radio
 
 import (
 	"github.com/fnMrRice/MusicFS-server/plugins/content/history"
+	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/sdk/contenttype"
 )
 
-const TypeID = "radio"
+const (
+	TypeID   = "radio"
+	PluginID = "musicfs.plugin.content.radio"
+)
 
 func Descriptor() contenttype.Descriptor {
 	return contenttype.Descriptor{
-		ID: TypeID, PluginID: "musicfs.plugin.content.radio", PluginVersion: "0.1.0",
+		ID: TypeID, PluginID: PluginID, PluginVersion: bundledplugin.Version(PluginID),
 		Name: "电台", Description: "按节目整理电台录音、分集和附件。",
 		CreditRoles: []contenttype.NamedValue{{ID: "host", Name: "主持人"}, {ID: "guest", Name: "嘉宾"}},
 		Views:       []string{contenttype.ViewWorkList, contenttype.ViewWorkDetail},

@@ -3,21 +3,21 @@ package asmr
 
 import (
 	"github.com/fnMrRice/MusicFS-server/plugins/content/history"
+	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/sdk/contenttype"
 )
 
 func History(state contenttype.HistoryState) contenttype.History { return history.ByWork(state) }
 
 const (
-	TypeID        = "asmr"
-	PluginID      = "musicfs.plugin.content.asmr"
-	PluginVersion = "0.1.0"
+	TypeID   = "asmr"
+	PluginID = "musicfs.plugin.content.asmr"
 )
 
 // Descriptor 每次返回独立声明；此声明不解析或改写外部作品编号。
 func Descriptor() contenttype.Descriptor {
 	return contenttype.Descriptor{
-		ID: TypeID, PluginID: PluginID, PluginVersion: PluginVersion,
+		ID: TypeID, PluginID: PluginID, PluginVersion: bundledplugin.Version(PluginID),
 		Name:        "ASMR",
 		Library:     &contenttype.Library{Order: 20, Icon: "headphones", SeparateHistory: true},
 		Description: "按作品包组织本地音声，保留多层音轨目录、内容变体和附件。",

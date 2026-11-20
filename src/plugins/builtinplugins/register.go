@@ -1,4 +1,4 @@
-// Package builtinplugins 集中声明默认构建装配的算法；管理器本身不依赖这些实现。
+// Package builtinplugins 声明默认构建装配的内置插件。
 package builtinplugins
 
 import (

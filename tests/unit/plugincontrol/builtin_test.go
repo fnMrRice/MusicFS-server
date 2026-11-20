@@ -6,9 +6,24 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/builtinplugins"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
+
+func TestContentPluginsReportTheirInstalledVersions(t *testing.T) {
+	m, err := plugincontrol.New(t.Context(), config.Config{}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer m.Close()
+	for _, d := range builtinplugins.ContentTypes() {
+		p := managedItem(t, m, d.PluginID)
+		if p.Plugin.Name != d.Name || p.Version != d.PluginVersion || p.Builtin == nil || p.StateMutable {
+			t.Fatalf("incorrect managed content plugin: %+v", p)
+		}
+	}
+}
 
 func TestBuiltinAlgorithmInventoryDescribesConfigurationWithoutRuntimeClaims(t *testing.T) {
 	cfg := config.Config{Fingerprinting: config.FingerprintingConfig{Enabled: true, FpcalcPath: "private-tool-path", FpcalcSHA256: "private-digest"}}
