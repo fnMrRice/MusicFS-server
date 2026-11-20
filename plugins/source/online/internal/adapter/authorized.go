@@ -107,14 +107,15 @@ func (c *Client) PlatformSession(ctx context.Context) (AccountView, error) {
 	return result.View, err
 }
 func (c *Client) AccountScope(ctx context.Context) (string, string, error) {
-	view, err := c.PlatformSession(ctx)
+	account, revision, _, err := c.RecommendationAccountScope(ctx)
+	return account, revision, err
+}
+func (c *Client) RecommendationAccountScope(ctx context.Context) (string, string, string, error) {
+	result, err := c.Account(ctx, AccountRequest{Action: "state"})
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
-	if view.State != "signedIn" || view.Revision == "" {
-		return "", "", platformLoginRequired()
-	}
-	return view.AccountID, view.Revision, nil
+	return result.RecommendationScope()
 }
 
 // Playlists keeps account ownership and cursor binding in the shared runtime.

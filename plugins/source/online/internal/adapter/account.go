@@ -2,6 +2,8 @@ package adapter
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -172,6 +174,10 @@ func (c *Client) Account(ctx context.Context, r AccountRequest) (result AccountR
 		return AccountResult{}, domain.Fail("INVALID_ARGUMENT", "Unknown platform account operation")
 	}
 	result = AccountResult{View: a.view}
+	if r.Action == "state" && a.view.VerifiedAt(time.Now()) && a.secret.DeviceID != "" {
+		binding := sha256.Sum256([]byte(a.secret.DeviceID))
+		result.RecommendationBinding = hex.EncodeToString(binding[:])
+	}
 	if a.secret.AccountID != "" {
 		result.Secret, _ = json.Marshal(a.secret)
 	}

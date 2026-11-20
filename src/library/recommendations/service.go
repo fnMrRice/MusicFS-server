@@ -17,6 +17,7 @@ type Service struct {
 	runtimes map[runtimeKey]Runtime
 	ordered  []Runtime
 	entries  map[cacheKey]*entry
+	pages    map[string]*pageFlight
 	bytes    int64
 	clock    uint64
 	ctx      context.Context
@@ -28,6 +29,9 @@ type Service struct {
 }
 
 func New(runtimes []Runtime, config Config) (*Service, error) {
+	if config.Now == nil {
+		config.Now = time.Now
+	}
 	if config.MaxEntries == 0 {
 		config.MaxEntries = 64
 	}
@@ -50,6 +54,7 @@ func New(runtimes []Runtime, config Config) (*Service, error) {
 		return nil, domain.Fail("INVALID_ARGUMENT", "Invalid recommendation service limits")
 	}
 	s := &Service{config: config, runtimes: map[runtimeKey]Runtime{}, entries: map[cacheKey]*entry{}, slots: make(chan struct{}, config.MaxConcurrent), stopped: make(chan struct{})}
+	s.pages = make(map[string]*pageFlight)
 	for _, r := range runtimes {
 		r.generation = 1
 		r.epoch = r.Gate.Epoch()
@@ -78,26 +83,28 @@ func New(runtimes []Runtime, config Config) (*Service, error) {
 }
 
 func (s *Service) List(ctx context.Context, owner string, request Request) (Response, error) {
-	if err := ctx.Err(); err != nil {
+	runtimes, err := s.selectRuntimes(ctx, owner, request)
+	if err != nil {
 		return Response{}, err
 	}
+	return s.listSources(ctx, runtimes, request)
+}
+
+func (s *Service) selectRuntimes(ctx context.Context, owner string, request Request) ([]Runtime, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if !pluginproto.OnlineIdentity(owner) || request.Limit < 1 || request.Limit > online.MaxPageItems || len(request.InstanceIDs) > MaxSources {
-		return Response{}, domain.Fail("INVALID_ARGUMENT", "Select up to eight recommendation instances and a limit between 1 and 50")
+		return nil, domain.Fail("INVALID_ARGUMENT", "Select up to eight recommendation instances and a limit between 1 and 50")
 	}
 	s.mu.Lock()
-	closed := s.closed
-	ordered := append([]Runtime{}, s.ordered...)
-	configured := make(map[runtimeKey]Runtime, len(s.runtimes))
-	for key, r := range s.runtimes {
-		configured[key] = r
-	}
-	s.mu.Unlock()
-	if closed {
-		return Response{}, domain.Fail("SOURCE_OFFLINE", "Recommendation service is draining")
+	defer s.mu.Unlock()
+	if s.closed {
+		return nil, domain.Fail("SOURCE_OFFLINE", "Recommendation service is draining")
 	}
 	runtimes := []Runtime{}
 	if len(request.InstanceIDs) == 0 {
-		for _, r := range ordered {
+		for _, r := range s.ordered {
 			if r.Owner == owner {
 				runtimes = append(runtimes, r)
 			}
@@ -106,19 +113,23 @@ func (s *Service) List(ctx context.Context, owner string, request Request) (Resp
 		seen := map[string]bool{}
 		for _, id := range request.InstanceIDs {
 			if !pluginproto.OnlineIdentity(id) || seen[id] {
-				return Response{}, domain.Fail("INVALID_ARGUMENT", "Invalid recommendation instance selection")
+				return nil, domain.Fail("INVALID_ARGUMENT", "Invalid recommendation instance selection")
 			}
 			seen[id] = true
-			r, ok := configured[runtimeKey{owner, id}]
+			r, ok := s.runtimes[runtimeKey{owner, id}]
 			if !ok {
-				return Response{}, domain.Fail("NOT_FOUND", "Recommendation instance was not found")
+				return nil, domain.Fail("NOT_FOUND", "Recommendation instance was not found")
 			}
 			runtimes = append(runtimes, r)
 		}
 	}
 	if len(runtimes) > MaxSources {
-		return Response{}, domain.Fail("INVALID_ARGUMENT", "Choose at most eight recommendation instances explicitly")
+		return nil, domain.Fail("INVALID_ARGUMENT", "Choose at most eight recommendation instances explicitly")
 	}
+	return runtimes, nil
+}
+
+func (s *Service) listSources(ctx context.Context, runtimes []Runtime, request Request) (Response, error) {
 	type result struct {
 		index  int
 		source Source

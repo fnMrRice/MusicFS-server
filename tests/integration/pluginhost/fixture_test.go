@@ -46,11 +46,12 @@ func TestMain(m *testing.M) {
 }
 
 type fixtureControl struct {
-	View    *online.AccountView `json:"view"`
-	Count   json.RawMessage     `json:"count,omitempty"`
-	Failure string              `json:"failure"`
-	Started string              `json:"started"`
-	Release string              `json:"release"`
+	View                  *online.AccountView `json:"view"`
+	Count                 json.RawMessage     `json:"count,omitempty"`
+	RecommendationBinding string              `json:"recommendationBinding,omitempty"`
+	Failure               string              `json:"failure"`
+	Started               string              `json:"started"`
+	Release               string              `json:"release"`
 }
 
 func setControl(t *testing.T, dir string, c fixtureControl) {

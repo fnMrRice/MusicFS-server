@@ -15,11 +15,12 @@ import (
 )
 
 type control struct {
-	View    *online.AccountView `json:"view"`
-	Count   json.RawMessage     `json:"count"`
-	Failure string              `json:"failure"`
-	Started string              `json:"started"`
-	Release string              `json:"release"`
+	View                  *online.AccountView `json:"view"`
+	Count                 json.RawMessage     `json:"count"`
+	RecommendationBinding string              `json:"recommendationBinding,omitempty"`
+	Failure               string              `json:"failure"`
+	Started               string              `json:"started"`
+	Release               string              `json:"release"`
 }
 
 func main() {
@@ -94,6 +95,9 @@ func main() {
 			count = json.RawMessage(`{"value":9,"unit":"custom units","localizedUnits":{"zh":"个自定义单位"}}`)
 		}
 		value := map[string]any{"view": view, "displayCount": count}
+		if c.RecommendationBinding != "" {
+			value["recommendationBinding"] = c.RecommendationBinding
+		}
 		return pluginproto.OnlineResult[any]{Context: request.Context, Value: value}, nil
 	})
 	<-peer.Done()

@@ -10,6 +10,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/library/recommendations"
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
@@ -113,6 +114,11 @@ func (c *Client) QueueWriteback(a0 context.Context, a1 string, a2 writebackhost.
 	return r0, r1, err
 }
 
+func (c *Client) ReadRecommendationPage(a0 context.Context, a1 string, a2 string, a3 int) (r0 recommendations.SavedPage, err error) {
+	err = c.Invoke(a0, "ReadRecommendationPage", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) RebuildPlaylist(a0 context.Context, a1 string, a2 string, a3 playlists.RebuildRequest, a4 string) (r0 playlists.AggregateSnapshot, err error) {
 	err = c.Invoke(a0, "RebuildPlaylist", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
@@ -136,9 +142,4 @@ func (c *Client) Recording(a0 context.Context, a1 string, a2 string) (r0 matchin
 func (c *Client) RecordingCover(a0 context.Context, a1 string, a2 string) (r0 library.RecordingCover, err error) {
 	err = c.Invoke(a0, "RecordingCover", []any{a1, a2}, []any{&r0})
 	return r0, err
-}
-
-func (c *Client) RecoverEnrichment(a0 context.Context) (err error) {
-	err = c.Invoke(a0, "RecoverEnrichment", []any{}, []any{})
-	return err
 }

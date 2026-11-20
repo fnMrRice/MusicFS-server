@@ -7,6 +7,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -28,13 +29,14 @@ func (*recommendationHTTPProvider) Descriptor() pluginproto.OnlineDescriptor {
 }
 
 func (p *recommendationHTTPProvider) PublicRecommendations(context.Context, int) (online.RecommendationPage, error) {
-	p.calls.Add(1)
+	call := p.calls.Add(1)
 	if p.fail.Load() {
 		return online.RecommendationPage{}, domain.Fail("TEMPORARY_FAILURE", "private upstream credential")
 	}
 	now := time.Now().UTC()
 	count := int64(3)
-	return online.RecommendationPage{Items: []online.Recommendation{{Position: 0, Reason: "Public", Playlist: online.Playlist{ExternalID: "91", Title: "Synthetic", SourceURL: "https://music.163.com/playlist?id=91", TrackCount: &count}}}, ObservedAt: now, ExpiresAt: now.Add(2 * time.Minute)}, nil
+	title := "Synthetic " + strconv.Itoa(int(call))
+	return online.RecommendationPage{Items: []online.Recommendation{{Position: 0, Reason: "Public", Playlist: online.Playlist{ExternalID: "91", Title: title, SourceURL: "https://music.163.com/playlist?id=91", TrackCount: &count}}}, ObservedAt: now, ExpiresAt: now.Add(2 * time.Minute)}, nil
 }
 
 func TestRecommendationsHTTPGroupedCacheRefreshAndPrivacy(t *testing.T) {
@@ -45,7 +47,7 @@ func TestRecommendationsHTTPGroupedCacheRefreshAndPrivacy(t *testing.T) {
 		{Owner: "admin", InstanceID: "8df55a88-1c78-50ac-ac6b-27110484abd7", Platform: online.Netease, ConfigRevision: "rev1", Provider: p},
 		{Owner: "admin", InstanceID: "7a202030-76d0-5655-b70e-aa3833cc17de", Platform: online.Netease, ConfigRevision: "rev1"},
 		{Owner: "other", InstanceID: "843558e1-a158-56ac-834a-baffd12bb5c5", Platform: online.Netease, ConfigRevision: "private-revision", Provider: private},
-	}, recommendations.Config{FailureCooldown: time.Minute})
+	}, recommendations.Config{FailureCooldown: time.Minute, Repository: store})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,6 +108,9 @@ func TestRecommendationsHTTPGroupedCacheRefreshAndPrivacy(t *testing.T) {
 		{"?instanceId=8df55a88-1c78-50ac-ac6b-27110484abd7&instanceId=8df55a88-1c78-50ac-ac6b-27110484abd7", true, 400}, {"?instanceId=", true, 400},
 		{"?limit=0", true, 400}, {"?limit=51", true, 400}, {"?limit=1&limit=2", true, 400},
 		{"?refresh=1", true, 400}, {"?refresh=true&refresh=false", true, 400},
+		{"?history=", true, 400}, {"?history=01", true, 400}, {"?history=-1", true, 400}, {"?history=6", true, 400},
+		{"?history=1&history=2", true, 400}, {"?history=1&refresh=true", true, 400},
+		{"?instanceId=843558e1-a158-56ac-834a-baffd12bb5c5&history=1", true, 404},
 		{"?accountId=other", true, 400}, {"?cursor=unknown", true, 400},
 		{"?instanceId=1&instanceId=2&instanceId=3&instanceId=4&instanceId=5&instanceId=6&instanceId=7&instanceId=8&instanceId=9", true, 400},
 	} {
@@ -114,6 +119,27 @@ func TestRecommendationsHTTPGroupedCacheRefreshAndPrivacy(t *testing.T) {
 			t.Fatalf("invalid query %s: %d %s", tc.query, w.Code, w.Body.String())
 		}
 		testkit.ValidateHTTP(t, "Error", w.Body.Bytes())
+	}
+	const timelineQuery = "?instanceId=8df55a88-1c78-50ac-ac6b-27110484abd7&limit=2"
+	start := p.calls.Load()
+	if w := request(timelineQuery+"&history=1", true); w.Code != http.StatusNotFound || p.calls.Load() != start {
+		t.Fatal("browsing unavailable history fetched a recommendation")
+	}
+	current := read(timelineQuery)
+	if current.HistoryDepth != 0 || len(current.Sources[0].Items) != 1 {
+		t.Fatal("new timeline did not start with the current page")
+	}
+	lastTitle := current.Sources[0].Items[0].Playlist.Title
+	current = read(timelineQuery + "&refresh=true")
+	if current.HistoryDepth != 1 || current.Sources[0].Items[0].Playlist.Title == lastTitle {
+		t.Fatal("manual refresh did not preserve the previous page")
+	}
+	calls := p.calls.Load()
+	previous := read(timelineQuery + "&history=1")
+	reopened := read(timelineQuery + "&history=0")
+	if previous.Sources[0].Items[0].Playlist.Title != lastTitle || previous.HistoryDepth != 1 ||
+		reopened.Sources[0].Items[0].Playlist.Title != current.Sources[0].Items[0].Playlist.Title || p.calls.Load() != calls {
+		t.Fatal("history or a same-day revisit fetched or replaced the current page")
 	}
 	tracks, err := store.ListTracks(context.Background(), "admin", "", "", 10)
 	if err != nil || len(tracks.Items) != 0 {

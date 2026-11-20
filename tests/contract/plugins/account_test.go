@@ -23,10 +23,12 @@ func TestPlatformAccountWireSchema(t *testing.T) {
 		t.Fatal(err)
 	}
 	scope := pluginproto.Context{UserID: "owner", InstanceID: "a5e47aac-f949-5e45-9709-f28a0d8443df", TaskID: strings.Repeat("a", 48), TimeoutMs: 10000}
+	binding := strings.Repeat("7a", 32)
 	values := []any{
 		map[string]any{"jsonrpc": "2.0", "id": "request", "method": "provider.online.account", "params": pluginproto.OnlineAccount{Context: scope, Request: online.AccountRequest{Action: "begin"}}},
 		map[string]any{"jsonrpc": "2.0", "id": "request", "result": pluginproto.OnlineResult[online.AccountResult]{Context: scope, Value: online.AccountResult{View: online.AccountView{State: "signedOut"}}}},
 		map[string]any{"jsonrpc": "2.0", "id": "request", "result": pluginproto.OnlineResult[online.AccountResult]{Context: scope, Value: online.AccountResult{View: online.AccountView{State: "signedIn", AccountID: "12345", DisplayName: "Fixture listener", AvatarURL: "https://p2.music.126.net/fixture/avatar.jpg"}}}},
+		map[string]any{"jsonrpc": "2.0", "id": "request", "result": pluginproto.OnlineResult[online.AccountResult]{Context: scope, Value: online.AccountResult{View: online.AccountView{State: "signedIn", AccountID: "12345", Revision: "verified-1"}, RecommendationBinding: binding}}},
 		map[string]any{"jsonrpc": "2.0", "id": "request", "result": pluginproto.OnlineResult[online.AccountResult]{Context: scope, Value: online.AccountResult{View: online.AccountView{State: "signedOut"}, DisplayCount: &plugindisplay.Count{Value: 0, Unit: "users", LocalizedUnits: map[string]string{"zh": "个用户"}}}}},
 	}
 	for _, value := range values {
@@ -41,6 +43,9 @@ func TestPlatformAccountWireSchema(t *testing.T) {
 	}
 	if public.Validate(map[string]any{"state": "signedIn", "secret": map[string]any{"token": "fixture"}}) == nil {
 		t.Fatal("public schema accepted secret")
+	}
+	if public.Validate(map[string]any{"state": "signedIn", "recommendationBinding": binding}) == nil {
+		t.Fatal("public schema accepted a private recommendation binding")
 	}
 	// 通用契约只限定 URL 结构，平台主机约束由插件负责。
 	if err := public.Validate(map[string]any{"state": "signedIn", "avatarUrl": "https://avatars.example.com/avatar.jpg"}); err != nil {

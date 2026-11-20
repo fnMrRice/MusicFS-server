@@ -10,11 +10,14 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
-	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/candidates"
-	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 )
+
+func (c *Client) RecoverEnrichment(a0 context.Context) (err error) {
+	err = c.Invoke(a0, "RecoverEnrichment", []any{}, []any{})
+	return err
+}
 
 func (c *Client) RecoverFingerprints(a0 context.Context) (err error) {
 	err = c.Invoke(a0, "RecoverFingerprints", []any{}, []any{})
@@ -129,9 +132,4 @@ func (c *Client) RootStatistics(a0 context.Context, a1 string, a2 string) (r0 li
 func (c *Client) SaveAuth(a0 context.Context, a1 auth.Session) (err error) {
 	err = c.Invoke(a0, "SaveAuth", []any{a1}, []any{})
 	return err
-}
-
-func (c *Client) SaveCandidates(a0 context.Context, a1 string, a2 matching.Snapshot, a3 []candidates.Candidate) (r0 matching.CandidatePage, err error) {
-	err = c.Invoke(a0, "SaveCandidates", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
 }

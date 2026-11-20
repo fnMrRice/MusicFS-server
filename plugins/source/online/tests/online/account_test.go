@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/md5"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -62,7 +63,7 @@ func decodeEAPI(t *testing.T, r *http.Request) map[string]any {
 func TestNeteaseAccountLifecycleAndPrivateSnapshot(t *testing.T) {
 	t.Parallel()
 	poll := 0
-	c := anonymousScoped(t, online.Netease, roundTrip(func(r *http.Request) (*http.Response, error) {
+	transport := roundTrip(func(r *http.Request) (*http.Response, error) {
 		data := decodeEAPI(t, r)
 		switch r.URL.Path {
 		case "/eapi/login/qrcode/unikey":
@@ -86,7 +87,8 @@ func TestNeteaseAccountLifecycleAndPrivateSnapshot(t *testing.T) {
 			t.Fatal("unexpected endpoint")
 			return nil, nil
 		}
-	}))
+	})
+	c := anonymousScoped(t, online.Netease, transport)
 	ctx := context.Background()
 	begin, err := c.Account(ctx, online.AccountRequest{Action: "begin"})
 	if err != nil {
@@ -110,8 +112,16 @@ func TestNeteaseAccountLifecycleAndPrivateSnapshot(t *testing.T) {
 	if done.View.State != "signedIn" || done.View.AccountID != "12345" || done.View.DisplayName != "Test listener" || done.View.AvatarURL != "https://p2.music.126.net/fixture/avatar.jpg" || len(done.Secret) == 0 {
 		t.Fatal("missing authenticated binding")
 	}
+	a, revision, binding, err := c.RecommendationAccountScope(ctx)
+	var stored struct {
+		DeviceID string `json:"deviceId"`
+	}
+	if err != nil || a != done.View.AccountID || revision != done.View.Revision || json.Unmarshal(done.Secret, &stored) != nil ||
+		stored.DeviceID == "" || binding != fmt.Sprintf("%x", sha256.Sum256([]byte(stored.DeviceID))) {
+		t.Fatal("recommendation history was not bound to this login")
+	}
 	public, _ := json.Marshal(done.View)
-	if strings.Contains(string(public), "fixture-private-token") {
+	if strings.Contains(string(public), "fixture-private-token") || strings.Contains(string(public), binding) || strings.Contains(string(public), stored.DeviceID) {
 		t.Fatal("secret in public state")
 	}
 	other, err := onlineplugins.New(online.Netease, online.Scope{UserID: "other", InstanceID: "instance"}, online.Options{})
@@ -121,10 +131,19 @@ func TestNeteaseAccountLifecycleAndPrivateSnapshot(t *testing.T) {
 	defer other.Close()
 	_, err = other.Account(ctx, online.AccountRequest{Action: "restore", Secret: done.Secret})
 	expectCode(t, err, "ACCESS_DENIED")
-	restored := anonymousScoped(t, online.Netease, response(`{}`))
+	restored := anonymousScoped(t, online.Netease, transport)
 	v, err := restored.Account(ctx, online.AccountRequest{Action: "restore", Secret: done.Secret})
 	if err != nil || v.View.State != "unverified" || v.View.AvatarURL != done.View.AvatarURL {
 		t.Fatal("restored credential incorrectly trusted")
+	}
+	_, _, _, err = restored.RecommendationAccountScope(ctx)
+	expectCode(t, err, "PLATFORM_AUTH_REQUIRED")
+	if _, err = restored.Account(ctx, online.AccountRequest{Action: "check"}); err != nil {
+		t.Fatal(err)
+	}
+	a, afterRestart, restoredBinding, err := restored.RecommendationAccountScope(ctx)
+	if err != nil || a != done.View.AccountID || afterRestart == revision || restoredBinding != binding {
+		t.Fatal("a verified restart lost the recommendation binding or reused a runtime revision")
 	}
 	v, err = c.Account(ctx, online.AccountRequest{Action: "logout"})
 	if err != nil || len(v.Secret) != 0 || v.View.State != "signedOut" || v.View.AvatarURL != "" || v.View.DisplayName != "" {
@@ -132,6 +151,22 @@ func TestNeteaseAccountLifecycleAndPrivateSnapshot(t *testing.T) {
 	}
 	_, err = c.Account(ctx, online.AccountRequest{Action: "poll", LoginID: begin.View.LoginID})
 	expectCode(t, err, "NOT_FOUND")
+	_, _, _, err = c.RecommendationAccountScope(ctx)
+	expectCode(t, err, "PLATFORM_AUTH_REQUIRED")
+
+	next := anonymousScoped(t, online.Netease, transport)
+	begin, err = next.Account(ctx, online.AccountRequest{Action: "begin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(3100 * time.Millisecond)
+	if _, err = next.Account(ctx, online.AccountRequest{Action: "poll", LoginID: begin.View.LoginID}); err != nil {
+		t.Fatal(err)
+	}
+	a, _, nextBinding, err := next.RecommendationAccountScope(ctx)
+	if err != nil || a != done.View.AccountID || nextBinding == binding || len(nextBinding) != 64 {
+		t.Fatal("a fresh login reused the previous recommendation history")
+	}
 }
 
 func TestCanceledLoginCannotComplete(t *testing.T) {

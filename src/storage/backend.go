@@ -15,6 +15,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/music"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/library/recommendations"
 	"github.com/fnMrRice/MusicFS-server/src/library/sourcedisplay"
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
@@ -72,6 +73,7 @@ type Backend interface {
 	playlists.AggregateRepository
 	plugincontrol.Repository
 	processedcache.Repository
+	recommendations.Repository
 	sourcedisplay.Repository
 	timeline.Repository
 	writebackhost.Repository

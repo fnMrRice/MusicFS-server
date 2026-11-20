@@ -10,12 +10,19 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/music"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
+	"github.com/fnMrRice/MusicFS-server/src/library/recommendations"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/candidates"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) SaveCandidates(a0 context.Context, a1 string, a2 matching.Snapshot, a3 []candidates.Candidate) (r0 matching.CandidatePage, err error) {
+	err = c.Invoke(a0, "SaveCandidates", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) SaveMatchingRun(a0 context.Context, a1 matching.Run) (err error) {
 	err = c.Invoke(a0, "SaveMatchingRun", []any{a1}, []any{})
@@ -45,6 +52,11 @@ func (c *Client) SavePersonalProfile(a0 context.Context, a1 string, a2 *string) 
 func (c *Client) SavePluginOperation(a0 context.Context, a1 plugincontrol.Operation) (err error) {
 	err = c.Invoke(a0, "SavePluginOperation", []any{a1}, []any{})
 	return err
+}
+
+func (c *Client) SaveRecommendationPage(a0 context.Context, a1 string, a2 string, a3 string, a4 []recommendations.Source, a5 bool) (r0 int, err error) {
+	err = c.Invoke(a0, "SaveRecommendationPage", []any{a1, a2, a3, a4, a5}, []any{&r0})
+	return r0, err
 }
 
 func (c *Client) SaveResult(a0 context.Context, a1 string, a2 string, a3 string, a4 string, a5 []uint8) (err error) {
@@ -125,14 +137,4 @@ func (c *Client) SetFavoriteSource(a0 context.Context, a1 string, a2 string, a3 
 func (c *Client) SetFavoritesSelection(a0 context.Context, a1 string, a2 library.TrackSelection, a3 bool) (r0 personal.SelectionResult, err error) {
 	err = c.Invoke(a0, "SetFavoritesSelection", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
-}
-
-func (c *Client) SetPublicationStage(a0 context.Context, a1 string, a2 string, a3 string, a4 string) (err error) {
-	err = c.Invoke(a0, "SetPublicationStage", []any{a1, a2, a3, a4}, []any{})
-	return err
-}
-
-func (c *Client) SetWritebackState(a0 context.Context, a1 string, a2 string, a3 string, a4 string) (err error) {
-	err = c.Invoke(a0, "SetWritebackState", []any{a1, a2, a3, a4}, []any{})
-	return err
 }

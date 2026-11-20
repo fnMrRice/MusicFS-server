@@ -30,7 +30,8 @@ func TestRecommendationsActualServerPartialFailuresCacheAndRestart(t *testing.T)
 	cfg.Plugins[0].Instances[0].Name = "  display fallback  "
 	cfg.Plugins[0].Instances = append(cfg.Plugins[0].Instances, config.Instance{InstanceID: "7a202030-76d0-5655-b70e-aa3833cc17de"})
 	t.Run("grouped-read-cache-refresh", func(t *testing.T) {
-		startNCMServer(t, cfg, base)
+		path := writeYAMLConfiguration(t, cfg)
+		stop := startAudioYAMLServer(t, path, cfg, base)
 		c := login(t, base, cfg.AdminToken)
 		authenticateManagedOnline(t, c, "7fe223d0-a3bd-5e87-87f8-305dc26d9041")
 		first := albumRequest[recommendations.Response](t, c, "GET", "/recommendations?limit=1", nil, "", 200, "Recommendations")
@@ -68,9 +69,22 @@ func TestRecommendationsActualServerPartialFailuresCacheAndRestart(t *testing.T)
 			t.Fatal("explicit refresh bypassed cooldown")
 		}
 		time.Sleep(2100 * time.Millisecond)
-		recovered := albumRequest[recommendations.Response](t, c, "GET", "/recommendations?instanceId=7fe223d0-a3bd-5e87-87f8-305dc26d9041&limit=1&refresh=true", nil, "", 200, "Recommendations").Sources[0]
-		if recovered.Error != nil || recovered.Stale || !recovered.LastSuccessAt.After(*cached.LastSuccessAt) {
+		latest := albumRequest[recommendations.Response](t, c, "GET", "/recommendations?instanceId=7fe223d0-a3bd-5e87-87f8-305dc26d9041&limit=1&refresh=true", nil, "", 200, "Recommendations")
+		recovered := latest.Sources[0]
+		if recovered.Error != nil || recovered.Stale || !recovered.LastSuccessAt.After(*cached.LastSuccessAt) || latest.HistoryDepth != 1 {
 			t.Fatal("recommendation recovery failed")
+		}
+		prior := albumRequest[recommendations.Response](t, c, "GET", "/recommendations?instanceId=7fe223d0-a3bd-5e87-87f8-305dc26d9041&limit=1&history=1", nil, "", 200, "Recommendations").Sources[0]
+		if prior.Error != nil || prior.LastSuccessAt == nil || !prior.LastSuccessAt.Equal(*cached.LastSuccessAt) {
+			t.Fatal("recommendation history did not return the previous successful page")
+		}
+		stop()
+		startAudioYAMLServer(t, path, cfg, base)
+		c = login(t, base, cfg.AdminToken)
+		authenticateManagedOnline(t, c, "7fe223d0-a3bd-5e87-87f8-305dc26d9041")
+		restored := albumRequest[recommendations.Response](t, c, "GET", "/recommendations?instanceId=7fe223d0-a3bd-5e87-87f8-305dc26d9041&limit=1", nil, "", 200, "Recommendations")
+		if restored.HistoryDepth != 1 || restored.Sources[0].LastSuccessAt == nil || !restored.Sources[0].LastSuccessAt.Equal(*recovered.LastSuccessAt) {
+			t.Fatal("restart lost the saved recommendation or fetched a new one")
 		}
 		assertOnlineDoesNotImport(t, c)
 	})

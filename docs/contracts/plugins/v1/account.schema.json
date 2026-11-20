@@ -16,8 +16,11 @@
     }},
     "Result":{"type":"object","additionalProperties":false,"required":["context","value"],"properties":{
       "context":{"$ref":"./online.schema.json#/$defs/Context"},
-      "value":{"type":"object","additionalProperties":false,"required":["view"],"properties":{
+      "value":{"type":"object","additionalProperties":false,"required":["view"],"dependentSchemas":{
+        "recommendationBinding":{"properties":{"view":{"required":["accountId","revision"],"properties":{"state":{"const":"signedIn"}}}}}
+      },"properties":{
         "view":{"$ref":"../../platform-account.schema.json#/$defs/View"},
+        "recommendationBinding":{"type":"string","pattern":"^[0-9a-f]{64}$"},
         "displayCount":{"$ref":"#/$defs/PluginDisplayCount"},
         "secret":{"type":"object"}
       }}

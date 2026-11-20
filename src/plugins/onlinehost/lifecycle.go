@@ -91,10 +91,26 @@ func (p scopedRecommendation) CheckAvailability(ctx context.Context) error {
 
 // AccountScope binds cached recommendations to a validated login generation.
 func (p scopedRecommendation) AccountScope(ctx context.Context) (string, string, error) {
+	account, revision, _, err := p.RecommendationAccountScope(ctx)
+	return account, revision, err
+}
+
+func (p scopedRecommendation) RecommendationAccountScope(ctx context.Context) (string, string, string, error) {
 	r, err := p.host.Runtime(ctx, p.owner, p.id, "")
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
+	}
+	if r.descriptor.Authentication == "anonymous" {
+		return "", "", "", nil
+	}
+	if provider, ok := r.Provider.(interface {
+		RecommendationAccountScope(context.Context) (string, string, string, error)
+	}); ok {
+		return provider.RecommendationAccountScope(ctx)
 	}
 	view, err := platformSession(ctx, r)
-	return view.AccountID, view.Revision, err
+	if err != nil {
+		return "", "", "", err
+	}
+	return (online.AccountResult{View: view}).RecommendationScope()
 }

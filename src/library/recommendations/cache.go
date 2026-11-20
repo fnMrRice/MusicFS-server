@@ -81,13 +81,14 @@ func (s *Service) get(ctx context.Context, r Runtime, request Request) (result S
 		}
 		s.clock++
 		e.used = s.clock
-		if e.flight == nil && ((!request.Refresh && e.source.Error == nil && now.Before(e.expires)) || now.Before(e.retry)) {
+		sameDay := request.day == "" || request.day == e.day
+		if e.flight == nil && ((!request.Refresh && sameDay && e.source.Error == nil && now.Before(e.expires)) || now.Before(e.retry)) {
 			result := s.snapshot(e, now)
 			s.mu.Unlock()
 			return result
 		}
 		f := e.flight
-		if f != nil && f.abandoned {
+		if f != nil && (f.abandoned || (request.day != "" && f.day != request.day)) {
 			s.mu.Unlock()
 			select {
 			case <-f.done:
@@ -110,7 +111,11 @@ func (s *Service) get(ctx context.Context, r Runtime, request Request) (result S
 			if lease != nil {
 				fetch = lease.Context()
 			}
-			f = &flight{done: make(chan struct{}), cancel: cancel, lease: lease}
+			day := request.day
+			if day == "" {
+				day = s.config.Now().Format(time.DateOnly)
+			}
+			f = &flight{done: make(chan struct{}), cancel: cancel, lease: lease, day: day}
 			e.flight = f
 			s.wg.Add(1)
 			go s.fetch(fetch, key, r, e, f)

@@ -186,7 +186,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 		cleanup()
 		return nil, nil, err
 	}
-	recommendations, err := configureRecommendations(onlineRuntimes)
+	recommendations, err := configureRecommendations(onlineRuntimes, store)
 	if err != nil {
 		cleanup()
 		return nil, nil, err

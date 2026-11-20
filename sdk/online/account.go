@@ -2,8 +2,10 @@ package online
 
 import (
 	"encoding/json"
+	"regexp"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/fault"
 	"github.com/fnMrRice/MusicFS-server/sdk/plugindisplay"
 )
 
@@ -33,7 +35,29 @@ type AccountRequest struct {
 }
 
 type AccountResult struct {
-	View         AccountView          `json:"view"`
-	Secret       json.RawMessage      `json:"secret,omitempty"`
-	DisplayCount *plugindisplay.Count `json:"displayCount,omitempty"`
+	View                  AccountView          `json:"view"`
+	Secret                json.RawMessage      `json:"secret,omitempty"`
+	DisplayCount          *plugindisplay.Count `json:"displayCount,omitempty"`
+	RecommendationBinding string               `json:"recommendationBinding,omitempty"`
+}
+
+// VerifiedAt 判断该时间点是否存在已校验且未过期的账号。
+func (v AccountView) VerifiedAt(now time.Time) bool {
+	return v.State == "signedIn" && v.AccountID != "" && v.Revision != "" && (v.ExpiresAt == nil || now.Before(*v.ExpiresAt))
+}
+
+var recommendationBindingPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
+
+// RecommendationScope 只从当前账号状态获取推荐范围，缺少持久绑定时沿用登录代次。
+func (r AccountResult) RecommendationScope() (account, revision, binding string, err error) {
+	if !r.View.VerifiedAt(time.Now()) {
+		return "", "", "", fault.Fail("PLATFORM_AUTH_REQUIRED", "Sign in to the music platform")
+	}
+	binding = r.RecommendationBinding
+	if binding == "" {
+		binding = r.View.Revision
+	} else if !recommendationBindingPattern.MatchString(binding) {
+		return "", "", "", fault.Fail("PROTOCOL_MISMATCH", "Invalid recommendation account binding")
+	}
+	return r.View.AccountID, r.View.Revision, binding, nil
 }

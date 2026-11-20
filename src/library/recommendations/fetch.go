@@ -104,6 +104,7 @@ func (s *Service) fetch(ctx context.Context, key cacheKey, r Runtime, e *entry, 
 	result.LastSuccessAt = &now
 	result.ExpiresAt = &expires
 	e.source = cloneSource(result)
+	e.day = f.day
 	e.expires = expires
 	e.retry = time.Time{}
 	s.bytes += size - e.bytes

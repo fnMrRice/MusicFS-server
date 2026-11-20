@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
@@ -22,7 +23,7 @@ func (s *Server) RegisterRecommendations(service *recommendations.Service) {
 				}
 				continue
 			}
-			if (name != "limit" && name != "refresh") || len(values) != 1 {
+			if (name != "limit" && name != "refresh" && name != "history") || len(values) != 1 {
 				return domain.Fail("INVALID_ARGUMENT", "Unknown or duplicate recommendation query parameter")
 			}
 		}
@@ -37,7 +38,17 @@ func (s *Server) RegisterRecommendations(service *recommendations.Service) {
 			}
 			refresh = raw[0] == "true"
 		}
-		result, err := service.List(r.Context(), session.User.ID, recommendations.Request{InstanceIDs: query["instanceId"], Limit: limit, Refresh: refresh})
+		history := 0
+		if values, exists := query["history"]; exists {
+			history, err = strconv.Atoi(values[0])
+			if err != nil || history < 0 || history > recommendations.MaxHistory || strconv.Itoa(history) != values[0] {
+				return domain.Fail("INVALID_ARGUMENT", "Recommendation history must be between 0 and 5")
+			}
+		}
+		if history > 0 && refresh {
+			return domain.Fail("INVALID_ARGUMENT", "Historical recommendations cannot be refreshed")
+		}
+		result, err := service.Page(r.Context(), session.User.ID, recommendations.Request{InstanceIDs: query["instanceId"], Limit: limit, Refresh: refresh, History: history})
 		if err != nil {
 			return err
 		}

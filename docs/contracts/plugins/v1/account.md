@@ -6,7 +6,7 @@
 
 请求为 `{context, request}`；`request` 包含 action、可选 loginId、userToken、developerToken、secret。动作包括 state、begin、poll、complete、cancel、check、logout，以及仅 Host 可用的 restore、signalCancel。后两者不可经 HTTP 调用。signalCancel 在网络轮询仍在执行时标记挑战取消；loginId 为 * 时立即阻止并取消在途业务请求，且不占普通业务并发槽，正式 cancel 随后收尾；不向 HTTP 返回其临时结果。
 
-响应为 `{context, value: {view, secret?, displayCount?}}`。view 遵循 [HTTP 账号 Schema](../../platform-account.schema.json) 的 View；secret 是只允许实例隔离的受控通道传输的凭据对象（内置为内存流，显式外部模式为 stdio），Host 去除后才能返回 HTTP。Host 加密持久化，并在重启时 restore；恢复为 unverified，显式 check 后才可标为 signedIn。请求或响应不能记录到普通日志。
+响应为 `{context, value: {view, secret?, displayCount?, recommendationBinding?}}`。view 遵循 [HTTP 账号 Schema](../../platform-account.schema.json) 的 View；secret 是只允许实例隔离的受控通道传输的凭据对象（内置为内存流，显式外部模式为 stdio），Host 去除后才能返回 HTTP。Host 加密持久化，并在重启时 restore；恢复为 unverified，显式 check 后才可标为 signedIn。请求或响应不能记录到普通日志。
 
 可选 `displayCount` 为插件提供的 `{value, unit, localizedUnits}`，与账号结果一并刷新；在线插件依据本 Worker 已验证、未过期的登录状态报告用户统计，包含合法的零值。默认单位及其译名由插件提供，Host 不根据实例数、所属用户 ID 或功能分类生成统计。Host 单独解析并校验展示统计，非法时清除统计但不使其他有效账号操作失败；管理列表只读取缓存，不发起账号 RPC；Worker 停止、账号状态过期或结果省略统计时不继续展示旧值。统计不包含凭据，不改变账号授权边界；HTTP 账号 View 保持原结构，由管理列表单独返回展示统计。旧 Worker 省略字段时不展示；严格解码的新 Worker 与 Host 必须配套升级，旧 Host 会拒绝未知字段。
 
@@ -20,6 +20,8 @@ View 的可选 `avatarUrl` 是展示资料，与 `displayName` 一起返回；�
 
 `provider.online.accountOptions` 使用 `{context}` 请求并精确回显作用域，返回 `{context, value: {method, configured, validation, developerToken?}}`。`method/validation` 必须与插件 `login` 声明一致；没有登录声明时只能返回 `none/false/notSupported`，不能附加令牌。该方法不要求已登录平台，但仍要求 MusicFS 用户与实例归属。可选开发者令牌仅延续 MusicKit 本人浏览器授权所需的公开客户端配置；内部凭据仍只走 `provider.online.account` 的私有状态字段。
 
-View.revision 是每次有效登录的随机代次，恢复后首次校验也产生新值；同一登录的再次 check 保持不变。分页游标及推荐缓存绑定该代次。业务入口未登录/未校验返回 PLATFORM_AUTH_REQUIRED，HTTP 映射 403；账号状态、登录、校验和退出入口不受业务登录门槛影响。
+View.revision 是每次有效登录的随机代次，恢复后首次校验也产生新值；同一登录的再次 check 保持不变。分页游标及在途推荐请求绑定该代次。业务入口未登录/未校验返回 PLATFORM_AUTH_REQUIRED，HTTP 映射 403；账号状态、登录、校验和退出入口不受业务登录门槛影响。
+
+已校验且尚未过期的账号可在 `state` 的私有结果上返回 `recommendationBinding`，格式为 64 位小写十六进制。内置插件取本次登录生成的随机设备标识的 SHA-256 摘要。Host 使用绑定隔离每日推荐与历史快照。同一凭据重启后通过校验即可读取原有快照，同账号退出后重新登录会产生新绑定。插件省略该字段时，Host 使用当前登录代次。该绑定随内部状态读取，HTTP 账号视图和日志不包含此字段。
 
 支持 `playlist.addTracks` 的 Worker 使用 `provider.online.addPlaylistTrack` 向当前账号拥有的歌单添加一首歌。请求包含 `context`、关联时的 `accountId`、歌单 `externalId` 和歌曲 `trackId`。插件在账号锁内检查当前账号是否匹配，成功回显 `{context, value: true}`。重试时已在歌单中的歌曲也返回成功。歌单列表或详情中的可选 `writable` 字段供客户端显示关联操作，实际写入前仍核对账号与目标歌单归属。见[歌单管理及上游接口依据](../../../library/source-playlists.md)。

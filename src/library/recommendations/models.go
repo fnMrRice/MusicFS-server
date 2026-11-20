@@ -11,6 +11,7 @@ import (
 )
 
 const MaxSources = 8
+const MaxHistory = 5
 
 type Provider interface {
 	PublicRecommendations(context.Context, int) (online.RecommendationPage, error)
@@ -31,6 +32,8 @@ type Runtime struct {
 }
 
 type Config struct {
+	Repository      Repository
+	Now             func() time.Time
 	MaxEntries      int
 	MaxBytes        int64
 	MaxConcurrent   int
@@ -43,6 +46,8 @@ type Request struct {
 	InstanceIDs []string `json:"instanceIds"`
 	Limit       int      `json:"limit"`
 	Refresh     bool     `json:"refresh"`
+	History     int      `json:"history"`
+	day         string
 }
 
 type Failure struct {
@@ -68,7 +73,20 @@ type Source struct {
 }
 
 type Response struct {
-	Sources []Source `json:"sources"`
+	Sources      []Source `json:"sources"`
+	HistoryDepth int      `json:"historyDepth"`
+}
+
+// SavedPage 保存服务器日历日期以及当时整页各来源的结果。
+type SavedPage struct {
+	Day          string   `json:"day"`
+	Sources      []Source `json:"sources"`
+	HistoryDepth int      `json:"historyDepth"`
+}
+
+type Repository interface {
+	ReadRecommendationPage(ctx context.Context, owner, scope string, history int) (SavedPage, error)
+	SaveRecommendationPage(ctx context.Context, owner, scope, day string, sources []Source, successful bool) (int, error)
 }
 
 type cacheKey struct {
@@ -78,6 +96,7 @@ type cacheKey struct {
 type runtimeKey struct{ owner, instance string }
 type entry struct {
 	source         Source
+	day            string
 	bytes          int64
 	used           uint64
 	expires, retry time.Time
@@ -85,6 +104,7 @@ type entry struct {
 }
 type flight struct {
 	done      chan struct{}
+	day       string
 	cancel    context.CancelFunc
 	waiters   int
 	finished  bool

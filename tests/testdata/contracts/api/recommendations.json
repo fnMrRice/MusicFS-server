@@ -4,6 +4,7 @@
     "schema": "Recommendations",
     "valid": true,
     "value": {
+      "historyDepth": 0,
       "sources": [
         {
           "instanceId": "7a202030-76d0-5655-b70e-aa3833cc17de",
@@ -24,6 +25,18 @@
         }
       ]
     }
+  },
+  {
+    "name": "recommendations-history-depth-bounded",
+    "schema": "Recommendations",
+    "valid": false,
+    "value": {"sources": [], "historyDepth": 6}
+  },
+  {
+    "name": "recommendations-history-depth-required",
+    "schema": "Recommendations",
+    "valid": false,
+    "value": {"sources": []}
   },
   {
     "name": "recommendations-not-personalized",

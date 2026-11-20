@@ -7,7 +7,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 )
 
-func configureRecommendations(runtimes []onlinehost.Runtime) (*recommendations.Service, error) {
+func configureRecommendations(runtimes []onlinehost.Runtime, store recommendations.Repository) (*recommendations.Service, error) {
 	items := make([]recommendations.Runtime, 0, len(runtimes))
 	for _, runtime := range runtimes {
 		identity := pluginconfig.Identity(pluginproto.OnlinePluginID(runtime.Platform))
@@ -28,5 +28,5 @@ func configureRecommendations(runtimes []onlinehost.Runtime) (*recommendations.S
 		}
 		items = append(items, item)
 	}
-	return recommendations.New(items, recommendations.Config{})
+	return recommendations.New(items, recommendations.Config{Repository: store})
 }

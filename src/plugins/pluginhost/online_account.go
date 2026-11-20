@@ -43,7 +43,7 @@ func (w *OnlineWorker) accountCall(ctx context.Context, request online.AccountRe
 	mutation := request.Action != "state" && request.Action != "signalCancel"
 	generation := w.accountDisplay.begin(mutation)
 	wire, err := onlineCall[accountResultWire](ctx, w, "provider.online.account", scope, pluginproto.OnlineAccount{Context: scope, Request: request})
-	result := online.AccountResult{View: wire.View, Secret: wire.Secret}
+	result := online.AccountResult{View: wire.View, Secret: wire.Secret, RecommendationBinding: wire.RecommendationBinding}
 	if err == nil && len(wire.DisplayCount) > 0 {
 		// Invalid optional statistics never invalidate an otherwise valid login.
 		result.DisplayCount, _ = plugindisplay.Decode(wire.DisplayCount)
@@ -55,9 +55,10 @@ func (w *OnlineWorker) accountCall(ctx context.Context, request online.AccountRe
 }
 
 type accountResultWire struct {
-	View         online.AccountView `json:"view"`
-	Secret       json.RawMessage    `json:"secret,omitempty"`
-	DisplayCount json.RawMessage    `json:"displayCount,omitempty"`
+	View                  online.AccountView `json:"view"`
+	Secret                json.RawMessage    `json:"secret,omitempty"`
+	DisplayCount          json.RawMessage    `json:"displayCount,omitempty"`
+	RecommendationBinding string             `json:"recommendationBinding,omitempty"`
 }
 
 // PlatformAccount strips private state before returning to the HTTP service.
@@ -111,12 +112,22 @@ func (w *OnlineWorker) PlatformSession(ctx context.Context) (online.AccountView,
 }
 
 func (w *OnlineWorker) AccountScope(ctx context.Context) (string, string, error) {
-	view, err := w.PlatformSession(ctx)
+	account, revision, _, err := w.RecommendationAccountScope(ctx)
+	return account, revision, err
+}
+
+func (w *OnlineWorker) RecommendationAccountScope(ctx context.Context) (string, string, string, error) {
+	if w.descriptor.Authentication == "anonymous" {
+		select {
+		case <-w.done:
+			return "", "", "", domain.Fail("SOURCE_OFFLINE", "Online worker is offline")
+		default:
+			return "", "", "", ctx.Err()
+		}
+	}
+	result, err := w.accountCall(ctx, online.AccountRequest{Action: "state"})
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
-	if view.State != "signedIn" || view.Revision == "" {
-		return "", "", domain.Fail("PLATFORM_AUTH_REQUIRED", "Sign in to the music platform")
-	}
-	return view.AccountID, view.Revision, nil
+	return result.RecommendationScope()
 }
