@@ -1,5 +1,5 @@
 {
-  "versionPolicy": "conventional-commits",
+  "versionPolicy": "release-batches",
   "groups": {
     "worker": ["unified/select.go"],
     "provider": ["source/online/internal/adapter/", "source/online/internal/session/", "source/online/internal/policies/policies.go", "source/online/plugin.go", "source/online/registry.go", "source/online/unified/", "source/online/cmd/musicfs-plugin-online/", "source/online/go.mod", "source/online/go.sum", "@worker"],

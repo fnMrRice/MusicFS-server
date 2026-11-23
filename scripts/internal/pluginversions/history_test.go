@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func TestUpdatesFollowPluginHistory(t *testing.T) {
+func TestReleaseBatches(t *testing.T) {
 	root := t.TempDir()
 	run := func(dir string, args ...string) string {
 		t.Helper()
@@ -32,145 +32,157 @@ func TestUpdatesFollowPluginHistory(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	commit := func(label string) {
+	commit := func(subject string) {
 		t.Helper()
 		run(root, "add", ".")
-		run(root, "commit", "-qm", label)
-	}
-	expect := func(dir string, want map[string]string) {
-		t.Helper()
-		got, err := Resolve(dir)
-		if err != nil || !maps.Equal(got, want) {
-			t.Fatalf("got %v, %v; want %v", got, err, want)
-		}
+		run(root, "commit", "--allow-empty", "-qm", subject)
 	}
 	run(root, "init", "-q", "-b", "main")
 	run(root, "config", "user.name", "Build Test")
 	run(root, "config", "user.email", "test@example.invalid")
 	run(root, "config", "commit.gpgSign", "false")
 	run(root, "config", "core.hooksPath", filepath.Join(root, "empty-hooks"))
-	write("README.md", "before declarations")
-	commit("before")
-	declarations := `{"groups":{"shared":["shared/"]},"plugins":{"one":{"version":"0.4.2","sources":["one/","@shared"]},"two":{"version":"0.6.0","sources":["two/","@shared"]}}}`
+	declarations := `{"versionPolicy":"conventional-commits","groups":{"shared":["shared/"]},"plugins":{"one":{"version":"0.1.0","sources":["one/","@shared"]},"two":{"version":"0.1.0","sources":["two/","@shared"]}}}`
 	write(manifestPath, declarations)
 	write("plugins/one/main.go", "one")
 	write("plugins/two/main.go", "two")
-	initial := map[string]string{"one": "0.4.2", "two": "0.6.0"}
-	expect(root, initial)
-	commit("baseline")
-	write("plugins/one/main_test.go", "tests only")
-	write("plugins/one/README.md", "documentation only")
-	write("plugins/one/tests/fixture.go", "fixture only")
-	commit("tests and docs")
-	expect(root, initial)
-	write("plugins/one/new.go", "untracked")
-	write("plugins/one/main.go", "modified")
-	run(root, "add", "plugins/one/main.go")
-	oneChanged := map[string]string{"one": "0.5.0", "two": "0.6.0"}
-	expect(root, oneChanged)
-	expect(root, oneChanged)
-	commit("one plugin")
-	expect(root, oneChanged)
-	run(root, "checkout", "-qb", "feature")
 	write("plugins/shared/implementation.go", "shared")
-	commit("shared implementation")
-	write("plugins/shared/implementation.go", "shared update")
-	commit("more shared changes")
-	expect(root, map[string]string{"one": "0.7.0", "two": "0.8.0"})
-	run(root, "checkout", "-q", "main")
-	run(root, "merge", "--no-ff", "-qm", "merge feature", "feature")
-	merged := map[string]string{"one": "0.6.0", "two": "0.7.0"}
-	expect(root, merged)
+	commit("previously published release")
+	base := run(root, "rev-parse", "HEAD")
+	published := map[string]string{"one": "0.7.2", "two": "0.4.8"}
+	expect := func(at string, want map[string]string) {
+		t.Helper()
+		got, err := resolve(at, base, published)
+		if err != nil || !maps.Equal(got, want) {
+			t.Fatalf("got %v, %v; want %v", got, err, want)
+		}
+	}
+	expect(root, published)
+	write("plugins/one/main.go", "first fix")
+	commit("fix(one): repair search")
+	oneFix := map[string]string{"one": "0.7.3", "two": "0.4.8"}
+	expect(root, oneFix)
+	commit("chore(release): publish v0.01.0")
+	write("plugins/one/main.go", "second fix")
+	commit("perf(one): accelerate search")
+	expect(root, oneFix)
+	write("plugins/two/main_test.go", "test only")
+	write("plugins/two/README.md", "documentation only")
+	commit("feat(two): add fixtures")
+	expect(root, oneFix)
+	write("plugins/one/main.go", "a new feature")
+	commit("feat(one): add a command")
+	write("plugins/shared/implementation.go", "discarded feature")
+	commit("feat(shared): try a protocol")
+	write("plugins/shared/implementation.go", "shared")
+	commit("revert(shared): discard the protocol")
+	write("plugins/two/main.go", "bug fix")
+	commit("fix(two): repair decoding")
 	withThird := strings.Replace(declarations, `"two":{`, `"three":{"version":"0.1.0","sources":["three/"]},"two":{`, 1)
-	write(manifestPath, withThird)
+	write(manifestPath, strings.Replace(withThird, "conventional-commits", "release-batches", 1))
 	write("plugins/three/main.go", "new plugin")
-	commit("add plugin")
-	merged["three"] = "0.1.0"
-	expect(root, merged)
+	commit("feat(three): add a plugin")
+	write("plugins/three/main.go", "ready for release")
+	commit("fix(three): validate input")
+	first := map[string]string{"one": "0.8.0", "two": "0.5.0", "three": "0.1.0"}
+	expect(root, first)
+	write(serverVersionPath, `package version
+const Server = "0.20.0"`)
+	commit("chore(release): publish v0.20.0")
+	expect(root, first)
+	expect(root, first)
+	// 第二批有多个修复，均以首批已发值为起点。
+	write("plugins/shared/implementation.go", "shared correction")
+	commit("fix(shared): repair decoding")
+	write("plugins/shared/implementation.go", "refined correction")
+	write(serverVersionPath, `package version
+const Server = "0.20.1"`)
+	commit("refactor(shared): simplify decoding")
+	second := map[string]string{"one": "0.8.1", "two": "0.5.1", "three": "0.1.0"}
+	expect(root, second)
+	commit("chore(release): publish v0.20.1")
+	expect(root, second)
+	// 侧支功能在合入前撤回，默认合并相对第一父没有实现文件差异。
+	run(root, "checkout", "-qb", "discarded")
+	write("plugins/two/main.go", "temporary feature")
+	commit("feat(two): add an experimental decoder")
+	write("plugins/two/main.go", "bug fix")
+	commit("revert(two): drop the experiment")
+	run(root, "checkout", "-q", "main")
+	run(root, "merge", "--no-ff", "--no-edit", "discarded")
+	expect(root, second)
+	// 侧支的发布标题不结束主线批次。嵌套的显式合并类型优先于其侧支提交类型。
+	run(root, "checkout", "-qb", "mixed")
+	write("plugins/shared/implementation.go", "upgrade")
+	commit("fix(shared): handle new values")
+	run(root, "checkout", "-qb", "nested")
+	write("plugins/one/main.go", "replacement")
+	commit("fix(one): replace the command")
+	nested := run(root, "rev-parse", "HEAD")
+	run(root, "checkout", "-q", "mixed")
+	run(root, "merge", "--no-ff", "-qm", "refactor(one)!: replace the command", "nested")
+	commit("chore(release): publish v0.22.0")
+	write("plugins/shared/implementation.go", "final shared fix")
+	commit("fix(shared): address another issue")
+	run(root, "checkout", "-q", "main")
+	run(root, "merge", "--no-ff", "--no-edit", "mixed")
+	third := map[string]string{"one": "0.9.0", "two": "0.5.2", "three": "0.1.0"}
+	expect(root, third)
+	write("plugins/one/main.go", "dirty")
+	run(root, "add", "plugins/one/main.go")
+	write("plugins/one/untracked.go", "untracked")
+	expect(root, third)
+	expect(root, third)
+	write("plugins/unowned/main.go", "untracked without owner")
+	if _, err := resolve(root, base, published); err == nil || !strings.Contains(err.Error(), "unowned") {
+		t.Fatalf("missing source owner not reported: %v", err)
+	}
 	clone := filepath.Join(t.TempDir(), "fresh")
 	run(root, "clone", "-q", "--local", "--no-hardlinks", root, clone)
-	expect(clone, merged)
-	// 在克隆副本中标记浅历史边界，等价于 depth=1，测试无需远程传输进程。
+	expect(clone, third)
+	run(clone, "config", "user.name", "Build Test")
+	run(clone, "config", "user.email", "test@example.invalid")
+	run(clone, "checkout", "-qb", "bad-release")
+	run(clone, "-c", "commit.gpgSign=false", "commit", "--allow-empty", "-qm", "chore(release): publish v0.20.2")
+	if _, err := resolve(clone, base, published); err == nil || !strings.Contains(err.Error(), "requires const Server") {
+		t.Fatalf("mismatched server release accepted: %v", err)
+	}
+	run(clone, "checkout", "-q", "main")
+	if _, err := resolve(clone, nested, published); err == nil || !strings.Contains(err.Error(), "first-parent") {
+		t.Fatalf("side-branch baseline accepted: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(clone, ".git", "shallow"), []byte(base+"\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	expect(clone, third)
+	if err := os.WriteFile(filepath.Join(clone, ".git", "shallow"), []byte(nested+"\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := resolve(clone, base, published); err == nil || !strings.Contains(err.Error(), "incomplete") {
+		t.Fatalf("incomplete merge side branch accepted: %v", err)
+	}
 	if err := os.WriteFile(filepath.Join(clone, ".git", "shallow"), []byte(run(clone, "rev-parse", "HEAD")+"\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Resolve(clone); err == nil {
-		t.Fatal("incomplete release history accepted")
+	if _, err := resolve(clone, base, published); err == nil || !strings.Contains(err.Error(), "incomplete") {
+		t.Fatalf("incomplete first-parent release history accepted: %v", err)
 	}
-	write("plugins/shared-new/unknown.go", "new implementation")
-	if _, err := Resolve(root); err == nil || !strings.Contains(err.Error(), "unknown.go") {
-		t.Fatalf("missing plugin owner was not reported: %v", err)
-	}
-	commit("source added before owner declaration")
-	withOwners := strings.Replace(withThird, `"one/"`, `"one/","shared-new/"`, 1)
-	write(manifestPath, withOwners)
-	commit("declare new source owner")
-	merged["one"] = "0.7.0"
-	expect(root, merged)
+}
 
-	// 切换提交本身采用新策略。已经按原规则发布的版本继续作为计数起点。
-	write(manifestPath, strings.Replace(withOwners, "{", `{"versionPolicy":"conventional-commits",`, 1))
-	write("plugins/one/main.go", "first fix")
-	expect(root, merged)
-	commit("fix(one): correct first issue")
-	for _, step := range []struct {
-		file, message, one, two string
-	}{
-		{"plugins/one/main.go", "fix(one): correct second issue", "0.7.2", "0.7.0"},
-		{"plugins/one/main.go", "feat(one): add an option", "0.8.0", "0.7.0"},
-		{"plugins/shared/implementation.go", "perf(shared): speed up parsing", "0.8.1", "0.7.1"},
-		{"plugins/shared/implementation.go", "refactor(shared): simplify parsing", "0.8.2", "0.7.2"},
-		{"plugins/one/main.go", "docs(one): update examples", "0.8.2", "0.7.2"},
-		{"plugins/one/main_test.go", "feat(one): add test fixtures", "0.8.2", "0.7.2"},
-		{"plugins/one/main.go", "fix(one)!: replace the format", "0.9.0", "0.7.2"},
-		{"plugins/two/main.go", "chore(two): revise input\n\nBREAKING CHANGES: old inputs are unsupported", "0.9.0", "0.8.0"},
-		{"plugins/one/main.go", "revert(one): restore the format", "0.9.1", "0.8.0"},
+func TestPublicationTitle(t *testing.T) {
+	for _, subject := range []string{"chore(release): publish v0.0.0", "chore(release): publish v0.19.200"} {
+		if !releaseTitle.MatchString(subject) {
+			t.Errorf("valid release title rejected: %q", subject)
+		}
+	}
+	for _, subject := range []string{
+		"chore(release): publish v1.2.3", "chore(release): publish v0.00.2", "chore(release): publish v0.2.03",
+		"chore(release): publish v0.2.3-rc", "chore(release): publish v0.2.3 ", "CHORE(release): publish v0.2.3",
+		"chore(release): publish  v0.2.3", "prepare chore(release): publish v0.2.3",
 	} {
-		write(step.file, step.message)
-		commit(step.message)
-		expect(root, map[string]string{"one": step.one, "two": step.two, "three": "0.1.0"})
-	}
-	run(root, "checkout", "-qb", "second-feature")
-	write("plugins/one/main.go", "feature")
-	commit("feat(one): add a feature")
-	write("plugins/one/main.go", "improved feature")
-	commit("fix(one): repair the feature")
-	run(root, "checkout", "-q", "main")
-	run(root, "merge", "--no-ff", "-qm", "feat(one): integrate feature", "second-feature")
-	merged = map[string]string{"one": "0.10.0", "two": "0.8.0", "three": "0.1.0"}
-	expect(root, merged)
-	run(root, "checkout", "-qb", "mixed")
-	write("plugins/shared/implementation.go", "shared fix")
-	commit("fix(shared): handle empty input")
-	run(root, "checkout", "-qb", "nested-command")
-	write("plugins/three/main.go", "new command")
-	commit("fix(three): replace the command")
-	nested := run(root, "rev-parse", "HEAD")
-	run(root, "checkout", "-q", "mixed")
-	run(root, "merge", "--no-ff", "-qm", "refactor(three)!: replace command line", "nested-command")
-	run(root, "checkout", "-qb", "nested-parser")
-	write("plugins/shared/implementation.go", "updated shared fix")
-	commit("feat(shared): enable alternate parser")
-	run(root, "checkout", "-q", "mixed")
-	run(root, "merge", "--no-ff", "-qm", "fix(shared): integrate parser correction", "nested-parser")
-	write("plugins/one/main.go", "discarded feature")
-	commit("feat(one): try another format")
-	write("plugins/one/main.go", "improved feature")
-	commit("revert(one): discard experimental format")
-	run(root, "checkout", "-q", "main")
-	run(root, "merge", "--no-ff", "--no-edit", "mixed")
-	merged = map[string]string{"one": "0.10.1", "two": "0.8.1", "three": "0.2.0"}
-	expect(root, merged)
-	write("plugins/shared/implementation.go", "pending")
-	run(root, "add", "plugins/shared/implementation.go")
-	write("plugins/one/untracked.go", "untracked")
-	expect(root, merged)
-	expect(root, merged)
-	if err := os.WriteFile(filepath.Join(root, ".git", "shallow"), []byte(nested+"\n"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := Resolve(root); err == nil || !strings.Contains(err.Error(), "incomplete") {
-		t.Fatalf("incomplete merge side branch accepted: %v", err)
+		if releaseTitle.MatchString(subject) {
+			t.Errorf("invalid release title accepted: %q", subject)
+		}
 	}
 }
 

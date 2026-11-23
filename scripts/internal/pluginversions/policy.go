@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-const conventionalCommits = "conventional-commits"
+var releaseTitle = regexp.MustCompile(`^chore\(release\): publish v0\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
 
 type increment int
 

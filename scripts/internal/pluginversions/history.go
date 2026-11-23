@@ -1,6 +1,8 @@
 package pluginversions
 
 import (
+	_ "embed"
+	"encoding/json"
 	"fmt"
 	"maps"
 	"os"
@@ -54,9 +56,22 @@ func (r repository) validateSources(working catalog) error {
 	return nil
 }
 
-// Resolve 沿第一父提交统计每次进入当前分支的插件更新，合并提交计一次。
-// 采用提交分类策略后只计算已提交的改动，构建不会写入版本文件。
+//go:embed release-baseline.json
+var firstRelease []byte
+
+// Resolve 从已发布的插件版本开始，计算当前提交所属批次的候选版本。
 func Resolve(root string) (map[string]string, error) {
+	var base struct {
+		Revision string
+		Versions map[string]string
+	}
+	if err := json.Unmarshal(firstRelease, &base); err != nil {
+		return nil, err
+	}
+	return resolve(root, base.Revision, base.Versions)
+}
+
+func resolve(root, base string, published map[string]string) (map[string]string, error) {
 	r := repository(root)
 	raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(manifestPath)))
 	if err != nil {
@@ -69,83 +84,53 @@ func Resolve(root string) (map[string]string, error) {
 	if err := r.validateSources(working); err != nil {
 		return nil, err
 	}
-	base, err := r.git("log", "-1", "--first-parent", "--diff-merges=first-parent", "--diff-filter=A", "--no-patch", "--format=%H", "--", manifestPath)
+	head, err := r.git("rev-parse", "--verify", "HEAD")
 	if err != nil {
 		return nil, err
 	}
-	base = strings.TrimSpace(base)
+	ends, err := r.releaseEnds(base, strings.TrimSpace(head))
+	if err != nil {
+		return nil, err
+	}
+	first, err := r.catalogAt(base)
+	if err != nil {
+		return nil, err
+	}
+	if len(first.Plugins) != len(published) {
+		return nil, fmt.Errorf("plugin release baseline does not match catalog at %s", base)
+	}
+	for id := range first.Plugins {
+		version := published[id]
+		if !semver.MatchString(version) || !strings.HasPrefix(version, "0.") {
+			return nil, fmt.Errorf("missing or invalid published version for %s", id)
+		}
+	}
+	boundaries, err := r.shallowBoundaries()
+	if err != nil {
+		return nil, err
+	}
+	versions := maps.Clone(published)
+	for _, end := range ends {
+		versions, err = r.batch(base, end, versions, boundaries)
+		if err != nil {
+			return nil, err
+		}
+		base = end
+	}
+	return versions, nil
+}
+
+func (r repository) shallowBoundaries() ([]string, error) {
 	shallow, err := r.git("rev-parse", "--is-shallow-repository")
+	if err != nil || strings.TrimSpace(shallow) != "true" {
+		return nil, err
+	}
+	name, err := r.git("rev-parse", "--path-format=absolute", "--git-path", "shallow")
 	if err != nil {
 		return nil, err
 	}
-	var boundaries []string
-	if strings.TrimSpace(shallow) == "true" {
-		name, err := r.git("rev-parse", "--path-format=absolute", "--git-path", "shallow")
-		if err != nil {
-			return nil, err
-		}
-		boundary, err := os.ReadFile(strings.TrimSpace(name))
-		if err != nil {
-			return nil, err
-		}
-		boundaries = strings.Fields(string(boundary))
-		if base == "" || slices.Contains(boundaries, base) {
-			return nil, fmt.Errorf("plugin version history is incomplete; fetch history through the release declaration commit")
-		}
-	}
-	versions := map[string]string{}
-	// 首次引入版本声明时按初始值交付，不将此前的实现历史重复计入版本。
-	if base == "" {
-		return versions, advance(versions, catalog{}, working, working, nil, changes{})
-	}
-	declared, err := r.catalogAt("HEAD")
-	if err != nil {
-		return nil, err
-	}
-	previous, err := r.catalogAt(base)
-	if err != nil {
-		return nil, err
-	}
-	if err = advance(versions, catalog{}, previous, declared, nil, changes{}); err != nil {
-		return nil, err
-	}
-	history, err := r.commitHistory([]string{base + "..HEAD"})
-	if err != nil {
-		return nil, err
-	}
-	for entry := range history {
-		next := previous
-		if slices.Contains(entry.files, manifestPath) {
-			next, err = r.catalogAt(entry.revision)
-			if err != nil {
-				return nil, err
-			}
-		}
-		change := changes{bump: minor}
-		if next.VersionPolicy == conventionalCommits {
-			change, err = r.commitChanges(entry, boundaries)
-			if err != nil {
-				return nil, err
-			}
-		}
-		if err := advance(versions, previous, next, declared, entry.files, change); err != nil {
-			return nil, err
-		}
-		previous = next
-	}
-	if declared.VersionPolicy == conventionalCommits || working.VersionPolicy == conventionalCommits {
-		return versions, nil
-	}
-	// 旧声明的开发构建将工作区相对 HEAD 的整体差异视为一次预览更新。
-	tracked, err := r.git("diff", "HEAD", "--name-only", "--no-renames", "-z", "--", "plugins")
-	if err != nil {
-		return nil, err
-	}
-	untracked, err := r.git("ls-files", "--others", "--exclude-standard", "-z", "--", "plugins")
-	if err != nil {
-		return nil, err
-	}
-	return versions, advance(versions, previous, working, working, strings.Split(tracked+untracked, "\x00"), changes{bump: minor})
+	data, err := os.ReadFile(strings.TrimSpace(name))
+	return strings.Fields(string(data)), err
 }
 
 // LinkFlags 将同一份版本结果用于宿主、统一 worker 和独立插件程序。
