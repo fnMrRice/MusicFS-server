@@ -77,6 +77,9 @@ func (c *Client) PublicRecommendations(ctx context.Context, limit int) (Recommen
 			Reason string `json:"copywriter"`
 		} `json:"result"`
 	}
+	if err := c.WaitForMetadata(ctx); err != nil {
+		return RecommendationPage{}, err
+	}
 	if err := c.Get(ctx, "/api/personalized/playlist", url.Values{"limit": {strconv.Itoa(limit)}, "total": {"true"}, "n": {"1"}}, &response); err != nil {
 		return RecommendationPage{}, err
 	}
