@@ -11,10 +11,6 @@ import (
 
 // 只投递本次新加入的条目。改名、排序、重建、改选来源和关联前已有的曲目都不触发写入。
 func queuePlaylistEntries(ctx context.Context, tx *sql.Tx, owner, playlistID string, old, updated []playlists.PlaylistBinding) error {
-	var linked bool
-	if err := tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM playlist_links WHERE owner=? AND playlist_id=?)", owner, playlistID).Scan(&linked); err != nil || !linked {
-		return err
-	}
 	existing := map[string]bool{}
 	for _, b := range old {
 		for _, e := range b.Entries {
@@ -22,25 +18,33 @@ func queuePlaylistEntries(ctx context.Context, tx *sql.Tx, owner, playlistID str
 		}
 	}
 	var refs []playlists.SourceRef
-	var tracks []music.Track
-	auto := map[string]string{}
 	for _, b := range updated {
 		for _, entry := range b.Entries {
-			if existing[entry.ID] {
-				continue
-			}
-			ref := entry.Source
-			refs = append(refs, ref)
-			if ref.TrackID != nil && ref.ForcedSourceID == nil {
-				if _, seen := auto[*ref.TrackID]; !seen {
-					auto[*ref.TrackID] = ""
-					tracks = append(tracks, music.Track{ID: *ref.TrackID})
-				}
+			if !existing[entry.ID] {
+				refs = append(refs, entry.Source)
 			}
 		}
 	}
+	return queuePlaylistSources(ctx, tx, owner, playlistID, refs)
+}
+
+func queuePlaylistSources(ctx context.Context, tx *sql.Tx, owner, playlistID string, refs []playlists.SourceRef) error {
 	if len(refs) == 0 {
 		return nil
+	}
+	var linked bool
+	if err := tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM playlist_links WHERE owner=? AND playlist_id=?)", owner, playlistID).Scan(&linked); err != nil || !linked {
+		return err
+	}
+	var tracks []music.Track
+	auto := map[string]string{}
+	for _, ref := range refs {
+		if ref.TrackID != nil && ref.ForcedSourceID == nil {
+			if _, seen := auto[*ref.TrackID]; !seen {
+				auto[*ref.TrackID] = ""
+				tracks = append(tracks, music.Track{ID: *ref.TrackID})
+			}
+		}
 	}
 	// 自动选源沿用曲库的人工默认、可用性和音质顺序，批量读取涉及的曲目。
 	if err := loadMusicRelations(ctx, tx, owner, tracks, false); err != nil {

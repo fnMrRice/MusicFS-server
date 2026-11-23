@@ -33,6 +33,9 @@ func (c *Client) MetadataBatch(ctx context.Context, ids []string) (TrackBatch, e
 		Code  *int          `json:"code"`
 		Songs []neteaseSong `json:"songs"`
 	}
+	if err := c.WaitForMetadata(ctx); err != nil {
+		return TrackBatch{}, err
+	}
 	if err := c.Get(ctx, "/api/v3/song/detail", url.Values{"c": {string(encoded)}}, &response); err != nil {
 		return TrackBatch{}, err
 	}
@@ -99,9 +102,6 @@ func (c *Client) PlaylistTracks(ctx context.Context, r PlaylistTracksRequest) (P
 		ids = append(ids, entry.ExternalTrackID)
 	}
 	if len(ids) > 0 {
-		if err = c.WaitForMetadata(ctx); err != nil {
-			return PlaylistTracksPage{}, err
-		}
 		batch, err := c.MetadataBatch(ctx, ids)
 		if err != nil {
 			return PlaylistTracksPage{}, err

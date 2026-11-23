@@ -7,6 +7,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 )
 
 // SetFavoritesSelection 在同一事务内展开选择、预检限额并更新收藏，不改动已有收藏时间。
@@ -74,6 +75,7 @@ func (s *Store) SetFavoritesSelection(ctx context.Context, owner string, selecti
 	}
 	defer stmt.Close()
 	stamp := time.Now().UTC().Format("2006-01-02T15:04:05.000000000Z")
+	var additions []playlists.SourceRef
 	for _, id := range trackIDs {
 		if existing[id] == favorite {
 			continue
@@ -81,11 +83,15 @@ func (s *Store) SetFavoritesSelection(ctx context.Context, owner string, selecti
 		args := []any{owner, id}
 		if favorite {
 			args = append(args, id, stamp, stamp)
+			additions = append(additions, playlists.SourceRef{TrackID: &id})
 		}
 		if _, err = stmt.ExecContext(ctx, args...); err != nil {
 			return result, err
 		}
 		result.Affected++
+	}
+	if err = queuePlaylistSources(ctx, tx, owner, personal.Favorites, additions); err != nil {
+		return result, err
 	}
 	if result.Affected > 0 {
 		if err = bumpPersonalRevision(ctx, tx, owner, personal.Favorites); err != nil {

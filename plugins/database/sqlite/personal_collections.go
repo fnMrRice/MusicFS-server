@@ -12,6 +12,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/music"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 )
 
 func bumpPersonalRevision(ctx context.Context, tx *sql.Tx, owner, kind string) error {
@@ -161,7 +162,8 @@ func (s *Store) setFavorite(ctx context.Context, owner, id string, source *strin
 	entry.Track = entry.MusicTrack.SelectedSource
 	var stamp string
 	err = tx.QueryRowContext(ctx, "SELECT created_at,forced_source_id FROM music_playlist_entries WHERE owner=? AND playlist_id='favorites' AND binding_id='' AND entry_id=?", owner, id).Scan(&stamp, &entry.ForcedSourceID)
-	if errors.Is(err, sql.ErrNoRows) {
+	added := errors.Is(err, sql.ErrNoRows)
+	if added {
 		var count int
 		if err = tx.QueryRowContext(ctx, "SELECT count(*) FROM music_playlist_entries WHERE owner=? AND playlist_id='favorites' AND binding_id=''", owner).Scan(&count); err != nil {
 			return entry, err
@@ -199,6 +201,12 @@ func (s *Store) setFavorite(ctx context.Context, owner, id string, source *strin
 	}
 	if entry.ForcedSourceID != nil {
 		entry.Track = exactMusicSource(entry.MusicTrack, *entry.ForcedSourceID)
+	}
+	if added {
+		ref := playlists.SourceRef{TrackID: &id, ForcedSourceID: entry.ForcedSourceID}
+		if err = queuePlaylistSources(ctx, tx, owner, personal.Favorites, []playlists.SourceRef{ref}); err != nil {
+			return entry, err
+		}
 	}
 	entry.RecordedAt, err = time.Parse(time.RFC3339Nano, stamp)
 	if err != nil {

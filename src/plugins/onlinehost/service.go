@@ -41,13 +41,14 @@ type Instance struct {
 }
 
 type Service struct {
-	audioLibrary *library.Service
-	mu           sync.RWMutex
-	runtimes     []Runtime
-	slots        chan struct{}
+	playlistCache *dailyPlaylistCache
+	audioLibrary  *library.Service
+	mu            sync.RWMutex
+	runtimes      []Runtime
+	slots         chan struct{}
 }
 
-func New(runtimes []Runtime) (*Service, error) {
+func New(runtimes []Runtime, options ...func(*Service)) (*Service, error) {
 	if len(runtimes) > 16 {
 		return nil, domain.Fail("INVALID_ARGUMENT", "At most 16 online instances are supported")
 	}
@@ -64,7 +65,11 @@ func New(runtimes []Runtime) (*Service, error) {
 		}
 		runtimes[i] = r
 	}
-	return &Service{runtimes: runtimes, slots: make(chan struct{}, 4)}, nil
+	s := &Service{runtimes: runtimes, slots: make(chan struct{}, 4)}
+	for _, configure := range options {
+		configure(s)
+	}
+	return s, nil
 }
 
 func (s *Service) Instances(ctx context.Context, owner string) ([]Instance, error) {

@@ -58,7 +58,7 @@ func configureOnline(ctx context.Context, c config.Config, log *slog.Logger) (*o
 			runtimes = append(runtimes, r)
 		}
 	}
-	service, err := onlinehost.New(runtimes)
+	service, err := onlinehost.New(runtimes, onlinehost.WithPlaylistCache(filepath.Join(c.CacheRoot, "online-playlists")))
 	if err != nil {
 		closeAll()
 		return nil, nil, nil, err

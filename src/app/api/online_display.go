@@ -33,7 +33,7 @@ func (s *Server) registerOnlineDisplay(service *onlinehost.Service) {
 		if err != nil {
 			return err
 		}
-		result, err := service.PlaylistTracks(r.Context(), session.User.ID, r.PathValue("id"), online.PlaylistTracksRequest{ExternalID: r.PathValue("externalId"), Limit: limit, Cursor: query.Get("cursor")})
+		result, err := service.BrowsePlaylistTracks(r.Context(), session.User.ID, r.PathValue("id"), online.PlaylistTracksRequest{ExternalID: r.PathValue("externalId"), Limit: limit, Cursor: query.Get("cursor")})
 		if err != nil {
 			return err
 		}

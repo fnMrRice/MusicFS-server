@@ -36,11 +36,11 @@
 - `music_album_tracks` 视图汇总手工成员与按来源记录的专辑成员，按逻辑曲目去重，优先使用 `music_album_scraped_track_refs` 中的曲序。`music_album_source_refs.origin_id` 可为 `tag`、`source` 或作品副本 ID，不能当作统一的作品包外键。
 - `music_album_merged_slots` 记录人工合并的发行版曲位，供再次刮削时复用曲目。`music_artist_localized_names` 按歌手、语言和名称保存别名。
 - 普通歌单、收藏和音乐最近播放共用 `music_playlist_entries`。特殊歌单的 `playlist_id` 使用 `favorites`、`recently-played`，`binding_id` 为空字符串，因此该列没有指向 `personal_playlists` 的外键；可空的 `forced_source_id` 由触发器校验归属。旧的 `personal_favorites`、`personal_recently_played` 表已在 038 中删除。
-- `playlist_links` 关联个人歌单与平台歌单，`playlist_link_additions` 保存等待同步到平台的曲目。`recommendation_pages` 按用户和来源范围保存整页推荐，记录服务器日期及请求结果。
+- `playlist_links` 关联个人歌单与平台歌单。迁移 046 增加对“我的收藏”的支持，使用空的 personal_playlist_id 表示系统收藏。`playlist_link_additions` 保存等待同步到平台的曲目。`recommendation_pages` 按用户和来源范围保存整页推荐，记录服务器日期及请求结果。
 - 作品包的目录树与音轨引用存于 `work_packages.document`，通过 JSON 节点中的 `sourceTrackId` 引用来源。`document`、`request`、`description` 等 BLOB 列多为序列化业务模型；歌词、封面、缩略图及指纹明细正文存于独立文件，数据库保存索引、绑定和发布状态。
 - 实例库的 `plugin_values` 按插件 ID 与实例 UUID 组成的 `scope` 隔离，以 `(scope,key)` 为联合主键，通过 `revision` 原子比较更新 JSON 值；它与主库之间没有跨库外键。
 
-主库其余 9 个视图用于观测、导入和封面/元数据刷新：`music_observed_tracks`、`music_import_sources`、`music_imported_credits`、`music_import_cd_packages`、`music_import_cd_albums`、`music_track_covers`、`music_refresh_cover`、`music_refresh_metadata`、`music_refresh_album_cover`。详图只展开直接用于专辑查询的 `music_album_tracks`。其余视图定义及该视图的曲序变更见 [011—041 历史批次中的 037 和 041 迁移](../../plugins/database/sqlite/migrations/041_batch_011_041.sql)。
+主库其余 9 个视图用于观测、导入和封面/元数据刷新：`music_observed_tracks`、`music_import_sources`、`music_imported_credits`、`music_import_cd_packages`、`music_import_cd_albums`、`music_track_covers`、`music_refresh_cover`、`music_refresh_metadata`、`music_refresh_album_cover`。详图只展开直接用于专辑查询的 `music_album_tracks`。其余视图定义及该视图的曲序变更见 [011—042 历史批次中的 037 和 041 迁移](../../plugins/database/sqlite/migrations/042_batch_011_042.sql)。
 
 ## 更新图示
 

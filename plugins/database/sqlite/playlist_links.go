@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 )
 
@@ -46,12 +47,14 @@ func (s *Store) LinkPlaylist(ctx context.Context, owner string, b playlists.Bind
 		return result, err
 	}
 	defer tx.Rollback()
-	var exists int
-	if err = tx.QueryRowContext(ctx, "SELECT 1 FROM personal_playlists WHERE owner=? AND id=?", owner, playlistID).Scan(&exists); err != nil {
-		return result, remoteNotFound(err)
+	if playlistID != personal.Favorites {
+		var exists int
+		if err = tx.QueryRowContext(ctx, "SELECT 1 FROM personal_playlists WHERE owner=? AND id=?", owner, playlistID).Scan(&exists); err != nil {
+			return result, remoteNotFound(err)
+		}
 	}
-	if _, err = tx.ExecContext(ctx, `INSERT INTO playlist_links(owner,platform,instance_id,account_id,external_id,playlist_id)
- VALUES(?,?,?,?,?,?) ON CONFLICT(platform,external_id) DO NOTHING`, owner, b.Platform, b.InstanceID, b.AccountID, b.ExternalID, playlistID); err != nil {
+	if _, err = tx.ExecContext(ctx, `INSERT INTO playlist_links(owner,platform,instance_id,account_id,external_id,personal_playlist_id)
+ VALUES(?,?,?,?,?,nullif(?,'favorites')) ON CONFLICT(platform,external_id) DO NOTHING`, owner, b.Platform, b.InstanceID, b.AccountID, b.ExternalID, playlistID); err != nil {
 		return result, err
 	}
 	result, err = scanPlaylistLink(tx.QueryRowContext(ctx, `SELECT `+playlistLinkColumns+` FROM playlist_links l

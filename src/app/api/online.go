@@ -64,10 +64,15 @@ func (s *Server) RegisterOnline(service *onlinehost.Service) {
 		return WriteJSON(w, http.StatusOK, track)
 	})
 	s.Handle("GET /api/v1/online-instances/{id}/playlists/{externalId}", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
-		if _, err := onlineQuery(r); err != nil {
+		query, err := onlineQuery(r, "refresh")
+		if err != nil {
 			return err
 		}
-		page, err := service.ObservePlaylist(r.Context(), session.User.ID, r.PathValue("id"), r.PathValue("externalId"))
+		refresh, err := playlistRefresh(query)
+		if err != nil {
+			return err
+		}
+		page, err := service.BrowsePlaylist(r.Context(), session.User.ID, r.PathValue("id"), r.PathValue("externalId"), refresh)
 		if err != nil {
 			return err
 		}
