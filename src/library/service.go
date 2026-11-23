@@ -3,6 +3,7 @@ package library
 import (
 	"context"
 	"io"
+	"runtime"
 	"sort"
 	"sync"
 	"time"
@@ -123,6 +124,15 @@ func (s *Service) Track(ctx context.Context, user, id string) (Track, error) {
 	return s.repo.FindTrack(ctx, user, id)
 }
 func (s *Service) Open(ctx context.Context, t Track, task string) (*sourceaccess.Handle, error) {
+	return s.openTrack(ctx, t, task, false)
+}
+
+// OpenPlayback 在 Windows 上使用索引中的曲目定位当前音频，版本变化由刷新索引判定。
+func (s *Service) OpenPlayback(ctx context.Context, t Track, task string) (*sourceaccess.Handle, error) {
+	return s.openTrack(ctx, t, task, runtime.GOOS == "windows")
+}
+
+func (s *Service) openTrack(ctx context.Context, t Track, task string, useIndexedVersion bool) (*sourceaccess.Handle, error) {
 	lease, err := s.holdTask(ctx, t.Owner, t.ProviderID, task)
 	if err != nil {
 		return nil, err
@@ -133,6 +143,20 @@ func (s *Service) Open(ctx context.Context, t Track, task string) (*sourceaccess
 	}
 	ctx = lease.Context()
 	scope := sourceaccess.Scope{UserID: t.Owner, InstanceID: t.ProviderID, TaskID: task, AssetID: t.AssetID}
+	if useIndexedVersion {
+		handle, err := r.Worker.Access.OpenIndexed(ctx, scope, t.RootID, t.Path, t.Version)
+		if err != nil {
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
+			code := pluginproto.ErrorCode(err)
+			if code == "NOT_FOUND" {
+				code = "SOURCE_UNAVAILABLE"
+			}
+			return nil, domain.Fail(code, "Playback source could not be opened")
+		}
+		return handle, nil
+	}
 	ref, err := r.Worker.Access.Register(scope, t.RootID, t.Path, t.Version, time.Hour)
 	if err != nil {
 		return nil, domain.Fail("RESOURCE_CHANGED", "Source is missing or has changed; rescan the library")

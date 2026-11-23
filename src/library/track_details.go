@@ -36,12 +36,9 @@ func (s *Service) Details(ctx context.Context, owner, id string) (TrackDetails, 
 	default:
 	}
 	check := func() error {
-		entry, err := w.Access.Inspect(track.RootID, track.Path)
+		err := w.Access.CheckIndexedFile(track.RootID, track.Path, track.Version)
 		if err != nil {
 			return domain.Fail(pluginproto.ErrorCode(err), "Source is unavailable")
-		}
-		if entry.ObservedVersion != track.Version {
-			return domain.Fail("RESOURCE_CHANGED", "Source changed; rescan the library")
 		}
 		return nil
 	}

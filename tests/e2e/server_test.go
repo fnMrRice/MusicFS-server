@@ -231,8 +231,12 @@ func TestFreshServerScanRangePermissionsAndRestart(t *testing.T) {
 		t.Fatal("fixed representation was changed")
 	}
 	code, _, _ = c.request(t, "POST", "/api/v1/playback/sessions", create, "play-key-0002")
-	if code != 409 {
-		t.Fatalf("changed source accepted: %d", code)
+	expected := http.StatusConflict
+	if runtime.GOOS == "windows" {
+		expected = http.StatusUnsupportedMediaType
+	}
+	if code != expected {
+		t.Fatalf("invalid replacement status: got %d, want %d", code, expected)
 	}
 	code, _, _ = c.request(t, "DELETE", "/api/v1/auth/session", nil, "")
 	if code != 204 {

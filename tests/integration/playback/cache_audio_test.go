@@ -133,12 +133,27 @@ func TestProcessedCacheActualAudioReuseSeekAndRestart(t *testing.T) {
 	if sha256.Sum256(before) != sha256.Sum256(after) {
 		t.Fatal("cache processing changed its source")
 	}
-	// The old snapshot cannot authorize reuse after the actual source changes.
 	if err = os.WriteFile(f.path, shiftWave(t, before, 100), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if data, err := processedBytes(t, f, d); err == nil || len(data) != 0 {
-		t.Fatal("cache ignored a changed source grant")
+	snapshot, err := processedBytes(t, f, d)
+	if runtime.GOOS != "windows" {
+		if err == nil || len(snapshot) != 0 {
+			t.Fatal("cache ignored a changed source grant")
+		}
+		return
+	}
+	if err != nil || !bytes.Equal(snapshot, full) {
+		t.Fatal("file replacement changed an existing session's cached audio", err)
+	}
+	// 尚未刷新曲库时，新会话仍引用同一资产，但必须按当前文件内容重新转码。
+	if err = os.Rename(cfg.WorkerPath+".disabled", cfg.WorkerPath); err != nil {
+		t.Fatal(err)
+	}
+	next := f.create(t, "cache-changed-source")
+	fresh, err := processedBytes(t, f, next)
+	if err != nil || next.AssetID != d.AssetID || len(fresh) < 1024 || bytes.Equal(fresh, full) {
+		t.Fatal("new playback session did not deliver the updated audio", err)
 	}
 }
 

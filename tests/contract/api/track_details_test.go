@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -128,7 +129,12 @@ func TestSourceTrackDetailsUsesOwnedPluginObservationAndRejectsStaleFiles(t *tes
 	if err = os.WriteFile(file, append(fixture, 0), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if w = request(ids["admin"], true); w.Code != 409 || !strings.Contains(w.Body.String(), "RESOURCE_CHANGED") {
+	w = request(ids["admin"], true)
+	if runtime.GOOS == "windows" {
+		if w.Code != 200 || !strings.Contains(w.Body.String(), observation.ObservedVersion) {
+			t.Fatal("track details lost the indexed version before refresh", w.Code, w.Body.String())
+		}
+	} else if w.Code != 409 || !strings.Contains(w.Body.String(), "RESOURCE_CHANGED") {
 		t.Fatal("modified file returned stale details", w.Code, w.Body.String())
 	}
 	if err = os.Remove(file); err != nil {

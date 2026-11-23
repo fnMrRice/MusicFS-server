@@ -40,7 +40,7 @@ Provider 本轮撤销的申报会退出当前证据；探测成功但缺值或�
 
 完整摘要使用独立持久队列，通过标准库 SHA-512 顺序读取原始文件。每次读取最多 64 KiB，检查连续偏移、预期长度和末尾 EOF，不对解密载荷或 PCM 计算 `fileSha512`。空文件也必须先取得稳定读取保护。
 
-默认 `hashing.auto: false`，不会因扫描自动读取整库。显式触发使用 `POST /api/v1/source-tracks/{id}/hash-jobs`（需要 `Idempotency-Key`），返回任务及是否复用；随后通过 `GET /api/v1/hash-jobs/{jobId}` 读取状态与字节进度。`POST /api/v1/hash-jobs/{jobId}/cancel` 自然幂等，重复取消不会重启任务。写请求沿用会话、Origin 和 CSRF 校验。管理流程由 API 完成，最简 Web 不增加操作页面。
+默认 `hashing.auto: false`，扫描不会自动提交完整文件 SHA-512 验证任务。显式触发使用 `POST /api/v1/source-tracks/{id}/hash-jobs`（需要 `Idempotency-Key`），返回任务及是否复用；随后通过 `GET /api/v1/hash-jobs/{jobId}` 读取状态与字节进度。`POST /api/v1/hash-jobs/{jobId}/cancel` 自然幂等，重复取消不会重启任务。写请求沿用会话、Origin 和 CSRF 校验。管理流程由 API 完成，最简 Web 不增加操作页面。
 
 启用自动计算后，只为本地 Provider 的当前资产排队；相同资产的活动任务合并，已验证结果复用。自动任务不会反复重试失败资产，手动请求使用新幂等键可重试。再次设为 `auto: false` 只停止发现新任务，已授权且持久排队的任务仍会恢复执行，可逐任务取消。默认最多一个任务、所有任务合计 4 MiB/s，手动任务优先于尚未开始的自动任务；这些是保守资源限制，不构成所有磁盘或 NAS 的性能承诺。配置范围见[配置说明](../operations/configuration.md)。
 
@@ -50,7 +50,9 @@ Provider 本轮撤销的申报会退出当前证据；探测成功但缺值或�
 
 Windows 通过 [ReOpenFile](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-reopenfile) 重新打开已经授权的文件对象，只允许共享读取。已有写句柄、可写映射或无法取得保护时拒绝计算；保护期间不允许新写入和替换。Linux 使用 [读租约](https://man7.org/linux/man-pages/man2/F_SETLEASE.2const.html)，写入意图打断租约后放弃结果并及时释放，避免让外部写入等待内核超时。发布期间继续保持保护；文件路径被替换也会在校验时拒绝。
 
-文件版本同时记录系统文件身份、长度、mtime 和 change time，避免仅恢复 mtime 就复用旧证据。这仍不是完整字节证明；只有取得系统保护且完整读完才可验证。Linux 租约要求文件归属/权限及文件系统支持；NAS、其他挂载或 macOS 无法满足时明确返回 `unavailable`，没有仅靠 mtime 或建议锁的降级验证。后台摘要不可获得不影响普通播放。
+Windows 刷新本地索引时读取完整文件，以内容的 SHA-256 作为版本，文件身份单独保存。同长度的内容改写会生成新版本，仅更改时间戳或属性时版本保持稳定。日常播放直接读取当前文件，曲目详情显示最近一次扫描的观测。执行写回或发布资产证据时仍核对目标版本。从使用 NTFS 时间戳的旧版本升级后，下一次刷新索引会更新曲库记录。Linux 和 macOS 按文件身份、长度、mtime 和 inode 状态变更时间（ctime）计算版本。
+
+完整文件 SHA-512 验证需要取得系统保护并读完整个文件。Linux 租约要求文件归属、权限及文件系统支持；NAS、其他挂载或 macOS 无法满足时返回 `unavailable`。后台摘要不可获得不影响普通播放。
 
 当前仅本地来源明确声明完整稳定读取能力。在线来源没有因此获得隐式下载授权；后续 Provider 必须单独验证授权、能力和快照条件。申报摘要不参与精确字节匹配，申报错误保留 `PROVIDER_SHA512_MISMATCH` 审计并退出可依赖证据；实际摘要不被错误申报覆盖。相同摘要的多个路径继续保留独立来源与权限。
 

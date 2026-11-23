@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -116,8 +117,12 @@ func TestNCMServerRoundTripAndDisabledPlugin(t *testing.T) {
 					t.Fatal(err)
 				}
 				verifyRanges(t, c, description, payload)
-				if status, _, _ := c.request(t, "POST", "/api/v1/playback/sessions", request, "ncm-changed-0001"); status != 409 {
-					t.Fatalf("changed encrypted source accepted: %d", status)
+				expected := http.StatusConflict
+				if runtime.GOOS == "windows" {
+					expected = http.StatusUnsupportedMediaType
+				}
+				if status, _, _ := c.request(t, "POST", "/api/v1/playback/sessions", request, "ncm-changed-0001"); status != expected {
+					t.Fatalf("invalid encrypted replacement status: got %d, want %d", status, expected)
 				}
 				if code, _, _ := c.request(t, "DELETE", "/api/v1/playback/sessions/"+description.SessionID, nil, ""); code != 204 {
 					t.Fatalf("NCM stop failed: %d", code)

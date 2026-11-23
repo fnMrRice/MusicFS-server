@@ -67,6 +67,42 @@ func scopeObservation(id, root, path string) library.Observation {
 	return o
 }
 
+func TestStablePathReplacementPreservesSourcesAcrossRenames(t *testing.T) {
+	store := evidenceStore(t)
+	plan := testkit.ScanPlan("a", "b")
+	original := scopeObservation("original", "a", "track.mp3")
+	other := scopeObservation("other-root", "b", "track.mp3")
+	publishScope(t, store, plan, original, other)
+	before := tracksByName(t, store)
+
+	// 原文件移动后在旧路径补入同内容的新文件；另一个根的同名文件直接原位替换。
+	newFile := scopeObservation("new-file", "a", "track.mp3")
+	original.RelativePath = "renamed.mp3"
+	replaced := scopeObservation("replaced", "b", "track.mp3")
+	if _, _, err := store.Enqueue(t.Context(), "admin", "local", plan, domain.NewID()); err != nil {
+		t.Fatal(err)
+	}
+	job, err := store.Claim(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	publication := testkit.ScanPublication(job, []library.Observation{newFile, replaced, original})
+	publication.StablePaths = true
+	if err = store.Publish(t.Context(), job, publication); err != nil {
+		t.Fatal(err)
+	}
+	after := tracksByName(t, store)
+	if len(after) != 3 || after["new-file"].ID == before["original"].ID || after["new-file"].ID == before["other-root"].ID {
+		t.Fatal("the new file took over an existing source", after)
+	}
+	if after["original"].ID != before["original"].ID || after["original"].AssetID != before["original"].AssetID {
+		t.Fatal("renaming changed the original track or asset", after["original"])
+	}
+	if after["replaced"].ID != before["other-root"].ID || after["replaced"].AssetID != before["other-root"].AssetID {
+		t.Fatal("replacing the other root's file with identical content changed its track or asset", after["replaced"])
+	}
+}
+
 func tracksByName(t *testing.T, s *sqlite.Store) map[string]library.Track {
 	t.Helper()
 	page, err := s.ListTracks(context.Background(), "admin", "local", "", 200)

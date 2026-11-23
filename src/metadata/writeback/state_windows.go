@@ -1,13 +1,13 @@
 package writeback
 
 import (
-	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
 	"os"
 	"runtime"
 	"unsafe"
 
+	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 	"golang.org/x/sys/windows"
 )
 
@@ -28,20 +28,15 @@ func (d *windowsDisk) State(file *os.File) (FileState, error) {
 	if info.NumberOfLinks != 1 || info.FileAttributes & ^allowed != 0 {
 		return result, unsupported("Writeback requires a regular, single-link, writable NTFS file")
 	}
-	var basic struct {
-		CreationTime, LastAccessTime, LastWriteTime, ChangeTime int64
-		Attributes, Padding                                     uint32
-	}
-	if err := windows.GetFileInformationByHandleEx(h, windows.FileBasicInfo, (*byte)(unsafe.Pointer(&basic)), uint32(unsafe.Sizeof(basic))); err != nil {
-		return result, changed()
-	}
 	stat, err := file.Stat()
 	if err != nil || !stat.Mode().IsRegular() {
 		return result, changed()
 	}
 	result.Identity, result.Size = identity(info), stat.Size()
-	version := fmt.Sprintf("%s:%d:%d:%d", result.Identity, result.Size, stat.ModTime().UnixNano(), basic.ChangeTime)
-	result.Version = fmt.Sprintf("%x", sha256.Sum256([]byte(version)))
+	result.Version, err = sourceaccess.ObservedVersion(file, stat, result.Identity)
+	if err != nil {
+		return result, changed()
+	}
 	return result, nil
 }
 

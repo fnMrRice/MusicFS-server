@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"runtime"
 	"slices"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/directoryidentity"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
@@ -48,7 +50,8 @@ func (s *Service) scan(ctx context.Context, j jobs.Job) (int, error) {
 		}
 	}
 	slog.DebugContext(ctx, "Scan publication started", "jobId", j.ID, "observed", len(all))
-	return len(all), s.repo.Publish(ctx, j, ScanPublication{PlanDigest: j.PlanDigest, CompletedRoots: roots, Observations: all, ExcludedPaths: excluded})
+	return len(all), s.repo.Publish(ctx, j, ScanPublication{PlanDigest: j.PlanDigest, CompletedRoots: roots, Observations: all, ExcludedPaths: excluded,
+		StablePaths: runtime.GOOS == "windows" && r.Worker.Supports(directoryidentity.Capability)})
 }
 
 func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID string, all []Observation, seenTracks map[string]bool, excluded map[string][]string, probe Probe) ([]Observation, error) {
@@ -111,16 +114,16 @@ func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID st
 			if probe != nil {
 				item.ProbeStatus = "failed"
 				scope := sourceaccess.Scope{UserID: j.Owner, InstanceID: r.ID, TaskID: j.ID, AssetID: o.ObservedVersion}
-				ref, e := r.Worker.Access.Register(scope, o.RootID, o.RelativePath, o.ObservedVersion, time.Minute)
+				h, e := r.Worker.Access.OpenIndexed(ctx, scope, o.RootID, o.RelativePath, o.ObservedVersion)
 				if e != nil {
 					return all, domain.Fail("RESOURCE_CHANGED", "Scanned source could not be reopened; retry scan")
 				}
-				h, e := r.Worker.Access.Open(ctx, scope, ref.ResourceRef)
-				if e != nil {
-					return all, domain.Fail("RESOURCE_CHANGED", "Scanned source could not be reopened; retry scan")
+				if h.Entry.SizeBytes != o.SizeBytes {
+					h.Close()
+					return all, domain.Fail("RESOURCE_CHANGED", "Scanned source size changed before probing")
 				}
 				meta, e := probe(ctx, h, o.SizeBytes)
-				valid := h.Validate()
+				valid := h.VerifyIndexedVersion()
 				h.Close()
 				var disabled *domain.Error
 				if errors.Is(e, context.Canceled) || errors.Is(e, context.DeadlineExceeded) || (errors.As(e, &disabled) && disabled.Code == "PLUGIN_DISABLED") {

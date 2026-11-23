@@ -79,7 +79,7 @@ func (s *Service) RecoverSource(ctx context.Context, who auth.Session, id string
 	// and a valid source grant; a known recording is not a permission grant.
 	grant := domain.NewID()
 	defer s.library.Revoke(t.ProviderID, grant)
-	handle, err := s.library.Open(ctx, t, grant)
+	handle, err := s.library.OpenPlayback(ctx, t, grant)
 	if err != nil {
 		return empty, err
 	}

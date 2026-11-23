@@ -28,15 +28,15 @@ func (s *Store) Publish(ctx context.Context, supplied jobs.Job, publication libr
 		return err
 	}
 	observations := publication.Observations
-	rows, err := tx.QueryContext(ctx, "SELECT document,root_id,path FROM tracks WHERE owner=? AND provider=?", j.Owner, j.ProviderInstanceID)
+	rows, err := tx.QueryContext(ctx, "SELECT document,root_id,path,external_id,id,asset_id FROM tracks WHERE owner=? AND provider=?", j.Owner, j.ProviderInstanceID)
 	if err != nil {
 		return err
 	}
 	old := map[string]library.Track{}
 	for rows.Next() {
 		var raw []byte
-		var root, path string
-		if err := rows.Scan(&raw, &root, &path); err != nil {
+		var root, path, external, id, asset string
+		if err := rows.Scan(&raw, &root, &path, &external, &id, &asset); err != nil {
 			rows.Close()
 			return err
 		}
@@ -45,7 +45,7 @@ func (s *Store) Publish(ctx context.Context, supplied jobs.Job, publication libr
 			rows.Close()
 			return err
 		}
-		t.RootID, t.Path = root, path
+		t.RootID, t.Path, t.ExternalID, t.ID, t.AssetID = root, path, external, id, asset
 		old[t.ID] = t
 	}
 	err = rows.Err()
@@ -54,17 +54,13 @@ func (s *Store) Publish(ctx context.Context, supplied jobs.Job, publication libr
 		return err
 	}
 	seen := map[string]bool{}
-	seenExternal := map[string]bool{}
+	bindings, err := scanTrackBindings(publication, old)
+	if err != nil {
+		return err
+	}
 	for _, o := range observations {
-		if o.ExternalID == "" || o.ObservedVersion == "" || seenExternal[o.ExternalID] {
-			return domain.Fail("CONFLICT", "Scan contains an invalid or repeated track identity")
-		}
-		seenExternal[o.ExternalID] = true
-		var id, asset string
-		err := tx.QueryRowContext(ctx, "SELECT id,asset_id FROM tracks WHERE owner=? AND provider=? AND external_id=?", j.Owner, j.ProviderInstanceID, o.ExternalID).Scan(&id, &asset)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return err
-		}
+		previous := old[bindings[o.ExternalID]]
+		id, asset := previous.ID, previous.AssetID
 		if id == "" {
 			id = domain.NewID()
 		}
@@ -80,7 +76,7 @@ func (s *Store) Publish(ctx context.Context, supplied jobs.Job, publication libr
 		t := library.Track{ID: id, ProviderID: j.ProviderInstanceID, DisplayName: o.DisplayName, Title: o.Title, Artists: artists, DurationMs: o.DurationMs, Codec: o.Codec, Container: o.Container, BitrateBps: current.BitrateBps, Availability: "available", AssetID: asset, Asset: &current}
 		t.Album, t.Genre, t.Year, t.SampleRateHz = o.Album, o.Genre, o.Year, o.SampleRateHz
 		raw, _ := json.Marshal(t)
-		_, err = tx.ExecContext(ctx, "INSERT INTO tracks(id,owner,provider,external_id,root_id,path,version,asset_id,mime,size,document) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET root_id=excluded.root_id,path=excluded.path,version=excluded.version,asset_id=excluded.asset_id,mime=excluded.mime,size=excluded.size,document=excluded.document", id, j.Owner, j.ProviderInstanceID, o.ExternalID, o.RootID, o.RelativePath, o.ObservedVersion, asset, o.MIME, o.SizeBytes, raw)
+		_, err = tx.ExecContext(ctx, "INSERT INTO tracks(id,owner,provider,external_id,root_id,path,version,asset_id,mime,size,document) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET external_id=excluded.external_id,root_id=excluded.root_id,path=excluded.path,version=excluded.version,asset_id=excluded.asset_id,mime=excluded.mime,size=excluded.size,document=excluded.document", id, j.Owner, j.ProviderInstanceID, o.ExternalID, o.RootID, o.RelativePath, o.ObservedVersion, asset, o.MIME, o.SizeBytes, raw)
 		if err != nil {
 			return err
 		}

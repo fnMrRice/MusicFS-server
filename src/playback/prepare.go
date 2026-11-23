@@ -85,9 +85,6 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 	if s.library.SourceType(t.ProviderID) != "local" {
 		return nil, domain.Fail("UNSUPPORTED", "Provider has not declared a supported source type")
 	}
-	if t.Size <= 0 {
-		return nil, domain.Fail("UNSUPPORTED", "Source contains no audio data")
-	}
 	// 扫描元数据已绑定资产版本；NCM 为解封后的音频码率，不能改用外层大小或中间 PCM 码率。
 	var sourceBitrate int64
 	if t.BitrateBps != nil {
@@ -121,11 +118,15 @@ func (s *Service) prepare(ctx context.Context, owner, task string, r CreateReque
 		}
 	}()
 	defer s.library.Revoke(t.ProviderID, task)
-	handle, err := s.library.Open(ctx, t, task)
+	handle, err := s.library.OpenPlayback(ctx, t, task)
 	if err != nil {
 		return nil, err
 	}
 	defer handle.Close()
+	t.Size = handle.Entry.SizeBytes
+	if t.Size <= 0 {
+		return nil, domain.Fail("UNSUPPORTED", "Source contains no audio data")
+	}
 	input, size, decrypted, closeInput, err := p.prepareInput(ctx, task, handle, &t)
 	if err != nil {
 		return nil, err

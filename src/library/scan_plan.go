@@ -21,6 +21,8 @@ type ScanPublication struct {
 	PlanDigest     string
 	CompletedRoots []pluginproto.ScanRoot
 	Observations   []Observation
+	// StablePaths 表示来源支持同一目录路径替换文件后保留曲目标识。
+	StablePaths bool
 	// ExcludedPaths comes from host snapshots, never from a provider or request.
 	ExcludedPaths map[string][]string
 }

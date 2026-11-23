@@ -3,21 +3,28 @@
 package sourceaccess
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
-	"unsafe"
-
-	"golang.org/x/sys/windows"
 )
 
-func fileChangeVersion(f *os.File) (string, error) {
-	var info struct {
-		CreationTime, LastAccessTime, LastWriteTime, ChangeTime int64
-		Attributes                                              uint32
-		Padding                                                 uint32
+// ObservedVersion 只按完整内容识别普通文件。目录由身份和最后写入时间识别，
+// 包内文件的独立版本另行计入目录树快照。
+func ObservedVersion(f *os.File, info os.FileInfo, identity string) (string, error) {
+	digest := sha256.New()
+	if info.IsDir() {
+		fmt.Fprintf(digest, "%s:%d", identity, info.ModTime().UnixNano())
+	} else {
+		size := info.Size()
+		n, err := io.Copy(digest, io.NewSectionReader(f, 0, size))
+		if err != nil {
+			return "", err
+		}
+		if n != size {
+			return "", io.ErrUnexpectedEOF
+		}
 	}
-	if err := windows.GetFileInformationByHandleEx(windows.Handle(f.Fd()), windows.FileBasicInfo, (*byte)(unsafe.Pointer(&info)), uint32(unsafe.Sizeof(info))); err != nil {
-		return "", err
-	}
-	return fmt.Sprint(info.ChangeTime), nil
+	return hex.EncodeToString(digest.Sum(nil)), nil
 }

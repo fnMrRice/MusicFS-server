@@ -2,7 +2,6 @@ package sourceaccess
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"io"
 	"io/fs"
@@ -14,6 +13,10 @@ import (
 )
 
 func describe(f *os.File, rootID, path string, formats *audioformat.Registry) (pluginproto.Entry, error) {
+	return describeFile(f, rootID, path, formats, "")
+}
+
+func describeFile(f *os.File, rootID, path string, formats *audioformat.Registry, indexedVersion string) (pluginproto.Entry, error) {
 	info, err := f.Stat()
 	if err != nil || !info.Mode().IsRegular() {
 		return pluginproto.Entry{}, fmt.Errorf("ACCESS_DENIED: source is not a regular file")
@@ -22,16 +25,18 @@ func describe(f *os.File, rootID, path string, formats *audioformat.Registry) (p
 	if err != nil {
 		return pluginproto.Entry{}, fmt.Errorf("SOURCE_OFFLINE: file identity unavailable")
 	}
-	change, err := fileChangeVersion(f)
-	if err != nil {
-		return pluginproto.Entry{}, fmt.Errorf("SOURCE_OFFLINE: file change information unavailable")
+	version := indexedVersion
+	if version == "" {
+		version, err = ObservedVersion(f, info, identity)
+		if err != nil {
+			return pluginproto.Entry{}, fmt.Errorf("SOURCE_OFFLINE: file version unavailable")
+		}
 	}
 	links, err := fileLinkCount(f)
 	if err != nil || links == 0 {
 		return pluginproto.Entry{}, fmt.Errorf("SOURCE_OFFLINE: file link information unavailable")
 	}
-	version := sha256.Sum256([]byte(fmt.Sprintf("%s:%d:%d:%s", identity, info.Size(), info.ModTime().UnixNano(), change)))
-	entry := pluginproto.Entry{RootID: rootID, RelativePath: filepath.ToSlash(path), FileIdentity: identity, LinkCount: links, ObservedVersion: fmt.Sprintf("%x", version), SizeBytes: info.Size(), MIME: "application/octet-stream"}
+	entry := pluginproto.Entry{RootID: rootID, RelativePath: filepath.ToSlash(path), FileIdentity: identity, LinkCount: links, ObservedVersion: version, SizeBytes: info.Size(), MIME: "application/octet-stream"}
 	match, ok, err := formats.Detect(f, info.Size())
 	if err != nil {
 		return pluginproto.Entry{}, err

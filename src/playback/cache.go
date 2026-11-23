@@ -95,7 +95,7 @@ func (s *Service) checkCacheSource(ctx context.Context, scope cacheScope) error 
 	}
 	task := domain.NewID()
 	defer s.library.Revoke(track.ProviderID, task)
-	handle, err := s.library.Open(ctx, track, task)
+	handle, err := s.library.OpenPlayback(ctx, track, task)
 	if err != nil {
 		return err
 	}

@@ -168,11 +168,11 @@ func directoryVersion(f *os.File) (string, error) {
 	if err != nil {
 		return "", packageFailure("SOURCE_OFFLINE", "Package directory identity is unavailable")
 	}
-	change, err := fileChangeVersion(f)
+	version, err := ObservedVersion(f, info, identity)
 	if err != nil {
 		return "", packageFailure("SOURCE_OFFLINE", "Package directory version is unavailable")
 	}
-	return fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%d:%s", identity, info.ModTime().UnixNano(), change)))), nil
+	return version, nil
 }
 
 func packageAttachment(f *os.File, size int64) (string, string, error) {
