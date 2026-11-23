@@ -9,7 +9,7 @@ import (
 // The host validates worker results independently before publishing them.
 func ValidateTrack(policy ResourcePolicy, track Track) error {
 	wantURL := ReferenceURL(policy.Tracks, track.ExternalID)
-	if wantURL == "" || track.SourceURL != wantURL || track.PlaybackAvailability != "unknown" || track.Artists == nil || len(track.Artists) > 128 {
+	if wantURL == "" || track.SourceURL != wantURL || !validImageReference(policy, track.CoverURL) || track.PlaybackAvailability != "unknown" || track.Artists == nil || len(track.Artists) > 128 {
 		return invalidResult()
 	}
 	title, err := TextValue(track.Title, 4096)
@@ -27,9 +27,7 @@ func ValidateTrack(policy ResourcePolicy, track Track) error {
 	if track.DurationMs != nil && (*track.DurationMs <= 0 || *track.DurationMs > 7*24*60*60*1000) {
 		return invalidResult()
 	}
-	got := track.MetadataDigest
-	track.MetadataDigest = ""
-	if got != Digest(track) {
+	if track.MetadataDigest != TrackDigest(track) {
 		return invalidResult()
 	}
 	return nil

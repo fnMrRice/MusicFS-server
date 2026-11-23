@@ -35,7 +35,7 @@ func (client) Metadata(ctx context.Context, id string) (online.Track, error) {
 		ExternalID: "42", Title: "Synthetic example", Artists: []string{"Example artist"},
 		SourceURL: "https://music.163.com/song?id=42", PlaybackAvailability: "unknown",
 	}
-	track.MetadataDigest = online.Digest(track)
+	track.MetadataDigest = online.TrackDigest(track)
 	return track, nil
 }
 

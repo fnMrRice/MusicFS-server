@@ -44,6 +44,7 @@ type Track struct {
 	Album      string   `json:"album"`
 	DurationMs *int64   `json:"durationMs"`
 	SourceURL  string   `json:"sourceUrl"`
+	CoverURL   *string  `json:"coverUrl,omitempty"`
 	// MetadataDigest is not an audio asset version or proof of byte identity.
 	MetadataDigest       string `json:"metadataDigest"`
 	PlaybackAvailability string `json:"playbackAvailability"`

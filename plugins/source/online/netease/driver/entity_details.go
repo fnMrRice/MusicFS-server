@@ -3,6 +3,7 @@ package driver
 import (
 	"context"
 	"net/url"
+	"slices"
 	"strconv"
 
 	domain "github.com/fnMrRice/MusicFS-server/sdk/fault"
@@ -103,14 +104,17 @@ func (c *Client) AlbumTracks(ctx context.Context, r EntityPageRequest) (SearchPa
 	if err != nil {
 		return SearchPage{}, err
 	}
-	// CDN image hosts vary between otherwise identical observations.
-	// Artwork is display-only and cannot invalidate the track sequence.
+	// 专辑与逐曲封面的 CDN 地址切换不应令游标失效。
 	identity := a
 	identity.CoverURL = nil
+	trackIdentities := slices.Clone(tracks)
+	for i := range trackIdentities {
+		trackIdentities[i].CoverURL = nil
+	}
 	version := digest(struct {
 		Album  Album
 		Tracks []Track
-	}{identity, tracks})
+	}{identity, trackIdentities})
 	if r.Cursor != "" && token.Version != version {
 		return SearchPage{}, domain.Fail("CURSOR_EXPIRED", "Album observation changed; refresh the first page")
 	}

@@ -95,6 +95,6 @@ func (s qqSong) track() (online.Track, error) {
 		value := *s.Interval * 1000
 		t.DurationMs = &value
 	}
-	t.MetadataDigest = online.Digest(t)
+	t.MetadataDigest = online.TrackDigest(t)
 	return t, nil
 }

@@ -47,6 +47,22 @@ func TestMetadataValidationRetainsTrustBoundary(t *testing.T) {
 	}
 }
 
+func TestTrackCoverUsesDeclaredImageHostsAndKeepsMetadataIdentity(t *testing.T) {
+	track := fixtureTrack()
+	for _, raw := range []string{"https://p1.music.126.net/first.jpg", "https://p2.music.126.net/next.jpg"} {
+		track.CoverURL = &raw
+		if err := online.ValidateTrack(fixturePolicy(), track); err != nil {
+			t.Fatalf("image changed canonical metadata: %v", err)
+		}
+	}
+	for _, raw := range []string{"https://example.com/image.jpg", "http://p1.music.126.net/image.jpg", "https://p1.music.126.net/image.jpg?token=private"} {
+		track.CoverURL = &raw
+		if online.ValidateTrack(fixturePolicy(), track) == nil {
+			t.Fatalf("untrusted image was published: %s", raw)
+		}
+	}
+}
+
 func TestPlaylistDigestRetainsOrderedDuplicateOccurrences(t *testing.T) {
 	count := int64(3)
 	cover := "https://p1.music.126.net/image.jpg"

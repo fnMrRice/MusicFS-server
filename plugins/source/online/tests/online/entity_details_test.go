@@ -70,11 +70,15 @@ func TestEntityDetailsAndRelationshipsValidateIdentityAndCursors(t *testing.T) {
 func TestAlbumPagingBindsObservationAndRefusesCrossRelationshipCursor(t *testing.T) {
 	var calls atomic.Int32
 	c := scoped(t, online.Netease, roundTrip(func(r *http.Request) (*http.Response, error) {
-		name := "First"
-		if calls.Add(1) > 1 {
+		count := calls.Add(1)
+		name, host := "First", "p1.music.126.net"
+		if count > 1 {
+			host = "p2.music.126.net"
+		}
+		if count > 2 {
 			name = "Changed"
 		}
-		return response(`{"code":200,"album":{"id":91,"name":"Album","size":2},"songs":[{"id":42,"name":"` + name + `","ar":[],"al":{},"dt":123},{"id":43,"name":"Next","ar":[],"al":{},"dt":123}]}`).RoundTrip(r)
+		return response(`{"code":200,"album":{"id":91,"name":"Album","size":2},"songs":[{"id":42,"name":"` + name + `","ar":[],"al":{"picUrl":"https://` + host + `/s.jpg"},"dt":123},{"id":43,"name":"Next","ar":[],"al":{},"dt":123}]}`).RoundTrip(r)
 	}))
 	r := online.EntityPageRequest{ExternalID: "91", Limit: 1}
 	p, err := c.AlbumTracks(context.Background(), r)
@@ -86,6 +90,11 @@ func TestAlbumPagingBindsObservationAndRefusesCrossRelationshipCursor(t *testing
 	expectCode(t, err, "INVALID_ARGUMENT")
 	if calls.Load() != 1 {
 		t.Fatal("cross-relationship cursor reached upstream")
+	}
+	time.Sleep(1050 * time.Millisecond)
+	next, err := c.AlbumTracks(context.Background(), r)
+	if err != nil || len(next.Tracks) != 1 || next.Tracks[0].ExternalID != "43" {
+		t.Fatalf("cover host rotation invalidated album membership: %v", err)
 	}
 	time.Sleep(1050 * time.Millisecond)
 	_, err = c.AlbumTracks(context.Background(), r)

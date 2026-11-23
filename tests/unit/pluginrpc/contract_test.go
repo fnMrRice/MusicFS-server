@@ -11,14 +11,14 @@ import (
 )
 
 func TestPersistenceContractFingerprints(t *testing.T) {
-	// 固定当前接口身份，主库包含歌单曲库同步与按用户、来源及版本管理下载的协议。
+	// 主库存储接口引用在线曲目元数据，其中包含可选的来源封面。
 	// 其余接口继续保留源码目录迁移前的指纹，目录调整不应改变协议身份。
 	for _, test := range []struct {
 		name     string
 		contract reflect.Type
 		want     string
 	}{
-		{"backend", reflect.TypeFor[storage.Backend](), "1d271ddf798c242b45d555b197be4d98e9464fdcfafb71f0b2a7a92f45d31470"},
+		{"backend", reflect.TypeFor[storage.Backend](), "125c249b2b035a795760172b3a54df5c616cc666c304ecfa6857e5725fe87cca"},
 		{"maintenance", reflect.TypeFor[storage.Maintenance](), "c2b65a92a0386d7990000f825babaf527dfb541184711fca13d26cc5298fa013"},
 		{"plugin-state", reflect.TypeFor[plugindb.Backend](), "3585f631ae09e5d4694d439d5d2a72e5d8d2f30cf9b64ac2003dd674eb12c401"},
 	} {

@@ -3,11 +3,11 @@ package bilibili
 import (
 	"context"
 	"errors"
-	"github.com/fnMrRice/MusicFS-server/plugins/source/online/internal/policies"
 	"net/url"
 	"strconv"
 	"strings"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/source/online/internal/policies"
 	"github.com/fnMrRice/MusicFS-server/sdk/fault"
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
@@ -18,11 +18,13 @@ type videoPage struct {
 	Page     int    `json:"page"`
 	Part     string `json:"part"`
 	Duration int64  `json:"duration"`
+	Frame    string `json:"first_frame"`
 }
 type videoInfo struct {
 	BVID  string `json:"bvid"`
 	AID   int64  `json:"aid"`
 	Title string `json:"title"`
+	Pic   string `json:"pic"`
 	State int    `json:"state"`
 	Owner struct {
 		MID  int64  `json:"mid"`
@@ -43,6 +45,7 @@ type audioInfo struct {
 	ID       int64  `json:"id"`
 	Title    string `json:"title"`
 	Author   string `json:"author"`
+	Cover    string `json:"cover"`
 	Uname    string `json:"uname"`
 	UID      int64  `json:"uid"`
 	Duration int64  `json:"duration"`
@@ -90,15 +93,24 @@ func videoTrack(info videoInfo, page videoPage) (online.Track, error) {
 	if len(info.Pages) > 1 {
 		title += " · P" + strconv.Itoa(page.Page) + " " + page.Part
 	}
-	return makeTrack("video:"+info.BVID+":"+strconv.FormatInt(page.CID, 10), title, "", page.Duration)
+	return makeTrack("video:"+info.BVID+":"+strconv.FormatInt(page.CID, 10), title, "", page.Duration, page.Frame, info.Pic)
 }
 
-func makeTrack(id, title, artist string, duration int64) (online.Track, error) {
+func makeTrack(id, title, artist string, duration int64, images ...string) (online.Track, error) {
 	title, err := online.TextValue(title, 4096)
 	if err != nil || title == "" || duration < 0 || duration > 7*24*60*60 {
 		return online.Track{}, online.UpstreamInvalid()
 	}
 	t := online.Track{ExternalID: id, Title: title, Artists: []string{}, Album: "", SourceURL: sourceURL(id), PlaybackAvailability: "unknown"}
+	for _, raw := range images {
+		if strings.HasPrefix(raw, "//") {
+			raw = "https:" + raw
+		}
+		if cover, _ := policies.Bilibili().ImageURL(raw); cover != nil {
+			t.CoverURL = cover
+			break
+		}
+	}
 	if artist != "" {
 		value, err := online.TextValue(artist, 4096)
 		if err != nil {
@@ -112,7 +124,7 @@ func makeTrack(id, title, artist string, duration int64) (online.Track, error) {
 		ms := duration * 1000
 		t.DurationMs = &ms
 	}
-	t.MetadataDigest = online.Digest(t)
+	t.MetadataDigest = online.TrackDigest(t)
 	return t, nil
 }
 
@@ -151,7 +163,7 @@ func (c *Client) Metadata(ctx context.Context, raw string) (online.Track, error)
 		if err != nil {
 			return online.Track{}, err
 		}
-		return makeTrack("audio:"+r.id, info.Title, info.Author, info.Duration)
+		return makeTrack("audio:"+r.id, info.Title, info.Author, info.Duration, info.Cover)
 	default:
 		return online.Track{}, fault.Fail("INVALID_ARGUMENT", "A Bilibili track reference is required")
 	}
@@ -189,7 +201,7 @@ func (c *Client) TrackDetails(ctx context.Context, raw string) (pluginproto.Trac
 		if err != nil {
 			return pluginproto.TrackDetails{}, err
 		}
-		track, err = makeTrack("audio:"+r.id, info.Title, info.Author, info.Duration)
+		track, err = makeTrack("audio:"+r.id, info.Title, info.Author, info.Duration, info.Cover)
 		if err != nil {
 			return pluginproto.TrackDetails{}, err
 		}

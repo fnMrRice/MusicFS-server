@@ -41,7 +41,7 @@ func (onlineTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 			raw = `{"code":200,"result":{"playlists":[{"id":93,"name":"Synthetic playlist","creator":{"nickname":"Creator"},"trackCount":3}],"playlistCount":1}}`
 		}
 	case "/api/v3/song/detail":
-		raw = `{"code":200,"songs":[{"id":42,"name":"Synthetic","ar":[],"al":{"name":"Album"},"dt":120000}]}`
+		raw = `{"code":200,"songs":[{"id":42,"name":"Synthetic","ar":[],"al":{"name":"Album","picUrl":"http://p2.music.126.net/song.jpg"},"dt":120000}]}`
 	case "/api/personalized/playlist":
 		raw = `{"code":200,"result":[{"id":91,"name":"Synthetic","copywriter":"Public","trackCount":3}]}`
 	case "/api/v3/discovery/recommend/songs":
@@ -164,6 +164,7 @@ func TestOnlineHTTPPrivateAuthenticatedMetadataAndErrors(t *testing.T) {
 		{"/tracks/42", "OnlineTrack", 0},
 		{"/recommendations?limit=1", "OnlineRecommendationPage", 0},
 		{"/playlists/91", "OnlineObservation", 0},
+		{"/playlists/91/tracks?limit=1", "OnlinePlaylistTracksPage", 0},
 		{"/daily-songs", "OnlineDailySongsPage", online.MaxPageItems},
 		{"/daily-songs?limit=2", "OnlineDailySongsPage", 2},
 	} {
@@ -173,6 +174,12 @@ func TestOnlineHTTPPrivateAuthenticatedMetadataAndErrors(t *testing.T) {
 			t.Fatalf("online read: %d %s", w.Code, w.Body.String())
 		}
 		testkit.ValidateHTTP(t, tc.schema, w.Body.Bytes())
+		if tc.schema == "OnlinePlaylistTracksPage" {
+			var page online.PlaylistTracksPage
+			if err := json.Unmarshal(w.Body.Bytes(), &page); err != nil || len(page.Items) != 1 || page.Items[0].Track == nil || page.Items[0].Track.CoverURL == nil || *page.Items[0].Track.CoverURL != "https://p2.music.126.net/song.jpg" {
+				t.Fatalf("playlist HTTP response lost track artwork: %s", w.Body)
+			}
+		}
 		if tc.dailyTracks > 0 {
 			var daily online.DailySongsPage
 			if err := json.Unmarshal(w.Body.Bytes(), &daily); err != nil || len(daily.Tracks) != tc.dailyTracks || daily.ObservedAt.IsZero() || daily.Tracks[0].ExternalID != "1" || daily.Tracks[1].ExternalID != "2" {

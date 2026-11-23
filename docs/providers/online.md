@@ -52,7 +52,7 @@ QQ 和 Apple 对应 `musicfs.plugin.source.qqmusic`、`musicfs.plugin.source.app
 | GET `/online-instances/{id}/recommendations` | limit默认20、1—50 | 公共歌单推荐、观测时间和120秒有效期；`personalized=false,nextCursor=null` |
 | GET `/online-instances/{id}/daily-songs` | limit 默认 50，范围 1—50 | 当前已校验账号的每日推荐歌曲，按平台顺序返回 |
 | GET `/online-instances/{id}/playlists/{externalId}` | 可访问的歌单编号，含网易云当前账号自建的私密歌单 | 条目、`complete/consistency/metadataDigest/observedAt` |
-| GET `/online-instances/{id}/playlists/{externalId}/tracks` | limit默认20、1—50；可选cursor | 位置、来源ID、标题／歌手／时长等资料，缺失项保留；每页一次歌单观测和一次批量详情请求 |
+| GET `/online-instances/{id}/playlists/{externalId}/tracks` | limit默认20、1—50；可选cursor | 按位置返回来源 ID、标题、歌手、时长及可选的逐曲封面 `items[].track.coverUrl`，缺失曲目保留占位 |
 | POST `/source-refs/lookup` | `sources` 是1—50项个人歌单`SourceRef`；允许Origin和CSRF，无幂等键 | 本地`SourceTrack`或远程来源及资料；顺序、重复和单项错误保留，不遍历整个曲库 |
 | POST `/online-instances/{id}/tracks/{externalId}/resolve` | `{}`；另需允许Origin和CSRF，无幂等键 | 具备 `stream.resolve` 的来源返回用于播放的曲目身份；未实现的来源返回415 UNSUPPORTED，不返回上游音频地址 |
 
@@ -63,6 +63,8 @@ QQ 和 Apple 对应 `musicfs.plugin.source.qqmusic`、`musicfs.plugin.source.app
 来源引用批量展示先按当前用户查询，未知和其他用户来源均为`NOT_FOUND`；在线条目按实例分组，一组一次批量调用，不逐首访问上游。在线离线、禁用、限流等错误保留在对应条目，不影响本地条目。资料是当前读取值，不声称与过去的个人歌单快照具有相同修订。本人歌单`GET /playlists?q=...`同时支持Unicode小写后的名称包含匹配；过滤作用于完整本人歌单集，沿用`after` ID键集分页，实时更新可能影响后续页，改变关键词时应从第一页开始。
 
 曲目 `metadataDigest` 是规范元数据的摘要，不能当作音频资产版本、文件 SHA-512 或识别证据。`playbackAvailability=unknown`，`sourceUrl` 是固定平台资料页。接口不返回 SourceAsset、streamUrl、请求私密头或播放SDK句柄，不把目录preview当作完整裸流。
+
+曲目可附带展示用的 `coverUrl`。网易云从该曲目的专辑读取封面网址或图片编号，Bilibili 音频使用歌曲封面，视频优先使用分 P 首帧，再使用视频封面。缺少受信封面时省略字段。Web 可直接加载图片。插件使用 `online.TrackDigest` 计算曲目摘要，封面地址变化不会更新曲目身份或使专辑游标失效。
 
 歌单最多10000条，按这次观测的 `position` 保留顺序和重复曲目。`complete=true` 仅说明返回数与本次申报总数相等；`consistency=unversioned` 明确没有远端固定版本。公开推荐和歌单查询不会导入个人曲库、创建媒体资产或据缺失条目删除本地数据；[显式导入和持久同步](../library/remote-playlists.md)使用独立操作。
 

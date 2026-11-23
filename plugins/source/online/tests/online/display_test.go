@@ -73,6 +73,32 @@ func TestTrackBatchPreservesDuplicatesAndMissingWithoutNPlusOne(t *testing.T) {
 	}
 }
 
+func TestPlaylistReportsEachSongsTrustedCover(t *testing.T) {
+	c := scoped(t, online.Netease, roundTrip(func(r *http.Request) (*http.Response, error) {
+		if strings.Contains(r.URL.Path, "playlist") {
+			return response(`{"code":200,"playlist":{"id":91,"name":"Playlist","privacy":0,"trackCount":5,"coverImgUrl":"https://p1.music.126.net/list.jpg","trackIds":[{"id":1},{"id":2},{"id":3},{"id":4},{"id":2}]}}`).RoundTrip(r)
+		}
+		return response(`{"code":200,"songs":[
+			{"id":1,"name":"Supplied","al":{"picUrl":"http://p1.music.126.net/one.jpg","pic_str":"1"}},
+			{"id":2,"name":"Exact string","al":{"pic_str":"109951163240604120","pic":109951163240604130}},
+			{"id":3,"name":"Exact number","al":{"pic":109951163240604120}},
+			{"id":4,"name":"Untrusted","al":{"picUrl":"https://127.0.0.1/secret","pic_str":"../private","pic":0}}
+		]}`).RoundTrip(r)
+	}))
+	req := online.PlaylistTracksRequest{ExternalID: "91", Limit: 5}
+	page, err := c.PlaylistTracks(context.Background(), req)
+	if err != nil || online.ValidatePlaylistTracks(online.Netease, page, req) != nil || len(page.Items) != 5 {
+		t.Fatal(page, err)
+	}
+	const derived = "https://p3.music.126.net/PavIMxZq16K7-0fSF5n-yg==/109951163240604120.jpg"
+	for i, want := range []string{"https://p1.music.126.net/one.jpg", derived, derived, "", derived} {
+		track := page.Items[i].Track
+		if track == nil || (want == "") != (track.CoverURL == nil) || track.CoverURL != nil && *track.CoverURL != want {
+			t.Fatalf("wrong cover at position %d: %+v", i, track)
+		}
+	}
+}
+
 func TestPlaylistTracksRejectsChangedObservationAndCancelsBatch(t *testing.T) {
 	var observations atomic.Int32
 	c := scoped(t, online.Netease, roundTrip(func(r *http.Request) (*http.Response, error) {

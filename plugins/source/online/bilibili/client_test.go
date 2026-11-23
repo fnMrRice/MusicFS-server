@@ -102,13 +102,13 @@ func TestVideoMetadataAndUploaderDetails(t *testing.T) {
 
 func TestAudioMetadataPreservesDeclaredAuthor(t *testing.T) {
 	c := newTestClient(t, func(r *http.Request) (*http.Response, error) {
-		return response(t, map[string]any{"id": 10, "title": "Audio", "author": "Declared artist", "uname": "Uploader", "duration": 0}), nil
+		return response(t, map[string]any{"id": 10, "title": "Audio", "author": "Declared artist", "uname": "Uploader", "duration": 0, "cover": "https://i0.hdslb.com/song.jpg"}), nil
 	})
 	track, err := c.Metadata(context.Background(), "au10")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if track.DurationMs != nil || len(track.Artists) != 1 || track.Artists[0] != "Declared artist" || track.ExternalID != "audio:10" {
+	if track.DurationMs != nil || len(track.Artists) != 1 || track.Artists[0] != "Declared artist" || track.ExternalID != "audio:10" || track.CoverURL == nil || *track.CoverURL != "https://i0.hdslb.com/song.jpg" {
 		t.Fatalf("unexpected audio metadata: %+v", track)
 	}
 	if err := online.ValidateTrack(Plugin(Options{}).Descriptor.Resources, track); err != nil {

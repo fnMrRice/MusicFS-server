@@ -76,7 +76,8 @@ func (s *Service) BrowsePlaylistTracks(ctx context.Context, owner, id string, re
 	for start := offset - offset%online.MaxPageItems; start < end; start += online.MaxPageItems {
 		entries := observation.Entries[start:min(start+online.MaxPageItems, size)]
 		key := "tracks:" + request.ExternalID + ":" + strconv.Itoa(start)
-		batch, err := cachedPlaylistValue(ctx, s, owner, id, scope, key, snapshot.Version, false, func(ctx context.Context) (online.TrackBatch, error) {
+		// 同一路径覆盖旧版缺少逐曲封面的批次，保留已观察的歌单和分页游标。
+		batch, err := cachedPlaylistValue(ctx, s, owner, id, scope, key, snapshot.Version+":2", false, func(ctx context.Context) (online.TrackBatch, error) {
 			ids := make([]string, len(entries))
 			for i, entry := range entries {
 				ids[i] = entry.ExternalTrackID

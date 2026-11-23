@@ -2,18 +2,48 @@ package driver
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/base64"
 	"encoding/json"
 	"net/url"
 
 	domain "github.com/fnMrRice/MusicFS-server/sdk/fault"
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
 )
 
 type artist struct {
 	Name string `json:"name"`
 }
 type album struct {
-	Name string `json:"name"`
+	Name   string          `json:"name"`
+	PicURL string          `json:"picUrl"`
+	PicStr string          `json:"pic_str"`
+	Pic    json.RawMessage `json:"pic"`
 }
+
+func (a album) cover() *string {
+	if cover, _ := imageURL(a.PicURL); cover != nil {
+		return cover
+	}
+	// 网易云的图片标识是十进制整数；原样读取数值可保留超出浮点精度的位数。
+	id := a.PicStr
+	if !numericID.MatchString(id) {
+		id = string(a.Pic)
+		if !numericID.MatchString(id) {
+			return nil
+		}
+	}
+	// 公开封面 CDN 按图片编号的摘要分目录。
+	const mask = "3go8&$8*3*3h0k(2)2"
+	data := []byte(id)
+	for i := range data {
+		data[i] ^= mask[i%len(mask)]
+	}
+	sum := md5.Sum(data)
+	cover, _ := imageURL("https://p3.music.126.net/" + base64.URLEncoding.EncodeToString(sum[:]) + "/" + id + ".jpg")
+	return cover
+}
+
 type neteaseSong struct {
 	ID           json.Number `json:"id"`
 	Name         string      `json:"name"`
@@ -58,6 +88,7 @@ func (s neteaseSong) track(detail bool) (Track, error) {
 	if err != nil {
 		return Track{}, err
 	}
+	t.CoverURL = a.cover()
 	if duration != nil && (*duration < 0 || *duration > 7*24*60*60*1000) {
 		return Track{}, upstreamInvalid()
 	}
@@ -65,7 +96,7 @@ func (s neteaseSong) track(detail bool) (Track, error) {
 		value := *duration
 		t.DurationMs = &value
 	}
-	t.MetadataDigest = digest(t)
+	t.MetadataDigest = online.TrackDigest(t)
 	return t, nil
 }
 

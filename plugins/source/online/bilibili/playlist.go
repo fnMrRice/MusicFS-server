@@ -184,7 +184,7 @@ func (c *Client) menu(ctx context.Context, r reference) (snapshot, error) {
 			if item.ID <= 0 {
 				return s, online.UpstreamInvalid()
 			}
-			track, err := makeTrack("audio:"+strconv.FormatInt(item.ID, 10), item.Title, item.Author, item.Duration)
+			track, err := makeTrack("audio:"+strconv.FormatInt(item.ID, 10), item.Title, item.Author, item.Duration, item.Cover)
 			if err != nil {
 				return s, err
 			}

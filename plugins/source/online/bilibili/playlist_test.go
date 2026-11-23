@@ -16,7 +16,10 @@ func TestFavoritesFullPagingPartsDuplicatesAndUnavailable(t *testing.T) {
 	c := newTestClient(t, func(r *http.Request) (*http.Response, error) {
 		if r.URL.Path == "/x/web-interface/view" {
 			viewCalls++
-			return response(t, videoFixture()), nil
+			video := videoFixture()
+			video["pic"] = "http://i0.hdslb.com/video.jpg"
+			video["pages"].([]any)[0].(map[string]any)["first_frame"] = "//i0.hdslb.com/part.jpg"
+			return response(t, video), nil
 		}
 		listCalls++
 		media := []any{}
@@ -39,6 +42,11 @@ func TestFavoritesFullPagingPartsDuplicatesAndUnavailable(t *testing.T) {
 	}
 	if err := online.ValidatePlaylistTracks(Plugin(Options{}).Descriptor.Resources, page, r); err != nil {
 		t.Fatal(err)
+	}
+	for i, want := range []string{"https://i0.hdslb.com/part.jpg", "https://i0.hdslb.com/video.jpg"} {
+		if got := page.Items[i].Track.CoverURL; got == nil || *got != want {
+			t.Fatalf("wrong image for video part %d", i+1)
+		}
 	}
 	r.Cursor = *page.NextCursor
 	last, err := c.PlaylistTracks(context.Background(), r)
