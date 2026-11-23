@@ -14,8 +14,7 @@ import (
 const MaxMediaUploadBytes int64 = 8 << 20
 const MediaUploadTimeout = 30 * time.Second
 
-// HandleMediaUpload is the only larger request-body registration. Authentication,
-// Origin/CSRF and draining checks still run before the body can reach the service.
+// 媒体上传使用独立的大小与读取期限，先核验会话、Origin、CSRF 和服务状态。
 func (s *Server) HandleMediaUpload(pattern string, handler Handler) {
 	s.register(pattern, true, true, 0, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		if r.ContentLength > MaxMediaUploadBytes {

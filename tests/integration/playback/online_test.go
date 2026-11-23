@@ -24,6 +24,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
+	"github.com/fnMrRice/MusicFS-server/src/playback/downloadjobs"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/onlinehost"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
@@ -132,6 +133,12 @@ func newNetworkPlaybackFixture(t *testing.T, complete ...bool) *networkPlaybackF
 	server := api.New(api.Options{Auth: sessions})
 	server.RegisterOnline(host)
 	server.RegisterPlayback(player)
+	downloads, err := downloadjobs.Open(ctx, t.TempDir(), host, player)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(downloads.Close)
+	server.RegisterOnlineDownloadJobs(downloads)
 	httpServer := httptest.NewServer(server)
 	t.Cleanup(httpServer.Close)
 	f := &networkPlaybackFixture{api: httpServer, provider: p, gate: gate, cookie: cookie, who: who, canceled: canceled, store: store, release: release, cacheRoot: cacheRoot}

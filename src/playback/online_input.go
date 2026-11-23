@@ -21,6 +21,18 @@ type networkInput struct {
 	expires        *time.Time
 }
 
+func (n networkInput) checkAccess(ctx context.Context) error {
+	select {
+	case <-n.accountChanged:
+		return domain.Fail("RESOURCE_CHANGED", "Platform login changed")
+	default:
+	}
+	if n.expires != nil && !time.Now().Before(*n.expires) {
+		return domain.Fail("PLATFORM_AUTH_REQUIRED", "Platform login expired")
+	}
+	return ctx.Err()
+}
+
 func (s *Service) networkInput(ctx context.Context, t library.Track) (networkInput, error) {
 	var input networkInput
 	r, ok := s.library.Runtime(t.ProviderID)

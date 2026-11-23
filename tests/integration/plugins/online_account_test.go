@@ -24,6 +24,18 @@ func TestActualAccountWorkerPersistsRestoresAndLogsOut(t *testing.T) {
 	if err != nil || done.State != "signedIn" || done.AvatarURL != "https://p2.music.126.net/fixture/avatar.jpg" {
 		t.Fatalf("login: %s %v", done.State, err)
 	}
+	binding := func() onlinehost.DownloadBinding {
+		host, err := onlinehost.New([]onlinehost.Runtime{{Owner: cfg.UserID, InstanceID: cfg.InstanceID, Platform: cfg.Platform, ConfigRevision: "1", Enabled: true, Provider: w}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		state, err := host.DownloadBinding(ctx, cfg.UserID, cfg.InstanceID)
+		if err != nil || len(state.LoginBinding) != 64 {
+			t.Fatalf("missing verified download binding: %v", err)
+		}
+		return state
+	}
+	original := binding()
 	if err = w.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -49,6 +61,10 @@ func TestActualAccountWorkerPersistsRestoresAndLogsOut(t *testing.T) {
 	}
 	close(start)
 	callers.Wait()
+	restoredLogin := binding()
+	if restoredLogin.AccountID != original.AccountID || restoredLogin.Revision == original.Revision || restoredLogin.LoginBinding != original.LoginBinding {
+		t.Fatal("restored credentials lost the original download identity")
+	}
 	_, err = w.PlatformAccount(ctx, online.AccountRequest{Action: "logout"})
 	if err != nil {
 		t.Fatal(err)
@@ -60,6 +76,11 @@ func TestActualAccountWorkerPersistsRestoresAndLogsOut(t *testing.T) {
 	gone, err := w.PlatformAccount(ctx, online.AccountRequest{Action: "state"})
 	if err != nil || gone.State != "signedOut" || gone.AvatarURL != "" {
 		t.Fatal("logout did not survive restart")
+	}
+	loginOnlineFixture(t, w)
+	fresh := binding()
+	if fresh.AccountID != original.AccountID || fresh.LoginBinding == original.LoginBinding {
+		t.Fatal("new login reused a prior download binding")
 	}
 }
 

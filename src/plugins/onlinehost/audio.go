@@ -78,6 +78,10 @@ func (s *Service) describeAudio(ctx context.Context, owner, id, external string)
 }
 
 func (s *Service) Resolve(ctx context.Context, owner, id, external string) (library.Track, error) {
+	return s.resolveTrack(ctx, owner, id, external, nil)
+}
+
+func (s *Service) resolveTrack(ctx context.Context, owner, id, external string, binding *DownloadBinding) (library.Track, error) {
 	if !externalID.MatchString(external) {
 		return library.Track{}, domain.Fail("INVALID_ARGUMENT", "Invalid external track identity")
 	}
@@ -88,9 +92,19 @@ func (s *Service) Resolve(ctx context.Context, owner, id, external string) (libr
 		if _, ok := r.Provider.(provider.AudioClient); !ok || s.audioLibrary == nil {
 			return library.Track{}, domain.Fail("UNSUPPORTED", "No complete audio resource is available")
 		}
+		if binding != nil {
+			if err := binding.check(ctx, r); err != nil {
+				return library.Track{}, err
+			}
+		}
 		metadata, err := r.Provider.Metadata(ctx, external)
 		if err != nil {
 			return library.Track{}, err
+		}
+		if binding != nil {
+			if err := binding.check(ctx, r); err != nil {
+				return library.Track{}, err
+			}
 		}
 		return s.audioLibrary.RegisterOnlineTrack(ctx, owner, id, metadata)
 	})

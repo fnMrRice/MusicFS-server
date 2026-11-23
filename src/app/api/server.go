@@ -66,13 +66,17 @@ func (s *Server) HandleStream(pattern string, handler Handler) {
 }
 
 func (s *Server) register(pattern string, authenticated, mutation bool, timeout time.Duration, handler Handler) {
+	s.registerBounded(pattern, authenticated, mutation, timeout, MaxRequestBytes, handler)
+}
+
+func (s *Server) registerBounded(pattern string, authenticated, mutation bool, timeout time.Duration, limit int64, handler Handler) {
 	authenticated = authenticated || mutation
 	s.mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
 		if timeout > 0 {
 			ctx, cancel := context.WithTimeout(r.Context(), timeout)
 			defer cancel()
 			r = r.WithContext(ctx)
-			r.Body = http.MaxBytesReader(w, r.Body, MaxRequestBytes)
+			r.Body = http.MaxBytesReader(w, r.Body, limit)
 		}
 		var session auth.Session
 		var err error

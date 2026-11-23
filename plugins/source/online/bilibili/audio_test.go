@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/sdk/provider"
 )
 
 type watchedBody struct {
@@ -82,6 +83,29 @@ func TestDescribeAudioNeverContactsCDN(t *testing.T) {
 	}
 	if calls != 4 {
 		t.Fatal("resolve did not use the metadata-only path")
+	}
+}
+
+func TestDownloadQualityChoosesTheRequestedAvailableAudio(t *testing.T) {
+	c := newTestClient(t, func(r *http.Request) (*http.Response, error) {
+		if r.URL.Path == "/x/web-interface/view" {
+			return response(t, videoFixture()), nil
+		}
+		choices := []dashAudio{
+			{URL: "https://upos.bilivideo.com/mid.m4s", MIME: "audio/mp4", Codecs: "mp4a.40.2", Bandwidth: 128000},
+			{URL: "https://upos.bilivideo.com/low.m4s", MIME: "audio/mp4", Codecs: "mp4a.40.2", Bandwidth: 64000},
+			{URL: "https://upos.bilivideo.com/high.m4s", MIME: "audio/mp4", Codecs: "mp4a.40.2", Bandwidth: 192000},
+		}
+		return response(t, map[string]any{"timelength": 60000, "dash": map[string]any{"audio": choices}}), nil
+	})
+	for _, tc := range []struct {
+		quality string
+		bitrate int64
+	}{{"lowest", 64000}, {"highest", 192000}, {"", 192000}} {
+		audio, err := c.DescribeAudio(provider.WithPlaybackQuality(t.Context(), tc.quality), "video:BV13x41117TL:101")
+		if err != nil || audio.BitrateBps == nil || *audio.BitrateBps != tc.bitrate {
+			t.Fatalf("quality %q: got %+v, %v", tc.quality, audio, err)
+		}
 	}
 }
 

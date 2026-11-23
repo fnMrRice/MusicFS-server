@@ -33,6 +33,7 @@ type downloadRequest struct {
 	owner, source string
 	done          chan struct{}
 	deleted       map[string]bool
+	check         func() error
 }
 
 func New(ctx context.Context, root string, repo Repository) (*Manager, error) {
@@ -210,12 +211,14 @@ func (m *Manager) collect(id string) {
 
 type readHandle struct {
 	io.ReadCloser
+	file    *os.File
+	version Version
 	once    sync.Once
 	release func()
 }
 
 // 调用方持有 mu，丢失或截断的副本视为未命中，允许重新下载。
-func (m *Manager) lookup(ctx context.Context, key string) (io.ReadCloser, error) {
+func (m *Manager) lookup(ctx context.Context, key string) (*readHandle, error) {
 	r, ok := m.records[m.byKey[key]]
 	if !ok {
 		return nil, nil
@@ -233,7 +236,7 @@ func (r *readHandle) Close() (err error) {
 }
 
 // 调用方持有 mu。打开的文件被清理任务计为占用中，关闭后才可回收。
-func (m *Manager) pin(r Record) (io.ReadCloser, error) {
+func (m *Manager) pin(r Record) (*readHandle, error) {
 	if err := m.checkFile(r); err != nil {
 		return nil, err
 	}
@@ -242,7 +245,7 @@ func (m *Manager) pin(r Record) (io.ReadCloser, error) {
 		return nil, err
 	}
 	m.pins[r.ID]++
-	return &readHandle{ReadCloser: f, release: func() {
+	return &readHandle{ReadCloser: f, file: f, version: r.Version, release: func() {
 		m.mu.Lock()
 		defer m.mu.Unlock()
 		m.pins[r.ID]--

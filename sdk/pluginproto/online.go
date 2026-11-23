@@ -48,16 +48,17 @@ type OnlineResult[T any] struct {
 }
 
 type OnlineDescriptor struct {
-	Plugin         *OnlinePlugin           `json:"plugin,omitempty"`
-	Platform       string                  `json:"platform"`
-	SourceType     string                  `json:"sourceType"`
-	Authentication string                  `json:"authentication"`
-	Capabilities   []online.Capability     `json:"capabilities"`
-	Resources      online.ResourcePolicy   `json:"resources"`
-	Login          *online.LoginDescriptor `json:"login,omitempty"`
-	SchemaRevision string                  `json:"schemaRevision"`
-	ConfigSchema   map[string]any          `json:"configSchema"`
-	ConfigDefaults map[string]any          `json:"configDefaults"`
+	DownloadQualities *QualityOptions         `json:"downloadQualities,omitempty"`
+	Plugin            *OnlinePlugin           `json:"plugin,omitempty"`
+	Platform          string                  `json:"platform"`
+	SourceType        string                  `json:"sourceType"`
+	Authentication    string                  `json:"authentication"`
+	Capabilities      []online.Capability     `json:"capabilities"`
+	Resources         online.ResourcePolicy   `json:"resources"`
+	Login             *online.LoginDescriptor `json:"login,omitempty"`
+	SchemaRevision    string                  `json:"schemaRevision"`
+	ConfigSchema      map[string]any          `json:"configSchema"`
+	ConfigDefaults    map[string]any          `json:"configDefaults"`
 }
 
 // OnlinePluginID 只校验平台标识格式；插件准入由宿主受信任注册表管理。
@@ -87,6 +88,9 @@ func (d OnlineDescriptor) Validate(platform string) error {
 		return Failure("PROTOCOL_MISMATCH", "Online plugin must declare the music-source feature")
 	}
 	if err := validateOnlineCapabilities(d.Capabilities); err != nil {
+		return err
+	}
+	if err := d.DownloadQualities.validate(); err != nil {
 		return err
 	}
 	if d.Platform != platform || d.SourceType != SourceNetwork || d.SchemaRevision != OnlineRevision || (d.Authentication != "anonymous" && d.Authentication != "platformAccountRequired") || d.Resources.Validate() != nil || d.Login.Validate() != nil {

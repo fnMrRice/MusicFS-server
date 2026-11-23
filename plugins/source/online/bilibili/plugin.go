@@ -13,6 +13,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/sdk/fault"
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginsettings"
 	"github.com/fnMrRice/MusicFS-server/sdk/provider"
 )
 
@@ -30,6 +31,10 @@ var _ provider.AudioClient = (*Client)(nil)
 
 func Plugin(options Options) provider.Plugin {
 	d := pluginproto.OnlinePolicy(online.Bilibili)
+	d.DownloadQualities = &pluginproto.QualityOptions{DefaultQuality: "highest", Options: []pluginsettings.Option{
+		{Value: "highest", Label: "Highest available bitrate", LocalizedLabels: map[string]string{"zh": "最高可用码率", "zh-Hant": "最高可用位元率", "ja": "最高ビットレート"}},
+		{Value: "lowest", Label: "Lowest available bitrate", LocalizedLabels: map[string]string{"zh": "最低可用码率", "zh-Hant": "最低可用位元率", "ja": "最低ビットレート"}},
+	}}
 	d.Resources = policies.Resources(online.Bilibili)
 	d.Capabilities = policies.Capabilities(online.Bilibili)
 	d.Authentication = "anonymous"

@@ -21,6 +21,8 @@ func PlaybackQualityField() pluginsettings.Field { return quality.Field() }
 
 func Plugin(options Options) provider.Plugin {
 	descriptor := pluginproto.OnlinePolicy(online.Netease)
+	field := PlaybackQualityField()
+	descriptor.DownloadQualities = &pluginproto.QualityOptions{DefaultQuality: quality.Default, Options: field.Options}
 	descriptor.Resources = policies.Resources(online.Netease)
 	descriptor.Capabilities = policies.Capabilities(online.Netease)
 	descriptor.Login = &online.LoginDescriptor{Method: "qr", Validation: "liveAccountPending"}
@@ -31,7 +33,7 @@ func Plugin(options Options) provider.Plugin {
 	}
 	return provider.Plugin{
 		Descriptor: descriptor, Version: bundledplugin.NetEaseVersion,
-		PlaybackSettings: []pluginsettings.Field{PlaybackQualityField()},
+		PlaybackSettings: []pluginsettings.Field{field},
 		NewClient: func(scope online.Scope, timeout time.Duration) (provider.Client, error) {
 			opts := options
 			opts.Timeout = timeout

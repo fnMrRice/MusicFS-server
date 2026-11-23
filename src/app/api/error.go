@@ -23,7 +23,7 @@ func classifyError(err error) (string, int) {
 			return failure.Code, http.StatusPreconditionFailed
 		case "NOT_FOUND":
 			return failure.Code, http.StatusNotFound
-		case "CONFLICT", "ALBUM_TRACK_SLOT_CONFLICT", "STALE_ATTEMPT", "RESOURCE_CHANGED", "SESSION_STOPPED", "RESTART_REQUIRED", "RECOVERY_EXHAUSTED":
+		case "CONFLICT", "AUDIO_CACHE_DISABLED", "ALBUM_TRACK_SLOT_CONFLICT", "STALE_ATTEMPT", "RESOURCE_CHANGED", "SESSION_STOPPED", "RESTART_REQUIRED", "RECOVERY_EXHAUSTED":
 			return failure.Code, http.StatusConflict
 		case "CURSOR_EXPIRED", "SESSION_EXPIRED", "IDEMPOTENCY_EXPIRED":
 			return failure.Code, http.StatusGone

@@ -16,6 +16,16 @@ func (s *Server) RegisterOnline(service *onlinehost.Service) {
 	s.registerOnlineDisplay(service)
 	s.registerOnlineEntities(service)
 	s.registerOnlinePlaylists(service)
+	s.Handle("GET /api/v1/online-instances/{id}/download-qualities", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
+		if _, err := onlineQuery(r); err != nil {
+			return err
+		}
+		options, err := service.DownloadQualities(r.Context(), session.User.ID, r.PathValue("id"))
+		if err != nil {
+			return err
+		}
+		return WriteJSON(w, http.StatusOK, options)
+	})
 	s.Handle("GET /api/v1/online-instances/{id}/tracks/{externalId}/details", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		if _, err := onlineQuery(r); err != nil {
 			return err

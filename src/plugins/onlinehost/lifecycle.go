@@ -100,6 +100,10 @@ func (p scopedRecommendation) RecommendationAccountScope(ctx context.Context) (s
 	if err != nil {
 		return "", "", "", err
 	}
+	return verifiedLoginScope(ctx, r)
+}
+
+func verifiedLoginScope(ctx context.Context, r Runtime) (string, string, string, error) {
 	if r.descriptor.Authentication == "anonymous" {
 		return "", "", "", nil
 	}

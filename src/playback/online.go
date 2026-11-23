@@ -74,7 +74,7 @@ func (s *Service) onlineStream(ctx context.Context, a *session, id, attempt stri
 			a.cancel()
 			return nil, err
 		}
-		return &boundedOnlineReader{ReadCloser: body, remaining: pluginproto.MaxOnlineAudioBytes, cancel: a.cancel}, nil
+		return &boundedOnlineReader{ReadCloser: body, check: func() error { return a.network.checkAccess(streamCtx) }, remaining: pluginproto.MaxOnlineAudioBytes, cancel: a.cancel}, nil
 	}
 	return stream, nil
 }
@@ -88,12 +88,16 @@ func (s *Stream) OpenOnline() (io.ReadCloser, error) {
 
 type boundedOnlineReader struct {
 	io.ReadCloser
+	check     func() error
 	remaining int64
 	cancel    context.CancelFunc
 	complete  atomic.Bool
 }
 
 func (r *boundedOnlineReader) Read(p []byte) (int, error) {
+	if err := r.check(); err != nil {
+		return 0, err
+	}
 	if r.remaining <= 0 {
 		var extra [1]byte
 		n, err := r.ReadCloser.Read(extra[:])
@@ -108,6 +112,9 @@ func (r *boundedOnlineReader) Read(p []byte) (int, error) {
 		p = p[:r.remaining]
 	}
 	n, err := r.ReadCloser.Read(p)
+	if revoked := r.check(); revoked != nil {
+		return 0, revoked
+	}
 	r.remaining -= int64(n)
 	if err != nil && err != io.EOF {
 		r.cancel()

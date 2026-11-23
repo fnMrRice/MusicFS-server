@@ -80,6 +80,8 @@ QQ 和 Apple 对应 `musicfs.plugin.source.qqmusic`、`musicfs.plugin.source.app
 
 离线为503 SOURCE_OFFLINE，上游异常为503 TEMPORARY_FAILURE，当前未实现能力为415 UNSUPPORTED，平台未登录或待校验为403 PLATFORM_AUTH_REQUIRED；不会退出 MusicFS 会话。公开错误不携带上游原始正文、网络地址参数或账号秘密；已有本地曲库和播放流程保持独立。
 
+支持完整音轨播放的来源可在描述符的 `downloadQualities` 中声明供单次下载使用的音质选项及默认项。未声明时客户端可选「来源默认音质」。客户端通过 `GET /api/v1/online-instances/{id}/download-qualities` 读取可用选项，用 `POST /api/v1/online-instances/{id}/download-jobs` 提交所选曲目、音质与账号。重复提交同一请求时沿用相同的 `Idempotency-Key`。服务端返回 202，客户端通过 `GET /api/v1/online-download-jobs/{id}` 读取进度及每首实际保存的版本或错误。单次可传 1 至 10,000 个曲目标识，重复标识保留首次出现的位置。
+
 按来源聚合读取、部分失败与缓存刷新见[推荐](../library/recommendations.md)。公开模型见 [OpenAPI](../contracts/openapi.yaml)、[HTTP Schema](../contracts/http.schema.json)；独立进程契约见 [online.schema.json](../contracts/plugins/v1/online.schema.json)，接入参考见[账号登录](platform-login.md)。
 
 ## 动态运行状态

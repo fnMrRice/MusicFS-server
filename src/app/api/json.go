@@ -12,11 +12,15 @@ import (
 
 // DecodeJSON rejects unknown fields, trailing values, and non-JSON bodies.
 func DecodeJSON(w http.ResponseWriter, r *http.Request, target any) error {
+	return decodeJSONLimit(w, r, target, MaxRequestBytes)
+}
+
+func decodeJSONLimit(w http.ResponseWriter, r *http.Request, target any, limit int64) error {
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil || mediaType != "application/json" {
 		return domain.Fail("INVALID_ARGUMENT", "Content-Type must be application/json")
 	}
-	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, MaxRequestBytes))
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, limit))
 	var raw json.RawMessage
 	if err := decoder.Decode(&raw); err != nil {
 		return domain.Fail("INVALID_ARGUMENT", "Invalid JSON request or unknown field")

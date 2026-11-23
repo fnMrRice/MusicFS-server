@@ -13,6 +13,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/sdk/fault"
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/sdk/provider"
 )
 
 type audioChoice struct {
@@ -31,6 +32,10 @@ type dashAudio struct {
 }
 
 func (c *Client) chooseAudio(ctx context.Context, r reference) (audioChoice, error) {
+	quality := provider.PlaybackQuality(ctx)
+	if quality != "" && quality != "highest" && quality != "lowest" {
+		return audioChoice{}, fault.Fail("INVALID_ARGUMENT", "Unknown Bilibili audio quality")
+	}
 	if r.kind == "audio" {
 		info, err := c.audio(ctx, r)
 		if err != nil {
@@ -101,7 +106,7 @@ func (c *Client) chooseAudio(ctx context.Context, r reference) (audioChoice, err
 		if audio.MIME != "audio/mp4" || audio.Codecs != "mp4a.40.2" || audio.Bandwidth < 1 || !safeCDN(audio.URL) {
 			continue
 		}
-		if audio.Bandwidth > best.bitrate {
+		if best.url == "" || quality == "lowest" && audio.Bandwidth < best.bitrate || quality != "lowest" && audio.Bandwidth > best.bitrate {
 			best = audioChoice{url: audio.URL, bitrate: audio.Bandwidth, duration: &result.TimeLength}
 		}
 	}

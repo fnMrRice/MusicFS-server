@@ -12,6 +12,10 @@ import (
 
 const defaultLimitMiB = 1024
 
+func RetentionDisabled() error {
+	return domain.Fail("AUDIO_CACHE_DISABLED", "Audio cache retention is disabled for this source")
+}
+
 type Preferences struct {
 	LimitBytes int64
 	Stream     bool

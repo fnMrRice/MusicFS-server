@@ -172,13 +172,13 @@ func (s *Service) collect() {
 func (s *Service) Close() {
 	s.cancel()
 	<-s.done
-	s.downloadTasks.Wait()
 	s.mu.Lock()
 	for id, a := range s.sessions {
 		s.stopLocked(context.Background(), id, a)
 	}
 	s.collect()
 	s.mu.Unlock()
+	s.downloadTasks.Wait()
 	if s.cache != nil {
 		s.cache.Close()
 	}

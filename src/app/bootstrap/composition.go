@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/hashworker"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
+	"github.com/fnMrRice/MusicFS-server/src/playback/downloadjobs"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/codecsettings"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/dspsettings"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
@@ -328,6 +330,14 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 		cleanup()
 		return nil, nil, err
 	}
+	downloads, err := downloadjobs.Open(ctx, filepath.Join(c.DataRoot, "online-download-jobs"), online, player)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	handler.RegisterOnlineDownloadJobs(downloads)
+	beforeDownloads := cleanup
+	cleanup = func() { downloads.Close(); beforeDownloads() }
 	matchingAutomation.Start(ctx)
 	stopLinks := links.Start(ctx)
 	beforeLinks := cleanup

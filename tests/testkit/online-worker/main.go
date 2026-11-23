@@ -35,6 +35,11 @@ func (f *fixture) RoundTrip(r *http.Request) (*http.Response, error) {
 		}
 	}
 
+	if len(os.Args) == 2 && os.Args[1] == "playlist-download" {
+		if res := downloadFixture(r); res != nil {
+			return res, nil
+		}
+	}
 	if r.URL.Query().Get("s") == "slow" {
 		<-r.Context().Done()
 		return nil, r.Context().Err()
