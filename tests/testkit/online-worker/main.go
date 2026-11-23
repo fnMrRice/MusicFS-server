@@ -22,7 +22,8 @@ import (
 )
 
 type fixture struct {
-	accountRead atomic.Bool
+	accountRead         atomic.Bool
+	recommendationReads atomic.Uint32
 }
 
 func (f *fixture) RoundTrip(r *http.Request) (*http.Response, error) {
@@ -74,6 +75,9 @@ func (f *fixture) RoundTrip(r *http.Request) (*http.Response, error) {
 	case "/api/v3/song/detail":
 		body = `{"code":200,"songs":[{"id":42,"name":"Synthetic","ar":[],"al":{"name":"Album"},"dt":120000}]}`
 	case "/api/personalized/playlist":
+		if len(os.Args) == 2 && os.Args[1] == "recommendation-rate-limit" && f.recommendationReads.Add(1) == 2 {
+			return &http.Response{StatusCode: http.StatusTooManyRequests, Header: http.Header{"Retry-After": {"45"}}, Body: http.NoBody}, nil
+		}
 		body = `{"code":200,"result":[{"id":91,"name":"Synthetic","copywriter":"Public","trackCount":3}]}`
 	case "/api/v3/discovery/recommend/songs":
 		body = `{"code":200,"data":{"dailySongs":[{"id":42,"name":"Daily song","ar":[],"al":{"name":"Album"},"dt":120000}]}}`

@@ -11,6 +11,7 @@ import (
 func TestRecommendationsActualWorkerCacheAndFailureState(t *testing.T) {
 	path := onlineBinary(t, "./tests/testkit/online-worker", "online-fixture")
 	cfg := onlineConfig(t, path, online.Netease)
+	cfg.Args = []string{"recommendation-rate-limit"}
 	w := onlineStart(t, cfg)
 	loginOnlineFixture(t, w)
 	s, err := recommendations.New([]recommendations.Runtime{{Owner: cfg.UserID, InstanceID: cfg.InstanceID, Platform: cfg.Platform, ConfigRevision: "anonymous-v1", Provider: w}}, recommendations.Config{})
@@ -35,6 +36,9 @@ func TestRecommendationsActualWorkerCacheAndFailureState(t *testing.T) {
 	stale, err := s.List(context.Background(), cfg.UserID, request)
 	if err != nil || stale.Sources[0].Error == nil || stale.Sources[0].Error.Code != "RATE_LIMITED" || !stale.Sources[0].Stale || len(stale.Sources[0].Items) != 1 || !stale.Sources[0].LastSuccessAt.Equal(*first.Sources[0].LastSuccessAt) {
 		t.Fatalf("worker failure lost prior data: %+v %v", stale, err)
+	}
+	if retry := stale.Sources[0].Error.RetryAfter; retry == nil || *retry != 45 {
+		t.Fatal("refresh did not preserve the upstream retry delay", stale.Sources[0].Error)
 	}
 	if err = w.Close(); err != nil {
 		t.Fatal(err)
