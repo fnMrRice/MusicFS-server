@@ -41,11 +41,14 @@ type Instance struct {
 }
 
 type Service struct {
-	playlistCache *dailyPlaylistCache
-	audioLibrary  *library.Service
-	mu            sync.RWMutex
-	runtimes      []Runtime
-	slots         chan struct{}
+	playlistAccountReady func(context.Context, Runtime, string)
+	playlistLogins       map[string][2]string
+	audioAccounts        map[string]chan struct{}
+	playlistCache        *dailyPlaylistCache
+	audioLibrary         *library.Service
+	mu                   sync.RWMutex
+	runtimes             []Runtime
+	slots                chan struct{}
 }
 
 func New(runtimes []Runtime, options ...func(*Service)) (*Service, error) {
@@ -65,7 +68,7 @@ func New(runtimes []Runtime, options ...func(*Service)) (*Service, error) {
 		}
 		runtimes[i] = r
 	}
-	s := &Service{runtimes: runtimes, slots: make(chan struct{}, 4)}
+	s := &Service{runtimes: runtimes, slots: make(chan struct{}, 4), audioAccounts: map[string]chan struct{}{}}
 	for _, configure := range options {
 		configure(s)
 	}

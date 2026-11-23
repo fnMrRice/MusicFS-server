@@ -56,7 +56,10 @@ func New(platform string, scope Scope, opts Options, factory session.Factory) (*
 	return c, nil
 }
 
-func (c *Client) Close() { c.http.CloseIdleConnections() }
+func (c *Client) Close() {
+	c.account.media.revoke()
+	c.http.CloseIdleConnections()
+}
 
 func (c *Client) admit(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {

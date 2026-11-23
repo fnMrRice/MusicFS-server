@@ -81,5 +81,33 @@ func (p *playlistRemote) ObservePlaylist(ctx context.Context, owner string, bind
 	if err != nil {
 		return playlists.Observation{}, err
 	}
-	return playlists.Observation{PlaylistObservation: observation}, nil
+	result := playlists.Observation{PlaylistObservation: observation}
+	if err := result.Validate(binding.ExternalID); err != nil {
+		return playlists.Observation{}, err
+	}
+	ids := make([]string, 0, len(observation.Entries))
+	seen := map[string]bool{}
+	for _, entry := range observation.Entries {
+		if !seen[entry.ExternalTrackID] {
+			seen[entry.ExternalTrackID] = true
+			ids = append(ids, entry.ExternalTrackID)
+		}
+	}
+	for start := 0; start < len(ids); start += online.MaxPageItems {
+		requested := ids[start:min(start+online.MaxPageItems, len(ids))]
+		batch, err := p.host.MetadataBatchForAccount(ctx, owner, binding.InstanceID, binding.AccountID, requested)
+		if err != nil {
+			return playlists.Observation{}, err
+		}
+		if len(batch.Items) != len(requested) {
+			return playlists.Observation{}, domain.Fail("PROTOCOL_MISMATCH", "Playlist metadata batch has the wrong size")
+		}
+		for i, item := range batch.Items {
+			if item.ExternalID != requested[i] {
+				return playlists.Observation{}, domain.Fail("PROTOCOL_MISMATCH", "Playlist metadata batch has an unexpected identity")
+			}
+		}
+		result.Tracks = append(result.Tracks, batch.Items...)
+	}
+	return result, nil
 }

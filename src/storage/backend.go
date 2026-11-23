@@ -24,6 +24,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
+	"github.com/fnMrRice/MusicFS-server/src/playback/onlinecache"
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
@@ -73,6 +74,7 @@ type Backend interface {
 	playlists.AggregateRepository
 	plugincontrol.Repository
 	processedcache.Repository
+	onlinecache.Repository
 	recommendations.Repository
 	sourcedisplay.Repository
 	timeline.Repository

@@ -6,9 +6,12 @@ import (
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
+	"github.com/fnMrRice/MusicFS-server/src/playback/onlinecache"
 )
 
 type Track struct {
+	Downloaded          bool                  `json:"downloaded"`
+	DownloadVersions    []onlinecache.Version `json:"downloadVersions,omitempty"`
 	ID                  string                `json:"sourceTrackId"`
 	ProviderID          string                `json:"providerInstanceId"`
 	DisplayName         string                `json:"displayName"`

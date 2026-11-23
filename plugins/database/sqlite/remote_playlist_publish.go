@@ -102,6 +102,9 @@ func (s *Store) FinishRemoteSync(ctx context.Context, ticket playlists.SyncJob, 
 	if err = saveRemotePlaylist(ctx, tx, &p, false); err != nil {
 		return empty, err
 	}
+	if err = importPlaylistTracks(ctx, tx, j.Owner, j.Binding, observation); err != nil {
+		return empty, err
+	}
 	if err = saveRemoteJob(ctx, tx, &j, false); err != nil {
 		return empty, err
 	}

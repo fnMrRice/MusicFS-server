@@ -16,6 +16,7 @@ import (
 )
 
 type accountState struct {
+	media            mediaLifetime
 	revoked          atomic.Bool
 	active           atomic.Pointer[context.CancelFunc]
 	canceled         atomic.Pointer[string]
@@ -41,6 +42,7 @@ func (c *Client) Account(ctx context.Context, r AccountRequest) (result AccountR
 	a := &c.account
 	if r.Action == "logout" || (r.Action == "signalCancel" && r.LoginID == "*") {
 		a.revoked.Store(true)
+		a.media.revoke()
 		if cancel := a.active.Load(); cancel != nil {
 			(*cancel)()
 		}
@@ -72,6 +74,7 @@ func (c *Client) Account(ctx context.Context, r AccountRequest) (result AccountR
 			return AccountResult{}, domain.Fail("ACCESS_DENIED", "Stored platform account scope is invalid")
 		}
 		secret.AvatarURL = c.driver.AvatarURL(secret.AvatarURL)
+		a.media.revoke()
 		a.secret = secret
 		a.revoked.Store(false)
 		a.view = c.savedAccountView()
@@ -158,6 +161,7 @@ func (c *Client) Account(ctx context.Context, r AccountRequest) (result AccountR
 		if err != nil {
 			var failure *domain.Error
 			if errors.As(err, &failure) && (failure.Code == "AUTH_REQUIRED" || failure.Code == "ACCESS_DENIED") {
+				a.media.revoke()
 				a.secret = accountSecret{}
 				a.view = AccountView{State: "expired"}
 			} else {

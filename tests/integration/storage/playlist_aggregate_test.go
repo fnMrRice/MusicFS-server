@@ -93,7 +93,7 @@ func TestPlaylistAggregateRemoteReferencesAndChildRevisionBinding(t *testing.T) 
 	child := playlistCreate(t, s, "admin", "Remote child", playlists.PlaylistBinding{Kind: "remote", TargetID: &remote.ID})
 	parent := playlistCreate(t, s, "admin", "Local and remote", localBinding(tracks[0].ID), playlists.PlaylistBinding{Kind: "playlist", TargetID: &child.ID})
 	first := playlistBuild(t, s, "admin", parent)
-	if len(first.Entries) != 2 || len(first.Entries[1].Provenance) != 2 || first.Entries[1].RecordingID != nil || *first.Entries[1].Source.RemoteSourceID != observed.Entries[0].Source.ID {
+	if len(first.Entries) != 2 || len(first.Entries[1].Provenance) != 2 || first.Entries[1].Source.TrackID == nil || first.Entries[1].Source.ForcedSourceID == nil || first.Entries[1].RecordingID != nil || *first.Entries[1].Provenance[0].Source.RemoteSourceID != observed.Entries[0].Source.ID {
 		t.Fatal("remote occurrences were lost or falsely matched")
 	}
 	remotePublish(t, s, remote, remoteObservation(1001, "song", "next"))

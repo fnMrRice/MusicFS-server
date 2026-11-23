@@ -5,16 +5,22 @@ package rpcbackend
 import (
 	"context"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/library/music"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/playback/onlinecache"
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"github.com/fnMrRice/MusicFS-server/src/tasks"
 )
+
+func (c *Client) GetWriteback(a0 context.Context, a1 string, a2 string) (r0 writebackhost.Job, err error) {
+	err = c.Invoke(a0, "GetWriteback", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) HashCandidates(a0 context.Context, a1 identification.HashScope, a2 string, a3 int) (r0 []identification.HashTarget, err error) {
 	err = c.Invoke(a0, "HashCandidates", []any{a1, a2, a3}, []any{&r0})
@@ -71,6 +77,11 @@ func (c *Client) ListGroupedTracks(a0 context.Context, a1 string, a2 string, a3 
 	return r0, err
 }
 
+func (c *Client) ListOnlineDownloads(a0 context.Context) (r0 []onlinecache.Record, err error) {
+	err = c.Invoke(a0, "ListOnlineDownloads", []any{}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) ListProcessedCache(a0 context.Context) (r0 []processedcache.Record, err error) {
 	err = c.Invoke(a0, "ListProcessedCache", []any{}, []any{&r0})
 	return r0, err
@@ -123,15 +134,5 @@ func (c *Client) MatchingRun(a0 context.Context, a1 string) (r0 matching.Run, er
 
 func (c *Client) MergeMusicAlbumMetadata(a0 context.Context, a1 string, a2 string, a3 int64, a4 []works.ScrapedField, a5 []string, a6 string) (r0 int64, err error) {
 	err = c.Invoke(a0, "MergeMusicAlbumMetadata", []any{a1, a2, a3, a4, a5, a6}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) MergeMusicAlbumTracks(a0 context.Context, a1 string, a2 string, a3 music.MergeTracksInput, a4 string) (r0 music.Track, err error) {
-	err = c.Invoke(a0, "MergeMusicAlbumTracks", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) MusicAlbum(a0 context.Context, a1 string, a2 string) (r0 music.Album, err error) {
-	err = c.Invoke(a0, "MusicAlbum", []any{a1, a2}, []any{&r0})
 	return r0, err
 }

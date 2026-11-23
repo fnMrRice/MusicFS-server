@@ -30,7 +30,8 @@ func (p *observedPlaylist) Descriptor() pluginproto.OnlineDescriptor {
 
 func (p *observedPlaylist) ObservePlaylist(_ context.Context, id string) (online.PlaylistObservation, error) {
 	p.calls++
-	return online.PlaylistObservation{Playlist: online.Playlist{ExternalID: id}, Consistency: online.Unversioned, ObservedAt: time.Now().UTC()}, nil
+	count := int64(0)
+	return online.PlaylistObservation{Playlist: online.Playlist{ExternalID: id, Title: "Test", TrackCount: &count}, Complete: true, Consistency: online.Unversioned, ObservedAt: time.Now().UTC()}, nil
 }
 
 func TestRemotePlaylistAdapterScopeAndConfigurationBinding(t *testing.T) {
@@ -77,4 +78,50 @@ func TestRemotePlaylistAdapterScopeAndConfigurationBinding(t *testing.T) {
 
 func (p *observedPlaylist) PlatformSession(context.Context) (online.AccountView, error) {
 	return online.AccountView{State: "signedIn", AccountID: "12345", Revision: "fixture-generation"}, nil
+}
+
+type catalogLoginProvider struct {
+	observedPlaylist
+	revision string
+}
+
+func (p *catalogLoginProvider) PlatformAccount(context.Context, online.AccountRequest) (online.AccountView, error) {
+	return online.AccountView{State: "signedIn", AccountID: "12345", Revision: p.revision}, nil
+}
+
+func TestPlaylistRecoveryRunsOncePerSuccessfulLoginGeneration(t *testing.T) {
+	p := &catalogLoginProvider{revision: "first"}
+	host, err := onlinehost.New([]onlinehost.Runtime{{Owner: "owner", InstanceID: "source", Platform: online.Netease, ConfigRevision: "r1", Enabled: true, Provider: p}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	host.OnPlaylistAccountReady(func(_ context.Context, r onlinehost.Runtime, account string) {
+		if r.InstanceID != "source" || account != "12345" {
+			t.Fatal("wrong recovery scope")
+		}
+		calls++
+	})
+	account := func(action string) {
+		t.Helper()
+		if _, err := host.Account(t.Context(), "owner", "source", online.AccountRequest{Action: action}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	account("state")
+	account("check")
+	if calls != 0 {
+		t.Fatal("an account read scheduled recovery")
+	}
+	account("poll")
+	account("poll")
+	account("check")
+	if calls != 1 {
+		t.Fatal("the same login generation scheduled another recovery")
+	}
+	p.revision = "second"
+	account("complete")
+	if calls != 2 {
+		t.Fatal("a new login did not resume playlist imports")
+	}
 }

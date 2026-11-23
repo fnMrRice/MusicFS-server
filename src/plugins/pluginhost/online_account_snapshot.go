@@ -1,6 +1,7 @@
 package pluginhost
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"time"
@@ -13,6 +14,7 @@ import (
 // accountDisplaySnapshot is only a display projection. Authorization continues
 // to query the worker; reading a name must not wait for its active network calls.
 type accountDisplaySnapshot struct {
+	audioChanged   chan struct{}
 	mu             sync.RWMutex
 	generation     uint64
 	pending        int
@@ -25,6 +27,7 @@ func (s *accountDisplaySnapshot) begin(mutation bool) uint64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if mutation {
+		s.endAudio()
 		s.generation++
 		s.pending++
 		s.view = online.AccountView{}
@@ -42,6 +45,9 @@ func (s *accountDisplaySnapshot) finish(generation uint64, mutation bool, view o
 	}
 	if generation != s.generation || s.pending != 0 || !valid {
 		return
+	}
+	if s.view.AccountID != view.AccountID || s.view.Revision != view.Revision || s.view.State != view.State {
+		s.endAudio()
 	}
 	// Never retain login URLs, tokens, or unverified/stale account details.
 	s.view = online.AccountView{}
@@ -61,10 +67,36 @@ func (s *accountDisplaySnapshot) finish(generation uint64, mutation bool, view o
 func (s *accountDisplaySnapshot) invalidate() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.endAudio()
 	s.generation++
 	s.view = online.AccountView{}
 	s.displayCount = nil
 	s.countExpiresAt = nil
+}
+
+// 调用方持有 mu。注销、换号或校验失效时同步撤销已打开的缓存读取。
+func (s *accountDisplaySnapshot) endAudio() {
+	if s.audioChanged != nil {
+		close(s.audioChanged)
+		s.audioChanged = nil
+	}
+}
+
+func (w *OnlineWorker) PlatformAudioSession(ctx context.Context) (online.AccountView, <-chan struct{}, error) {
+	view, err := w.PlatformSession(ctx)
+	if err != nil {
+		return view, nil, err
+	}
+	s := &w.accountDisplay
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.pending != 0 || !view.VerifiedAt(time.Now()) || s.view.AccountID != view.AccountID || s.view.Revision != view.Revision {
+		return online.AccountView{}, nil, domain.Fail("PLATFORM_AUTH_REQUIRED", "Sign in to the music platform before playback")
+	}
+	if s.audioChanged == nil {
+		s.audioChanged = make(chan struct{})
+	}
+	return view, s.audioChanged, nil
 }
 
 func (s *accountDisplaySnapshot) count() *plugindisplay.Count {

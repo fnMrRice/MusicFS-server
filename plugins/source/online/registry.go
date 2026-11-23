@@ -2,6 +2,7 @@ package onlineplugins
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"sync"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/plugins/source/online/qqmusic"
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginsettings"
 	"github.com/fnMrRice/MusicFS-server/sdk/provider"
 )
 
@@ -54,7 +56,28 @@ func Plugin(platform string, options Options) provider.Plugin {
 	plugin := factory(options)
 	plugin.Descriptor = plugin.Descriptor.Clone()
 	plugin.Environment = slices.Clone(plugin.Environment)
+	plugin.PlaybackSettings = clonePlaybackSettings(plugin.PlaybackSettings)
 	return plugin
+}
+
+func clonePlaybackSettings(source []pluginsettings.Field) []pluginsettings.Field {
+	fields := slices.Clone(source)
+	for i := range fields {
+		f := &fields[i]
+		f.LocalizedLabels = maps.Clone(f.LocalizedLabels)
+		f.LocalizedDescriptions = maps.Clone(f.LocalizedDescriptions)
+		f.Options = slices.Clone(f.Options)
+		for j := range f.Options {
+			f.Options[j].LocalizedLabels = maps.Clone(f.Options[j].LocalizedLabels)
+		}
+		if f.Min != nil {
+			f.Min = new(*f.Min)
+		}
+		if f.Max != nil {
+			f.Max = new(*f.Max)
+		}
+	}
+	return fields
 }
 
 // Descriptors 返回已装配插件的声明，供受信任宿主建立准入注册表。

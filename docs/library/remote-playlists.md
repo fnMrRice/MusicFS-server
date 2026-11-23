@@ -1,18 +1,18 @@
 # 显式导入与保守同步远程歌单
 
-远程歌单引用、同步任务和本地修订持久保存。读取[推荐](recommendations.md)或[在线资料](../providers/online.md)不产生导入，必须明确提交导入请求。网易云适配公开歌单观测，仍要求本实例的已校验账号；QQ / Apple Music 尚未提供歌单导入能力。远程曲目只有资料引用，不创建音频资产，也不代表可播放。
+远程歌单引用、同步任务和本地修订持久保存。显式导入或建立关联会排队读取曲目并登记曲库来源。单独浏览推荐和歌单只读取资料。网易云使用已验证的平台账号，Bilibili 支持匿名公开歌单。
 
 ## 导入与同步
 
 以下路径均以 `/api/v1` 开头，需要MusicFS登录。导入与同步需允许Origin、CSRF和8—128字符 `Idempotency-Key`；幂等窗口24小时。同键不同有效参数返回409，过期返回410，不生成另一份导入或任务。
 
-1. `POST /remote-playlists {"instanceId":"a5e47aac-f949-5e45-9709-f28a0d8443df","accountId":"当前平台账号ID","externalId":"91"}` 返回201 `{playlist,merged}`。账号必须与该实例当前已校验账号一致；歌单编号来自该来源资料，不接受 URL、路径、配置修订或凭据。旧匿名绑定必须重新导入，不自动移交新账号。
-2. 导入只记录意图并验证当前实例/能力，不访问远端。初始 `revision=0,title="",stale=true,lastSuccessAt=null,error=null`，尚无快照。已有本人相同实例/账号/歌单返回同一playlistId，`merged=true`；重放返回该身份当前的描述，不把旧描述冻结为永久状态。
+1. `POST /remote-playlists` 提交 `instanceId`、`accountId`、`externalId`，返回 201 和 `{playlist,merged,jobId}`。需登录的平台使用实例当前验证的账号。
+2. 登记歌单与安排同步任务在同一事务内完成。新导入在首次成功前显示待同步。通过 `jobId` 查询进度。重复导入同一歌单沿用原歌单编号。
 3. `POST /remote-playlists/{id}/sync-jobs {"expectedBindingRevision":1}` 返回202 `{jobId,merged}`。从GET得到当前绑定修订；同歌单和有效配置的在途同步可合并。同键重放保留原任务编号，配置或有效参数变化明确冲突。
 4. `GET /remote-playlist-sync-jobs/{id}` 读取 `queued/running/succeeded/failed/cancelled`。成功的resultRevision指向新本地快照；失败error为安全错误与本次HTTP requestId，没有上游原始正文。generation从入队0开始，领取或恢复时更新，用于拒绝旧任务结果，不是远端版本。
 5. `POST /remote-playlist-sync-jobs/{id}/cancel {}` 自然幂等，不需要幂等键，仍校验Origin和CSRF。queued/running转cancelled并取消活动请求；已终态返回原结果。取消不删除上次成功快照。
 
-宿主使用一个后台同步工作者，最多1024个 queued/running 任务。任务总期限30秒，在线调用另受宿主10秒期限、准入和 Worker 速率约束。重启恢复时更换任务代次，并重新核对用户、实例、已校验账号、平台和实际配置修订；发布事务再次验证任务状态、代次和绑定。账号退出或失效拒绝继续同步并保留旧快照。保存停用不改变当前任务租约；重启后已禁用或配置已变的实例不能凭旧绑定发布。
+宿主使用后台工作者分批获取曲目元数据，单个任务期限为 30 分钟。发布事务重新核对任务代次、用户、实例和绑定，并一起提交曲库曲目、来源、快照及关联目标的新增条目。平台已下架的成员保留编号及已知资料。失败的整次观测保留上次成功结果。升级后的首次启动会为已有导入及关联安排补齐任务。
 
 ## 阅读当前与历史
 
@@ -20,7 +20,7 @@
 
 `GET /remote-playlists/{id}/snapshots/{revision}?offset=0&limit=50` 固定一个本地修订读取条目，limit为1—100；nextOffset为空表示该修订结束。旧修订不可变，停用实例和服务重启后仍可读取本人历史；不存在与其他用户记录统一404。未知/重复参数、负offset、非规范整数或不存在的修订分别明确拒绝，不默认切换到最新快照。
 
-条目包含独立entryId、position、remoteSource引用、state、lastObservedPosition和可空firstMissingObservation。同一远程歌曲重复出现时保留不同entryId和位置，共用稳定remoteSourceId；上游没有稳定出现编号时，按歌曲编号与该歌曲出现次序保留身份，无法区分内容完全相同的两次出现。remoteSource固定 `playbackAvailability=unsupported`，没有assetId、codec、媒体URL或文件摘要。
+历史快照条目保留出现顺序及稳定的 `remoteSourceId`。同一首歌在远程列表多次出现时分别记录位置，曲库则复用同一实例的来源记录。播放使用已登记的 `SourceTrack` 和当前账号的授权。
 
 ## 无固定远端版本时如何处理缺失
 

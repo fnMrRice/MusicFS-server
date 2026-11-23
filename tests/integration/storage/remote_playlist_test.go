@@ -39,7 +39,12 @@ func remoteClaim(t *testing.T, s *sqlite.Store, p playlists.RemotePlaylist) play
 func remoteObservation(at int64, ids ...string) playlists.Observation {
 	count := int64(len(ids))
 	o := playlists.Observation{PlaylistObservation: online.PlaylistObservation{Playlist: online.Playlist{ExternalID: "123", Title: "Actual title", TrackCount: &count, SourceURL: "https://music.163.com/playlist?id=123"}, Complete: true, Consistency: online.Unversioned, ObservedAt: time.Unix(at, 0).UTC(), Entries: []online.PlaylistEntry{}}}
+	seen := map[string]bool{}
 	for i, id := range ids {
+		if !seen[id] {
+			seen[id] = true
+			o.Tracks = append(o.Tracks, online.TrackLookup{ExternalID: id, Track: &online.Track{ExternalID: id, Title: "Track " + id}})
+		}
 		o.Entries = append(o.Entries, online.PlaylistEntry{Position: i, ExternalTrackID: id})
 	}
 	return o
@@ -97,8 +102,8 @@ func TestRemotePlaylistConservativeRemovalAndImmutablePages(t *testing.T) {
 		t.Fatal("foreign remote source accessible")
 	}
 	var assets int
-	if err = s.DB.QueryRow("SELECT COUNT(*) FROM source_assets").Scan(&assets); err != nil || assets != 0 {
-		t.Fatal("metadata was turned into audio assets", err)
+	if err = s.DB.QueryRow("SELECT COUNT(*) FROM source_assets").Scan(&assets); err != nil || assets != 2 {
+		t.Fatal("expected one source asset per imported track", err)
 	}
 }
 
@@ -144,6 +149,11 @@ func TestRemotePlaylistScopeImportIdempotencyAndSharedReferences(t *testing.T) {
 	otherAccount := b
 	otherAccount.AccountID = "test-account"
 	accountPlaylist := remoteImport(t, s, "owner", otherAccount)
+	for _, unrelated := range []playlists.RemotePlaylist{otherOwner, accountPlaylist} {
+		if _, err := s.CancelRemoteSync(ctx, unrelated.Owner, unrelated.JobID); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if p.ID == otherOwner.ID || p.ID == accountPlaylist.ID {
 		t.Fatal("owner/account scopes collapsed")
 	}

@@ -193,7 +193,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	}
 	closeBeforeRecommendations := cleanup
 	cleanup = func() { _ = recommendations.Close(); closeBeforeRecommendations() }
-	remotePlaylists, err := configureRemotePlaylists(ctx, store, online)
+	remotePlaylists, err := configureRemotePlaylists(store, online, onlineRuntimes)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
@@ -254,6 +254,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	matchingAutomation := matching.NewAutomation(store, store, matchingService, standard.Detector())
 	matchingAutomation.OnJobChanged(handler.NotifyPluginJobs)
 	settingsProviders := append(codecsettings.Providers(), matchingAutomation.Provider())
+	settingsProviders = append(settingsProviders, onlinePlaybackSettings()...)
 	settingsProviders = append(settingsProviders, scraperSettings...)
 	handler.RegisterPluginSettings(settings.New(store, settingsProviders...))
 	beforeMatching := cleanup

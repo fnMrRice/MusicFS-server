@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/sdk/provider"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 )
 
@@ -16,7 +17,7 @@ func (w *OnlineWorker) DescribeAudio(ctx context.Context, id string) (pluginprot
 	if err != nil {
 		return pluginproto.OnlineAudio{}, err
 	}
-	audio, err := onlineCall[pluginproto.OnlineAudio](ctx, w, "provider.online.audioDescribe", scope, pluginproto.OnlineReference{Context: scope, ExternalID: id})
+	audio, err := onlineCall[pluginproto.OnlineAudio](ctx, w, "provider.online.audioDescribe", scope, pluginproto.OnlineAudioReference{Context: scope, ExternalID: id, Quality: provider.PlaybackQuality(ctx)})
 	if err == nil {
 		err = audio.Validate()
 	}
@@ -32,7 +33,7 @@ func (w *OnlineWorker) OpenAudio(ctx context.Context, id string) (pluginproto.On
 	if err != nil {
 		return pluginproto.OnlineAudio{}, nil, err
 	}
-	opened, err := onlineCall[pluginproto.OnlineAudioOpened](ctx, w, "provider.online.audioOpen", scope, pluginproto.OnlineReference{Context: scope, ExternalID: id})
+	opened, err := onlineCall[pluginproto.OnlineAudioOpened](ctx, w, "provider.online.audioOpen", scope, pluginproto.OnlineAudioReference{Context: scope, ExternalID: id, Quality: provider.PlaybackQuality(ctx)})
 	if err != nil {
 		return pluginproto.OnlineAudio{}, nil, err
 	}

@@ -142,5 +142,23 @@ func loadMusicRelations(ctx context.Context, tx *sql.Tx, owner string, items []m
 		byID[id].SelectedSource = &selected
 		covers = append(covers, &selected)
 	}
-	return populateTrackCovers(ctx, tx, owner, covers...)
+	if err = populateTrackCovers(ctx, tx, owner, covers...); err != nil {
+		return err
+	}
+	for i := range items {
+		track := &items[i]
+		if track.SelectedSource == nil {
+			continue
+		}
+		members := map[string]library.Track{}
+		for _, v := range track.SelectedSource.Versions {
+			members[v.ID] = v
+		}
+		for j := range track.Sources {
+			source := &track.Sources[j]
+			member := members[source.SourceTrackID]
+			source.Downloaded, source.DownloadVersions = member.Downloaded, member.DownloadVersions
+		}
+	}
+	return nil
 }

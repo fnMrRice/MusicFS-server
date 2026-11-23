@@ -7,13 +7,17 @@ import (
 	"github.com/fnMrRice/MusicFS-server/plugins/source/online/internal/adapter"
 	"github.com/fnMrRice/MusicFS-server/plugins/source/online/internal/policies"
 	"github.com/fnMrRice/MusicFS-server/plugins/source/online/netease/driver"
+	"github.com/fnMrRice/MusicFS-server/plugins/source/online/netease/quality"
 	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginsettings"
 	"github.com/fnMrRice/MusicFS-server/sdk/provider"
 )
 
 type Options = adapter.Options
+
+func PlaybackQualityField() pluginsettings.Field { return quality.Field() }
 
 func Plugin(options Options) provider.Plugin {
 	descriptor := pluginproto.OnlinePolicy(online.Netease)
@@ -27,6 +31,7 @@ func Plugin(options Options) provider.Plugin {
 	}
 	return provider.Plugin{
 		Descriptor: descriptor, Version: bundledplugin.NetEaseVersion,
+		PlaybackSettings: []pluginsettings.Field{PlaybackQualityField()},
 		NewClient: func(scope online.Scope, timeout time.Duration) (provider.Client, error) {
 			opts := options
 			opts.Timeout = timeout

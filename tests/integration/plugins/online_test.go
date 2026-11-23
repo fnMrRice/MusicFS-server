@@ -91,9 +91,21 @@ func TestActualOnlineWorkerMappingScopeAndCleanup(t *testing.T) {
 	if err != nil || !playlist.Complete || playlist.Consistency != online.Unversioned || len(playlist.Entries) != 3 || playlist.Entries[0].ExternalTrackID != playlist.Entries[1].ExternalTrackID || playlist.Entries[1].Position != 1 {
 		t.Fatalf("playlist: %+v %v", playlist, err)
 	}
-	onlineExpect(t, w.Resolve(context.Background(), "42"), "UNSUPPORTED")
+	audio, err := w.DescribeAudio(context.Background(), "42")
+	if err != nil || audio.Quality != "exhigh" || audio.MIME != "audio/mpeg" {
+		t.Fatalf("audio description: %+v %v", audio, err)
+	}
+	_, accountChanged, err := w.PlatformAudioSession(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err = w.Close(); err != nil {
 		t.Fatal(err)
+	}
+	select {
+	case <-accountChanged:
+	case <-time.After(time.Second):
+		t.Fatal("worker exit retained cached audio authorization")
 	}
 	select {
 	case <-w.Done():

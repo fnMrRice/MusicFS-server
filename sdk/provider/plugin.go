@@ -6,6 +6,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginsettings"
 )
 
 // Client is the online provider boundary. Implementations own their account
@@ -44,6 +45,8 @@ type Plugin struct {
 	Descriptor pluginproto.OnlineDescriptor
 	Version    string
 	NewClient  Factory
+	// PlaybackSettings 由可信装配读取，补充此来源特有的播放偏好。
+	PlaybackSettings []pluginsettings.Field
 	// Environment 仅由受信任装配使用，不通过描述符或客户端请求授权。
 	Environment []string
 }

@@ -46,6 +46,7 @@ func authorized[T any](ctx context.Context, c *Client, run func(context.Context)
 	}
 	var failure *domain.Error
 	if errors.As(err, &failure) && failure.Code == "AUTH_REQUIRED" {
+		a.media.revoke()
 		a.secret = accountSecret{}
 		a.view = AccountView{State: "expired"}
 		return empty, platformLoginRequired()
@@ -109,7 +110,7 @@ func (c *Client) ArtistTracks(ctx context.Context, r EntityPageRequest) (SearchP
 	return authorized(ctx, c, func(ctx context.Context) (SearchPage, error) { return c.driver.ArtistTracks(ctx, r) })
 }
 func (c *Client) Resolve(ctx context.Context, id string) error {
-	_, err := authorized(ctx, c, func(ctx context.Context) (struct{}, error) { return struct{}{}, c.resolve(ctx, id) })
+	_, err := c.DescribeAudio(ctx, id)
 	return err
 }
 

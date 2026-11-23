@@ -5,6 +5,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/sdk/provider"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
@@ -40,7 +41,22 @@ func (s *Service) ConfigureAudio(lib *library.Service) error {
 		describe := func(ctx context.Context, external string) (pluginproto.OnlineAudio, error) {
 			return s.describeAudio(ctx, owner, id, external)
 		}
-		if err := lib.AddAudioRuntime(library.Runtime{ID: id, Owner: owner, Name: r.Name, SourceType: r.descriptor.SourceType, OpenAudio: open, DescribeAudio: describe, AuthorizeAudio: authorize, Plugin: r.descriptor.Plugin}); err != nil {
+		account := func(ctx context.Context) (online.AccountView, <-chan struct{}, error) {
+			current, err := s.Runtime(ctx, owner, id, "")
+			if err != nil {
+				return online.AccountView{}, nil, err
+			}
+			if current.descriptor.Authentication == "anonymous" {
+				return online.AccountView{}, nil, nil
+			}
+			if worker, ok := current.Provider.(interface {
+				PlatformAudioSession(context.Context) (online.AccountView, <-chan struct{}, error)
+			}); ok {
+				return worker.PlatformAudioSession(ctx)
+			}
+			return s.watchAudioAccount(ctx, current)
+		}
+		if err := lib.AddAudioRuntime(library.Runtime{ID: id, Owner: owner, Name: r.Name, SourceType: r.descriptor.SourceType, OpenAudio: open, DescribeAudio: describe, AuthorizeAudio: authorize, AudioAccount: account, AudioPluginID: pluginproto.OnlinePluginID(r.Platform), Plugin: r.descriptor.Plugin}); err != nil {
 			return err
 		}
 	}

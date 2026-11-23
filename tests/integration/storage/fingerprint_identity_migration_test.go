@@ -2,6 +2,7 @@ package storage_test
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,6 +10,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite/migrations"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library"
 )
 
 func TestFingerprintIdentityMigrationArchivesOldInputsAndAllowsRecompute(t *testing.T) {
@@ -38,12 +40,12 @@ func TestFingerprintIdentityMigrationArchivesOldInputsAndAllowsRecompute(t *test
 	old := &sqlite.Store{DB: db}
 	// 在版本 033 的库上生成原始观测；普通曲目列表使用最新结构，升级后再验证。
 	publishEvidenceObservations(t, old, evidenceObservation("preserved-track", "v1"))
-	var sourceID string
-	if err := db.QueryRow("SELECT id FROM tracks WHERE external_id='preserved-track'").Scan(&sourceID); err != nil {
+	var document []byte
+	if err := db.QueryRow("SELECT document FROM tracks WHERE owner='admin' AND external_id='preserved-track'").Scan(&document); err != nil {
 		t.Fatal(err)
 	}
-	track, err := old.FindTrack(ctx, "admin", sourceID)
-	if err != nil {
+	var track library.Track
+	if err = json.Unmarshal(document, &track); err != nil {
 		t.Fatal(err)
 	}
 	job := fpClaim(t, old, fpTarget(track))

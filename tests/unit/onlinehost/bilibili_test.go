@@ -132,7 +132,7 @@ type bilibiliImportRepository struct {
 
 func (r *bilibiliImportRepository) ImportRemotePlaylist(_ context.Context, owner string, binding playlists.Binding, _ string) (playlists.RemotePlaylist, bool, error) {
 	r.bindings = append(r.bindings, binding)
-	return playlists.RemotePlaylist{ID: "imported", Owner: owner, RemoteRef: binding.RemoteRef, Platform: binding.Platform, ConfigRevision: binding.ConfigRevision}, false, nil
+	return playlists.RemotePlaylist{ID: "imported", Owner: owner, RemoteRef: binding.RemoteRef, Platform: binding.Platform, ConfigRevision: binding.ConfigRevision, JobID: "sync"}, false, nil
 }
 
 func TestAnonymousBilibiliFavoriteImportPreservesNamespaceAndBinding(t *testing.T) {
@@ -177,13 +177,13 @@ func TestAnonymousBilibiliFavoriteImportPreservesNamespaceAndBinding(t *testing.
 	}
 	release()
 	observation, err := remote.ObservePlaylist(ctx, "owner", binding)
-	if err != nil || observation.Validate("favorite:91") != nil || p.calls != 1 {
+	if err != nil || observation.Validate("favorite:91") != nil || len(observation.Tracks) != 2 || p.calls != 3 {
 		t.Fatal("anonymous collection observation failed", err)
 	}
 	binding.ConfigRevision = "old-revision"
 	_, err = remote.ObservePlaylist(ctx, "owner", binding)
 	requireBilibiliCode(t, err, "RESOURCE_CHANGED")
-	if p.calls != 1 {
+	if p.calls != 3 {
 		t.Fatal("stale collection binding reached the provider")
 	}
 }

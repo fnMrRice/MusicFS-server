@@ -61,6 +61,7 @@ func (s *Store) PrepareRestoredDatabase(ctx context.Context, objects []mediastor
 		"DELETE FROM idempotency WHERE owner IN (SELECT id FROM auth_sessions)",
 		"DELETE FROM auth_sessions",
 		"DELETE FROM processed_cache",
+		"DELETE FROM online_downloads",
 		// 恢复副本停用全部音频处理，不能保留依赖旧部署能力的强制 DSP 偏好。
 		"DELETE FROM plugin_settings WHERE plugin_id IN ('musicfs.dsp.pipeline','musicfs.dsp.global')",
 		"UPDATE playback_sessions SET state='expired' WHERE state='active'",

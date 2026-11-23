@@ -1,6 +1,8 @@
 package pluginconfig
 
 import (
+	"slices"
+
 	"github.com/fnMrRice/MusicFS-server/plugins/source/localfiles/descriptor"
 	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/bundledplugin"
@@ -19,7 +21,8 @@ func init() {
 		{ID: "musicfs.scraper.local", Role: "scraper", SupportsMultipleInstances: true},
 	}
 	for _, online := range onlineplugins.Descriptors() {
-		declarations = append(declarations, Declaration{ID: online.Plugin.ID, Role: "provider", SourceType: online.SourceType, Platform: online.Platform, SupportsMultipleInstances: true, Identity: online.Plugin, Version: onlineplugins.Plugin(online.Platform, onlineplugins.Options{}).Version})
+		declarations = append(declarations, Declaration{ID: online.Plugin.ID, Role: "provider", SourceType: online.SourceType, Platform: online.Platform, SupportsMultipleInstances: true, Identity: online.Plugin, Version: onlineplugins.Plugin(online.Platform, onlineplugins.Options{}).Version,
+			Settings: slices.Contains(pluginproto.OnlineCapabilities(online), "stream.resolve")})
 	}
 	for _, d := range declarations {
 		if d.Version == "" {

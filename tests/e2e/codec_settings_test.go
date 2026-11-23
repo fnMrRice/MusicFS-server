@@ -56,7 +56,7 @@ func TestCodecSettingsApplyToPlainAndNCMPlaybackAfterRestart(t *testing.T) {
 	for _, name := range []string{"plain.mp3", "wrapped.ncm"} {
 		assertCodecHTTPPlayback(t, c, ffmpeg, tracks[name], "native-"+name, "proxy", plain)
 	}
-	page := readCodecSettings(t, c)
+	page := readPluginSettings(t, c, codecsettings.FFmpegID)
 	if page.Values["decodeOutput"] != "native" {
 		t.Fatal("new installation changed default playback encoding", page.Values)
 	}
@@ -73,7 +73,7 @@ func TestCodecSettingsApplyToPlainAndNCMPlaybackAfterRestart(t *testing.T) {
 	stop()
 	startAudioYAMLServer(t, path, cfg, base)
 	c = login(t, base, cfg.AdminToken)
-	if page := readCodecSettings(t, c); page.Values["decodeOutput"] != audioffmpeg.DecodeSigned16 {
+	if page := readPluginSettings(t, c, codecsettings.FFmpegID); page.Values["decodeOutput"] != audioffmpeg.DecodeSigned16 {
 		t.Fatal("restart lost selected decoder output", page.Values)
 	}
 	for _, name := range []string{"plain.mp3", "wrapped.ncm"} {
@@ -88,12 +88,12 @@ func TestCodecSettingsApplyToPlainAndNCMPlaybackAfterRestart(t *testing.T) {
 	}
 }
 
-func readCodecSettings(t *testing.T, c *client) settings.Page {
+func readPluginSettings(t *testing.T, c *client, plugin string) settings.Page {
 	t.Helper()
-	code, raw, _ := c.request(t, "GET", "/api/v1/plugin-settings/"+codecsettings.FFmpegID, nil, "")
+	code, raw, _ := c.request(t, "GET", "/api/v1/plugin-settings/"+plugin, nil, "")
 	var page settings.Page
 	if code != 200 || json.Unmarshal(raw, &page) != nil {
-		t.Fatalf("codec settings unavailable: %d %s", code, raw)
+		t.Fatalf("plugin settings unavailable: %s %d %s", plugin, code, raw)
 	}
 	testkit.ValidateHTTP(t, "PluginSettingsPage", raw)
 	return page

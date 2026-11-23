@@ -14,7 +14,7 @@ SDK 和在线插件由私有 Server 仓库维护，具有独立 `go.mod`、构�
 
 Server 的受信任组装层直接链接官方在线平台适配器，以便在主进程运行；业务代码通过 SDK DTO 和宿主接口使用结果。SDK 和独立在线模块仍不能反向导入 `src/`。`plugins/unified` 保留外部进程兼容入口。公共 DTO 与上游请求实现分开，`Track`、`AccountView` 等类型仍由 SDK 拥有。
 
-来源插件必须在 Manifest 声明 `sourceType: local|network`，其他角色禁止该字段；声明不属于可修改的部署配置。网络音频通过可选 `provider.AudioClient` 提供格式描述和按需读取；`online.audioDescribe` 不读取媒体正文，`online.audioOpen/Read/Close` 在播放时消费有界音频块。宿主按类型选择路径并独立检查 `stream.resolve`，不按平台名称推断格式或播放能力。当前实现范围见 [Bilibili 来源](../providers/bilibili.md)，可选发行建议见[插件发行](optional-distribution.md)。
+来源插件在 Manifest 声明 `sourceType: local|network`。网络音频通过可选 `provider.AudioClient` 提供格式描述和按需读取。`online.audioDescribe` 查询播放资料，`online.audioOpen/Read/Close` 消费有界音频块。宿主检查 `stream.resolve`，并可在描述和打开请求中传入所选的 `quality`。插件可在 `OnlineAudio` 中返回实际音质 `quality` 和平台媒体版本 `version`，供宿主标识下载副本。具体实现见[在线来源](../providers/online.md)与 [Bilibili 来源](../providers/bilibili.md)。
 
 SDK 包入口：
 

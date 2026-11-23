@@ -190,17 +190,27 @@ func (s *Store) HidePlaylistSource(ctx context.Context, owner, id string, r play
 	now := time.Now().UTC()
 	rule := playlists.HiddenRule{ID: domain.NewID(), Scope: r.Scope, Source: r.Source, BindingPath: r.BindingPath, EntryID: r.EntryID, Active: true, CreatedAt: now, UpdatedAt: now}
 	found := false
+	var remoteAnchor *playlists.SourceRef
 	for _, entry := range snapshot.Entries {
 		for _, provenance := range entry.Provenance {
-			if provenance.Source.Key() == r.Source.Key() && hiddenPathMatches(rule, provenance) {
+			if !hiddenPathMatches(rule, provenance) {
+				continue
+			}
+			if provenance.Source.Key() == r.Source.Key() {
 				found = true
+			} else if entry.Source.Key() == r.Source.Key() && provenance.Source.RemoteSourceID != nil && remoteAnchor == nil {
+				remoteAnchor = &provenance.Source
 			}
 		}
 	}
 	if !found {
-		return empty, domain.Fail("NOT_FOUND", "Playlist contribution not found")
+		if remoteAnchor == nil {
+			return empty, domain.Fail("NOT_FOUND", "Playlist contribution not found")
+		}
+		// 播放选择可以指向已入库曲目；隐藏意图仍跟随这次出现的原远端出处。
+		rule.Source = *remoteAnchor
 	}
-	group, err := b.group(r.Source)
+	group, err := b.group(rule.Source)
 	if err != nil {
 		return empty, err
 	}

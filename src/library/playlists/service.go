@@ -10,19 +10,23 @@ import (
 )
 
 type Service struct {
-	repo       Repository
-	remote     Remote
-	concurrent int
-	mu         sync.Mutex
-	running    map[string]context.CancelFunc
-	cancel     context.CancelFunc
-	wg         sync.WaitGroup
-	wake       chan struct{}
-	changed    func(string)
+	repo           Repository
+	remote         Remote
+	concurrent     int
+	mu             sync.Mutex
+	running        map[string]context.CancelFunc
+	cancel         context.CancelFunc
+	wg             sync.WaitGroup
+	wake           chan struct{}
+	changed        func(string)
+	preparePending func(context.Context)
 }
 
 // OnJobChanged 在启动工作线程前设置同步任务状态通知。
 func (s *Service) OnJobChanged(notify func(string)) { s.changed = notify }
+
+// OnQueueIdle 让第一个工作线程在队列空闲时分批接收尚未入库的歌单。
+func (s *Service) OnQueueIdle(prepare func(context.Context)) { s.preparePending = prepare }
 
 func (s *Service) jobChanged(owner string) {
 	if s.changed != nil {
@@ -53,14 +57,18 @@ func (s *Service) authorize(ctx context.Context, owner string, ref RemoteRef) (B
 	return b, b.Validate()
 }
 
-// Import records explicit intent only. Sync is a separate persistent operation;
-// simply reading a recommendation or upstream playlist never creates this row.
+// Import 在同一事务中登记歌单和曲库同步任务。
 func (s *Service) Import(ctx context.Context, owner string, ref RemoteRef, key string) (RemotePlaylist, bool, error) {
 	b, err := s.authorize(ctx, owner, ref)
 	if err != nil {
 		return RemotePlaylist{}, false, err
 	}
-	return s.repo.ImportRemotePlaylist(ctx, owner, b, key)
+	result, merged, err := s.repo.ImportRemotePlaylist(ctx, owner, b, key)
+	if err == nil {
+		s.jobChanged(owner)
+		s.notify()
+	}
+	return result, merged, err
 }
 func (s *Service) Sync(ctx context.Context, owner, id string, expected int64, key string) (SyncJob, bool, error) {
 	p, err := s.repo.RemotePlaylist(ctx, owner, id)
@@ -122,9 +130,9 @@ func (s *Service) Start(ctx context.Context) error {
 	run, cancel := context.WithCancel(ctx)
 	s.cancel = cancel
 	slog.DebugContext(ctx, "Remote playlist workers started", "concurrency", s.concurrent)
-	for range s.concurrent {
+	for i := range s.concurrent {
 		s.wg.Add(1)
-		go s.worker(run)
+		go s.worker(run, i == 0)
 	}
 	return nil
 }

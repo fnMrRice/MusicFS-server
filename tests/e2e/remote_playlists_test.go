@@ -16,6 +16,7 @@ import (
 )
 
 type remoteImported struct {
+	JobID    string                   `json:"jobId"`
 	Playlist playlists.RemotePlaylist `json:"playlist"`
 	Merged   bool                     `json:"merged"`
 }
@@ -85,7 +86,7 @@ func TestRemotePlaylistsActualServerConservativeSyncAndDisabledRestart(t *testin
 			t.Helper()
 			return albumRequest[playlists.SnapshotPage](t, c, "GET", path+"/snapshots/"+strconv.FormatInt(revision, 10), nil, "", 200, "RemotePlaylistSnapshotPage")
 		}
-		job := sync("first-success", "succeeded")
+		job := wait(created.JobID, "succeeded")
 		if job.ResultRevision == nil {
 			t.Fatal("missing snapshot result")
 		}
@@ -137,7 +138,7 @@ func TestRemotePlaylistsActualServerConservativeSyncAndDisabledRestart(t *testin
 		if cancelled.State != "cancelled" {
 			t.Fatal("active sync did not cancel")
 		}
-		assertOnlineDoesNotImport(t, c)
+		assertImportedPlaylistTracks(t, c)
 	})
 	t.Run("disabled-restart-keeps-private-history", func(t *testing.T) {
 		if imported.ID == "" || len(first.Items) == 0 {
@@ -156,6 +157,17 @@ func TestRemotePlaylistsActualServerConservativeSyncAndDisabledRestart(t *testin
 			t.Fatal("restart changed historical occurrence")
 		}
 		albumRequest[map[string]any](t, c, "POST", path+"/sync-jobs", map[string]int{"expectedBindingRevision": 1}, "disabled-sync", 503, "Error")
-		assertOnlineDoesNotImport(t, c)
+		assertImportedPlaylistTracks(t, c)
 	})
+}
+
+func assertImportedPlaylistTracks(t *testing.T, c *client) {
+	t.Helper()
+	code, raw, _ := c.request(t, "GET", "/api/v1/source-tracks", nil, "")
+	var page struct {
+		Items []json.RawMessage `json:"items"`
+	}
+	if code != 200 || json.Unmarshal(raw, &page) != nil || len(page.Items) != 2 {
+		t.Fatalf("expected two imported source tracks: %d %s", code, raw)
+	}
 }

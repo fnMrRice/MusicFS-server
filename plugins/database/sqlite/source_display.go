@@ -20,6 +20,7 @@ func (s *Store) SourceDisplay(ctx context.Context, owner string, refs []playlist
 	}
 	defer tx.Rollback()
 	found := map[string]sourcedisplay.Item{}
+	var tracks []*library.Track
 	for _, kind := range []string{"local", "remote"} {
 		ids := []any{owner}
 		for _, ref := range refs {
@@ -54,6 +55,7 @@ func (s *Store) SourceDisplay(ctx context.Context, owner string, refs []playlist
 				var track library.Track
 				err = json.Unmarshal(raw, &track)
 				item.Local = &track
+				tracks = append(tracks, &track)
 			} else {
 				var remote playlists.RemoteSource
 				err = json.Unmarshal(raw, &remote)
@@ -81,5 +83,5 @@ func (s *Store) SourceDisplay(ctx context.Context, owner string, refs []playlist
 		}
 		page.Items = append(page.Items, item)
 	}
-	return page, nil
+	return page, populateTrackCovers(ctx, tx, owner, tracks...)
 }

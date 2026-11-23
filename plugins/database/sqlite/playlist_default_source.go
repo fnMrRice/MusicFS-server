@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
@@ -11,6 +12,19 @@ import (
 
 // selectPlaylistVersion 只在当前歌单中未隐藏的多个版本之间选择，不扩大来源集合。
 func selectPlaylistVersion(ctx context.Context, tx *sql.Tx, owner string, entry *playlists.AggregateEntry) error {
+	if remote := entry.Source.RemoteSourceID; remote != nil {
+		var track, source string
+		err := tx.QueryRowContext(ctx, `SELECT s.track_id,s.id FROM remote_sources r
+			JOIN tracks t ON t.owner=r.owner AND t.provider=r.instance_id AND t.external_id=r.external_id
+			JOIN music_sources s ON s.owner=t.owner AND s.id=t.id WHERE r.owner=? AND r.id=?`, owner, *remote).Scan(&track, &source)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		if err == nil {
+			entry.Source = playlists.SourceRef{TrackID: &track, ForcedSourceID: &source}
+		}
+		return err
+	}
 	if entry.RecordingID == nil || entry.Hidden {
 		return nil
 	}

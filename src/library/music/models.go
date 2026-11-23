@@ -7,6 +7,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/sdk/scraper"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
+	"github.com/fnMrRice/MusicFS-server/src/playback/onlinecache"
 )
 
 type Artist struct {
@@ -43,12 +44,14 @@ type Album struct {
 }
 
 type Source struct {
-	SourceTrackID string  `json:"sourceTrackId"`
-	PluginID      *string `json:"pluginId"`
-	InstanceID    string  `json:"providerInstanceId"`
-	SourceID      string  `json:"sourceId"`
-	CreatedAt     string  `json:"createdAt"`
-	UpdatedAt     string  `json:"updatedAt"`
+	Downloaded       bool                  `json:"downloaded"`
+	DownloadVersions []onlinecache.Version `json:"downloadVersions,omitempty"`
+	SourceTrackID    string                `json:"sourceTrackId"`
+	PluginID         *string               `json:"pluginId"`
+	InstanceID       string                `json:"providerInstanceId"`
+	SourceID         string                `json:"sourceId"`
+	CreatedAt        string                `json:"createdAt"`
+	UpdatedAt        string                `json:"updatedAt"`
 }
 
 type TrackFields struct {

@@ -74,6 +74,8 @@ func (f *fixture) RoundTrip(r *http.Request) (*http.Response, error) {
 		body = `{"code":200,"songs":[{"id":42,"name":"Track","artists":[],"album":{},"duration":123}],"more":false,"total":1}`
 	case "/api/v3/song/detail":
 		body = `{"code":200,"songs":[{"id":42,"name":"Synthetic","ar":[],"al":{"name":"Album"},"dt":120000}]}`
+	case "/api/song/enhance/player/url/v1":
+		body = `{"code":200,"data":[{"id":42,"code":200,"type":"mp3","level":"exhigh","size":128,"url":"https://m8.music.126.net/fixture.mp3"}]}`
 	case "/api/personalized/playlist":
 		if len(os.Args) == 2 && os.Args[1] == "recommendation-rate-limit" && f.recommendationReads.Add(1) == 2 {
 			return &http.Response{StatusCode: http.StatusTooManyRequests, Header: http.Header{"Retry-After": {"45"}}, Body: http.NoBody}, nil

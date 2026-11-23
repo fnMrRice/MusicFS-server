@@ -10,13 +10,13 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 )
 
-const playlistLinkColumns = `l.instance_id,l.account_id,l.external_id,l.platform,l.playlist_id,
+const playlistLinkColumns = `l.instance_id,l.account_id,l.external_id,l.platform,l.playlist_id,coalesce(l.catalog_job_id,''),
  (SELECT count(*) FROM playlist_link_additions a WHERE a.link_id=l.id),
  coalesce((SELECT last_error FROM playlist_link_additions a WHERE a.link_id=l.id AND last_error<>'' ORDER BY retry_at DESC LIMIT 1),'')`
 
 func scanPlaylistLink(row interface{ Scan(...any) error }) (playlists.PlaylistLink, error) {
 	var p playlists.PlaylistLink
-	err := row.Scan(&p.InstanceID, &p.AccountID, &p.ExternalID, &p.Platform, &p.PlaylistID, &p.PendingCount, &p.LastErrorCode)
+	err := row.Scan(&p.InstanceID, &p.AccountID, &p.ExternalID, &p.Platform, &p.PlaylistID, &p.JobID, &p.PendingCount, &p.LastErrorCode)
 	return p, err
 }
 
@@ -66,6 +66,11 @@ func (s *Store) LinkPlaylist(ctx context.Context, owner string, b playlists.Bind
 	if err != nil {
 		return result, err
 	}
+	job, _, err := schedulePlaylistCatalog(ctx, tx, owner, b)
+	if err != nil {
+		return result, err
+	}
+	result.JobID = job.JobID
 	return result, tx.Commit()
 }
 

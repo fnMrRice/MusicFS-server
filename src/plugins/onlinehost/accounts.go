@@ -13,6 +13,12 @@ type accountProvider interface {
 }
 type AccountOptions = online.AccountOptions
 
+// OnPlaylistAccountReady 在启动时登记回调，账号重新可用后继续补齐歌单。
+func (s *Service) OnPlaylistAccountReady(f func(context.Context, Runtime, string)) {
+	s.playlistLogins = make(map[string][2]string)
+	s.playlistAccountReady = f
+}
+
 func (s *Service) AccountOptions(ctx context.Context, owner, id string) (AccountOptions, error) {
 	return callControl(ctx, s, owner, id, func(ctx context.Context, r Runtime) (AccountOptions, error) {
 		if r.descriptor.Login == nil {
@@ -33,15 +39,51 @@ func (s *Service) AccountOptions(ctx context.Context, owner, id string) (Account
 }
 func (s *Service) Account(ctx context.Context, owner, id string, request online.AccountRequest) (online.AccountView, error) {
 	return callControl(ctx, s, owner, id, func(ctx context.Context, r Runtime) (online.AccountView, error) {
+		if request.Action != "state" {
+			s.endAudioAccount(id)
+			defer s.endAudioAccount(id)
+		}
 		p, ok := r.Provider.(accountProvider)
 		if !ok {
 			return online.AccountView{}, domain.Fail("UNSUPPORTED", "Platform login is not supported by this worker")
 		}
 		view, err := p.PlatformAccount(ctx, request)
+		if err == nil && view.State == "signedIn" && view.AccountID != "" && view.Revision != "" && s.playlistAccountReady != nil &&
+			(request.Action == "complete" || request.Action == "poll") {
+			s.mu.Lock()
+			generation := [2]string{view.AccountID, view.Revision}
+			changed := s.playlistLogins[id] != generation
+			s.playlistLogins[id] = generation
+			s.mu.Unlock()
+			if changed {
+				s.playlistAccountReady(ctx, r, view.AccountID)
+			}
+		}
 		var failure *domain.Error
 		if errors.As(err, &failure) && failure.Code == "AUTH_REQUIRED" {
 			err = domain.Fail("PLATFORM_AUTH_REQUIRED", "Platform authorization or developer configuration is required")
 		}
 		return view, err
 	})
+}
+
+func (s *Service) endAudioAccount(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if changed := s.audioAccounts[id]; changed != nil {
+		close(changed)
+		delete(s.audioAccounts, id)
+	}
+}
+
+func (s *Service) watchAudioAccount(ctx context.Context, r Runtime) (online.AccountView, <-chan struct{}, error) {
+	s.mu.Lock()
+	changed := s.audioAccounts[r.InstanceID]
+	if changed == nil {
+		changed = make(chan struct{})
+		s.audioAccounts[r.InstanceID] = changed
+	}
+	s.mu.Unlock()
+	view, err := platformSession(ctx, r)
+	return view, changed, err
 }

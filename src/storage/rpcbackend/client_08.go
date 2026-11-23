@@ -4,6 +4,7 @@ package rpcbackend
 
 import (
 	"context"
+	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
@@ -15,9 +16,26 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/candidates"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
+	"github.com/fnMrRice/MusicFS-server/src/playback/onlinecache"
+	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) RevokeTimeline(a0 context.Context, a1 string, a2 string, a3 int64, a4 string) (r0 timeline.Evidence, err error) {
+	err = c.Invoke(a0, "RevokeTimeline", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) RootStatistics(a0 context.Context, a1 string, a2 string) (r0 library.RootStatistics, err error) {
+	err = c.Invoke(a0, "RootStatistics", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SaveAuth(a0 context.Context, a1 auth.Session) (err error) {
+	err = c.Invoke(a0, "SaveAuth", []any{a1}, []any{})
+	return err
+}
 
 func (c *Client) SaveCandidates(a0 context.Context, a1 string, a2 matching.Snapshot, a3 []candidates.Candidate) (r0 matching.CandidatePage, err error) {
 	err = c.Invoke(a0, "SaveCandidates", []any{a1, a2, a3}, []any{&r0})
@@ -42,6 +60,11 @@ func (c *Client) SaveMusicArtistNames(a0 context.Context, a1 string, a2 string, 
 func (c *Client) SaveMusicTrack(a0 context.Context, a1 string, a2 string, a3 int64, a4 music.TrackInput, a5 string) (r0 music.Track, err error) {
 	err = c.Invoke(a0, "SaveMusicTrack", []any{a1, a2, a3, a4, a5}, []any{&r0})
 	return r0, err
+}
+
+func (c *Client) SaveOnlineDownload(a0 context.Context, a1 onlinecache.Record) (err error) {
+	err = c.Invoke(a0, "SaveOnlineDownload", []any{a1}, []any{})
+	return err
 }
 
 func (c *Client) SavePersonalProfile(a0 context.Context, a1 string, a2 *string) (r0 personal.Profile, err error) {
@@ -117,24 +140,4 @@ func (c *Client) SelectWorkScrapedField(a0 context.Context, a1 string, a2 string
 func (c *Client) SetConfigOperationStatus(a0 context.Context, a1 string, a2 string) (err error) {
 	err = c.Invoke(a0, "SetConfigOperationStatus", []any{a1, a2}, []any{})
 	return err
-}
-
-func (c *Client) SetDefaultSource(a0 context.Context, a1 string, a2 matching.DefaultSourceRequest, a3 string) (r0 matching.Mutation, err error) {
-	err = c.Invoke(a0, "SetDefaultSource", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SetExclusion(a0 context.Context, a1 string, a2 matching.ExclusionRequest, a3 string) (r0 matching.Mutation, err error) {
-	err = c.Invoke(a0, "SetExclusion", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SetFavoriteSource(a0 context.Context, a1 string, a2 string, a3 *string) (r0 personal.Entry, err error) {
-	err = c.Invoke(a0, "SetFavoriteSource", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SetFavoritesSelection(a0 context.Context, a1 string, a2 library.TrackSelection, a3 bool) (r0 personal.SelectionResult, err error) {
-	err = c.Invoke(a0, "SetFavoritesSelection", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
 }

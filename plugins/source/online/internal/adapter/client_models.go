@@ -2,7 +2,6 @@ package adapter
 
 import (
 	"context"
-	domain "github.com/fnMrRice/MusicFS-server/sdk/fault"
 	"net/http"
 	"time"
 )
@@ -21,12 +20,4 @@ func (c *Client) Scope() Scope { return c.scope }
 
 func (c *Client) Capabilities() []Capability {
 	return Capabilities(c.platform)
-}
-
-// Resolve is deliberately unable to return a URL or headers for audio.
-func (c *Client) resolve(ctx context.Context, externalID string) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	return domain.Fail("UNSUPPORTED", "This adapter does not resolve audio resources")
 }

@@ -13,6 +13,7 @@ type PlaylistLink struct {
 	RemoteRef
 	Platform      string `json:"platform"`
 	PlaylistID    string `json:"playlistId"`
+	JobID         string `json:"jobId,omitempty"`
 	PendingCount  int    `json:"pendingCount"`
 	LastErrorCode string `json:"lastErrorCode,omitempty"`
 }

@@ -27,7 +27,8 @@ func (s *Server) RegisterRemotePlaylists(service *playlists.Service) {
 		return WriteJSON(w, http.StatusCreated, struct {
 			Playlist playlists.RemotePlaylist `json:"playlist"`
 			Merged   bool                     `json:"merged"`
-		}{remotePlaylistResponse(r, item), merged})
+			JobID    string                   `json:"jobId"`
+		}{remotePlaylistResponse(r, item), merged, item.JobID})
 	})
 	s.Handle("GET /api/v1/remote-playlists", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		page, err := remotePagination(r, false)

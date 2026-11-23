@@ -131,7 +131,6 @@ func TestMetadataBoundedAndDoesNotInferAudio(t *testing.T) {
 	if track.DurationMs != nil || track.PlaybackAvailability != "unknown" || track.SourceURL != "https://music.163.com/song?id=42" {
 		t.Fatalf("invented media facts: %+v", track)
 	}
-	expectCode(t, c.Resolve(context.Background(), "42"), "UNSUPPORTED")
 	_, err = c.Metadata(context.Background(), "https://127.0.0.1/")
 	expectCode(t, err, "INVALID_ARGUMENT")
 }

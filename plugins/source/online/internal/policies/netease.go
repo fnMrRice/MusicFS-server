@@ -1,6 +1,14 @@
 package policies
 
-import "github.com/fnMrRice/MusicFS-server/sdk/online"
+import (
+	"strings"
+
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
+)
+
+func NeteaseAudioHost(host string) bool {
+	return strings.HasSuffix(host, ".music.126.net")
+}
 
 func Netease() online.ResourcePolicy {
 	rule := func(kind string) []online.ReferenceRule {

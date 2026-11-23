@@ -10,8 +10,9 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 )
 
-func (s *Service) worker(ctx context.Context) {
+func (s *Service) worker(ctx context.Context, prepare bool) {
 	defer s.wg.Done()
+	var nextCheck time.Time
 	for ctx.Err() == nil {
 		job, err := s.repo.ClaimRemoteSync(ctx)
 		if err == nil {
@@ -23,6 +24,9 @@ func (s *Service) worker(ctx context.Context) {
 		if !errors.Is(err, sql.ErrNoRows) {
 			slog.DebugContext(ctx, "Remote playlist claim deferred", "errorCode", FailureCode(err))
 			delay = time.Second
+		} else if prepare && s.preparePending != nil && !time.Now().Before(nextCheck) {
+			s.preparePending(ctx)
+			nextCheck = time.Now().Add(time.Minute)
 		}
 		timer := time.NewTimer(delay)
 		select {
@@ -37,7 +41,8 @@ func (s *Service) worker(ctx context.Context) {
 }
 func (s *Service) execute(parent context.Context, job SyncJob) {
 	started := time.Now()
-	ctx, cancel := context.WithTimeout(parent, 30*time.Second)
+	// 单批读取仍有独立超时；完整歌单可能需要数百次受平台限速的批量请求。
+	ctx, cancel := context.WithTimeout(parent, 30*time.Minute)
 	s.mu.Lock()
 	s.running[job.ID] = cancel
 	s.mu.Unlock()

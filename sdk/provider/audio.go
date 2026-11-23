@@ -25,7 +25,7 @@ type audioStream struct {
 	expires      time.Time
 }
 
-func (w *worker) openAudio(ctx context.Context, client Client, id string) (pluginproto.OnlineAudioOpened, error) {
+func (w *worker) openAudio(ctx context.Context, client Client, id, quality string) (pluginproto.OnlineAudioOpened, error) {
 	var empty pluginproto.OnlineAudioOpened
 	provider, ok := client.(AudioClient)
 	if !ok {
@@ -46,7 +46,7 @@ func (w *worker) openAudio(ctx context.Context, client Client, id string) (plugi
 	// 音频响应生命周期独立于短控制请求，仍由工作进程和播放会话上限约束。
 	lifetime, cancel := context.WithTimeout(w.ctx, 35*time.Minute)
 	stop := context.AfterFunc(ctx, cancel)
-	audio, body, err := provider.OpenAudio(lifetime, id)
+	audio, body, err := provider.OpenAudio(WithPlaybackQuality(lifetime, quality), id)
 	stop()
 	if err == nil {
 		err = audio.Validate()

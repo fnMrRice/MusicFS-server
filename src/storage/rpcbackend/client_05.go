@@ -15,6 +15,16 @@ import (
 	"time"
 )
 
+func (c *Client) MergeMusicAlbumTracks(a0 context.Context, a1 string, a2 string, a3 music.MergeTracksInput, a4 string) (r0 music.Track, err error) {
+	err = c.Invoke(a0, "MergeMusicAlbumTracks", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) MusicAlbum(a0 context.Context, a1 string, a2 string) (r0 music.Album, err error) {
+	err = c.Invoke(a0, "MusicAlbum", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) MusicAlbumScrapeTarget(a0 context.Context, a1 string, a2 string, a3 string) (r0 music.AlbumScrapeTarget, err error) {
 	err = c.Invoke(a0, "MusicAlbumScrapeTarget", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
@@ -122,15 +132,5 @@ func (c *Client) Playlist(a0 context.Context, a1 string, a2 string) (r0 playlist
 
 func (c *Client) PlaylistChanges(a0 context.Context, a1 string, a2 string, a3 int64, a4 int) (r0 []playlists.PlaylistChange, err error) {
 	err = c.Invoke(a0, "PlaylistChanges", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) PlaylistLinks(a0 context.Context, a1 string) (r0 []playlists.PlaylistLink, err error) {
-	err = c.Invoke(a0, "PlaylistLinks", []any{a1}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) PlaylistSnapshot(a0 context.Context, a1 string, a2 string, a3 int64) (r0 playlists.AggregateSnapshot, err error) {
-	err = c.Invoke(a0, "PlaylistSnapshot", []any{a1, a2, a3}, []any{&r0})
 	return r0, err
 }

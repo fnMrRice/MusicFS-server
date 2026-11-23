@@ -45,8 +45,8 @@ func (p *networkFixture) Metadata(_ context.Context, id string) (online.Track, e
 	t.MetadataDigest = online.Digest(t)
 	return t, nil
 }
-func (p *networkFixture) DescribeAudio(_ context.Context, id string) (pluginproto.OnlineAudio, error) {
-	return pluginproto.OnlineAudio{ExternalID: id, MIME: "audio/wav", Codec: "pcm_s16le", Container: "wav", SizeBytes: -1}, nil
+func (p *networkFixture) DescribeAudio(ctx context.Context, id string) (pluginproto.OnlineAudio, error) {
+	return pluginproto.OnlineAudio{ExternalID: id, Quality: provider.PlaybackQuality(ctx), Version: "fixture-v1", MIME: "audio/wav", Codec: "pcm_s16le", Container: "wav", SizeBytes: -1}, nil
 }
 func (p *networkFixture) OpenAudio(ctx context.Context, id string) (pluginproto.OnlineAudio, io.ReadCloser, error) {
 	p.opens.Add(1)
@@ -63,6 +63,9 @@ func (p *networkFixture) OpenAudio(ctx context.Context, id string) (pluginproto.
 }
 
 type networkPlaybackFixture struct {
+	store       *sqlite.Store
+	release     chan struct{}
+	cacheRoot   string
 	api         *httptest.Server
 	provider    *networkFixture
 	gate        *plugincontrol.Gate
@@ -80,6 +83,7 @@ func newNetworkPlaybackFixture(t *testing.T, complete ...bool) *networkPlaybackF
 		t.Fatal(err)
 	}
 	canceled := make(chan struct{}, 1)
+	release := make(chan struct{})
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "audio/wav")
 		_, _ = w.Write(wave[:1024])
@@ -88,8 +92,12 @@ func newNetworkPlaybackFixture(t *testing.T, complete ...bool) *networkPlaybackF
 			_, _ = w.Write(wave[1024:])
 			return
 		}
-		<-r.Context().Done()
-		canceled <- struct{}{}
+		select {
+		case <-r.Context().Done():
+			canceled <- struct{}{}
+		case <-release:
+			_, _ = w.Write(wave[1024:])
+		}
 	}))
 	t.Cleanup(upstream.Close)
 	ctx := context.Background()
@@ -110,7 +118,8 @@ func newNetworkPlaybackFixture(t *testing.T, complete ...bool) *networkPlaybackF
 	if err = host.ConfigureAudio(lib); err != nil {
 		t.Fatal(err)
 	}
-	player, err := playback.New(ctx, store, lib, nil, playback.Config{CacheRoot: t.TempDir(), MaxSessions: 8, MaxCacheBytes: 16 << 20})
+	cacheRoot := t.TempDir()
+	player, err := playback.New(ctx, store, lib, nil, playback.Config{CacheRoot: cacheRoot, MaxSessions: 8, MaxCacheBytes: 16 << 20})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +134,7 @@ func newNetworkPlaybackFixture(t *testing.T, complete ...bool) *networkPlaybackF
 	server.RegisterPlayback(player)
 	httpServer := httptest.NewServer(server)
 	t.Cleanup(httpServer.Close)
-	f := &networkPlaybackFixture{api: httpServer, provider: p, gate: gate, cookie: cookie, who: who, canceled: canceled}
+	f := &networkPlaybackFixture{api: httpServer, provider: p, gate: gate, cookie: cookie, who: who, canceled: canceled, store: store, release: release, cacheRoot: cacheRoot}
 	response := f.request(t, http.MethodPost, "/api/v1/online-instances/network-fixture/tracks/audio:1/resolve", `{}`, nil)
 	if response.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(response.Body)

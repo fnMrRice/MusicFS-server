@@ -28,6 +28,7 @@ type Binding struct {
 }
 
 type RemotePlaylist struct {
+	JobID string `json:"jobId,omitempty"`
 	ID    string `json:"playlistId"`
 	Owner string `json:"-"`
 	RemoteRef
@@ -115,6 +116,7 @@ type SyncJob struct {
 type Observation struct {
 	online.PlaylistObservation
 	Version *string
+	Tracks  []online.TrackLookup
 }
 
 type Remote interface {
@@ -123,6 +125,7 @@ type Remote interface {
 }
 
 type Repository interface {
+	PreparePlaylistCatalog(context.Context, string, string, string, string, string) error
 	EnsurePlaylistTrackSources(context.Context, string, string, string, []string) ([]RemoteSource, error)
 	ImportRemotePlaylist(context.Context, string, Binding, string) (RemotePlaylist, bool, error)
 	RemotePlaylist(context.Context, string, string) (RemotePlaylist, error)

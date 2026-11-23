@@ -67,8 +67,11 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 	var run func(context.Context) (any, error)
 	switch method {
 	case "provider.online.audioDescribe":
-		var r pluginproto.OnlineReference
+		var r pluginproto.OnlineAudioReference
 		if err = pluginproto.DecodeOnline(raw, &r); err != nil {
+			return nil, err
+		}
+		if err = r.Validate(); err != nil {
 			return nil, err
 		}
 		scope = r.Context
@@ -77,7 +80,7 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 			if !ok {
 				return nil, unsupported()
 			}
-			description, err := audio.DescribeAudio(ctx, r.ExternalID)
+			description, err := audio.DescribeAudio(WithPlaybackQuality(ctx, r.Quality), r.ExternalID)
 			if err == nil {
 				err = description.Validate()
 			}
@@ -87,12 +90,15 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 			return description, err
 		}
 	case "provider.online.audioOpen":
-		var r pluginproto.OnlineReference
+		var r pluginproto.OnlineAudioReference
 		if err = pluginproto.DecodeOnline(raw, &r); err != nil {
 			return nil, err
 		}
+		if err = r.Validate(); err != nil {
+			return nil, err
+		}
 		scope = r.Context
-		run = func(ctx context.Context) (any, error) { return w.openAudio(ctx, client, r.ExternalID) }
+		run = func(ctx context.Context) (any, error) { return w.openAudio(ctx, client, r.ExternalID, r.Quality) }
 	case "provider.online.audioRead", "provider.online.audioClose":
 		var r pluginproto.OnlineAudioRead
 		if err = pluginproto.DecodeOnline(raw, &r); err != nil {

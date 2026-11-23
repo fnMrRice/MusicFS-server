@@ -177,7 +177,11 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 	capabilities.Formats = append([]Format(nil), r.Capabilities.Formats...)
 	a := &session{forcedSourceID: r.ForcedSourceID, owner: who.ID, user: who.User.ID, path: prepared.path, etag: prepared.etag, size: prepared.size, track: prepared.track, gain: prepared.gain, capabilities: capabilities, sourceLease: prepared.lease}
 	a.online = prepared.online
+	a.network = prepared.network
 	s.installPluginLeases(a, prepared)
+	if a.online {
+		a.network.watch(a.ctx, a.cancel)
+	}
 	expiry := time.Now().UTC().Add(30 * time.Minute)
 	if who.ExpiresAt.Before(expiry) {
 		expiry = who.ExpiresAt

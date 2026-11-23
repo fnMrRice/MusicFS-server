@@ -12,6 +12,13 @@ import (
 
 func (s *Server) RegisterPlayback(service *playback.Service) {
 	s.registerTimeline(service)
+	s.Handle("DELETE /api/v1/source-tracks/{sourceId}/downloads/{versionId}", true, true, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
+		if err := service.DeleteOnlineDownload(r.Context(), a.User.ID, r.PathValue("sourceId"), r.PathValue("versionId")); err != nil {
+			return err
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	})
 	s.Handle("POST /api/v1/playback/sessions", true, true, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
 		request, err := decodeCreate(w, r)
 		if err != nil {

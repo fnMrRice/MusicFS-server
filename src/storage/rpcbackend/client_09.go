@@ -4,17 +4,38 @@ package rpcbackend
 
 import (
 	"context"
+	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
+	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/sourcedisplay"
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
-	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) SetDefaultSource(a0 context.Context, a1 string, a2 matching.DefaultSourceRequest, a3 string) (r0 matching.Mutation, err error) {
+	err = c.Invoke(a0, "SetDefaultSource", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SetExclusion(a0 context.Context, a1 string, a2 matching.ExclusionRequest, a3 string) (r0 matching.Mutation, err error) {
+	err = c.Invoke(a0, "SetExclusion", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SetFavoriteSource(a0 context.Context, a1 string, a2 string, a3 *string) (r0 personal.Entry, err error) {
+	err = c.Invoke(a0, "SetFavoriteSource", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SetFavoritesSelection(a0 context.Context, a1 string, a2 library.TrackSelection, a3 bool) (r0 personal.SelectionResult, err error) {
+	err = c.Invoke(a0, "SetFavoritesSelection", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) SetPublicationStage(a0 context.Context, a1 string, a2 string, a3 string, a4 string) (err error) {
 	err = c.Invoke(a0, "SetPublicationStage", []any{a1, a2, a3, a4}, []any{})
@@ -114,14 +135,4 @@ func (c *Client) WorkScrapedFields(a0 context.Context, a1 string, a2 string) (r0
 func (c *Client) Works(a0 context.Context, a1 string, a2 works.Query) (r0 []works.Work, err error) {
 	err = c.Invoke(a0, "Works", []any{a1, a2}, []any{&r0})
 	return r0, err
-}
-
-func (c *Client) WritebackWork(a0 context.Context, a1 string, a2 string) (r0 writebackhost.Work, err error) {
-	err = c.Invoke(a0, "WritebackWork", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) WrittenPublication(a0 context.Context, a1 string, a2 string, a3 mediastore.Object) (err error) {
-	err = c.Invoke(a0, "WrittenPublication", []any{a1, a2, a3}, []any{})
-	return err
 }

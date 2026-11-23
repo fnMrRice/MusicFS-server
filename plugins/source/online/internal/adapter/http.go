@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/source/online/internal/policies"
 	domain "github.com/fnMrRice/MusicFS-server/sdk/fault"
 )
 
@@ -26,7 +27,7 @@ func publicTransport() *http.Transport {
 
 func publicDial(ctx context.Context, network, address string) (net.Conn, error) {
 	host, port, err := net.SplitHostPort(address)
-	if err != nil || port != "443" || (host != "music.163.com" && host != "c.y.qq.com" && !accountHost(host)) {
+	if err != nil || port != "443" || (host != "music.163.com" && host != "c.y.qq.com" && !accountHost(host) && !policies.NeteaseAudioHost(host)) {
 		return nil, domain.Fail("ACCESS_DENIED", "Online destination is not allowed")
 	}
 	addresses, err := net.DefaultResolver.LookupNetIP(ctx, "ip", host)

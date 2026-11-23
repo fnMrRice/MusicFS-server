@@ -7,6 +7,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/catalog"
+	"github.com/fnMrRice/MusicFS-server/src/playback/onlinecache"
 )
 
 type trackCoverQuery interface {
@@ -29,6 +30,7 @@ func populateTrackCovers(ctx context.Context, query trackCoverQuery, owner strin
 	var collect func(*library.Track)
 	collect = func(track *library.Track) {
 		track.CoverObjectID = nil
+		track.Downloaded, track.DownloadVersions = false, nil
 		byID[track.ID] = append(byID[track.ID], track)
 		for i := range track.Versions {
 			collect(&track.Versions[i])
@@ -46,6 +48,14 @@ func populateTrackCovers(ctx context.Context, query trackCoverQuery, owner strin
 	}
 	raw, err := json.Marshal(ids)
 	if err != nil {
+		return err
+	}
+	if err = readDownloadVersions(ctx, query, owner, string(raw), func(id string, v onlinecache.Version) {
+		for _, track := range byID[id] {
+			track.Downloaded = true
+			track.DownloadVersions = append(track.DownloadVersions, v)
+		}
+	}); err != nil {
 		return err
 	}
 	rows, err := query.QueryContext(ctx, `SELECT t.id,t.asset_id,t.version,b.object_id FROM tracks t`+currentTrackCoverJoins+`

@@ -43,6 +43,7 @@ type preparedInput struct {
 	dspExecution         string
 	gain                 float64
 	online               bool
+	network              networkInput
 }
 
 func (p *preparedInput) discard() {

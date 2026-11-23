@@ -25,6 +25,8 @@ func (f *fixture) RoundTrip(r *http.Request) (*http.Response, error) {
 		}
 	}
 	switch r.URL.Path {
+	case "/api/v3/song/detail":
+		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"code":200,"songs":[{"id":42,"name":"First"},{"id":43,"name":"Second"}]}`))}, nil
 	case "/eapi/login/qrcode/unikey":
 		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"code":200,"unikey":"playlist-fixture-challenge"}`))}, nil
 	case "/eapi/login/qrcode/client/login":

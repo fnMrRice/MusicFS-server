@@ -7,12 +7,18 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/sdk/provider"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 )
 
 // prepareOnline 只验证权限和播放能力；建立会话不触发上游音频请求。
 func (s *Service) prepareOnline(ctx context.Context, owner string, t library.Track, r CreateRequest) (*preparedInput, error) {
+	input, err := s.networkInput(ctx, t)
+	if err != nil {
+		return nil, err
+	}
+	ctx = provider.WithPlaybackQuality(ctx, input.preferences.Quality)
 	audio, err := s.library.DescribeNetworkAudio(ctx, t)
 	if err != nil {
 		return nil, err
@@ -36,7 +42,8 @@ func (s *Service) prepareOnline(ctx context.Context, owner string, t library.Tra
 	if err != nil {
 		return nil, err
 	}
-	return &preparedInput{service: s, track: t, lease: lease, online: true, dspExecution: r.Preferences.DSPExecution}, nil
+	input.audio = audio
+	return &preparedInput{service: s, track: t, lease: lease, online: true, network: input, dspExecution: r.Preferences.DSPExecution}, nil
 }
 
 func (p *preparedInput) describeOnline(id string, expiry time.Time, transport string) Description {
@@ -62,15 +69,10 @@ func (s *Service) onlineStream(ctx context.Context, a *session, id, attempt stri
 		}
 		a.onlineOpened = true
 		s.mu.Unlock()
-		description, body, err := s.library.OpenOnlineAudio(streamCtx, a.track)
+		body, err := s.networkReader(streamCtx, a)
 		if err != nil {
 			a.cancel()
 			return nil, err
-		}
-		if description.Validate() != nil || description.ExternalID != a.track.ExternalID || description.MIME != a.track.MIME || description.Codec != *a.track.Codec || description.Container != *a.track.Container {
-			body.Close()
-			a.cancel()
-			return nil, domain.Fail("PROTOCOL_MISMATCH", "Online audio format does not match its session")
 		}
 		return &boundedOnlineReader{ReadCloser: body, remaining: pluginproto.MaxOnlineAudioBytes, cancel: a.cancel}, nil
 	}

@@ -21,7 +21,7 @@
 
 | 插件 | 当前使用的接口 | 接口文档或参考来源 |
 | --- | --- | --- |
-| 网易云音乐 | 通过客户端 EAPI 扫码、验证账号并查询曲目、专辑、歌手和歌单 | [api-enhanced](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced)（社区实现） · [项目核对的版本、模块和登录范围](../providers/platform-login.md) |
+| 网易云音乐 | 通过客户端 EAPI 扫码、验证账号、查询资料并以所选音质请求可播放曲目 | [播放参数参考](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced/blob/2db6684453297ee86dec0492842f2320b08182d9/module/song_url_v1.js) · [项目核对的版本、模块和登录范围](../providers/platform-login.md) |
 | QQ 音乐 | 手机 QQ 扫码授权，通过桌面客户端 RPC 验证账号和搜索曲目 | [L-1124/QQMusicApi](https://github.com/L-1124/QQMusicApi)（社区实现） · [搜索接口讨论](https://github.com/jsososo/QQMusicApi/issues/160) · [登录协议参考版本](../providers/platform-login.md) |
 | Apple Music | MusicKit JS 获取用户授权，服务端查询 `/v1/me/storefront` 校验账号和商店地区 | [MusicKit 用户认证](https://developer.apple.com/documentation/applemusicapi/user-authentication-for-musickit) · [Apple Music Storefront API](https://developer.apple.com/documentation/applemusicapi/get-a-user%27s-storefront) |
 | Bilibili | 匿名调用视频详情、公开收藏夹、音频区歌单及播放信息等网页端点，按需读取可用音轨 | [MusicFS 的端点与实测范围](../providers/bilibili.md) · [yt-dlp 的 Bilibili 提取器](https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/extractor/bilibili.py)（社区实现参考） |

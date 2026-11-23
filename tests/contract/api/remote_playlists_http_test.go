@@ -185,6 +185,9 @@ func TestRemotePlaylistsHTTPImportSyncSnapshotPrivacyAndErrors(t *testing.T) {
 	}
 	count := int64(3)
 	observation := playlists.Observation{PlaylistObservation: online.PlaylistObservation{Playlist: online.Playlist{ExternalID: "91", Title: "Synthetic", SourceURL: "https://music.163.com/playlist?id=91", TrackCount: &count}, Entries: []online.PlaylistEntry{{Position: 0, ExternalTrackID: "42"}, {Position: 1, ExternalTrackID: "42"}, {Position: 2, ExternalTrackID: "43"}}, Complete: true, Consistency: online.Unversioned, ObservedAt: time.Now().UTC()}}
+	for _, id := range []string{"42", "43"} {
+		observation.Tracks = append(observation.Tracks, online.TrackLookup{ExternalID: id, Track: &online.Track{ExternalID: id, Title: "Track " + id}})
+	}
 	snapshot, err := store.FinishRemoteSync(ctx, ticket, observation)
 	if err != nil {
 		t.Fatal(err)
@@ -222,8 +225,8 @@ func TestRemotePlaylistsHTTPImportSyncSnapshotPrivacyAndErrors(t *testing.T) {
 		t.Fatal("failure rewrote successful snapshot")
 	}
 	tracks, err := store.ListTracks(ctx, "admin", "", "", 10)
-	if err != nil || len(tracks.Items) != 0 {
-		t.Fatal("remote metadata created audio assets", err)
+	if err != nil || len(tracks.Items) != 2 {
+		t.Fatal("expected both unique playlist tracks in the source list", err)
 	}
 }
 

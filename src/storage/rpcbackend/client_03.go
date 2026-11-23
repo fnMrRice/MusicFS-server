@@ -10,7 +10,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
-	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/playback/onlinecache"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
@@ -82,6 +82,11 @@ func (c *Client) FinishRemoteSync(a0 context.Context, a1 playlists.SyncJob, a2 p
 	return r0, err
 }
 
+func (c *Client) ForgetOnlineDownload(a0 context.Context, a1 onlinecache.DownloadTarget) (err error) {
+	err = c.Invoke(a0, "ForgetOnlineDownload", []any{a1}, []any{})
+	return err
+}
+
 func (c *Client) ForgetProcessedCache(a0 context.Context, a1 string) (err error) {
 	err = c.Invoke(a0, "ForgetProcessedCache", []any{a1}, []any{})
 	return err
@@ -129,10 +134,5 @@ func (c *Client) GetPublication(a0 context.Context, a1 string, a2 string) (r0 me
 
 func (c *Client) GetRefreshTask(a0 context.Context, a1 string, a2 string) (r0 tasks.Task, err error) {
 	err = c.Invoke(a0, "GetRefreshTask", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) GetWriteback(a0 context.Context, a1 string, a2 string) (r0 writebackhost.Job, err error) {
-	err = c.Invoke(a0, "GetWriteback", []any{a1, a2}, []any{&r0})
 	return r0, err
 }

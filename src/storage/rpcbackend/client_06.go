@@ -5,7 +5,6 @@ package rpcbackend
 import (
 	"context"
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
-	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
@@ -14,13 +13,22 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
-	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) PlaylistLinks(a0 context.Context, a1 string) (r0 []playlists.PlaylistLink, err error) {
+	err = c.Invoke(a0, "PlaylistLinks", []any{a1}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) PlaylistSnapshot(a0 context.Context, a1 string, a2 string, a3 int64) (r0 playlists.AggregateSnapshot, err error) {
+	err = c.Invoke(a0, "PlaylistSnapshot", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) Playlists(a0 context.Context, a1 string, a2 string, a3 int) (r0 []playlists.Playlist, err error) {
 	err = c.Invoke(a0, "Playlists", []any{a1, a2, a3}, []any{&r0})
@@ -35,6 +43,11 @@ func (c *Client) PrepareAutomation(a0 context.Context, a1 string, a2 enrichment.
 func (c *Client) PrepareContent(a0 context.Context, a1 string, a2 mediastore.UploadInput, a3 string) (r0 mediastore.Publication, r1 bool, err error) {
 	err = c.Invoke(a0, "PrepareContent", []any{a1, a2, a3}, []any{&r0, &r1})
 	return r0, r1, err
+}
+
+func (c *Client) PreparePlaylistCatalog(a0 context.Context, a1 string, a2 string, a3 string, a4 string, a5 string) (err error) {
+	err = c.Invoke(a0, "PreparePlaylistCatalog", []any{a1, a2, a3, a4, a5}, []any{})
+	return err
 }
 
 func (c *Client) PrepareRestoredDatabase(a0 context.Context, a1 []mediastore.BackupObject) (err error) {
@@ -127,19 +140,4 @@ func (c *Client) RebuildPlaylist(a0 context.Context, a1 string, a2 string, a3 pl
 func (c *Client) RecordBackupObject(a0 context.Context, a1 string, a2 string, a3 string) (err error) {
 	err = c.Invoke(a0, "RecordBackupObject", []any{a1, a2, a3}, []any{})
 	return err
-}
-
-func (c *Client) RecordPlaybackStarted(a0 context.Context, a1 auth.Session, a2 personal.PlaybackStarted) (r0 personal.Entry, err error) {
-	err = c.Invoke(a0, "RecordPlaybackStarted", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) Recording(a0 context.Context, a1 string, a2 string) (r0 matching.Recording, err error) {
-	err = c.Invoke(a0, "Recording", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) RecordingCover(a0 context.Context, a1 string, a2 string) (r0 library.RecordingCover, err error) {
-	err = c.Invoke(a0, "RecordingCover", []any{a1, a2}, []any{&r0})
-	return r0, err
 }

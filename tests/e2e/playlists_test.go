@@ -62,11 +62,11 @@ func TestPlaylistsActualServerLocalRemoteHiddenMatchingAndRestart(t *testing.T) 
 			}
 			return b
 		}
-		remote := albumRequest[remoteImported](t, c, "POST", "/remote-playlists", playlists.RemoteRef{InstanceID: "7fe223d0-a3bd-5e87-87f8-305dc26d9041", AccountID: accountID, ExternalID: "91"}, "aggregate-import", 201, "RemotePlaylistImported").Playlist
-		accepted := albumRequest[remoteAccepted](t, c, "POST", "/remote-playlists/"+remote.ID+"/sync-jobs", map[string]int{"expectedBindingRevision": 1}, "aggregate-remote-sync", 202, "HashAccepted")
+		imported := albumRequest[remoteImported](t, c, "POST", "/remote-playlists", playlists.RemoteRef{InstanceID: "7fe223d0-a3bd-5e87-87f8-305dc26d9041", AccountID: accountID, ExternalID: "91"}, "aggregate-import", 201, "RemotePlaylistImported")
+		remote := imported.Playlist
 		deadline := time.Now().Add(8 * time.Second)
 		for {
-			job := albumRequest[playlists.SyncJob](t, c, "GET", "/remote-playlist-sync-jobs/"+accepted.JobID, nil, "", 200, "RemotePlaylistSyncJob")
+			job := albumRequest[playlists.SyncJob](t, c, "GET", "/remote-playlist-sync-jobs/"+imported.JobID, nil, "", 200, "RemotePlaylistSyncJob")
 			if job.State == "succeeded" {
 				break
 			}
@@ -84,7 +84,7 @@ func TestPlaylistsActualServerLocalRemoteHiddenMatchingAndRestart(t *testing.T) 
 			return albumRequest[playlists.AggregatePage](t, c, "GET", path+"/snapshots/"+strconv.FormatInt(receipt.Revision, 10), nil, "", 200, "PlaylistSnapshotPage")
 		}
 		first = build("aggregate-first", 1)
-		if first.Total != 5 || len(first.Items[0].Provenance) != 2 || first.Items[3].Source.RemoteSourceID == nil || len(first.Items[3].Provenance) != 2 {
+		if first.Total != 5 || len(first.Items[0].Provenance) != 2 || first.Items[3].Source.ForcedSourceID == nil || len(first.Items[3].Provenance) != 2 || first.Items[3].Provenance[0].Source.RemoteSourceID == nil {
 			t.Fatal("local and remote provenance were not retained")
 		}
 		hidden := albumRequest[playlists.HiddenRules](t, c, "POST", path+"/hidden-rules", map[string]any{"expectedRevision": 0, "source": playlists.SourceRef{SourceTrackID: &sourceIDs[0]}}, "aggregate-hide-anchor", 200, "PlaylistHiddenRules")
@@ -106,7 +106,7 @@ func TestPlaylistsActualServerLocalRemoteHiddenMatchingAndRestart(t *testing.T) 
 			t.Fatal("split propagated hide to another source")
 		}
 		parent = albumRequest[playlists.Playlist](t, c, "PUT", path, playlists.EditPlaylistRequest{ExpectedRevision: 1, Name: parent.Name, Bindings: parent.Bindings[1:]}, "aggregate-remove-child", 200, "Playlist")
-		if final := build("aggregate-final", 2); final.Total != 3 || len(final.Items[0].Provenance) != 1 || final.Items[1].Source.RemoteSourceID == nil {
+		if final := build("aggregate-final", 2); final.Total != 3 || len(final.Items[0].Provenance) != 1 || final.Items[1].Source.ForcedSourceID == nil {
 			t.Fatal("removed binding erased another contribution")
 		}
 		old := albumRequest[playlists.AggregatePage](t, c, "GET", path+"/snapshots/"+strconv.FormatInt(first.Revision, 10), nil, "", 200, "PlaylistSnapshotPage")
@@ -132,7 +132,7 @@ func TestPlaylistsActualServerLocalRemoteHiddenMatchingAndRestart(t *testing.T) 
 			t.Fatal("hidden intention lost on restart")
 		}
 		old := albumRequest[playlists.AggregatePage](t, c, "GET", path+"/snapshots/"+strconv.FormatInt(first.Revision, 10), nil, "", 200, "PlaylistSnapshotPage")
-		if old.Total != 5 || old.Items[3].Source.RemoteSourceID == nil {
+		if old.Total != 5 || old.Items[3].Source.ForcedSourceID == nil || old.Items[3].Provenance[0].Source.RemoteSourceID == nil {
 			t.Fatal("disabled remote erased aggregate history")
 		}
 		description := albumRequest[playback.Description](t, c, "POST", "/playback/sessions", playback.CreateRequest{SourceTrackID: sourceIDs[0], Capabilities: playback.Capabilities{HTMLAudio: true, Formats: []playback.Format{{MIME: "audio/wav", CanPlay: "probably"}}}}, "aggregate-playback", 201, "Playback")

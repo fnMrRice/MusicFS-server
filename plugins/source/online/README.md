@@ -4,12 +4,14 @@
 
 | 来源 | 已接入的能力 |
 | --- | --- |
-| [网易云音乐](netease/driver/) | 账号登录、搜索、曲目详情、歌单和批量元数据 |
+| [网易云音乐](netease/driver/) | 账号登录、搜索、曲目详情、歌单、批量元数据及按播放音质读取完整音轨 |
 | [QQ 音乐](qqmusic/driver/) | 账号登录、桌面 RPC 与搜索结果映射 |
 | [Apple Music](applemusic/driver/) | MusicKit 用户令牌验证 |
 | [Bilibili](bilibili/README.md) | 按编号或链接读取公开曲目、视频分 P、收藏夹和音频歌单，按需读取公开音轨 |
 
-前三种来源的业务查询要求当前实例已验证平台账号，尚未提供完整音频流。Bilibili 使用匿名公开接口。具体平台协议、参考实现和公开文档见[来源与 API 对照](../../../docs/plugins/provider-api-sources.md)。登录和实测范围见[平台账号说明](../../../docs/providers/platform-login.md)。
+前三种来源的业务查询要求当前实例已验证平台账号。Bilibili 使用匿名公开接口。具体协议见[来源与 API 对照](../../../docs/plugins/provider-api-sources.md)，登录和实测范围见[平台账号说明](../../../docs/providers/platform-login.md)。
+
+网易云插件的「播放音质」提供沉浸环绕声、超清母带、高清臻音、高解析度无损、无损、极高和标准，默认选中极高。插件使用已登录账号请求曲目的播放地址。缓存记录以平台返回的实际音质和可用媒体摘要识别版本。平台仅允许试听或拒绝播放时，插件会返回访问错误。曲目和会员档位对应的实际效果仍待实号验收。[网易云播放接口参数参考](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced/blob/2db6684453297ee86dec0492842f2320b08182d9/module/song_url_v1.js)
 
 ## 代码入口
 

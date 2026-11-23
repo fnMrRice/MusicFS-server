@@ -40,7 +40,7 @@
 - 作品包的目录树与音轨引用存于 `work_packages.document`，通过 JSON 节点中的 `sourceTrackId` 引用来源。`document`、`request`、`description` 等 BLOB 列多为序列化业务模型；歌词、封面、缩略图及指纹明细正文存于独立文件，数据库保存索引、绑定和发布状态。
 - 实例库的 `plugin_values` 按插件 ID 与实例 UUID 组成的 `scope` 隔离，以 `(scope,key)` 为联合主键，通过 `revision` 原子比较更新 JSON 值；它与主库之间没有跨库外键。
 
-主库其余 9 个视图用于观测、导入和封面/元数据刷新：`music_observed_tracks`、`music_import_sources`、`music_imported_credits`、`music_import_cd_packages`、`music_import_cd_albums`、`music_track_covers`、`music_refresh_cover`、`music_refresh_metadata`、`music_refresh_album_cover`。详图只展开直接用于专辑查询的 `music_album_tracks`。其余视图定义及该视图的曲序变更见 [011—042 历史批次中的 037 和 041 迁移](../../plugins/database/sqlite/migrations/042_batch_011_042.sql)。
+主库其余 9 个视图用于观测、导入和封面/元数据刷新：`music_observed_tracks`、`music_import_sources`、`music_imported_credits`、`music_import_cd_packages`、`music_import_cd_albums`、`music_track_covers`、`music_refresh_cover`、`music_refresh_metadata`、`music_refresh_album_cover`。详图只展开直接用于专辑查询的 `music_album_tracks`。其余视图定义及该视图的曲序变更见 [011—044 历史批次中的 037 和 041 迁移](../../plugins/database/sqlite/migrations/044_batch_011_044.sql)。
 
 ## 更新图示
 

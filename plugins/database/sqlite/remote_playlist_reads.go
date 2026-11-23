@@ -20,12 +20,27 @@ type remoteJobRecord struct {
 }
 
 func readRemotePlaylist(row rowScanner) (playlists.RemotePlaylist, error) {
-	var r remotePlaylistRecord
 	var owner string
 	var raw []byte
 	if err := row.Scan(&owner, &raw); err != nil {
-		return r.Playlist, remoteNotFound(err)
+		return playlists.RemotePlaylist{}, remoteNotFound(err)
 	}
+	return decodeRemotePlaylist(owner, raw)
+}
+
+func readRemotePlaylistWithJob(row rowScanner) (playlists.RemotePlaylist, error) {
+	var owner, job string
+	var raw []byte
+	if err := row.Scan(&owner, &raw, &job); err != nil {
+		return playlists.RemotePlaylist{}, remoteNotFound(err)
+	}
+	p, err := decodeRemotePlaylist(owner, raw)
+	p.JobID = job
+	return p, err
+}
+
+func decodeRemotePlaylist(owner string, raw []byte) (playlists.RemotePlaylist, error) {
+	var r remotePlaylistRecord
 	if err := json.Unmarshal(raw, &r); err != nil {
 		return r.Playlist, err
 	}
@@ -52,20 +67,20 @@ func readRemoteJob(row rowScanner) (playlists.SyncJob, error) {
 	return r.Job, nil
 }
 func (s *Store) RemotePlaylist(ctx context.Context, owner, id string) (playlists.RemotePlaylist, error) {
-	return readRemotePlaylist(s.DB.QueryRowContext(ctx, "SELECT owner,document FROM remote_playlists WHERE owner=? AND id=?", owner, id))
+	return readRemotePlaylistWithJob(s.DB.QueryRowContext(ctx, "SELECT owner,document,coalesce(catalog_job_id,'') FROM remote_playlists WHERE owner=? AND id=?", owner, id))
 }
 func (s *Store) RemotePlaylists(ctx context.Context, owner, after string, limit int) ([]playlists.RemotePlaylist, error) {
 	if limit < 1 || limit > playlists.MaxPageSize+1 || (after != "" && !playlists.ValidID(after)) {
 		return nil, playlists.Invalid()
 	}
-	rows, err := s.DB.QueryContext(ctx, "SELECT owner,document FROM remote_playlists WHERE owner=? AND id>? ORDER BY id LIMIT ?", owner, after, limit)
+	rows, err := s.DB.QueryContext(ctx, "SELECT owner,document,coalesce(catalog_job_id,'') FROM remote_playlists WHERE owner=? AND id>? ORDER BY id LIMIT ?", owner, after, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	result := []playlists.RemotePlaylist{}
 	for rows.Next() {
-		p, e := readRemotePlaylist(rows)
+		p, e := readRemotePlaylistWithJob(rows)
 		if e != nil {
 			return nil, e
 		}

@@ -79,6 +79,8 @@ func StartOnline(parent context.Context, config OnlineConfig) (worker *OnlineWor
 	}()
 	ctx, cancel := context.WithCancel(parent)
 	w := &OnlineWorker{config: config, cancel: cancel, done: make(chan struct{})}
+	// 插件进程退出时，其账号代次授权的缓存读取也必须结束。
+	context.AfterFunc(ctx, w.accountDisplay.invalidate)
 	if config.Builtin {
 		local := inprocess.Start(ctx, func(ctx context.Context, input io.ReadCloser, output io.WriteCloser) error {
 			return onlineplugins.Run(ctx, config.Platform, input, output)

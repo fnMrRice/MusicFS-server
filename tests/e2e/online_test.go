@@ -11,6 +11,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
+	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/onlinehost"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
@@ -46,6 +47,7 @@ func TestOnlineActualServerRequiresPlatformLoginAndDisabledRestart(t *testing.T)
 	cfg, base := yamlServiceConfig(t)
 	cfg.Plugins = []config.Plugin{onlinePlugin(online.Netease, fixture, "7fe223d0-a3bd-5e87-87f8-305dc26d9041", "db019d81-1fbb-528c-a9f7-9c47006844a2"), onlinePlugin(online.QQMusic, qqFixture, "b5e86bbe-524b-53fc-bde9-bbe3cbb02a80"), onlinePlugin(online.AppleMusic, build(t, "musicfs-plugin-applemusic"), "2e2b7962-89d2-5815-9804-0d395497f906")}
 	cfg.Plugins[0].Instances = append(cfg.Plugins[0].Instances, config.Instance{InstanceID: "9d986e6a-04fd-522e-b5b5-eb9f28ac4ce6"})
+	var resolvedID string
 	t.Run("authenticated-source-scope", func(t *testing.T) {
 		startNCMServer(t, cfg, base)
 		c := login(t, base, cfg.AdminToken)
@@ -110,14 +112,17 @@ func TestOnlineActualServerRequiresPlatformLoginAndDisabledRestart(t *testing.T)
 		if !observation.Complete || observation.Consistency != online.Unversioned || len(observation.Entries) != 3 || observation.Entries[0].ExternalTrackID != observation.Entries[1].ExternalTrackID {
 			t.Fatal("playlist occurrences or observation semantics changed")
 		}
-		for _, id := range []string{"7fe223d0-a3bd-5e87-87f8-305dc26d9041", "b5e86bbe-524b-53fc-bde9-bbe3cbb02a80", "2e2b7962-89d2-5815-9804-0d395497f906"} {
+		assertOnlineDoesNotImport(t, c)
+		time.Sleep(1050 * time.Millisecond)
+		resolved := albumRequest[library.Track](t, c, "POST", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/tracks/42/resolve", struct{}{}, "", 200, "SourceTrack")
+		if resolved.ID == "" || resolved.Downloaded || len(resolved.DownloadVersions) > 0 {
+			t.Fatal("resolving a source should register its metadata without downloading audio")
+		}
+		resolvedID = resolved.ID
+		for _, id := range []string{"b5e86bbe-524b-53fc-bde9-bbe3cbb02a80", "2e2b7962-89d2-5815-9804-0d395497f906"} {
 			code, raw, _ := c.request(t, "POST", "/api/v1/online-instances/"+id+"/tracks/42/resolve", struct{}{}, "")
-			want := 403
-			if id == "7fe223d0-a3bd-5e87-87f8-305dc26d9041" {
-				want = 415
-			}
-			if code != want {
-				t.Fatalf("unsupported audio resolve: %d %s", code, raw)
+			if code != 403 {
+				t.Fatalf("unauthenticated audio resolve: %d %s", code, raw)
 			}
 		}
 		code, raw, _ = c.request(t, "POST", "/api/v1/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/account", map[string]string{"action": "logout"}, "")
@@ -128,7 +133,7 @@ func TestOnlineActualServerRequiresPlatformLoginAndDisabledRestart(t *testing.T)
 		if code != 403 {
 			t.Fatalf("query after logout: %d %s", code, raw)
 		}
-		assertOnlineDoesNotImport(t, c)
+		albumRequest[library.Track](t, c, "GET", "/source-tracks/"+resolvedID, nil, "", 200, "SourceTrack")
 	})
 	t.Run("disabled-restart", func(t *testing.T) {
 		for i := range cfg.Plugins {
@@ -140,7 +145,9 @@ func TestOnlineActualServerRequiresPlatformLoginAndDisabledRestart(t *testing.T)
 		if code != 503 {
 			t.Fatalf("disabled provider was used: %d %s", code, raw)
 		}
-		assertOnlineDoesNotImport(t, c)
+		if resolvedID != "" {
+			albumRequest[library.Track](t, c, "GET", "/source-tracks/"+resolvedID, nil, "", 200, "SourceTrack")
+		}
 	})
 }
 

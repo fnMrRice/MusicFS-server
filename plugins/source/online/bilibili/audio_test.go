@@ -38,14 +38,14 @@ func TestOpenAudioDoesNotReadBodyBeforePlayback(t *testing.T) {
 			if r.Method != "GET" || r.Header.Get("Range") != "" || r.Header.Get("Cookie") != "" || r.Header.Get("Authorization") != "" || r.Header.Get("Referer") != "https://www.bilibili.com/" {
 				t.Fatal("unsafe audio request headers")
 			}
-			return &http.Response{StatusCode: 200, Header: http.Header{}, ContentLength: -1, Body: body}, nil
+			return &http.Response{StatusCode: 200, Header: http.Header{"Etag": {`"audio-v1"`}}, ContentLength: -1, Body: body}, nil
 		}
 	})
 	audio, stream, err := c.OpenAudio(context.Background(), "video:BV13x41117TL:101")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if body.reads != 0 || body.closed || audio.SizeBytes != -1 || audio.MIME != "audio/mp4" || audio.Codec != "aac" {
+	if body.reads != 0 || body.closed || len(audio.Version) != 64 || audio.SizeBytes != -1 || audio.MIME != "audio/mp4" || audio.Codec != "aac" {
 		t.Fatal("audio was read or guessed to have stable bytes")
 	}
 	data, err := io.ReadAll(stream)

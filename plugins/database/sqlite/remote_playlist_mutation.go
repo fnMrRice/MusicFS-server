@@ -18,7 +18,7 @@ func saveRemotePlaylist(ctx context.Context, tx *sql.Tx, p *playlists.RemotePlay
 		return err
 	}
 	if insert {
-		_, err = tx.ExecContext(ctx, "INSERT INTO remote_playlists VALUES(?,?,?,?,?,?,?,?)", p.ID, p.Owner, p.InstanceID, p.AccountID, p.ExternalID, p.BindingRevision, p.Revision, raw)
+		_, err = tx.ExecContext(ctx, "INSERT INTO remote_playlists(id,owner,instance_id,account_id,external_id,binding_revision,revision,document) VALUES(?,?,?,?,?,?,?,?)", p.ID, p.Owner, p.InstanceID, p.AccountID, p.ExternalID, p.BindingRevision, p.Revision, raw)
 	} else {
 		_, err = tx.ExecContext(ctx, "UPDATE remote_playlists SET binding_revision=?,revision=?,document=? WHERE owner=? AND id=?", p.BindingRevision, p.Revision, raw, p.Owner, p.ID)
 	}
@@ -47,32 +47,8 @@ func saveRemoteOperation(ctx context.Context, tx *sql.Tx, owner, route, key, dig
 	raw, _ := json.Marshal(id)
 	return saveContentIdempotency(ctx, tx, owner, route, key, digest, raw)
 }
-func (s *Store) ImportRemotePlaylist(ctx context.Context, owner string, b playlists.Binding, key string) (playlists.RemotePlaylist, bool, error) {
+func ensureRemotePlaylist(ctx context.Context, tx *sql.Tx, owner string, b playlists.Binding) (playlists.RemotePlaylist, bool, error) {
 	var empty playlists.RemotePlaylist
-	if err := b.Validate(); err != nil {
-		return empty, false, err
-	}
-	digest, err := playlists.Digest(b)
-	if err != nil {
-		return empty, false, err
-	}
-	tx, err := remoteMutation(ctx, s, owner, key)
-	if err != nil {
-		return empty, false, err
-	}
-	defer tx.Rollback()
-	prior, replay, err := contentIdempotency(ctx, tx, owner, "remote-playlists/import", key, digest)
-	if err != nil {
-		return empty, false, err
-	}
-	if replay {
-		var id string
-		if err = json.Unmarshal(prior, &id); err != nil {
-			return empty, false, err
-		}
-		p, e := readRemotePlaylist(tx.QueryRowContext(ctx, "SELECT owner,document FROM remote_playlists WHERE owner=? AND id=?", owner, id))
-		return p, true, e
-	}
 	// An instance is a persistent source namespace. Reusing its identity for a
 	// different platform cannot reinterpret already imported remote source IDs.
 	var previousInstanceID string
@@ -90,7 +66,7 @@ func (s *Store) ImportRemotePlaylist(ctx context.Context, owner string, b playli
 	}
 	var raw []byte
 	var existsID string
-	err = tx.QueryRowContext(ctx, "SELECT id,document FROM remote_playlists WHERE owner=? AND instance_id=? AND account_id=? AND external_id=?", owner, b.InstanceID, b.AccountID, b.ExternalID).Scan(&existsID, &raw)
+	err := tx.QueryRowContext(ctx, "SELECT id,document FROM remote_playlists WHERE owner=? AND instance_id=? AND account_id=? AND external_id=?", owner, b.InstanceID, b.AccountID, b.ExternalID).Scan(&existsID, &raw)
 	merged := err == nil
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return empty, false, err
@@ -107,10 +83,7 @@ func (s *Store) ImportRemotePlaylist(ctx context.Context, owner string, b playli
 	} else if err = saveRemotePlaylist(ctx, tx, &p, true); err != nil {
 		return empty, false, err
 	}
-	if err = saveRemoteOperation(ctx, tx, owner, "remote-playlists/import", key, digest, p.ID); err != nil {
-		return empty, false, err
-	}
-	return p, merged, tx.Commit()
+	return p, merged, nil
 }
 
 func (s *Store) QueueRemoteSync(ctx context.Context, owner, id string, expected int64, b playlists.Binding, key string) (playlists.SyncJob, bool, error) {
@@ -153,8 +126,24 @@ func (s *Store) QueueRemoteSync(ctx context.Context, owner, id string, expected 
 	if p.BindingRevision != expected || p.RemoteRef != b.RemoteRef || p.Platform != b.Platform {
 		return empty, false, domain.Fail("CONFLICT", "Remote playlist binding changed")
 	}
+	j, merged, err := queueCatalogSync(ctx, tx, &p, b)
+	if err != nil {
+		return empty, false, err
+	}
+	if err = recordCatalogJob(ctx, tx, owner, id, b, j.ID); err != nil {
+		return empty, false, err
+	}
+	if err = saveRemoteOperation(ctx, tx, owner, "remote-playlists/sync", key, digest, j.ID); err != nil {
+		return empty, false, err
+	}
+	return j, merged, tx.Commit()
+}
+
+func queueCatalogSync(ctx context.Context, tx *sql.Tx, p *playlists.RemotePlaylist, b playlists.Binding) (playlists.SyncJob, bool, error) {
+	var empty playlists.SyncJob
+	owner, id := p.Owner, p.ID
 	var activeID string
-	err = tx.QueryRowContext(ctx, "SELECT id FROM remote_sync_jobs WHERE playlist_id=? AND state IN ('queued','running')", id).Scan(&activeID)
+	err := tx.QueryRowContext(ctx, "SELECT id FROM remote_sync_jobs WHERE playlist_id=? AND state IN ('queued','running')", id).Scan(&activeID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return empty, false, err
 	}
@@ -163,10 +152,7 @@ func (s *Store) QueueRemoteSync(ctx context.Context, owner, id string, expected 
 		if e != nil {
 			return empty, false, e
 		}
-		if err = saveRemoteOperation(ctx, tx, owner, "remote-playlists/sync", key, digest, j.ID); err != nil {
-			return empty, false, err
-		}
-		return j, true, tx.Commit()
+		return j, true, nil
 	}
 	if p.ConfigRevision != b.ConfigRevision {
 		if activeID != "" {
@@ -195,11 +181,8 @@ func (s *Store) QueueRemoteSync(ctx context.Context, owner, id string, expected 
 		return empty, false, err
 	}
 	p.Stale = true
-	if err = saveRemotePlaylist(ctx, tx, &p, false); err != nil {
+	if err = saveRemotePlaylist(ctx, tx, p, false); err != nil {
 		return empty, false, err
 	}
-	if err = saveRemoteOperation(ctx, tx, owner, "remote-playlists/sync", key, digest, j.ID); err != nil {
-		return empty, false, err
-	}
-	return j, false, tx.Commit()
+	return j, false, nil
 }

@@ -2,6 +2,8 @@ package bilibili
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"io"
 	"net/http"
 	"net/url"
@@ -177,6 +179,13 @@ func (c *Client) OpenAudio(ctx context.Context, id string) (pluginproto.OnlineAu
 	}
 	audio := audioDescription(id, choice)
 	audio.SizeBytes = size
+	tag := res.Header.Get("ETag")
+	if len(tag) > 2 && len(tag) <= 1024 && tag[0] == '"' && tag[len(tag)-1] == '"' && res.Request != nil {
+		// 强 ETag 仅在对应媒体资源内有效，忽略每次读取变化的签名查询参数。
+		resource := res.Request.URL
+		sum := sha256.Sum256([]byte(resource.Host + "\x00" + resource.EscapedPath() + "\x00" + tag))
+		audio.Version = hex.EncodeToString(sum[:])
+	}
 	if err := audio.Validate(); err != nil {
 		res.Body.Close()
 		return empty, nil, err
@@ -206,6 +215,9 @@ func (c *Client) openCDN(ctx context.Context, raw string) (*http.Response, error
 			return nil, fault.Fail("TEMPORARY_FAILURE", "Bilibili audio request failed")
 		}
 		if res.StatusCode == http.StatusOK {
+			if res.Request == nil {
+				res.Request = req
+			}
 			return res, nil
 		}
 		res.Body.Close()

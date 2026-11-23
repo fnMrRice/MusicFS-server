@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
@@ -34,6 +35,8 @@ type Runtime struct {
 	OpenAudio          func(context.Context, string) (pluginproto.OnlineAudio, io.ReadCloser, error)
 	DescribeAudio      func(context.Context, string) (pluginproto.OnlineAudio, error)
 	AuthorizeAudio     func(context.Context) (*plugincontrol.Gate, error)
+	AudioAccount       func(context.Context) (online.AccountView, <-chan struct{}, error)
+	AudioPluginID      string
 }
 type Probe func(context.Context, io.ReadSeeker, int64) (Observation, error)
 type ProbeSession func(context.Context) (context.Context, Probe, func(), error)

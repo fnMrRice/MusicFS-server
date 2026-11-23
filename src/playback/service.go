@@ -13,6 +13,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/playback/onlinecache"
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/audioruntime"
@@ -61,24 +62,27 @@ type session struct {
 	decoding                []*plugincontrol.Lease
 	unlinkPlugins           []func() bool
 	online, onlineOpened    bool
+	network                 networkInput
 }
 type Service struct {
-	mu        sync.Mutex
-	repo      Repository
-	library   *library.Service
-	processor audioruntime.Processor
-	decoder   audioruntime.Decoder
-	config    Config
-	sessions  map[string]*session
-	garbage   map[string]int64
-	readers   map[string]int
-	budget    *processedcache.Budget
-	cache     *processedcache.Manager
-	ctx       context.Context
-	cancel    context.CancelFunc
-	done      chan struct{}
-	creation  chan struct{}
-	preparing map[string]context.CancelFunc
+	mu            sync.Mutex
+	repo          Repository
+	library       *library.Service
+	processor     audioruntime.Processor
+	decoder       audioruntime.Decoder
+	config        Config
+	sessions      map[string]*session
+	garbage       map[string]int64
+	readers       map[string]int
+	budget        *processedcache.Budget
+	cache         *processedcache.Manager
+	downloads     *onlinecache.Manager
+	downloadTasks sync.WaitGroup
+	ctx           context.Context
+	cancel        context.CancelFunc
+	done          chan struct{}
+	creation      chan struct{}
+	preparing     map[string]context.CancelFunc
 }
 
 func New(ctx context.Context, repo Repository, lib *library.Service, processor audioruntime.Processor, c Config) (*Service, error) {
@@ -117,6 +121,17 @@ func New(ctx context.Context, repo Repository, lib *library.Service, processor a
 			cancel()
 			return nil, err
 		}
+	}
+	if repo, ok := repo.(onlinecache.Repository); ok {
+		s.downloads, err = onlinecache.New(ctx, filepath.Join(dir, "online"), repo)
+		if err != nil {
+			cancel()
+			if s.cache != nil {
+				s.cache.Close()
+			}
+			return nil, err
+		}
+		s.downloadTasks.Go(func() { s.downloads.Run(ctx) })
 	}
 	go s.reap()
 	slog.DebugContext(ctx, "Playback service started", "maxSessions", c.MaxSessions, "maxCacheBytes", c.MaxCacheBytes)
@@ -157,6 +172,7 @@ func (s *Service) collect() {
 func (s *Service) Close() {
 	s.cancel()
 	<-s.done
+	s.downloadTasks.Wait()
 	s.mu.Lock()
 	for id, a := range s.sessions {
 		s.stopLocked(context.Background(), id, a)
