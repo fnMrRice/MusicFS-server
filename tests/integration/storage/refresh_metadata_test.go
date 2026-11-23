@@ -98,6 +98,34 @@ func TestRefreshMetadataReplacesAutomaticContentAndKeepsIdenticalBinding(t *test
 	}
 }
 
+func TestRescanRebindsIdenticalArtworkToNewAsset(t *testing.T) {
+	s, observations, tracks := matchingFixture(t, 1)
+	ctx := t.Context()
+	guard := func(publish func() error) error { return publish() }
+	track := tracks[0]
+	_, initial := refreshPreview(t, s, track, "artwork", "Same cover bytes")
+	before, err := s.ApplyAutomaticEnrichment(ctx, "admin", initial.CandidateID, *initial.PreviewObjectID, 0, domain.NewID(), false, guard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	observations[0].ObservedVersion = "new-audio-version"
+	publishEvidenceTracks(t, s, observations...)
+	updated, err := s.FindTrack(ctx, "admin", track.ID)
+	if err != nil || updated.AssetID == track.AssetID {
+		t.Fatalf("asset was not replaced: %v", err)
+	}
+	_, same := refreshPreview(t, s, updated, "artwork", "Same cover bytes")
+	after, err := s.ApplyAutomaticEnrichment(ctx, "admin", same.CandidateID, *same.PreviewObjectID, before.Revision, domain.NewID(), false, guard)
+	if err != nil || len(after.Bindings) != 1 {
+		t.Fatalf("cover binding was not restored: %v", err)
+	}
+	b := after.Bindings[0]
+	if !b.Current || b.ManualLocked || b.ObjectID != *initial.PreviewObjectID || b.Target.AssetID != updated.AssetID || b.ID == before.Bindings[0].ID {
+		t.Fatalf("original cover was not rebound to the new asset: %+v", b)
+	}
+	expectLibraryCovers(t, s, "admin", map[string]string{track.ID: b.ObjectID})
+}
+
 func TestRefreshMetadataPreservesSourceManualLocks(t *testing.T) {
 	for _, field := range []string{"artwork", "lyrics"} {
 		t.Run(field, func(t *testing.T) {

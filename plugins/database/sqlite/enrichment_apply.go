@@ -94,7 +94,19 @@ func (s *Store) applyEnrichment(ctx context.Context, owner, candidateID, expecte
 	unchanged := false
 	if old != nil {
 		previous = old.ID
-		if automatic && c.Field == "artwork" {
+		rebindCover := automatic && c.Field == "artwork" && !old.Current && old.State == "stale"
+		if rebindCover || (refreshMetadata && old.Current && old.State == "available") {
+			selected, readErr := readContentObject(ctx, m.tx, owner, old.ObjectID)
+			if readErr != nil {
+				return empty, readErr
+			}
+			if selected.SHA256 == object.SHA256 && selected.Size == object.Size && selected.MIME == object.MIME && selected.Metadata.Format == object.Metadata.Format {
+				// 新资产中再次找到同一张图，保留原图片编号及引用它的录音封面偏好。
+				object = selected
+				unchanged = old.Current
+			}
+		}
+		if automatic && c.Field == "artwork" && !(rebindCover && object.ID == old.ObjectID) {
 			var recordingLocked bool
 			err = m.tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM recording_cover_preferences p
  JOIN recording_source_links l ON l.owner=p.owner AND l.recording_id=p.recording_id
@@ -105,13 +117,6 @@ func (s *Store) applyEnrichment(ctx context.Context, owner, candidateID, expecte
 			if recordingLocked {
 				return empty, domain.Fail("CONFLICT", "Automatic content cannot replace a manually selected recording cover")
 			}
-		}
-		if refreshMetadata && old.Current && old.State == "available" {
-			selected, readErr := readContentObject(ctx, m.tx, owner, old.ObjectID)
-			if readErr != nil {
-				return empty, readErr
-			}
-			unchanged = selected.SHA256 == object.SHA256 && selected.Size == object.Size && selected.MIME == object.MIME && selected.Metadata.Format == object.Metadata.Format
 		}
 	}
 	var result mediastore.Selection
@@ -125,7 +130,7 @@ func (s *Store) applyEnrichment(ctx context.Context, owner, candidateID, expecte
 		if unchanged {
 			result, publicationErr = m.finishUnchangedEnrichment(ctx)
 		} else {
-			result, publicationErr = m.selectObject(ctx, mediastore.SelectRequest{Target: target, ExpectedRevision: expected, ObjectID: expectedObjectID, Automatic: automatic}, object, previous)
+			result, publicationErr = m.selectObject(ctx, mediastore.SelectRequest{Target: target, ExpectedRevision: expected, ObjectID: object.ID, Automatic: automatic}, object, previous)
 		}
 		return publicationErr
 	})

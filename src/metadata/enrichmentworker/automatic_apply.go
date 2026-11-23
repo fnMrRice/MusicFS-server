@@ -77,25 +77,28 @@ func (s *Service) applyAutomaticTarget(ctx context.Context, repo enrichment.Auto
 		if err != nil {
 			return err
 		}
-		if w.Reason == "refreshMetadata" {
-			for _, b := range selection.Bindings {
-				if b.Field != a.Field || b.Language != a.Language || b.ManualLocked || !b.Current || b.State != "available" {
-					continue
-				}
-				// 保留现有文件句柄，避免同内容优化沿用丢失或损坏的对象。
-				_, file, openErr := s.content.Open(ctx, w.Owner, b.ObjectID)
-				if openErr == nil {
-					defer file.Close()
-				} else if failureCode(openErr) != "RESOURCE_CHANGED" {
-					return openErr
-				} else {
-					selection, err = s.content.ContentSelection(ctx, w.Owner, w.SourceTrackID)
-					if err != nil {
-						return err
-					}
-				}
+		for _, b := range selection.Bindings {
+			if b.Field != a.Field || b.Language != a.Language || b.ManualLocked {
+				continue
+			}
+			refreshCurrent := w.Reason == "refreshMetadata" && b.Current && b.State == "available"
+			recheckCover := a.Field == "artwork" && !b.Current && b.State == "stale"
+			if !refreshCurrent && !recheckCover {
 				break
 			}
+			// 复用旧图前验证图片正文，并把句柄保留到新绑定提交。
+			_, file, openErr := s.content.Open(ctx, w.Owner, b.ObjectID)
+			if openErr == nil {
+				defer file.Close()
+			} else if failureCode(openErr) != "RESOURCE_CHANGED" {
+				return openErr
+			} else {
+				selection, err = s.content.ContentSelection(ctx, w.Owner, w.SourceTrackID)
+				if err != nil {
+					return err
+				}
+			}
+			break
 		}
 		a.ExpectedRevision = selection.Revision
 		for _, b := range selection.Bindings {
