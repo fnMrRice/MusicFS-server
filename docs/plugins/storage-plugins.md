@@ -64,7 +64,7 @@ Driver 同时提供主库、维护、实例状态初始化 `OpenPluginState` 及
 
 配置预加载、默认目录授权和 Worker 私有状态均调用所选驱动的状态工厂，并传入同一 `dataRoot` 与 `storage.options`。宿主不以 SQLite 文件是否存在决定是否读取；首次读取不存在状态的行为由驱动实现，SQLite 返回 revision=0。进程模式同样传递部署选项，只读预加载不创建状态目录或调用初始化工厂。SQLite 便携备份是明确的导出契约，与运行时状态后端分派相互独立。
 
-`storage.Driver` 必须分别声明 `Version: storage.ContractVersion` 和 `PluginVersion`：前者是整数接口合同版本，后者是最多 128 字符的有效 SemVer 发行版本。注册后端及启动 `rpcbackend.Serve` 时都拒绝缺失、空白或无效发行版本。官方 `sqlite.Driver()` 使用 [sdk/bundledplugin/releases.go](../../sdk/bundledplugin/releases.go) 中的 `SQLiteVersion`，当前为 `0.1.0`；内置后端和独立 Worker 共用这一声明。外部入口将完整 Driver 交给 `rpcbackend.Serve(ctx, os.Stdin, os.Stdout, driver)`，ready 的发行号由 `driver.PluginVersion` 提供，不能用合同整数代替。
+`storage.Driver` 必须分别声明 `Version: storage.ContractVersion` 和 `PluginVersion`：前者是整数接口合同版本，后者是最多 128 字符的有效 SemVer 发行版本。注册后端及启动 `rpcbackend.Serve` 时都拒绝缺失、空白或无效发行版本。官方 `sqlite.Driver()` 使用 [sdk/bundledplugin/releases.go](../../sdk/bundledplugin/releases.go) 中的 `SQLiteVersion`，其构建值可在安装包的 `release.json` 中核对；内置后端和独立 Worker 共用这一声明。外部入口将完整 Driver 交给 `rpcbackend.Serve(ctx, os.Stdin, os.Stdout, driver)`，ready 的发行号由 `driver.PluginVersion` 提供，不能用合同整数代替。
 
 宿主传输适配器自身的 `rpcbackend.Driver().PluginVersion` 当前为 `0.1.0`，仅标识适配器发行版本；实际外部后端版本来自成功握手后的 `Process.PluginVersion()`，两者不可混用。
 

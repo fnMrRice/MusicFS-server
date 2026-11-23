@@ -16,6 +16,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/app/api"
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/core/version"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 
@@ -183,6 +184,12 @@ func TestHealthPanicAndStreamFailure(t *testing.T) {
 	w := httptest.NewRecorder()
 	server.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/health/ready", nil))
 	testkit.ValidateHTTP(t, "Health", w.Body.Bytes())
+	var health struct {
+		ServerVersion string `json:"serverVersion"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &health); err != nil || health.ServerVersion != version.Server {
+		t.Fatalf("invalid server version in health response: %s", w.Body)
+	}
 	server.Handle("GET /api/v1/panic", false, false, func(http.ResponseWriter, *http.Request, auth.Session) error {
 		panic("private panic details")
 	})

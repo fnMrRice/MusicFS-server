@@ -28,7 +28,7 @@ audioDSP:
   plugins: []
 ```
 
-三个效果也接受正式名 `musicfs.dsp.equalizer`、`musicfs.dsp.compressor`、`musicfs.dsp.reverb`；直接写入 `chain`，不要在 `plugins` 中重复注册。短名与正式名均为保留名称，不允许外部程序覆盖。节点版本均为 `1`，当前发行版本均为 `0.1.0`。链最多 15 个配置节点，加用户增益后最多 16 个。
+三个效果也接受正式名 `musicfs.dsp.equalizer`、`musicfs.dsp.compressor`、`musicfs.dsp.reverb`；直接写入 `chain`，不要在 `plugins` 中重复注册。短名与正式名均为保留名称，不允许外部程序覆盖。节点版本均为 `1`，各插件的发行版本见安装包 `release.json`。链最多 15 个配置节点，加用户增益后最多 16 个。
 
 ## 已实现效果
 
@@ -78,7 +78,7 @@ DSP 的新输入输出协商允许声道布局变化，编码封装和采样率�
 
 可移植备份恢复会将声道输出重置为默认 `stereo`，并与原有策略一起停用音频实例、清除处理缓存；恢复后须重新确认工具与布局配置，避免在未配置音频实例时强制环绕声。
 
-FFmpeg Worker 当前为 `0.7.0`，Host 精确校验发行版本。HTTP `outputProfile` 和 `effectiveProcessing` 报告实际输出与处理顺序，码率身份规则见[音频处理](../playback/audio-processing.md)。客户端必须正确协商 MIME。Web 已探测 Opus/WebM；本次没有承诺所有浏览器与音响设备均能输出物理环绕声。
+Host 精确校验 FFmpeg Worker 的发行版本，安装包的 `release.json` 记录配套版本。HTTP `outputProfile` 和 `effectiveProcessing` 报告实际输出与处理顺序，码率身份规则见[音频处理](../playback/audio-processing.md)。客户端必须正确协商 MIME。Web 已探测 Opus/WebM；本次没有承诺所有浏览器与音响设备均能输出物理环绕声。
 
 外部 MFD1 DSP v1 保持无状态、固定双声道、零延迟、无追加尾音的原约束，多声道管线拒绝使用这些外部节点。内置新效果直接调用 Go 接口，不把其有状态、多声道能力冒充成 MFD1 v1 的扩展。原官方 gain 在多声道管线使用同一内置增益工厂。
 

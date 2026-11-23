@@ -7,7 +7,6 @@ import (
 	"path"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 )
 
@@ -19,8 +18,9 @@ type plugin struct {
 }
 
 type catalog struct {
-	Groups  map[string][]string
-	Plugins map[string]plugin
+	VersionPolicy string
+	Groups        map[string][]string
+	Plugins       map[string]plugin
 }
 
 var semver = regexp.MustCompile(`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
@@ -30,8 +30,11 @@ func parseCatalog(data []byte) (catalog, error) {
 	if err := json.Unmarshal(data, &c); err != nil {
 		return c, err
 	}
+	if c.VersionPolicy != "" && c.VersionPolicy != conventionalCommits {
+		return c, fmt.Errorf("unknown plugin version policy %q", c.VersionPolicy)
+	}
 	for id, p := range c.Plugins {
-		if !semver.MatchString(p.Version) || len(p.Sources) == 0 {
+		if !semver.MatchString(p.Version) || len(p.Sources) == 0 || (c.VersionPolicy == conventionalCommits && !strings.HasPrefix(p.Version, "0.")) {
 			return c, fmt.Errorf("invalid release declaration for %s", id)
 		}
 		rules, err := c.expand(p.Sources, nil)
@@ -93,32 +96,33 @@ func (p plugin) owns(name string) bool {
 	return false
 }
 
-func (c catalog) owners(name string, affected map[string]bool) bool {
+func (c catalog) owners(name string, affected map[string]increment, bump increment) bool {
 	found := false
 	for id, p := range c.Plugins {
 		if p.owns(name) {
 			if affected == nil {
 				return true
 			}
-			affected[id], found = true, true
+			affected[id], found = max(affected[id], bump), true
 		}
 	}
 	return found
 }
 
 // 新插件或显式重设的基准版本从声明值开始，该提交的多个文件只递增一次。
-func advance(current map[string]string, before, after, working catalog, files []string) error {
-	affected := map[string]bool{}
+func advance(current map[string]string, before, after, declared catalog, files []string, update changes) error {
+	affected := map[string]increment{}
 	for _, file := range files {
+		change := update.forFile(file)
 		name, ok := implementation(file)
-		if !ok {
+		if !ok || change == unchanged {
 			continue
 		}
-		oldOwner := before.owners(name, affected)
-		newOwner := after.owners(name, affected)
+		oldOwner := before.owners(name, affected, change)
+		newOwner := after.owners(name, affected, change)
 		// 允许后续提交补登记遗漏的归属，历史更新仍按原提交计数。
 		if !oldOwner && !newOwner {
-			working.owners(name, affected)
+			declared.owners(name, affected, change)
 		}
 	}
 	for id := range current {
@@ -131,15 +135,14 @@ func advance(current map[string]string, before, after, working catalog, files []
 			current[id] = p.Version
 			continue
 		}
-		if !affected[id] {
+		if affected[id] == unchanged {
 			continue
 		}
-		parts := strings.Split(current[id], ".")
-		minor, err := strconv.ParseUint(parts[1], 10, 63)
+		version, err := affected[id].apply(current[id])
 		if err != nil {
-			return fmt.Errorf("invalid minor version for %s: %w", id, err)
+			return fmt.Errorf("advance plugin version for %s: %w", id, err)
 		}
-		current[id] = fmt.Sprintf("%s.%d.0", parts[0], minor+1)
+		current[id] = version
 	}
 	return nil
 }

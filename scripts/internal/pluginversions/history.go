@@ -40,7 +40,7 @@ func (r repository) validateSources(working catalog) error {
 	}
 	for file := range strings.SplitSeq(list, "\x00") {
 		name, ok := implementation(file)
-		if !ok || working.owners(name, nil) {
+		if !ok || working.owners(name, nil, unchanged) {
 			continue
 		}
 		// ls-files 还会列出已在工作树删除但尚未暂存的文件。
@@ -55,7 +55,7 @@ func (r repository) validateSources(working catalog) error {
 }
 
 // Resolve 沿第一父提交统计每次进入当前分支的插件更新，合并提交计一次。
-// 工作树相对于 HEAD 的合计改动同样只计一次，构建不会写入版本文件。
+// 采用提交分类策略后只计算已提交的改动，构建不会写入版本文件。
 func Resolve(root string) (map[string]string, error) {
 	r := repository(root)
 	raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(manifestPath)))
@@ -78,6 +78,7 @@ func Resolve(root string) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	var boundaries []string
 	if strings.TrimSpace(shallow) == "true" {
 		name, err := r.git("rev-parse", "--path-format=absolute", "--git-path", "shallow")
 		if err != nil {
@@ -87,58 +88,55 @@ func Resolve(root string) (map[string]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		if base == "" || slices.Contains(strings.Fields(string(boundary)), base) {
+		boundaries = strings.Fields(string(boundary))
+		if base == "" || slices.Contains(boundaries, base) {
 			return nil, fmt.Errorf("plugin version history is incomplete; fetch history through the release declaration commit")
 		}
 	}
 	versions := map[string]string{}
 	// 首次引入版本声明时按初始值交付，不将此前的实现历史重复计入版本。
 	if base == "" {
-		return versions, advance(versions, catalog{}, working, working, nil)
+		return versions, advance(versions, catalog{}, working, working, nil, changes{})
+	}
+	declared, err := r.catalogAt("HEAD")
+	if err != nil {
+		return nil, err
 	}
 	previous, err := r.catalogAt(base)
 	if err != nil {
 		return nil, err
 	}
-	if err = advance(versions, catalog{}, previous, working, nil); err != nil {
+	if err = advance(versions, catalog{}, previous, declared, nil, changes{}); err != nil {
 		return nil, err
 	}
-	history, err := r.git("log", "--reverse", "--first-parent", "--diff-merges=first-parent", "--no-renames", "--format=%x00rev:%H%x00", "--name-only", "-z", base+"..HEAD", "--", "plugins", manifestPath)
+	history, err := r.commitHistory([]string{base + "..HEAD"})
 	if err != nil {
 		return nil, err
 	}
-	var revision string
-	var files []string
-	process := func() error {
+	for entry := range history {
 		next := previous
-		if slices.Contains(files, manifestPath) {
-			var err error
-			next, err = r.catalogAt(revision)
+		if slices.Contains(entry.files, manifestPath) {
+			next, err = r.catalogAt(entry.revision)
 			if err != nil {
-				return err
-			}
-		}
-		err := advance(versions, previous, next, working, files)
-		previous = next
-		return err
-	}
-	for token := range strings.SplitSeq(history, "\x00") {
-		token = strings.TrimPrefix(token, "\n")
-		if token == "" {
-			continue
-		}
-		if rev, header := strings.CutPrefix(token, "rev:"); header {
-			if err := process(); err != nil {
 				return nil, err
 			}
-			revision, files = rev, nil
-		} else {
-			files = append(files, token)
 		}
+		change := changes{bump: minor}
+		if next.VersionPolicy == conventionalCommits {
+			change, err = r.commitChanges(entry, boundaries)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if err := advance(versions, previous, next, declared, entry.files, change); err != nil {
+			return nil, err
+		}
+		previous = next
 	}
-	if err := process(); err != nil {
-		return nil, err
+	if declared.VersionPolicy == conventionalCommits || working.VersionPolicy == conventionalCommits {
+		return versions, nil
 	}
+	// 旧声明的开发构建将工作区相对 HEAD 的整体差异视为一次预览更新。
 	tracked, err := r.git("diff", "HEAD", "--name-only", "--no-renames", "-z", "--", "plugins")
 	if err != nil {
 		return nil, err
@@ -147,7 +145,7 @@ func Resolve(root string) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return versions, advance(versions, previous, working, working, strings.Split(tracked+untracked, "\x00"))
+	return versions, advance(versions, previous, working, working, strings.Split(tracked+untracked, "\x00"), changes{bump: minor})
 }
 
 // LinkFlags 将同一份版本结果用于宿主、统一 worker 和独立插件程序。

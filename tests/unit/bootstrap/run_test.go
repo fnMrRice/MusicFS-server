@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"flag"
-	"github.com/fnMrRice/MusicFS-server/src/app/bootstrap"
 	"strings"
 	"testing"
+
+	"github.com/fnMrRice/MusicFS-server/src/app/bootstrap"
+	"github.com/fnMrRice/MusicFS-server/src/core/version"
 )
 
 func TestCompositionBoundary(t *testing.T) {
@@ -14,8 +16,8 @@ func TestCompositionBoundary(t *testing.T) {
 	if err := bootstrap.Run([]string{"--version"}, &output); err != nil {
 		t.Fatal(err)
 	}
-	if output.Len() == 0 {
-		t.Fatal("missing startup output")
+	if want := "MusicFS Server " + version.Server + " (API v" + bootstrap.APIVersion + ")\n"; output.String() != want {
+		t.Fatalf("version output = %q, want %q", output.String(), want)
 	}
 }
 

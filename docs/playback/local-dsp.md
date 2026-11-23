@@ -12,4 +12,4 @@ Web 创建播放会话时提交 `preferences.dspExecution: client`，播放响�
 
 省略请求执行归属时按 `server`，但部署禁用仍优先。更新代码和配置后需部署新版并重启；不会修改已运行旧服务或现有数据。
 
-音频 Worker 使用 `disableEffects` 与 `disableChannelMix` 请求字段，官方实现版本为 `0.7.0`；宿主拒绝旧 Worker，避免旧实现忽略旁路指令。HTTP 请求无需新增字段。见 [HTTP 契约](../contracts/http.schema.json)、[音频插件协议](../contracts/plugins/v1/protocol.schema.json)。
+音频 Worker 使用 `disableEffects` 与 `disableChannelMix` 请求字段，其官方实现版本见安装包 `release.json`；宿主拒绝旧 Worker，避免旧实现忽略旁路指令。HTTP 请求无需新增字段。见 [HTTP 契约](../contracts/http.schema.json)、[音频插件协议](../contracts/plugins/v1/protocol.schema.json)。
