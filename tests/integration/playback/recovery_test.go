@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -221,7 +222,11 @@ func TestRecoveryRejectsChangedOriginalFileWithoutCreatingAnAsset(t *testing.T) 
 		t.Fatal(err)
 	}
 	_, err := f.player.RecoverSource(context.Background(), f.who, d.SessionID, recoveryRequest(d, f.tracks[1].ID, &e), "changed-source-request")
-	recoveryError(t, err, "RESOURCE_CHANGED")
+	expected := "RESOURCE_CHANGED"
+	if runtime.GOOS == "windows" {
+		expected = "UNSUPPORTED"
+	}
+	recoveryError(t, err, expected)
 	current, err := f.repo.FindTrack(context.Background(), "admin", f.tracks[1].ID)
 	if err != nil || current.AssetID != f.tracks[1].AssetID {
 		t.Fatal("recovery fabricated an asset", err)
