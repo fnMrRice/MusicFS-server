@@ -50,6 +50,7 @@ QQ 和 Apple 对应 `musicfs.plugin.source.qqmusic`、`musicfs.plugin.source.app
 | GET `/online-instances/{id}/artists/{externalId}/tracks` | limit默认20、1—50；可选cursor | `kind=tracks`的页，固定上游hot排序，不固定远端快照 |
 | POST `/online-instances/{id}/tracks/lookup` | `externalIds` 数组，1—50项；允许Origin和CSRF，无幂等键 | 保持输入顺序与重复，缺失逐项`NOT_FOUND`；只使用一次上游批量详情请求 |
 | GET `/online-instances/{id}/recommendations` | limit默认20、1—50 | 公共歌单推荐、观测时间和120秒有效期；`personalized=false,nextCursor=null` |
+| GET `/online-instances/{id}/daily-songs` | limit 默认 50，范围 1—50 | 当前已校验账号的每日推荐歌曲，按平台顺序返回 |
 | GET `/online-instances/{id}/playlists/{externalId}` | 可访问的歌单编号，含网易云当前账号自建的私密歌单 | 条目、`complete/consistency/metadataDigest/observedAt` |
 | GET `/online-instances/{id}/playlists/{externalId}/tracks` | limit默认20、1—50；可选cursor | 位置、来源ID、标题／歌手／时长等资料，缺失项保留；每页一次歌单观测和一次批量详情请求 |
 | POST `/source-refs/lookup` | `sources` 是1—50项个人歌单`SourceRef`；允许Origin和CSRF，无幂等键 | 本地`SourceTrack`或远程来源及资料；顺序、重复和单项错误保留，不遍历整个曲库 |

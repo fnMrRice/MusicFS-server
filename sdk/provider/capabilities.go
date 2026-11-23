@@ -30,6 +30,8 @@ func methodCapability(method string) string {
 		return "playlist.addTracks"
 	case "provider.online.recommendations":
 		return "recommendations.playlists"
+	case "provider.online.dailySongs":
+		return "recommendations.tracks"
 	default:
 		// Search selects its capability after decoding the search kind.
 		// Account and descriptor methods are always available control messages.

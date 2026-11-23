@@ -57,6 +57,9 @@ func (UnimplementedClient) Playlists(context.Context, online.PlaylistsRequest) (
 func (UnimplementedClient) PublicRecommendations(context.Context, int) (online.RecommendationPage, error) {
 	return online.RecommendationPage{}, unsupported()
 }
+func (UnimplementedClient) DailySongs(context.Context, int) (online.DailySongsPage, error) {
+	return online.DailySongsPage{}, unsupported()
+}
 func unsupported() error {
 	return pluginproto.Failure("UNSUPPORTED", "This capability is not implemented by this plugin")
 }

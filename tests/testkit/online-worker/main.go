@@ -64,6 +64,8 @@ func (fixture) RoundTrip(r *http.Request) (*http.Response, error) {
 		body = `{"code":200,"songs":[{"id":42,"name":"Synthetic","ar":[],"al":{"name":"Album"},"dt":120000}]}`
 	case "/api/personalized/playlist":
 		body = `{"code":200,"result":[{"id":91,"name":"Synthetic","copywriter":"Public","trackCount":3}]}`
+	case "/api/v3/discovery/recommend/songs":
+		body = `{"code":200,"data":{"dailySongs":[{"id":42,"name":"Daily song","ar":[],"al":{"name":"Album"},"dt":120000}]}}`
 	case "/api/user/playlist":
 		if r.URL.Query().Get("uid") != "12345" {
 			return nil, fmt.Errorf("account playlist request used an unexpected account")

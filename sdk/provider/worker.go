@@ -224,13 +224,18 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 			}
 			return true, writer.AddPlaylistTrack(ctx, r.PlaylistTrackAddition)
 		}
-	case "provider.online.recommendations":
+	case "provider.online.recommendations", "provider.online.dailySongs":
 		var r pluginproto.OnlineRecommendations
 		if err = pluginproto.DecodeOnline(raw, &r); err != nil {
 			return nil, err
 		}
 		scope = r.Context
-		run = func(ctx context.Context) (any, error) { return client.PublicRecommendations(ctx, r.Limit) }
+		run = func(ctx context.Context) (any, error) {
+			if method == "provider.online.dailySongs" {
+				return client.DailySongs(ctx, r.Limit)
+			}
+			return client.PublicRecommendations(ctx, r.Limit)
+		}
 	default:
 		return nil, pluginproto.Failure("UNSUPPORTED", "Unknown online provider method")
 	}

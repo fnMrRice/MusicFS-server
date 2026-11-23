@@ -1,6 +1,12 @@
 # 按来源读取推荐
 
-推荐页按[在线来源](../providers/online.md)分组展示歌单。网易云使用当前实例已校验的平台账号读取公共推荐第一页，返回 `personalized=false`、`nextCursor=null`。QQ 和 Apple Music 暂未实现推荐。
+推荐页展示来源提供的每日推荐歌曲和推荐歌单。网易云使用当前实例已校验的平台账号读取当天的歌曲，也支持公共推荐歌单。QQ 和 Apple Music 暂未实现推荐。
+
+## 每日推荐歌曲
+
+声明 `recommendations.tracks` 的实例通过 `GET /api/v1/online-instances/{id}/daily-songs` 返回当前账号的每日推荐歌曲。`limit` 默认为 50，取值 1 至 50。`tracks` 保留平台顺序，`observedAt` 是读取时间。Web 在当前推荐页展示歌曲。推荐歌单的历史页只展示当时保存的歌单。
+
+网易云插件通过已校验的账号会话读取 `/api/v3/discovery/recommend/songs` 的 `data.dailySongs`。接口依据见 [api-enhanced 的 recommend_songs.js](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced/blob/2db6684453297ee86dec0492842f2320b08182d9/module/recommend_songs.js)。
 
 ## 接口与来源状态
 
@@ -33,6 +39,6 @@
 
 ## 当前边界
 
-推荐可见不代表曲目可播放，音频解析仍不支持。个性化推荐尚未实现；真实账号授权、失效及双账号隔离尚未完成平台验收，合成响应不能代替实号证据。
+网易云公共歌单推荐返回 `personalized=false`、`nextCursor=null`。曲目能否播放取决于来源的播放能力。
 
 公开接口见 [OpenAPI](../contracts/openapi.yaml)及 [HTTP Schema](../contracts/http.schema.json)。

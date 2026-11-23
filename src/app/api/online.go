@@ -88,6 +88,21 @@ func (s *Server) RegisterOnline(service *onlinehost.Service) {
 		}
 		return WriteJSON(w, http.StatusOK, page)
 	})
+	s.Handle("GET /api/v1/online-instances/{id}/daily-songs", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
+		query, err := onlineQuery(r, "limit")
+		if err != nil {
+			return err
+		}
+		limit, err := onlineLimitOr(query, online.MaxPageItems)
+		if err != nil {
+			return err
+		}
+		page, err := service.DailySongs(r.Context(), session.User.ID, r.PathValue("id"), limit)
+		if err != nil {
+			return err
+		}
+		return WriteJSON(w, http.StatusOK, page)
+	})
 	s.Handle("POST /api/v1/online-instances/{id}/tracks/{externalId}/resolve", true, true, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		if _, err := onlineQuery(r); err != nil {
 			return err
@@ -122,8 +137,12 @@ func onlineQuery(r *http.Request, allowed ...string) (url.Values, error) {
 }
 
 func onlineLimit(q url.Values) (int, error) {
+	return onlineLimitOr(q, 20)
+}
+
+func onlineLimitOr(q url.Values, defaultLimit int) (int, error) {
 	if _, present := q["limit"]; !present {
-		return 20, nil
+		return defaultLimit, nil
 	}
 	limit, err := strconv.Atoi(q.Get("limit"))
 	if err != nil || limit < 1 || limit > online.MaxPageItems || strconv.Itoa(limit) != q.Get("limit") {

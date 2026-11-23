@@ -3,6 +3,7 @@ package api_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -43,6 +44,12 @@ func (onlineTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 		raw = `{"code":200,"songs":[{"id":42,"name":"Synthetic","ar":[],"al":{"name":"Album"},"dt":120000}]}`
 	case "/api/personalized/playlist":
 		raw = `{"code":200,"result":[{"id":91,"name":"Synthetic","copywriter":"Public","trackCount":3}]}`
+	case "/api/v3/discovery/recommend/songs":
+		songs := make([]string, online.MaxPageItems)
+		for i := range songs {
+			songs[i] = fmt.Sprintf(`{"id":%d,"name":"Daily track","ar":[],"al":{"name":"Album"},"dt":120000}`, i+1)
+		}
+		raw = `{"code":200,"data":{"dailySongs":[` + strings.Join(songs, ",") + `]}}`
 	case "/api/user/playlist":
 		raw = `{"code":200,"more":false,"playlist":[{"id":91,"name":"Account playlist","trackCount":3}]}`
 	case "/api/v6/playlist/detail":
@@ -134,6 +141,12 @@ func TestOnlineHTTPPrivateAuthenticatedMetadataAndErrors(t *testing.T) {
 		{"/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/search?q=", 400},
 		{"/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/tracks/42?accountId=private", 400},
 		{"/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/recommendations?cursor=invalid", 400},
+		{"/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/daily-songs?limit=0", 400},
+		{"/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/daily-songs?limit=51", 400},
+		{"/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/daily-songs?limit=1&limit=2", 400},
+		{"/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/daily-songs?accountId=other", 400},
+		{"/online-instances/843558e1-a158-56ac-834a-baffd12bb5c5/daily-songs", 404},
+		{"/online-instances/b5e86bbe-524b-53fc-bde9-bbe3cbb02a80/daily-songs", 403},
 	} {
 		w = request("GET", tc.path, "", true, nil)
 		if w.Code != tc.code {
@@ -144,13 +157,28 @@ func TestOnlineHTTPPrivateAuthenticatedMetadataAndErrors(t *testing.T) {
 			t.Fatal("rate limit lost retry hint")
 		}
 	}
-	for _, tc := range []struct{ path, schema string }{{"/tracks/42", "OnlineTrack"}, {"/recommendations?limit=1", "OnlineRecommendationPage"}, {"/playlists/91", "OnlineObservation"}} {
+	for _, tc := range []struct {
+		path, schema string
+		dailyTracks  int
+	}{
+		{"/tracks/42", "OnlineTrack", 0},
+		{"/recommendations?limit=1", "OnlineRecommendationPage", 0},
+		{"/playlists/91", "OnlineObservation", 0},
+		{"/daily-songs", "OnlineDailySongsPage", online.MaxPageItems},
+		{"/daily-songs?limit=2", "OnlineDailySongsPage", 2},
+	} {
 		time.Sleep(1050 * time.Millisecond)
 		w = request("GET", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041"+tc.path, "", true, nil)
 		if w.Code != 200 {
 			t.Fatalf("online read: %d %s", w.Code, w.Body.String())
 		}
 		testkit.ValidateHTTP(t, tc.schema, w.Body.Bytes())
+		if tc.dailyTracks > 0 {
+			var daily online.DailySongsPage
+			if err := json.Unmarshal(w.Body.Bytes(), &daily); err != nil || len(daily.Tracks) != tc.dailyTracks || daily.ObservedAt.IsZero() || daily.Tracks[0].ExternalID != "1" || daily.Tracks[1].ExternalID != "2" {
+				t.Fatalf("invalid daily song page, want %d ordered tracks: %v", tc.dailyTracks, err)
+			}
+		}
 		if tc.schema == "OnlineObservation" {
 			var observation online.PlaylistObservation
 			if json.Unmarshal(w.Body.Bytes(), &observation) != nil || !observation.Complete || len(observation.Entries) != 3 || observation.Entries[0].ExternalTrackID != observation.Entries[1].ExternalTrackID {
@@ -165,6 +193,7 @@ func TestOnlineHTTPPrivateAuthenticatedMetadataAndErrors(t *testing.T) {
 		code               int
 	}{
 		{"GET", "/online-instances", "", false, nil, 401},
+		{"GET", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/daily-songs", "", false, nil, 401},
 		{"POST", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/tracks/42/resolve", "{}", true, nil, 415},
 		{"POST", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/tracks/42/resolve", `{"url":"private"}`, true, nil, 400},
 		{"POST", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/tracks/42/resolve", "{}", true, func(r *http.Request) { r.Header.Del("X-CSRF-Token") }, 403},

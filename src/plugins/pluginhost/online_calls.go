@@ -149,6 +149,21 @@ func (w *OnlineWorker) PublicRecommendations(ctx context.Context, limit int) (on
 	return page, nil
 }
 
+func (w *OnlineWorker) DailySongs(ctx context.Context, limit int) (online.DailySongsPage, error) {
+	scope, err := w.newScope(ctx)
+	if err != nil {
+		return online.DailySongsPage{}, err
+	}
+	page, err := onlineCall[online.DailySongsPage](ctx, w, "provider.online.dailySongs", scope, pluginproto.OnlineRecommendations{Context: scope, Limit: limit})
+	if err == nil {
+		err = online.ValidateDailySongs(w.descriptor.Resources, page, limit)
+	}
+	if err != nil {
+		return online.DailySongsPage{}, err
+	}
+	return page, nil
+}
+
 func (w *OnlineWorker) Resolve(ctx context.Context, id string) error {
 	_, err := w.DescribeAudio(ctx, id)
 	return err

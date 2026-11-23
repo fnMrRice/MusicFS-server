@@ -64,6 +64,8 @@ func TestActualOnlineWorkerMappingScopeAndCleanup(t *testing.T) {
 	path := onlineBinary(t, "./tests/testkit/online-worker", "online-fixture")
 	cfg := onlineConfig(t, path, online.Netease)
 	w := onlineStart(t, cfg)
+	_, err := w.DailySongs(context.Background(), 1)
+	onlineExpect(t, err, "PLATFORM_AUTH_REQUIRED")
 	loginOnlineFixture(t, w)
 	page, err := w.Search(context.Background(), online.SearchRequest{Query: "fixture", Limit: 1})
 	if err != nil || len(page.Tracks) != 1 || page.Tracks[0].ExternalID != "42" {
@@ -78,6 +80,11 @@ func TestActualOnlineWorkerMappingScopeAndCleanup(t *testing.T) {
 	recs, err := w.PublicRecommendations(context.Background(), 1)
 	if err != nil || len(recs.Items) != 1 || recs.Personalized {
 		t.Fatalf("recommendations: %+v %v", recs, err)
+	}
+	time.Sleep(1010 * time.Millisecond)
+	daily, err := w.DailySongs(context.Background(), 1)
+	if err != nil || len(daily.Tracks) != 1 || daily.Tracks[0].ExternalID != "42" || daily.ObservedAt.IsZero() {
+		t.Fatalf("daily songs: %+v %v", daily, err)
 	}
 	time.Sleep(1010 * time.Millisecond)
 	playlist, err := w.ObservePlaylist(context.Background(), "91")

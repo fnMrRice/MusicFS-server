@@ -87,8 +87,9 @@ for name,prefix in [('docs/contracts/plugins/v1/online.schema.json',''),('docs/c
             value['properties']['configDefaults']={'type':'object'}
         if key=='Manifest':
             value.pop('allOf',None)
-            value['properties']['capabilities']['maxItems']=18
-            value['properties']['capabilities']['items']['enum']=parsed['$defs']['Capability']['properties']['name']['enum']
+            capabilities = parsed['$defs']['Capability']['properties']['name']['enum']
+            value['properties']['capabilities']['maxItems'] = len(capabilities)
+            value['properties']['capabilities']['items']['enum'] = capabilities
         if key=='Request':
             base=json.loads(json.dumps(value['oneOf'][1]))
             base['properties']['method']={'const':'provider.online.accountOptions'}

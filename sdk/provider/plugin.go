@@ -27,6 +27,7 @@ type Client interface {
 	PlaylistTracks(context.Context, online.PlaylistTracksRequest) (online.PlaylistTracksPage, error)
 	Playlists(context.Context, online.PlaylistsRequest) (online.PlaylistsPage, error)
 	PublicRecommendations(context.Context, int) (online.RecommendationPage, error)
+	DailySongs(context.Context, int) (online.DailySongsPage, error)
 }
 
 // Factory creates an account-isolated client after a validated host handshake.

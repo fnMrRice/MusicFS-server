@@ -52,6 +52,7 @@ type Driver interface {
 	Playlists(context.Context, online.PlaylistsRequest) (online.PlaylistsPage, error)
 	AddPlaylistTrack(context.Context, online.PlaylistTrackAddition) error
 	PublicRecommendations(context.Context, int) (online.RecommendationPage, error)
+	DailySongs(context.Context, int) (online.DailySongsPage, error)
 }
 
 type Factory func(Runtime) Driver

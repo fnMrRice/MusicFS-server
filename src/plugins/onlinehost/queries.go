@@ -52,3 +52,18 @@ func (s *Service) PublicRecommendations(ctx context.Context, owner, id string, l
 		return r.Provider.PublicRecommendations(ctx, limit)
 	})
 }
+
+func (s *Service) DailySongs(ctx context.Context, owner, id string, limit int) (online.DailySongsPage, error) {
+	if limit < 1 || limit > online.MaxPageItems {
+		return online.DailySongsPage{}, domain.Fail("INVALID_ARGUMENT", "Invalid daily song limit")
+	}
+	return call(ctx, s, owner, id, func(ctx context.Context, r Runtime) (online.DailySongsPage, error) {
+		provider, ok := r.Provider.(interface {
+			DailySongs(context.Context, int) (online.DailySongsPage, error)
+		})
+		if !ok {
+			return online.DailySongsPage{}, domain.Fail("UNSUPPORTED", "Provider does not support daily song recommendations")
+		}
+		return provider.DailySongs(ctx, limit)
+	})
+}

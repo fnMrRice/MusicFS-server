@@ -50,6 +50,8 @@ func (w *OnlineWorker) requireOnlineCapability(method string, request any) error
 		capability = "playlist.addTracks"
 	case "provider.online.recommendations":
 		capability = "recommendations.playlists"
+	case "provider.online.dailySongs":
+		capability = "recommendations.tracks"
 	}
 	for _, declaration := range w.descriptor.Capabilities {
 		if declaration.Name == capability && declaration.Supported {

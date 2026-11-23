@@ -27,6 +27,7 @@ func TestAllOnlineOperationsRejectAnonymousWithoutNetwork(t *testing.T) {
 					return e
 				},
 				func() error { _, e := c.PublicRecommendations(ctx, 1); return e },
+				func() error { _, e := c.DailySongs(ctx, 1); return e },
 				func() error { _, e := c.Album(ctx, "42"); return e },
 				func() error { _, e := c.Artist(ctx, "42"); return e },
 				func() error {

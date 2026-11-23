@@ -81,6 +81,11 @@ func (c *Client) PublicRecommendations(ctx context.Context, n int) (Recommendati
 		return c.driver.PublicRecommendations(ctx, n)
 	})
 }
+func (c *Client) DailySongs(ctx context.Context, limit int) (online.DailySongsPage, error) {
+	return authorized(ctx, c, func(ctx context.Context) (online.DailySongsPage, error) {
+		return c.driver.DailySongs(ctx, limit)
+	})
+}
 func (c *Client) Album(ctx context.Context, id string) (Album, error) {
 	return authorized(ctx, c, func(ctx context.Context) (Album, error) { return c.driver.Album(ctx, id) })
 }
