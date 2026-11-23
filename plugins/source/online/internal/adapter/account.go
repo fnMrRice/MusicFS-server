@@ -16,15 +16,16 @@ import (
 )
 
 type accountState struct {
-	revoked  atomic.Bool
-	active   atomic.Pointer[context.CancelFunc]
-	canceled atomic.Pointer[string]
-	mu       sync.Mutex
-	view     AccountView
-	secret   accountSecret
-	pending  accountSecret
-	key      string
-	next     time.Time
+	revoked          atomic.Bool
+	active           atomic.Pointer[context.CancelFunc]
+	canceled         atomic.Pointer[string]
+	mu               sync.Mutex
+	view             AccountView
+	secret           accountSecret
+	pending          accountSecret
+	key              string
+	next             time.Time
+	waitAfterRestore bool
 }
 type accountSecret = session.Secret
 
@@ -163,6 +164,7 @@ func (c *Client) Account(ctx context.Context, r AccountRequest) (result AccountR
 				return AccountResult{}, err
 			}
 		} else {
+			a.waitAfterRestore = c.platform == Netease && a.view.State == "unverified"
 			a.view = c.savedAccountView()
 			a.view.State = "signedIn"
 			a.view.Revision = revision

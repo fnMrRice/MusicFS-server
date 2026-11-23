@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
@@ -20,9 +21,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 
-type fixture struct{}
+type fixture struct {
+	accountRead atomic.Bool
+}
 
-func (fixture) RoundTrip(r *http.Request) (*http.Response, error) {
+func (f *fixture) RoundTrip(r *http.Request) (*http.Response, error) {
 	if strings.HasPrefix(r.URL.Path, "/eapi/") && !strings.Contains(r.URL.Path, "/login/") && r.URL.Path != "/eapi/nuser/account/get" {
 		var err error
 		r, err = testkit.DecodeNeteaseFixture(r)
@@ -42,7 +45,15 @@ func (fixture) RoundTrip(r *http.Request) (*http.Response, error) {
 	case "/eapi/login/qrcode/client/login":
 		return &http.Response{StatusCode: 200, Header: http.Header{"Set-Cookie": []string{"MUSIC_U=fixture-account-token; Secure"}}, Body: io.NopCloser(strings.NewReader(`{"code":803}`))}, nil
 	case "/eapi/nuser/account/get":
-		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"code":200,"profile":{"userId":12345,"nickname":"Fixture listener","avatarUrl":"http://p2.music.126.net/fixture/avatar.jpg"}}`))}, nil
+		body = `{"code":200,"profile":{"userId":12345,"nickname":"Fixture listener","avatarUrl":"http://p2.music.126.net/fixture/avatar.jpg"}}`
+		if len(os.Args) == 2 && !f.accountRead.Swap(true) {
+			switch os.Args[1] {
+			case "account-offline":
+				status = http.StatusServiceUnavailable
+			case "account-expired":
+				status = http.StatusUnauthorized
+			}
+		}
 	case "/api/search/get":
 		switch r.URL.Query().Get("type") {
 		case "10":
@@ -89,7 +100,7 @@ func main() {
 	if strings.Contains(name, "qqfixture") {
 		platform = online.QQMusic
 	}
-	_ = onlineplugins.Serve(context.Background(), platform, os.Stdin, os.Stdout, fixture{})
+	_ = onlineplugins.Serve(context.Background(), platform, os.Stdin, os.Stdout, &fixture{})
 }
 
 func badWorker(mode string) {

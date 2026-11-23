@@ -23,7 +23,9 @@ func (w *OnlineWorker) initializeAccount(ctx context.Context) error {
 		return domain.Fail("TEMPORARY_FAILURE", "Platform credential store cannot be read")
 	}
 	if len(secret) > 0 {
-		_, err = w.accountCall(ctx, online.AccountRequest{Action: "restore", Secret: secret})
+		var restored online.AccountResult
+		restored, err = w.accountCall(ctx, online.AccountRequest{Action: "restore", Secret: secret})
+		w.restorePending.Store(w.config.Platform == online.Netease && restored.View.State == "unverified")
 	} else {
 		// Initialize the optional display projection without making startup
 		// depend on a successful display-only state read.
@@ -77,6 +79,23 @@ func (w *OnlineWorker) PlatformAccount(ctx context.Context, request online.Accou
 	if request.Action == "restore" || request.Action == "signalCancel" || len(request.Secret) > 0 || request.DeveloperToken != "" {
 		return online.AccountView{}, domain.Fail("ACCESS_DENIED", "Private platform operations are Host-only")
 	}
+	if request.Action == "state" && w.restorePending.Load() {
+		view, err := w.saveAccountOperation(ctx, online.AccountRequest{Action: "check"})
+		if err == nil {
+			return view, nil
+		}
+		// 上游暂不可用时仍展示已保存的绑定，用户可以重试或退出。
+		result, stateErr := w.accountCall(ctx, request)
+		if stateErr == nil && result.View.State == "unverified" {
+			return result.View, nil
+		}
+		return online.AccountView{}, err
+	}
+	return w.saveAccountOperation(ctx, request)
+}
+
+// 调用方持有 accountMu，使校验后的凭据更新与退出按顺序写入。
+func (w *OnlineWorker) saveAccountOperation(ctx context.Context, request online.AccountRequest) (online.AccountView, error) {
 	if request.Action == "logout" {
 		if err := w.accountStore.Save(nil); err != nil {
 			return online.AccountView{}, domain.Fail("TEMPORARY_FAILURE", "Platform account could not be removed")
@@ -91,8 +110,25 @@ func (w *OnlineWorker) PlatformAccount(ctx context.Context, request online.Accou
 		_ = w.accountStore.Save(nil)
 		return online.AccountView{}, domain.Fail("TEMPORARY_FAILURE", "Platform account could not be persisted")
 	}
+	if result.View.State != "unverified" {
+		w.restorePending.Store(false)
+	}
 	return result.View, nil
 }
+
+func (w *OnlineWorker) verifyRestoredAccount(ctx context.Context) error {
+	if !w.restorePending.Load() {
+		return nil
+	}
+	w.accountMu.Lock()
+	defer w.accountMu.Unlock()
+	if !w.restorePending.Load() {
+		return nil
+	}
+	_, err := w.saveAccountOperation(ctx, online.AccountRequest{Action: "check"})
+	return err
+}
+
 func (w *OnlineWorker) PlatformAccountOptions(ctx context.Context) (online.AccountOptions, error) {
 	scope, err := w.newScope(ctx)
 	if err != nil {
@@ -105,9 +141,16 @@ func (w *OnlineWorker) PlatformAccountOptions(ctx context.Context) (online.Accou
 	return options, err
 }
 
-// PlatformSession reads worker state without exposing or rewriting its secret.
+func (w *OnlineWorker) sessionState(ctx context.Context) (online.AccountResult, error) {
+	if err := w.verifyRestoredAccount(ctx); err != nil {
+		return online.AccountResult{}, err
+	}
+	return w.accountCall(ctx, online.AccountRequest{Action: "state"})
+}
+
+// PlatformSession 返回当前实例校验后的公开账号状态。
 func (w *OnlineWorker) PlatformSession(ctx context.Context) (online.AccountView, error) {
-	result, err := w.accountCall(ctx, online.AccountRequest{Action: "state"})
+	result, err := w.sessionState(ctx)
 	return result.View, err
 }
 
@@ -125,7 +168,7 @@ func (w *OnlineWorker) RecommendationAccountScope(ctx context.Context) (string, 
 			return "", "", "", ctx.Err()
 		}
 	}
-	result, err := w.accountCall(ctx, online.AccountRequest{Action: "state"})
+	result, err := w.sessionState(ctx)
 	if err != nil {
 		return "", "", "", err
 	}

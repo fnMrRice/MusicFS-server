@@ -4,6 +4,7 @@ package onlinehost
 import (
 	"context"
 	"reflect"
+	"slices"
 	"sync"
 	"time"
 
@@ -72,12 +73,13 @@ func (s *Service) Instances(ctx context.Context, owner string) ([]Instance, erro
 	}
 	out := []Instance{}
 	s.mu.RLock()
-	defer s.mu.RUnlock()
-	for _, r := range s.runtimes {
+	runtimes := slices.Clone(s.runtimes)
+	s.mu.RUnlock()
+	for _, r := range runtimes {
 		if r.Owner != owner {
 			continue
 		}
-		out = append(out, runtimeInstance(ctx, r))
+		out = append(out, s.runtimeInstance(ctx, r))
 	}
 	return out, nil
 }

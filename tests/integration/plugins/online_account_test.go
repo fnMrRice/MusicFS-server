@@ -2,9 +2,12 @@ package plugins_test
 
 import (
 	"context"
-	"github.com/fnMrRice/MusicFS-server/sdk/online"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/onlinehost"
 )
 
 func TestActualAccountWorkerPersistsRestoresAndLogsOut(t *testing.T) {
@@ -25,14 +28,27 @@ func TestActualAccountWorkerPersistsRestoresAndLogsOut(t *testing.T) {
 		t.Fatal(err)
 	}
 	w = onlineStart(t, cfg)
-	restored, err := w.PlatformAccount(ctx, online.AccountRequest{Action: "state"})
-	if err != nil || restored.State != "unverified" || restored.AccountID != "12345" || restored.AvatarURL != done.AvatarURL {
-		t.Fatalf("restore: %s %v", restored.State, err)
+	page, err := w.Search(ctx, online.SearchRequest{Query: "fixture", Limit: 1})
+	if err != nil || len(page.Tracks) != 1 || page.Tracks[0].ExternalID != "42" {
+		t.Fatalf("first search after restart: %+v %v", page, err)
 	}
-	checked, err := w.PlatformAccount(ctx, online.AccountRequest{Action: "check"})
-	if err != nil || checked.State != "signedIn" || checked.AvatarURL != done.AvatarURL {
-		t.Fatalf("check: %s %v", checked.State, err)
+	if err = w.Close(); err != nil {
+		t.Fatal(err)
 	}
+	w = onlineStart(t, cfg)
+	start := make(chan struct{})
+	var callers sync.WaitGroup
+	for range 8 {
+		callers.Go(func() {
+			<-start
+			restored, err := w.PlatformAccount(ctx, online.AccountRequest{Action: "state"})
+			if err != nil || restored.State != "signedIn" || restored.AccountID != done.AccountID || restored.AvatarURL != done.AvatarURL || restored.Revision == "" || restored.Revision == done.Revision {
+				t.Errorf("restored account: %+v %v", restored, err)
+			}
+		})
+	}
+	close(start)
+	callers.Wait()
 	_, err = w.PlatformAccount(ctx, online.AccountRequest{Action: "logout"})
 	if err != nil {
 		t.Fatal(err)
@@ -44,5 +60,63 @@ func TestActualAccountWorkerPersistsRestoresAndLogsOut(t *testing.T) {
 	gone, err := w.PlatformAccount(ctx, online.AccountRequest{Action: "state"})
 	if err != nil || gone.State != "signedOut" || gone.AvatarURL != "" {
 		t.Fatal("logout did not survive restart")
+	}
+}
+
+func TestRestoredNeteaseAccountRetriesTemporaryFailureAndClearsExpiredCredentials(t *testing.T) {
+	path := onlineBinary(t, "./tests/testkit/online-worker", "account-fixture")
+	cfg := onlineConfig(t, path, online.Netease)
+	w := onlineStart(t, cfg)
+	loginOnlineFixture(t, w)
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg.Args = []string{"account-offline"}
+	w = onlineStart(t, cfg)
+	host, err := onlinehost.New([]onlinehost.Runtime{{
+		Owner: cfg.UserID, InstanceID: cfg.InstanceID, Platform: cfg.Platform, ConfigRevision: "1", Enabled: true, Provider: w,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := t.Context()
+	instances, err := host.Instances(ctx, cfg.UserID)
+	if err != nil || len(instances) != 1 || instances[0].Availability != "offline" {
+		t.Fatalf("temporary discovery failure: %+v %v", instances, err)
+	}
+	view, err := w.PlatformAccount(ctx, online.AccountRequest{Action: "state"})
+	if err != nil || view.State != "unverified" || view.AccountID != "12345" {
+		t.Fatalf("temporarily unavailable account: %+v %v", view, err)
+	}
+	time.Sleep(3100 * time.Millisecond)
+	account, revision, binding, err := w.RecommendationAccountScope(ctx)
+	if err != nil || account != view.AccountID || revision == "" || binding == "" {
+		t.Fatalf("recommendation account after retry: %q %v", account, err)
+	}
+	instances, err = host.Instances(ctx, cfg.UserID)
+	if err != nil || len(instances) != 1 || instances[0].Availability != "available" || instances[0].AccountRevision != revision {
+		t.Fatalf("discovery after retry: %+v %v", instances, err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg.Args = []string{"account-expired"}
+	w = onlineStart(t, cfg)
+	_, err = w.Search(ctx, online.SearchRequest{Query: "fixture", Limit: 1})
+	onlineExpect(t, err, "PLATFORM_AUTH_REQUIRED")
+	view, err = w.PlatformSession(ctx)
+	if err != nil || view.State != "expired" || view.AccountID != "" {
+		t.Fatalf("expired account: %+v %v", view, err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	cfg.Args = nil
+	w = onlineStart(t, cfg)
+	view, err = w.PlatformAccount(ctx, online.AccountRequest{Action: "state"})
+	if err != nil || view.State != "signedOut" || view.AccountID != "" {
+		t.Fatalf("expired account after restart: %+v %v", view, err)
 	}
 }

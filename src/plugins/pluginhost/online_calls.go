@@ -35,6 +35,13 @@ func onlineCall[T any](parent context.Context, w *OnlineWorker, method string, s
 	var empty T
 	ctx, cancel := context.WithTimeout(parent, time.Duration(scope.TimeoutMs)*time.Millisecond)
 	defer cancel()
+	switch method {
+	case "provider.online.describe", "provider.online.account", "provider.online.accountOptions":
+	default:
+		if err := w.verifyRestoredAccount(ctx); err != nil {
+			return empty, err
+		}
+	}
 	if err := w.requireOnlineCapability(method, request); err != nil {
 		if w.descriptor.Authentication == "anonymous" {
 			return empty, err

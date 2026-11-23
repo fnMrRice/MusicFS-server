@@ -45,8 +45,7 @@ func managedRecommendations(t *testing.T, c *client) recommendations.Response {
 	return response
 }
 
-// Lifecycle checks use the fixture's explicitly authenticated account and
-// revalidate persisted credentials when a worker process is replaced.
+// 新实例模拟首次扫码，重启后的网易云实例应自行恢复账号。
 func authenticateManagedOnline(t *testing.T, c *client, ids ...string) {
 	t.Helper()
 	request := func(id, action, loginID string) online.AccountView {
@@ -68,13 +67,11 @@ func authenticateManagedOnline(t *testing.T, c *client, ids ...string) {
 		view := request(id, "state", "")
 		switch view.State {
 		case "signedIn":
-		case "unverified":
-			if view = request(id, "check", ""); view.State != "signedIn" {
-				t.Fatal("fixture account was not verified", view)
-			}
-		default:
+		case "signedOut":
 			view = request(id, "begin", "")
 			pending[id] = view.LoginID
+		default:
+			t.Fatalf("unexpected fixture account state: %s", view.State)
 		}
 	}
 	if len(pending) > 0 {

@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/source/online"
@@ -33,6 +34,7 @@ type OnlineConfig struct {
 
 type OnlineWorker struct {
 	accountMu      sync.Mutex
+	restorePending atomic.Bool
 	accountDisplay accountDisplaySnapshot
 	accountStore   *accountstore.Store
 	config         OnlineConfig

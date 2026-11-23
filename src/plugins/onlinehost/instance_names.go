@@ -2,10 +2,12 @@ package onlinehost
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 )
 
@@ -55,22 +57,28 @@ func runtimeAccountName(ctx context.Context, runtime Runtime) string {
 	return view.DisplayName
 }
 
-func runtimeInstance(ctx context.Context, runtime Runtime) Instance {
+func (s *Service) runtimeInstance(ctx context.Context, runtime Runtime) Instance {
+	ctx, current, release, err := s.AcquireRuntime(ctx, runtime.Owner, runtime.InstanceID)
+	if err == nil {
+		defer release()
+		runtime = current
+	}
 	pluginID := pluginproto.OnlinePluginID(runtime.Platform)
 	name := runtimeAlias(runtime)
 	availability := "offline"
-	if ready(runtime) && runtime.Gate.Check(ctx) == nil {
-		availability = "available"
-	}
 	accountID, accountRevision := "", ""
-	if availability == "available" {
+	if err == nil {
 		if view, err := platformSession(ctx, runtime); err == nil {
+			availability = "available"
 			accountID, accountRevision = view.AccountID, view.Revision
 			if view.DisplayName != "" {
 				name = view.DisplayName
 			}
 		} else {
-			availability = "loginRequired"
+			var failure *domain.Error
+			if errors.As(err, &failure) && (failure.Code == "PLATFORM_AUTH_REQUIRED" || failure.Code == "AUTH_REQUIRED") {
+				availability = "loginRequired"
+			}
 		}
 	}
 	return Instance{

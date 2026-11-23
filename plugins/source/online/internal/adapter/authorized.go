@@ -33,6 +33,13 @@ func authorized[T any](ctx context.Context, c *Client, run func(context.Context)
 	if a.revoked.Load() {
 		return empty, platformLoginRequired()
 	}
+	// 恢复时的校验也占用一次请求间隔，让紧随其后的业务请求等到可用。
+	if a.waitAfterRestore {
+		if err := c.waitForMetadata(ctx); err != nil {
+			return empty, err
+		}
+		a.waitAfterRestore = false
+	}
 	value, err := run(context.WithValue(ctx, accountContextKey{}, c))
 	if a.revoked.Load() {
 		return empty, platformLoginRequired()
