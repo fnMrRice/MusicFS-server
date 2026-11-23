@@ -21,7 +21,7 @@ func TestAccountPlaylistsUseValidatedAccountAndBoundPagination(t *testing.T) {
 	c := scoped(t, online.Netease, roundTrip(func(r *http.Request) (*http.Response, error) {
 		calls.Add(1)
 		q := r.URL.Query()
-		if r.URL.Path != "/api/user/playlist" || q.Get("uid") != "12345" || q.Get("limit") != "1" || q.Get("includeVideo") != "true" {
+		if r.URL.Path != "/api/user/playlist" || q.Get("uid") != "12345" || q.Get("limit") != strconv.Itoa(online.MaxPageItems) || q.Get("includeVideo") != "true" {
 			t.Fatal("playlist listing did not use the current account", r.URL)
 		}
 		if q.Get("offset") == "0" {
@@ -69,14 +69,17 @@ func TestAccountPlaylistsPageAcrossPinnedFavorites(t *testing.T) {
 		pinned        bool
 		limit         int
 		ordinaryCount int
+		upstreamExtra int
 		offsets       []int
-		pages         [][]string
+		pageSizes     []int
 	}{
-		{"multiple pages", true, 2, 5, []int{0, 1, 3}, [][]string{{"90", "101"}, {"102", "103"}, {"104", "105"}}},
-		{"one item per page", true, 1, 2, []int{0, 0, 1}, [][]string{{"90"}, {"101"}, {"102"}}},
-		{"overflow on upstream final page", true, 2, 2, []int{0, 1}, [][]string{{"90", "101"}, {"102"}}},
-		{"only favorites", true, 1, 0, []int{0}, [][]string{{"90"}}},
-		{"without favorites", false, 2, 3, []int{0, 2}, [][]string{{"101", "102"}, {"103"}}},
+		{"39 playlists in final batch", true, 30, 38, 0, []int{0, 0}, []int{30, 9}},
+		{"pinned across upstream batches", true, 30, 53, 0, []int{0, 0, 50}, []int{30, 21, 3}},
+		{"upstream overfetch with more batches", true, 30, 65, 10, []int{0, 0, 50}, []int{30, 21, 15}},
+		{"oversized final batch", false, 30, 61, 20, []int{0, 0, 0}, []int{30, 30, 1}},
+		{"one item per page", true, 1, 2, 0, []int{0, 0, 0}, []int{1, 1, 1}},
+		{"only favorites", true, 1, 0, 0, []int{0}, []int{1}},
+		{"without favorites across batches", false, 30, 53, 0, []int{0, 0, 50}, []int{30, 20, 3}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -87,7 +90,7 @@ func TestAccountPlaylistsPageAcrossPinnedFavorites(t *testing.T) {
 					t.Fatalf("invalid upstream offset: %v (%v)", offset, err)
 				}
 				limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
-				if err != nil || limit < 1 {
+				if err != nil || limit != online.MaxPageItems {
 					t.Fatalf("invalid upstream limit: %v (%v)", limit, err)
 				}
 				offsets = append(offsets, offset)
@@ -95,7 +98,7 @@ func TestAccountPlaylistsPageAcrossPinnedFavorites(t *testing.T) {
 				if tc.pinned && offset == 0 {
 					rows = append(rows, `{"id":90,"name":"Favorites","specialType":5}`)
 				}
-				end := min(offset+limit, tc.ordinaryCount)
+				end := min(offset+limit+tc.upstreamExtra, tc.ordinaryCount)
 				for index := offset; index < end; index++ {
 					rows = append(rows, fmt.Sprintf(`{"id":%d,"name":"Playlist","specialType":0}`, 101+index))
 				}
@@ -103,7 +106,15 @@ func TestAccountPlaylistsPageAcrossPinnedFavorites(t *testing.T) {
 				return response(body).RoundTrip(r)
 			}))
 			request := online.PlaylistsRequest{Limit: tc.limit}
-			for index, want := range tc.pages {
+			var expectedIDs []string
+			if tc.pinned {
+				expectedIDs = append(expectedIDs, "90")
+			}
+			for index := range tc.ordinaryCount {
+				expectedIDs = append(expectedIDs, strconv.Itoa(101+index))
+			}
+			var got []string
+			for index, wantSize := range tc.pageSizes {
 				page, err := c.Playlists(context.Background(), request)
 				if err != nil {
 					t.Fatalf("page %d: %v", index+1, err)
@@ -111,16 +122,18 @@ func TestAccountPlaylistsPageAcrossPinnedFavorites(t *testing.T) {
 				if err := online.ValidatePlaylists(online.Netease, page, tc.limit); err != nil {
 					t.Fatalf("invalid page %d: %v", index+1, err)
 				}
-				var got []string
 				for _, item := range page.Items {
 					got = append(got, item.ExternalID)
 				}
-				if !slices.Equal(got, want) || (page.NextCursor != nil) != (index+1 < len(tc.pages)) {
-					t.Fatalf("page %d: got IDs %v, has next %v; want IDs %v", index+1, got, page.NextCursor != nil, want)
+				if len(page.Items) != wantSize || (page.NextCursor != nil) != (index+1 < len(tc.pageSizes)) {
+					t.Fatalf("page %d: got %d items and has next %v, want %d items", index+1, len(page.Items), page.NextCursor != nil, wantSize)
 				}
 				if page.NextCursor != nil {
 					request.Cursor = *page.NextCursor
 				}
+			}
+			if !slices.Equal(got, expectedIDs) {
+				t.Fatalf("playlist sequence: got %v, want %v", got, expectedIDs)
 			}
 			if !slices.Equal(offsets, tc.offsets) {
 				t.Fatalf("upstream offsets: got %v, want %v", offsets, tc.offsets)
@@ -131,13 +144,10 @@ func TestAccountPlaylistsPageAcrossPinnedFavorites(t *testing.T) {
 
 func TestAccountPlaylistsRejectMalformedOrUnsafeResponses(t *testing.T) {
 	for name, body := range map[string]string{
-		"missing list":                       `{"code":200,"more":false}`,
-		"missing more":                       `{"code":200,"playlist":[]}`,
-		"empty continuation":                 `{"code":200,"more":true,"playlist":[]}`,
-		"duplicate":                          `{"code":200,"more":false,"playlist":[{"id":91,"name":"A"},{"id":91,"name":"B"}]}`,
-		"oversized":                          `{"code":200,"more":false,"playlist":[{"id":91,"name":"A"},{"id":92,"name":"B"},{"id":93,"name":"C"}]}`,
-		"oversized after favorites":          `{"code":200,"more":false,"playlist":[{"id":90,"name":"Favorites","specialType":5},{"id":91,"name":"A"},{"id":92,"name":"B"},{"id":93,"name":"C"}]}`,
-		"oversized with misplaced favorites": `{"code":200,"more":false,"playlist":[{"id":91,"name":"A"},{"id":90,"name":"Favorites","specialType":5},{"id":92,"name":"B"}]}`,
+		"missing list":       `{"code":200,"more":false}`,
+		"missing more":       `{"code":200,"playlist":[]}`,
+		"empty continuation": `{"code":200,"more":true,"playlist":[]}`,
+		"duplicate":          `{"code":200,"more":false,"playlist":[{"id":91,"name":"A"},{"id":91,"name":"B"}]}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -148,20 +158,37 @@ func TestAccountPlaylistsRejectMalformedOrUnsafeResponses(t *testing.T) {
 	}
 }
 
-func TestAccountPlaylistsExpireCursorWhenPinnedFavoritesChange(t *testing.T) {
-	for name, second := range map[string]string{
-		"replaced": `{"code":200,"more":false,"playlist":[{"id":93,"name":"Other","specialType":5},{"id":92,"name":"Regular"}]}`,
-		"removed":  `{"code":200,"more":false,"playlist":[{"id":92,"name":"Regular"}]}`,
+func TestAccountPlaylistsRejectCollectionsAboveSupportedLimit(t *testing.T) {
+	t.Parallel()
+	rows := make([]string, online.MaxPlaylistEntries+1)
+	for index := range rows {
+		rows[index] = fmt.Sprintf(`{"id":%d,"name":"Regular"}`, 101+index)
+	}
+	body := `{"code":200,"more":false,"playlist":[` + strings.Join(rows, ",") + `]}`
+	c := scoped(t, online.Netease, response(body))
+	_, err := c.Playlists(context.Background(), online.PlaylistsRequest{Limit: 30})
+	expectCode(t, err, "UNSUPPORTED")
+}
+
+func TestAccountPlaylistsExpireCursorWhenBoundaryChanges(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		limit  int
+		second string
+	}{
+		{"replaced favorites", 1, `{"code":200,"more":false,"playlist":[{"id":93,"name":"Other","specialType":5},{"id":92,"name":"Regular"}]}`},
+		{"removed favorites", 1, `{"code":200,"more":false,"playlist":[{"id":92,"name":"Regular"}]}`},
+		{"replaced regular playlist", 2, `{"code":200,"more":false,"playlist":[{"id":91,"name":"Favorites","specialType":5},{"id":94,"name":"Changed"},{"id":93,"name":"Third"}]}`},
 	} {
-		t.Run(name, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			body := `{"code":200,"more":false,"playlist":[{"id":91,"name":"Favorites","specialType":5},{"id":92,"name":"Regular"}]}`
+			body := `{"code":200,"more":false,"playlist":[{"id":91,"name":"Favorites","specialType":5},{"id":92,"name":"Regular"},{"id":93,"name":"Third"}]}`
 			c := scoped(t, online.Netease, roundTrip(func(r *http.Request) (*http.Response, error) {
 				result := response(body)
-				body = second
+				body = tc.second
 				return result.RoundTrip(r)
 			}))
-			request := online.PlaylistsRequest{Limit: 1}
+			request := online.PlaylistsRequest{Limit: tc.limit}
 			page, err := c.Playlists(context.Background(), request)
 			if err != nil || page.NextCursor == nil {
 				t.Fatalf("missing continuation after pinned favorites: %v", err)

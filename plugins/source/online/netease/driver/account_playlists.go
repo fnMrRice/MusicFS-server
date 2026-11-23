@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"encoding/json"
 	"net/url"
 	"strconv"
 	"time"
@@ -12,6 +13,13 @@ import (
 type accountPlaylistRow struct {
 	neteasePlaylist
 	SpecialType int `json:"specialType"`
+}
+
+// Offset 是上游普通歌单偏移，Skip 和 After 标记当前批次内已经展示的边界。
+type accountPlaylistWindow struct {
+	Offset int    `json:"offset"`
+	Skip   int    `json:"skip,omitempty"`
+	After  string `json:"after,omitempty"`
 }
 
 // Playlists 读取当前已校验账号的歌单，游标绑定该账号和登录代次。
@@ -31,75 +39,97 @@ func (c *Client) Playlists(ctx context.Context, request PlaylistsRequest) (Playl
 	if err != nil {
 		return PlaylistsPage{}, err
 	}
-	// 网易云在首页额外插入“我喜欢的音乐”。游标记录已展示总数，上游偏移只计算普通歌单。
-	pinnedID := token.Version
-	offset := token.Offset
-	if pinnedID != "" {
-		offset--
+	var window accountPlaylistWindow
+	if request.Cursor != "" && (json.Unmarshal([]byte(token.Version), &window) != nil ||
+		window.Offset < 0 || window.Skip < 0 || window.Offset+window.Skip > token.Offset) {
+		return PlaylistsPage{}, invalidCursor()
 	}
+	rows, more, err := c.accountPlaylistBatch(ctx, accountID, window.Offset)
+	if err != nil {
+		return PlaylistsPage{}, err
+	}
+	if window.Skip > len(rows) || (window.Skip > 0 && rows[window.Skip-1].ID.String() != window.After) {
+		return PlaylistsPage{}, domain.Fail("CURSOR_EXPIRED", "Account playlists changed; refresh the first page")
+	}
+	end := min(window.Skip+request.Limit, len(rows))
+	page := PlaylistsPage{Items: []Playlist{}, Consistency: Unversioned, ObservedAt: time.Now().UTC()}
+	seen := map[string]bool{}
+	for i, raw := range rows {
+		playlist, err := raw.summary()
+		if err != nil || seen[playlist.ExternalID] {
+			return PlaylistsPage{}, upstreamInvalid()
+		}
+		seen[playlist.ExternalID] = true
+		if i >= window.Skip && i < end {
+			playlist.Writable = raw.ownedBy(accountID)
+			page.Items = append(page.Items, playlist)
+		}
+	}
+	total := token.Offset + len(page.Items)
+	hasNext := end < len(rows) || more
+	if total > MaxPlaylistEntries || (hasNext && total == MaxPlaylistEntries) {
+		return PlaylistsPage{}, domain.Fail("UNSUPPORTED", "Account playlist collection exceeds the supported paging limit")
+	}
+	if !hasNext {
+		return page, nil
+	}
+	if len(page.Items) == 0 {
+		return PlaylistsPage{}, upstreamInvalid()
+	}
+	if end < len(rows) {
+		window.Skip, window.After = end, rows[end-1].ID.String()
+	} else {
+		// “我喜欢的音乐”只出现在首页，不计入下个上游批次的普通歌单偏移。
+		nextOffset := window.Offset + len(rows)
+		if window.Offset == 0 && rows[0].SpecialType == 5 {
+			nextOffset--
+		}
+		if nextOffset <= window.Offset {
+			return PlaylistsPage{}, upstreamInvalid()
+		}
+		window = accountPlaylistWindow{Offset: nextOffset}
+	}
+	state, _ := json.Marshal(window)
+	cursor := c.WriteVersionCursor(binding, total, string(state))
+	page.NextCursor = &cursor
+	return page, nil
+}
+
+// 网易云可能返回多于请求条数的歌单，独立读取上游批次，再按客户端页大小展示。
+func (c *Client) accountPlaylistBatch(ctx context.Context, accountID string, offset int) ([]accountPlaylistRow, bool, error) {
 	var response struct {
 		Code      *int                  `json:"code"`
 		Playlists *[]accountPlaylistRow `json:"playlist"`
 		More      *bool                 `json:"more"`
 	}
 	if err := c.WaitForMetadata(ctx); err != nil {
-		return PlaylistsPage{}, err
+		return nil, false, err
 	}
-	if err := c.Get(ctx, "/api/user/playlist", url.Values{"uid": {accountID}, "limit": {strconv.Itoa(request.Limit)}, "offset": {strconv.Itoa(offset)}, "includeVideo": {"true"}}, &response); err != nil {
-		return PlaylistsPage{}, err
+	if err := c.Get(ctx, "/api/user/playlist", url.Values{"uid": {accountID}, "limit": {strconv.Itoa(MaxPageItems)}, "offset": {strconv.Itoa(offset)}, "includeVideo": {"true"}}, &response); err != nil {
+		return nil, false, err
 	}
 	if response.Code == nil {
-		return PlaylistsPage{}, upstreamInvalid()
+		return nil, false, upstreamInvalid()
 	}
 	if err := c.BusinessError(*response.Code, 200); err != nil {
-		return PlaylistsPage{}, err
+		return nil, false, err
 	}
 	if response.Playlists == nil || response.More == nil {
-		return PlaylistsPage{}, upstreamInvalid()
+		return nil, false, upstreamInvalid()
 	}
 	rows := *response.Playlists
-	hasPinned := offset == 0 && len(rows) > 0 && rows[0].SpecialType == 5
-	maxRows := request.Limit
-	if hasPinned {
-		maxRows++
+	if len(rows) > MaxPlaylistEntries {
+		return nil, false, domain.Fail("UNSUPPORTED", "Account playlist collection exceeds the supported paging limit")
 	}
-	if len(rows) > maxRows {
-		return PlaylistsPage{}, upstreamInvalid()
-	}
-	// 每页一张时，第二页仍从上游首页读取，并跳过已展示的同一张置顶歌单。
-	skipPinned := offset == 0 && pinnedID != ""
-	if skipPinned && (!hasPinned || rows[0].ID.String() != pinnedID) {
-		return PlaylistsPage{}, domain.Fail("CURSOR_EXPIRED", "Pinned playlist changed; refresh the first page")
-	}
-	if hasPinned {
-		pinnedID = rows[0].ID.String()
-	}
-	page := PlaylistsPage{Items: []Playlist{}, Consistency: Unversioned, ObservedAt: time.Now().UTC()}
-	seen := map[string]bool{}
-	for _, raw := range rows {
-		playlist, err := raw.summary()
-		if err != nil || seen[playlist.ExternalID] {
-			return PlaylistsPage{}, upstreamInvalid()
+	if *response.More {
+		if len(rows) == 0 {
+			return nil, false, upstreamInvalid()
 		}
-		seen[playlist.ExternalID] = true
-		playlist.Writable = raw.ownedBy(accountID)
-		page.Items = append(page.Items, playlist)
-	}
-	if skipPinned {
-		page.Items = page.Items[1:]
-	}
-	more := *response.More || len(page.Items) > request.Limit
-	page.Items = page.Items[:min(len(page.Items), request.Limit)]
-	next := token.Offset + len(page.Items)
-	if next > MaxPlaylistEntries || (more && next == MaxPlaylistEntries) {
-		return PlaylistsPage{}, domain.Fail("UNSUPPORTED", "Account playlist collection exceeds the supported paging limit")
-	}
-	if more {
-		if len(page.Items) == 0 {
-			return PlaylistsPage{}, upstreamInvalid()
+		windowSize := MaxPageItems
+		if offset == 0 && rows[0].SpecialType == 5 {
+			windowSize++
 		}
-		cursor := c.WriteVersionCursor(binding, next, pinnedID)
-		page.NextCursor = &cursor
+		rows = rows[:min(windowSize, len(rows))]
 	}
-	return page, nil
+	return rows, *response.More, nil
 }
