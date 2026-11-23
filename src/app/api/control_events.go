@@ -50,6 +50,10 @@ func (c *controlConnection) eventLoop() {
 			c.send(controlEvent{Type: "event", Event: "capabilities.changed", Data: event})
 		case <-tick.C:
 			publishLifecycle()
+			if !c.publishActivity() {
+				c.cancel()
+				return
+			}
 		case <-authTick.C:
 			if !c.authorized() {
 				c.cancel()

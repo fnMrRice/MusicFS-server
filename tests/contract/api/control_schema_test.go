@@ -53,6 +53,9 @@ func TestControlChannelContract(t *testing.T) {
 		{"error", "Response", `{"type":"response","id":"request-one","status":409,"body":{"error":{"code":"CONFLICT","message":"Conflict","requestId":"request-one","retryAfter":null}}}`, true},
 		{"invalid-error", "Response", `{"type":"response","id":"request-one","status":409}`, false},
 		{"capability-event", "Event", `{"type":"event","event":"capabilities.changed","data":{"revision":"revision-one","sequence":0}}`, true},
+		{"activity-event", "Event", `{"type":"event","event":"activity.changed","data":{"resources":["scans","tasks"]}}`, true},
+		{"unknown-resource", "Event", `{"type":"event","event":"activity.changed","data":{"resources":["userData"]}}`, false},
+		{"empty-activity", "Event", `{"type":"event","event":"activity.changed","data":{"resources":[]}}`, false},
 		{"unknown-event", "Event", `{"type":"event","event":"playback.position","data":{}}`, false},
 	}
 	for _, sample := range samples {

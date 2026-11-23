@@ -18,6 +18,16 @@ type Service struct {
 	cancel     context.CancelFunc
 	wg         sync.WaitGroup
 	wake       chan struct{}
+	changed    func(string)
+}
+
+// OnJobChanged 在启动工作线程前设置同步任务状态通知。
+func (s *Service) OnJobChanged(notify func(string)) { s.changed = notify }
+
+func (s *Service) jobChanged(owner string) {
+	if s.changed != nil {
+		s.changed(owner)
+	}
 }
 
 func New(repo Repository, remote Remote, maxConcurrent int) (*Service, error) {
@@ -64,6 +74,9 @@ func (s *Service) Sync(ctx context.Context, owner, id string, expected int64, ke
 	j, merged, err := s.repo.QueueRemoteSync(ctx, owner, id, expected, b, key)
 	if err == nil {
 		slog.InfoContext(ctx, "Remote playlist task queued", "jobId", j.ID, "merged", merged)
+		if !merged {
+			s.jobChanged(owner)
+		}
 		s.notify()
 	}
 	return j, merged, err
@@ -93,6 +106,7 @@ func (s *Service) Cancel(ctx context.Context, owner, id string) (SyncJob, error)
 			cancel()
 		}
 		s.mu.Unlock()
+		s.jobChanged(owner)
 	}
 	return j, err
 }

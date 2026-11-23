@@ -15,6 +15,7 @@ func (s *Service) worker(ctx context.Context) {
 	for ctx.Err() == nil {
 		job, err := s.repo.ClaimRemoteSync(ctx)
 		if err == nil {
+			s.jobChanged(job.Owner)
 			s.execute(ctx, job)
 			continue
 		}
@@ -74,6 +75,9 @@ func (s *Service) execute(parent context.Context, job SyncJob) {
 	}
 	if err == nil {
 		_, err = s.repo.FinishRemoteSync(ctx, job, observation)
+		if err == nil {
+			s.jobChanged(job.Owner)
+		}
 	}
 	if parent.Err() != nil {
 		slog.DebugContext(parent, "Remote playlist task interrupted for shutdown", "jobId", job.ID)
@@ -90,6 +94,7 @@ func (s *Service) execute(parent context.Context, job SyncJob) {
 			}
 			return
 		}
+		s.jobChanged(job.Owner)
 		level, message := slog.LevelWarn, "Remote playlist task failed"
 		if failure.Code == "CANCELED" {
 			level, message = slog.LevelInfo, "Remote playlist task cancelled"

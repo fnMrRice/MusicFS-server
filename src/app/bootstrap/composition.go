@@ -206,6 +206,8 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 		return (ready == nil || ready()) && (!hasAvailability || availability.Available())
 	}
 	handler := api.New(api.Options{Auth: sessions, InstanceID: instance, Ready: isReady, SecureCookie: c.TLSCert != "", Logger: log})
+	queue.OnChanged = handler.NotifyScan
+	metadata.OnRefreshChanged = handler.NotifyRefreshTask
 	handler.RegisterLibrary(lib)
 	handler.RegisterCatalog(catalog.New(store))
 	handler.RegisterMusicLibrary(store)
@@ -215,6 +217,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	handler.RegisterPlaylistTrackSources(online, store)
 	handler.RegisterRecommendations(recommendations)
 	handler.RegisterRemotePlaylists(remotePlaylists)
+	remotePlaylists.OnJobChanged(handler.NotifyPlaylistSync)
 	links := playlists.NewLinks(store, online)
 	handler.RegisterPlaylistLinks(links)
 	handler.RegisterPlaylists(playlists.NewAggregate(store))
@@ -236,6 +239,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	cleanup = func() { closeHistory(); beforeHistory() }
 	handler.RegisterEnrichment(metadata)
 	taskService := tasks.New(store, queue, metadata, lib.TaskNames)
+	taskService.OnChanged = handler.NotifyRefreshTask
 	beforeTasks := cleanup
 	cleanup = func() { taskService.Close(); beforeTasks() }
 	handler.RegisterTasks(taskService)
@@ -248,6 +252,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	matchingService := matching.New(store, fingerprintDetails, standard.Plugin{})
 	handler.RegisterMatching(matchingService)
 	matchingAutomation := matching.NewAutomation(store, store, matchingService, standard.Detector())
+	matchingAutomation.OnJobChanged(handler.NotifyPluginJobs)
 	settingsProviders := append(codecsettings.Providers(), matchingAutomation.Provider())
 	settingsProviders = append(settingsProviders, scraperSettings...)
 	handler.RegisterPluginSettings(settings.New(store, settingsProviders...))

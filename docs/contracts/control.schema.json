@@ -56,6 +56,11 @@
       "properties": {"type": {"const": "event"}, "event": {"type": "string"}, "data": {}},
       "oneOf": [
         {"properties": {"event": {"const": "capabilities.changed"}, "data": {"$ref": "./http.schema.json#/$defs/CapabilitiesChangedEvent"}}},
+        {"properties": {"event": {"const": "activity.changed"}, "data": {
+          "type": "object", "additionalProperties": false, "required": ["resources"],
+          "properties": {"resources": {"type": "array", "minItems": 1, "uniqueItems": true,
+            "items": {"enum": ["scans", "tasks", "pluginJobs", "playlistSync"]}}}
+        }}},
         {"properties": {"event": {"const": "lifecycle.changed"}, "data": {"$ref": "./http.schema.json#/$defs/LifecycleStatus"}}}
       ]
     }

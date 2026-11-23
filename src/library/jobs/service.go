@@ -13,6 +13,9 @@ import (
 )
 
 type Service struct {
+	// OnChanged 在启动调度前设置，任务状态提交后通知当前用户。
+	OnChanged func(owner string, refreshMetadata bool)
+
 	repo     Repository
 	handlers map[string]Handler
 	mu       sync.Mutex
@@ -38,6 +41,9 @@ func (s *Service) Submit(ctx context.Context, user, target string, plan pluginpr
 	job, merged, err := s.repo.Enqueue(ctx, user, target, plan, key)
 	if err == nil {
 		slog.InfoContext(ctx, "Scan task queued", "jobId", job.ID, "instanceId", target, "merged", merged, "roots", len(plan.Roots))
+		if !merged {
+			s.changed(job)
+		}
 	}
 	return job, merged, err
 }
@@ -51,7 +57,16 @@ func (s *Service) Get(ctx context.Context, user, id string) (Job, error) {
 	return j, err
 }
 func (s *Service) UpdateProgress(ctx context.Context, job Job, observed int) error {
-	return s.repo.UpdateProgress(ctx, job, observed)
+	err := s.repo.UpdateProgress(ctx, job, observed)
+	if err == nil {
+		s.changed(job)
+	}
+	return err
+}
+func (s *Service) changed(job Job) {
+	if s.OnChanged != nil {
+		s.OnChanged(job.Owner, job.Plan.RefreshMetadata)
+	}
 }
 func (s *Service) ScanStatus(ctx context.Context, user, provider string) (ScanStatus, error) {
 	status, err := s.repo.ScanStatus(ctx, user, provider)
@@ -97,6 +112,7 @@ func (s *Service) run(ctx context.Context) {
 			}
 			return
 		}
+		s.changed(job)
 		s.mu.Lock()
 		h := s.handlers[job.Kind]
 		s.mu.Unlock()
@@ -112,6 +128,7 @@ func (s *Service) run(ctx context.Context) {
 			s.stopFailed()
 			return
 		}
+		s.changed(job)
 		s.logFinished(job, time.Since(started))
 	}
 }

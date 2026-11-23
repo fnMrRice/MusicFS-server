@@ -15,6 +15,7 @@
 | 管理员日志等级 | `GET/PUT /admin/logging`；全局与插件覆盖整组替换，当前进程生效，重启恢复配置文件；见[日志](../operations/logging.md) |
 | 播放控制与连接保活 | `/control` 的 `musicfs.control.v1` WebSocket；发送创建、停止、seek、recover、recover-source 请求及心跳；[控制协议](control-channel.md) |
 | 能力与本机状态通知 | WS `capabilities.changed` 触发重新读取本人可见来源与能力；loopback 连接另接收 `lifecycle.changed` |
+| 后台活动刷新 | WS `activity.changed` 按资源提示重新查询扫描、刷新队列、插件任务和远程歌单同步。目录配置操作通过 `capabilities.changed` 检查终态，每次连接就绪时同步当前视图 |
 
 ## 接入约束
 

@@ -40,6 +40,7 @@ type controlConnection struct {
 	leaseJobs chan controlRequest
 	mu        sync.Mutex
 	pending   map[string]bool
+	activity  map[string]struct{} // 由 controlHub.mu 保护。
 }
 
 // CloseControl 取消控制命令并主动关闭被 HTTP 服务接管的长连接。
@@ -73,7 +74,7 @@ func (s *Server) openControl(w http.ResponseWriter, r *http.Request, session aut
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 	c := &controlConnection{server: s, request: r, session: session, ctx: ctx, cancel: cancel,
-		out: make(chan any, 32), jobs: make(chan controlRequest, 8), leaseJobs: make(chan controlRequest, 8), pending: map[string]bool{}}
+		out: make(chan any, 32), jobs: make(chan controlRequest, 8), leaseJobs: make(chan controlRequest, 8), pending: map[string]bool{}, activity: map[string]struct{}{}}
 	s.control.mu.Lock()
 	count := 0
 	for _, id := range s.control.connections {
@@ -157,7 +158,7 @@ func (c *controlConnection) authorized() bool {
 		return false
 	}
 	session, err := c.server.options.Auth.Authenticate(ctx, cookie.Value)
-	if err != nil || session.ID != c.session.ID || c.server.options.Auth.CheckMutation(session, c.request.Header.Get("Origin"), c.csrf) != nil {
+	if err != nil || session.ID != c.session.ID || session.User != c.session.User || c.server.options.Auth.CheckMutation(session, c.request.Header.Get("Origin"), c.csrf) != nil {
 		_ = c.conn.Close(websocket.StatusPolicyViolation, "Authentication required")
 		return false
 	}

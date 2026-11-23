@@ -2,7 +2,7 @@
 
 客户端通过 `GET /api/v1/control` 建立 WebSocket，子协议为 `musicfs.control.v1`。通道承载连接保活、播放控制、生命周期租约和状态通知。音频继续使用播放描述返回的 HTTP `streamUrl`；原流 Range、处理流逐步交付和 `timeRestart` 的语义不变。
 
-消息定义见 [control.schema.json](control.schema.json)，业务正文复用 [HTTP Schema](http.schema.json)，HTTP 管理入口见 [OpenAPI](openapi.yaml)。Server 和 Web 使用该通道；原生 Client 的 Rust 适配仍属于实施计划。
+消息定义见 [control.schema.json](control.schema.json)，业务正文复用 [HTTP Schema](http.schema.json)，HTTP 管理入口见 [OpenAPI](openapi.yaml)。
 
 ## 建连与鉴权
 
@@ -62,7 +62,22 @@ Server 返回 `{type:"response",id,status,body?}`，`id` 对应原请求，`stat
 {"type":"event","event":"capabilities.changed","data":{"revision":"<当前修订>","sequence":1}}
 ```
 
-`capabilities.changed` 在首连、重连和能力状态变化时发送。客户端收到后重新读取当前用户可见来源与能力；`revision` 是不透明值，`sequence` 不构成可重放的持久事件日志。通知不包含管理员配置或凭据，不代表所有任务、账号和播放状态均已提供事件。
+`capabilities.changed` 在首连、重连、能力状态变化以及配置操作终态持久化后发送。客户端可重新读取当前用户可见来源、能力以及正在等待的配置操作。`revision` 是不透明值，`sequence` 仅标识本实例内的变化。
+
+`activity.changed` 通知客户端按需重新读取已打开的视图。服务端按连接合并一秒内的变化，一项资源在同一条消息中只出现一次。例如：
+
+```json
+{"type":"event","event":"activity.changed","data":{"resources":["scans","tasks"]}}
+```
+
+| 资源 | 通知范围 |
+| --- | --- |
+| `scans` | 本人的来源扫描状态、进度及其元数据刷新结果 |
+| `tasks` | 目录刷新队列，含扫描、逐曲元数据处理和取消收尾。管理员也可收到其他用户的队列变化提示 |
+| `pluginJobs` | 本人的插件设置页后台任务进度 |
+| `playlistSync` | 本人的远程歌单同步任务状态 |
+
+通知只含资源种类，客户端使用现有授权 HTTP 接口读取详情。每次收到 `ready` 后应同步当前关注的视图，以补齐断线期间的变化。收到查询期间的新通知时，查询完成后再读取一次。服务端不保存待重放的事件。
 
 实际 loopback 连接还接收 `lifecycle.changed`，`data` 为当前 `LifecycleStatus`，含实例、启动模式、状态、活动租约数与停机原因。首连发送当前快照，此后每秒采样变化；不列出其他会话的租约详情。停机通知尽力发送，不保证在连接关闭前送达；最终状态以连接状态和重新发现后的权威状态为准。
 

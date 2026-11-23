@@ -28,6 +28,9 @@ func (s *Service) automationWorker(ctx context.Context, repo enrichment.Automati
 			waiting, err = s.runAutomation(ctx, repo, w)
 		}
 		if err == nil && !waiting {
+			if w.Reason == "refreshMetadata" && s.OnRefreshChanged != nil {
+				s.OnRefreshChanged(w.Owner)
+			}
 			continue
 		}
 		delay := 100 * time.Millisecond

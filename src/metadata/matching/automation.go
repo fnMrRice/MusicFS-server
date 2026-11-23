@@ -20,6 +20,7 @@ type Automation struct {
 	wake     chan struct{}
 	cancel   context.CancelFunc
 	done     chan struct{}
+	changed  func(string)
 }
 
 func NewAutomation(repo AutomationRepository, configuration settings.Repository, service *Service, detector Detector) *Automation {
@@ -30,6 +31,17 @@ func (a *Automation) Provider() settings.Provider {
 		r, e := a.repo.MatchingRun(ctx, owner)
 		return r.Job, e
 	}, Action: a.Execute}
+}
+
+// OnJobChanged 在启动自动检测前设置任务状态通知。
+func (a *Automation) OnJobChanged(notify func(string)) { a.changed = notify }
+
+func (a *Automation) saveRun(ctx context.Context, r Run) error {
+	err := a.repo.SaveMatchingRun(ctx, r)
+	if err == nil && a.changed != nil {
+		a.changed(r.Owner)
+	}
+	return err
 }
 func (a *Automation) Execute(ctx context.Context, owner, action, key string) (settings.Job, error) {
 	if action != "scan" {
@@ -54,7 +66,7 @@ func (a *Automation) Execute(ctx context.Context, owner, action, key string) (se
 	}
 	id, now := domain.NewID(), time.Now().UTC()
 	r = Run{Owner: owner, Key: key, Job: settings.Job{ID: &id, Status: "queued", UpdatedAt: &now}}
-	if err = a.repo.SaveMatchingRun(ctx, r); err != nil {
+	if err = a.saveRun(ctx, r); err != nil {
 		return settings.Job{}, err
 	}
 	select {
@@ -149,7 +161,7 @@ func (a *Automation) checkOwner(ctx context.Context, owner string) {
 	r.Job.UpdatedAt = &now
 	r.LibraryRevision = library.Revision
 	r.SettingsRevision = configuration.Revision
-	err = a.repo.SaveMatchingRun(ctx, r)
+	err = a.saveRun(ctx, r)
 	a.mu.Unlock()
 	if err != nil {
 		return
@@ -174,7 +186,7 @@ func (a *Automation) checkOwner(ctx context.Context, owner string) {
 			r.LibraryRevision = ""
 		}
 	}
-	_ = a.repo.SaveMatchingRun(ctx, r)
+	_ = a.saveRun(ctx, r)
 }
 
 func (a *Automation) identify(ctx context.Context, r *Run, library LibrarySnapshot, values settings.Values) error {
@@ -216,7 +228,7 @@ func (a *Automation) identify(ctx context.Context, r *Run, library LibrarySnapsh
 		if r.Job.Processed%20 == 0 || r.Job.Processed == r.Job.Total {
 			now := time.Now().UTC()
 			r.Job.UpdatedAt = &now
-			if err := a.repo.SaveMatchingRun(ctx, *r); err != nil {
+			if err := a.saveRun(ctx, *r); err != nil {
 				return err
 			}
 		}
