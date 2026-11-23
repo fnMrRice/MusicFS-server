@@ -1,10 +1,10 @@
 # 按来源读取推荐
 
-推荐页展示来源提供的每日推荐歌曲和推荐歌单。网易云使用当前实例已校验的平台账号读取当天的歌曲，也支持公共推荐歌单。QQ 和 Apple Music 暂未实现推荐。
+推荐页按来源展示歌单卡片。网易云使用当前实例已校验的平台账号读取每日推荐歌曲，也支持公共推荐歌单。QQ 和 Apple Music 暂未实现推荐。
 
 ## 每日推荐歌曲
 
-声明 `recommendations.tracks` 的实例通过 `GET /api/v1/online-instances/{id}/daily-songs` 返回当前账号的每日推荐歌曲。`limit` 默认为 50，取值 1 至 50。`tracks` 保留平台顺序，`observedAt` 是读取时间。Web 在当前推荐页展示歌曲。推荐歌单的历史页只展示当时保存的歌单。
+声明 `recommendations.tracks` 的实例通过 `GET /api/v1/online-instances/{id}/daily-songs` 返回当前账号的每日推荐歌曲。`limit` 默认为 50，取值 1 至 50。`tracks` 保留平台顺序，`observedAt` 是读取时间。Web 在当前账号的推荐歌单中展示「每日推荐歌曲」卡片，打开卡片后才调用此接口。推荐歌单的历史页只展示当时保存的歌单。
 
 网易云插件通过已校验的账号会话读取 `/api/v3/discovery/recommend/songs` 的 `data.dailySongs`。接口依据见 [api-enhanced 的 recommend_songs.js](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced/blob/2db6684453297ee86dec0492842f2320b08182d9/module/recommend_songs.js)。
 
