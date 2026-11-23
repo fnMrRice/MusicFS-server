@@ -116,6 +116,9 @@ func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID st
 				scope := sourceaccess.Scope{UserID: j.Owner, InstanceID: r.ID, TaskID: j.ID, AssetID: o.ObservedVersion}
 				h, e := r.Worker.Access.OpenIndexed(ctx, scope, o.RootID, o.RelativePath, o.ObservedVersion)
 				if e != nil {
+					if ctx.Err() != nil {
+						return all, ctx.Err()
+					}
 					return all, domain.Fail("RESOURCE_CHANGED", "Scanned source could not be reopened; retry scan")
 				}
 				if h.Entry.SizeBytes != o.SizeBytes {
@@ -125,6 +128,10 @@ func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID st
 				meta, e := probe(ctx, h, o.SizeBytes)
 				valid := h.VerifyIndexedVersion()
 				h.Close()
+				// 停服会关闭扫描句柄；此时应记录任务中断，保留重新扫描的机会。
+				if ctx.Err() != nil {
+					return all, ctx.Err()
+				}
 				var disabled *domain.Error
 				if errors.Is(e, context.Canceled) || errors.Is(e, context.DeadlineExceeded) || (errors.As(e, &disabled) && disabled.Code == "PLUGIN_DISABLED") {
 					return all, e
