@@ -21,7 +21,7 @@ func TestActualAccountWorkerPersistsRestoresAndLogsOut(t *testing.T) {
 	}
 	time.Sleep(3100 * time.Millisecond)
 	done, err := w.PlatformAccount(ctx, online.AccountRequest{Action: "poll", LoginID: begin.LoginID})
-	if err != nil || done.State != "signedIn" || done.AvatarURL != "https://p2.music.126.net/fixture/avatar.jpg" {
+	if err != nil || done.State != "signedIn" || done.AvatarURL != "https://p2.music.126.net/fixture/avatar.jpg" || done.MembershipTier != "vip" {
 		t.Fatalf("login: %s %v", done.State, err)
 	}
 	binding := func() onlinehost.DownloadBinding {
@@ -74,7 +74,7 @@ func TestActualAccountWorkerPersistsRestoresAndLogsOut(t *testing.T) {
 	}
 	w = onlineStart(t, cfg)
 	gone, err := w.PlatformAccount(ctx, online.AccountRequest{Action: "state"})
-	if err != nil || gone.State != "signedOut" || gone.AvatarURL != "" {
+	if err != nil || gone.State != "signedOut" || gone.AvatarURL != "" || gone.MembershipTier != "" {
 		t.Fatal("logout did not survive restart")
 	}
 	loginOnlineFixture(t, w)

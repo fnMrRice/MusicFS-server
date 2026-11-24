@@ -3,6 +3,7 @@ package onlinehost
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
@@ -48,6 +49,7 @@ func (s *Service) Account(ctx context.Context, owner, id string, request online.
 			return online.AccountView{}, domain.Fail("UNSUPPORTED", "Platform login is not supported by this worker")
 		}
 		view, err := p.PlatformAccount(ctx, request)
+		view.MembershipTier = view.VerifiedMembershipTier(time.Now())
 		if err == nil && view.State == "signedIn" && view.AccountID != "" && view.Revision != "" && s.playlistAccountReady != nil &&
 			(request.Action == "complete" || request.Action == "poll") {
 			s.mu.Lock()

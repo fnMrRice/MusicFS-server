@@ -32,7 +32,7 @@ func (f *fixture) RoundTrip(r *http.Request) (*http.Response, error) {
 	case "/eapi/login/qrcode/client/login":
 		return &http.Response{StatusCode: 200, Header: http.Header{"Set-Cookie": []string{"MUSIC_U=playlist-fixture-token; Secure"}}, Body: io.NopCloser(strings.NewReader(`{"code":803}`))}, nil
 	case "/eapi/nuser/account/get":
-		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"code":200,"profile":{"userId":12345,"nickname":"Playlist listener"}}`))}, nil
+		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"code":200,"profile":{"userId":12345,"vipType":11,"nickname":"Playlist listener"}}`))}, nil
 	}
 	if r.URL.Path != "/api/v6/playlist/detail" {
 		return &http.Response{StatusCode: 500, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("unexpected endpoint"))}, nil

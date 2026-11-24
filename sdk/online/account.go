@@ -16,6 +16,7 @@ type AccountView struct {
 	AccountID        string     `json:"accountId,omitempty"`
 	DisplayName      string     `json:"displayName,omitempty"`
 	AvatarURL        string     `json:"avatarUrl,omitempty"`
+	MembershipTier   string     `json:"membershipTier,omitempty"`
 	LoginID          string     `json:"loginId,omitempty"`
 	Method           string     `json:"method,omitempty"`
 	QRURL            string     `json:"qrUrl,omitempty"`
@@ -44,6 +45,17 @@ type AccountResult struct {
 // VerifiedAt 判断该时间点是否存在已校验且未过期的账号。
 func (v AccountView) VerifiedAt(now time.Time) bool {
 	return v.State == "signedIn" && v.AccountID != "" && v.Revision != "" && (v.ExpiresAt == nil || now.Before(*v.ExpiresAt))
+}
+
+// VerifiedMembershipTier 只公开当前已验证账号的已知会员档位。
+func (v AccountView) VerifiedMembershipTier(now time.Time) string {
+	if v.VerifiedAt(now) {
+		switch v.MembershipTier {
+		case "free", "vip", "svip":
+			return v.MembershipTier
+		}
+	}
+	return ""
 }
 
 var recommendationBindingPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)

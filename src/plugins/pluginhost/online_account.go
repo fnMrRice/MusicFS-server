@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"path/filepath"
+	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/plugindisplay"
@@ -46,6 +47,7 @@ func (w *OnlineWorker) accountCall(ctx context.Context, request online.AccountRe
 	generation := w.accountDisplay.begin(mutation)
 	wire, err := onlineCall[accountResultWire](ctx, w, "provider.online.account", scope, pluginproto.OnlineAccount{Context: scope, Request: request})
 	result := online.AccountResult{View: wire.View, Secret: wire.Secret, RecommendationBinding: wire.RecommendationBinding}
+	result.View.MembershipTier = result.View.VerifiedMembershipTier(time.Now())
 	if err == nil && len(wire.DisplayCount) > 0 {
 		// Invalid optional statistics never invalidate an otherwise valid login.
 		result.DisplayCount, _ = plugindisplay.Decode(wire.DisplayCount)

@@ -47,6 +47,20 @@ func TestPlatformAccountWireSchema(t *testing.T) {
 	if public.Validate(map[string]any{"state": "signedIn", "recommendationBinding": binding}) == nil {
 		t.Fatal("public schema accepted a private recommendation binding")
 	}
+	for _, tier := range []string{"free", "vip", "svip"} {
+		if err := public.Validate(map[string]any{"state": "signedIn", "revision": "login-1", "accountId": "12345", "membershipTier": tier}); err != nil {
+			t.Fatal("valid membership rejected", err)
+		}
+	}
+	for _, view := range []map[string]any{
+		{"state": "unverified", "revision": "login-1", "accountId": "12345", "membershipTier": "svip"},
+		{"state": "signedIn", "membershipTier": "vip"},
+		{"state": "signedIn", "revision": "login-1", "accountId": "12345", "membershipTier": "future"},
+	} {
+		if public.Validate(view) == nil {
+			t.Fatal("invalid membership accepted", view)
+		}
+	}
 	// 通用契约只限定 URL 结构，平台主机约束由插件负责。
 	if err := public.Validate(map[string]any{"state": "signedIn", "avatarUrl": "https://avatars.example.com/avatar.jpg"}); err != nil {
 		t.Fatal("Public schema rejected a plugin-owned avatar host", err)

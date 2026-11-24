@@ -82,7 +82,7 @@ func TestNeteaseAccountLifecycleAndPrivateSnapshot(t *testing.T) {
 			if err != nil || cookie.Value != "fixture-private-token" {
 				t.Fatal("missing platform session")
 			}
-			return accountResponse(`{"code":200,"profile":{"userId":12345,"nickname":"Test listener","avatarUrl":"http://p2.music.126.net/fixture/avatar.jpg"}}`), nil
+			return accountResponse(`{"code":200,"profile":{"userId":12345,"vipType":11,"nickname":"Test listener","avatarUrl":"http://p2.music.126.net/fixture/avatar.jpg"}}`), nil
 		default:
 			t.Fatal("unexpected endpoint")
 			return nil, nil
@@ -112,6 +112,9 @@ func TestNeteaseAccountLifecycleAndPrivateSnapshot(t *testing.T) {
 	if done.View.State != "signedIn" || done.View.AccountID != "12345" || done.View.DisplayName != "Test listener" || done.View.AvatarURL != "https://p2.music.126.net/fixture/avatar.jpg" || len(done.Secret) == 0 {
 		t.Fatal("missing authenticated binding")
 	}
+	if done.View.MembershipTier != "vip" || strings.Contains(string(done.Secret), "membershipTier") {
+		t.Fatal("membership must come from the verified profile")
+	}
 	a, revision, binding, err := c.RecommendationAccountScope(ctx)
 	var stored struct {
 		DeviceID string `json:"deviceId"`
@@ -133,7 +136,7 @@ func TestNeteaseAccountLifecycleAndPrivateSnapshot(t *testing.T) {
 	expectCode(t, err, "ACCESS_DENIED")
 	restored := anonymousScoped(t, online.Netease, transport)
 	v, err := restored.Account(ctx, online.AccountRequest{Action: "restore", Secret: done.Secret})
-	if err != nil || v.View.State != "unverified" || v.View.AvatarURL != done.View.AvatarURL {
+	if err != nil || v.View.State != "unverified" || v.View.MembershipTier != "" || v.View.AvatarURL != done.View.AvatarURL {
 		t.Fatal("restored credential incorrectly trusted")
 	}
 	_, _, _, err = restored.RecommendationAccountScope(ctx)
@@ -146,7 +149,7 @@ func TestNeteaseAccountLifecycleAndPrivateSnapshot(t *testing.T) {
 		t.Fatal("a verified restart lost the recommendation binding or reused a runtime revision")
 	}
 	v, err = c.Account(ctx, online.AccountRequest{Action: "logout"})
-	if err != nil || len(v.Secret) != 0 || v.View.State != "signedOut" || v.View.AvatarURL != "" || v.View.DisplayName != "" {
+	if err != nil || len(v.Secret) != 0 || v.View.State != "signedOut" || v.View.AvatarURL != "" || v.View.DisplayName != "" || v.View.MembershipTier != "" {
 		t.Fatal("logout retained credentials")
 	}
 	_, err = c.Account(ctx, online.AccountRequest{Action: "poll", LoginID: begin.View.LoginID})

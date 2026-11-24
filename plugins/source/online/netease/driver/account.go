@@ -104,6 +104,7 @@ func (c *Client) Check(ctx context.Context, secret *session.Secret) error {
 			ID        json.Number `json:"userId"`
 			Name      string      `json:"nickname"`
 			AvatarURL string      `json:"avatarUrl"`
+			membershipFields
 		} `json:"profile"`
 	}
 	if err := c.Request(ctx, secret, "/api/nuser/account/get", map[string]any{}, &result); err != nil {
@@ -125,5 +126,6 @@ func (c *Client) Check(ctx context.Context, secret *session.Secret) error {
 	secret.AccountID = result.Profile.ID.String()
 	secret.Name = name
 	secret.AvatarURL = c.AvatarURL(result.Profile.AvatarURL)
+	secret.MembershipTier = c.membershipTier(ctx, secret.AccountID, result.Profile.membershipFields)
 	return nil
 }

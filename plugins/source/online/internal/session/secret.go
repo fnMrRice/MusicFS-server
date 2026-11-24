@@ -11,6 +11,7 @@ type Secret struct {
 	AccountID      string            `json:"accountId,omitempty"`
 	Name           string            `json:"name,omitempty"`
 	AvatarURL      string            `json:"avatarUrl,omitempty"`
+	MembershipTier string            `json:"-"`
 	Cookies        map[string]string `json:"cookies,omitempty"`
 	MusicKey       string            `json:"musicKey,omitempty"`
 	UserToken      string            `json:"userToken,omitempty"`

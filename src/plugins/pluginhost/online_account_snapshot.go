@@ -55,7 +55,7 @@ func (s *accountDisplaySnapshot) finish(generation uint64, mutation bool, view o
 	s.countExpiresAt = nil
 	if view.State == "signedIn" && view.AccountID != "" && view.Revision != "" {
 		s.view = online.AccountView{State: view.State, AccountID: view.AccountID,
-			Revision: view.Revision, DisplayName: view.DisplayName}
+			Revision: view.Revision, DisplayName: view.DisplayName, MembershipTier: view.VerifiedMembershipTier(time.Now())}
 		if view.ExpiresAt != nil {
 			expiry := *view.ExpiresAt
 			s.view.ExpiresAt = &expiry

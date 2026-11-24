@@ -65,7 +65,7 @@ type accountFixtureTransport struct{ next http.RoundTripper }
 
 func (f accountFixtureTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	if r.URL.Path == "/eapi/nuser/account/get" {
-		return fixtureJSON(`{"code":200,"profile":{"userId":12345,"nickname":"Fixture"}}`), nil
+		return fixtureJSON(`{"code":200,"profile":{"userId":12345,"vipType":11,"nickname":"Fixture"}}`), nil
 	}
 	if r.URL.Host == "u.y.qq.com" {
 		b, _ := io.ReadAll(r.Body)

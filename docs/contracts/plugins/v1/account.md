@@ -1,5 +1,7 @@
 # 在线平台账号控制面扩展 v1
 
+已验证的账号可在 `view.membershipTier` 中给出 `free`、`vip` 或 `svip`。网易云在登录或重新校验时读取个人资料的 `vipType`，其中 0 表示普通账号，11 表示 VIP。若登录响应缺少该字段，插件会在请求的时间和频率限制内尝试读取同一用户的官方公开资料。两档付费会员都可使用通用 VIP 标志。只有同一资料同时报告有效的红标扩展权益（`vipRights.redplus.rights=true` 且 `vipCode=300`）才细分为 SVIP。未知值、未经验证的身份以及已退出的账号均省略该字段。常规账号状态读取直接使用本次校验的结果。
+
 机器定义：[账号 Worker Schema](account.schema.json)；与在线资料 Schema 并列校验本扩展的方法。
 
 `provider.online.account` 方法，沿用 `OnlineHello` 已绑定的 userId / instanceId、逐请求 taskId / timeoutMs 和精确上下文回显。当前资料协议修订为 online-declared-v4，包含[插件身份与名称](../../../plugins/plugin-identity.md)；所有业务调用使用本 Worker 当前已校验账号，调用方不能通过 accountRef 指定或冒用其他账号。accountRef 保留为空是控制通道身份约束，不表示匿名执行。旧匿名和 v2 Worker 的握手不再兼容。

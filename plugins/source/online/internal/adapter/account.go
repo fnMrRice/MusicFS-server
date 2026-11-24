@@ -171,6 +171,7 @@ func (c *Client) Account(ctx context.Context, r AccountRequest) (result AccountR
 			a.waitAfterRestore = c.platform == Netease && a.view.State == "unverified"
 			a.view = c.savedAccountView()
 			a.view.State = "signedIn"
+			a.view.MembershipTier = a.secret.MembershipTier
 			a.view.Revision = revision
 			if a.view.Revision == "" {
 				a.view.Revision = domain.NewID()
@@ -216,6 +217,7 @@ func (c *Client) completeAccount() {
 	a.key = ""
 	a.view = c.savedAccountView()
 	a.view.State = "signedIn"
+	a.view.MembershipTier = a.secret.MembershipTier
 	a.view.Revision = domain.NewID()
 	a.revoked.Store(false)
 }

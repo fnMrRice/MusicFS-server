@@ -51,7 +51,7 @@ func (f *fixture) RoundTrip(r *http.Request) (*http.Response, error) {
 	case "/eapi/login/qrcode/client/login":
 		return &http.Response{StatusCode: 200, Header: http.Header{"Set-Cookie": []string{"MUSIC_U=fixture-account-token; Secure"}}, Body: io.NopCloser(strings.NewReader(`{"code":803}`))}, nil
 	case "/eapi/nuser/account/get":
-		body = `{"code":200,"profile":{"userId":12345,"nickname":"Fixture listener","avatarUrl":"http://p2.music.126.net/fixture/avatar.jpg"}}`
+		body = `{"code":200,"profile":{"userId":12345,"vipType":11,"nickname":"Fixture listener","avatarUrl":"http://p2.music.126.net/fixture/avatar.jpg"}}`
 		if len(os.Args) == 2 && !f.accountRead.Swap(true) {
 			switch os.Args[1] {
 			case "account-offline":

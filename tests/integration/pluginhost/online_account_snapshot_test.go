@@ -72,6 +72,29 @@ func TestAccountDisplaySnapshotTracksValidatedNamesWithoutRPC(t *testing.T) {
 	}
 }
 
+func TestMembershipOnlySurvivesInVerifiedAccountState(t *testing.T) {
+	w, dir := startOnline(t)
+	view := signedInDisplay()
+	past := time.Now().Add(-time.Minute)
+	for _, tc := range []struct {
+		state, tier, want string
+		expiry            *time.Time
+	}{
+		{"signedIn", "svip", "svip", nil},
+		{"signedIn", "future", "", nil},
+		{"signedIn", "vip", "", &past},
+		{"unverified", "svip", "", nil},
+		{"signedOut", "vip", "", nil},
+	} {
+		view.State, view.MembershipTier, view.ExpiresAt = tc.state, tc.tier, tc.expiry
+		setControl(t, dir, fixtureControl{View: &view})
+		result, err := w.PlatformAccount(t.Context(), online.AccountRequest{Action: "state"})
+		if err != nil || result.MembershipTier != tc.want || w.PlatformSessionSnapshot().MembershipTier != tc.want {
+			t.Fatalf("incorrect membership for %s/%s: %q, %v", tc.state, tc.tier, result.MembershipTier, err)
+		}
+	}
+}
+
 func TestAccountDisplaySnapshotRejectsPreLogoutAndPendingResponses(t *testing.T) {
 	t.Run("stale read after logout", func(t *testing.T) {
 		w, dir := startOnline(t)
