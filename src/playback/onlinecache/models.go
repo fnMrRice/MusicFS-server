@@ -33,6 +33,13 @@ type Scope struct {
 type Record struct {
 	Version
 	Key, Owner, Plugin, Source string
+	Directory                  string
+}
+
+type fileLocation struct{ directory, id string }
+
+func (r Record) location() fileLocation {
+	return fileLocation{r.Directory, r.ID}
 }
 
 // DownloadTarget 在存储协议中保留完整归属，避免三个字符串参数错位。

@@ -30,14 +30,15 @@ type Repository interface {
 	CommitPlayback(context.Context, string, string, string, []byte, time.Time, string, string, string, string, string) error
 }
 type Config struct {
-	Decoder           audioruntime.Decoder
-	Decoders          []audioruntime.Decoder
-	CacheRoot         string
-	MaxSessions       int
-	MaxCacheBytes     int64
-	RequireDSP        bool
-	DisableEffects    bool
-	DisableChannelMix bool
+	Decoder                   audioruntime.Decoder
+	Decoders                  []audioruntime.Decoder
+	CacheRoot                 string
+	ValidateDownloadDirectory func(string) error
+	MaxSessions               int
+	MaxCacheBytes             int64
+	RequireDSP                bool
+	DisableEffects            bool
+	DisableChannelMix         bool
 }
 type session struct {
 	forcedSourceID          string
@@ -124,7 +125,7 @@ func New(ctx context.Context, repo Repository, lib *library.Service, processor a
 		}
 	}
 	if repo, ok := repo.(onlinecache.Repository); ok {
-		s.downloads, err = onlinecache.NewWithProbe(ctx, filepath.Join(dir, "online"), repo, s.probeDownloadedAudio)
+		s.downloads, err = onlinecache.NewWithDirectoryValidation(ctx, filepath.Join(dir, "online"), repo, s.probeDownloadedAudio, c.ValidateDownloadDirectory)
 		if err != nil {
 			cancel()
 			if s.cache != nil {

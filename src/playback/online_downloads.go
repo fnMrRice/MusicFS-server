@@ -13,6 +13,20 @@ import (
 type downloadAccountKey struct{}
 type downloadAccount struct{ id, revision string }
 
+func (s *Service) DownloadDirectory() (onlinecache.DirectorySettings, error) {
+	if s.downloads == nil {
+		return onlinecache.DirectorySettings{}, domain.Fail("UNSUPPORTED", "Online downloads are unavailable")
+	}
+	return s.downloads.DownloadDirectory(), nil
+}
+
+func (s *Service) SetDownloadDirectory(path string) (onlinecache.DirectorySettings, error) {
+	if s.downloads == nil {
+		return onlinecache.DirectorySettings{}, domain.Fail("UNSUPPORTED", "Online downloads are unavailable")
+	}
+	return s.downloads.SetDownloadDirectory(path)
+}
+
 // WithDownloadAccount 绑定排队时的真实平台账号及登录代次；匿名实例使用两个空值。
 func WithDownloadAccount(ctx context.Context, accountID, revision string) context.Context {
 	return context.WithValue(ctx, downloadAccountKey{}, downloadAccount{accountID, revision})

@@ -12,6 +12,7 @@ import (
 
 func (s *Server) RegisterPlayback(service *playback.Service) {
 	s.registerTimeline(service)
+	s.registerDownloadDirectory(service)
 	s.Handle("GET /api/v1/playback/sessions/{id}/attempts/{attempt}/output-profile", true, false, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
 		profile, err := service.AttemptOutputProfile(r.Context(), a, r.PathValue("id"), r.PathValue("attempt"))
 		if err != nil {

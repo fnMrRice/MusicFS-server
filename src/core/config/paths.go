@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 )
 
 func resolvePaths(c *Config, base string) {
@@ -57,6 +59,19 @@ func resolvePaths(c *Config, base string) {
 			}
 		}
 	}
+}
+
+// 在线下载由播放授权保护，单独清理。其专属目录不能对外静态发布或混入插件状态备份。
+func (c Config) ValidateDownloadDirectory(dir string) error {
+	if c.WebRoot != "" && overlaps(c.WebRoot, dir) {
+		return domain.Fail("INVALID_ARGUMENT", "The download directory overlaps the public web directory")
+	}
+	for _, state := range []string{"providers", "online", "writeback"} {
+		if c.DataRoot != "" && overlaps(filepath.Join(c.DataRoot, state), dir) {
+			return domain.Fail("INVALID_ARGUMENT", "The download directory overlaps a plugin state directory")
+		}
+	}
+	return nil
 }
 
 func overlaps(a, b string) bool {

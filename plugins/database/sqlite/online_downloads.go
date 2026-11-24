@@ -9,6 +9,12 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/playback/onlinecache"
 )
 
+// 下载位置仅用于服务端打开文件。对客户端投影时仅读取 Version。
+type downloadDocument struct {
+	onlinecache.Version
+	Directory string `json:"_directory,omitempty"`
+}
+
 func (s *Store) ListOnlineDownloads(ctx context.Context) ([]onlinecache.Record, error) {
 	rows, err := s.DB.QueryContext(ctx, "SELECT lookup_key,owner,plugin_id,source_id,document FROM online_downloads ORDER BY id")
 	if err != nil {
@@ -22,16 +28,18 @@ func (s *Store) ListOnlineDownloads(ctx context.Context) ([]onlinecache.Record, 
 		if err = rows.Scan(&r.Key, &r.Owner, &r.Plugin, &r.Source, &raw); err != nil {
 			return nil, err
 		}
-		if err = json.Unmarshal([]byte(raw), &r.Version); err != nil {
+		var doc downloadDocument
+		if err = json.Unmarshal([]byte(raw), &doc); err != nil {
 			return nil, err
 		}
+		r.Version, r.Directory = doc.Version, doc.Directory
 		result = append(result, r)
 	}
 	return result, rows.Err()
 }
 
 func (s *Store) SaveOnlineDownload(ctx context.Context, r onlinecache.Record) error {
-	raw, err := json.Marshal(r.Version)
+	raw, err := json.Marshal(downloadDocument{r.Version, r.Directory})
 	if err != nil {
 		return err
 	}
@@ -54,7 +62,7 @@ func (s *Store) ForgetOnlineDownload(ctx context.Context, target onlinecache.Dow
 
 // 回填只更新仍存在的同一下载版本，已经删除的副本不能重新出现。
 func (s *Store) UpdateOnlineDownload(ctx context.Context, r onlinecache.Record) error {
-	raw, err := json.Marshal(r.Version)
+	raw, err := json.Marshal(downloadDocument{r.Version, r.Directory})
 	if err != nil {
 		return err
 	}

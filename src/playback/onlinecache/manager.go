@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -19,22 +18,26 @@ import (
 var cacheID = regexp.MustCompile("^[a-f0-9]{64}$")
 
 type Manager struct {
-	root    string
-	repo    Repository
-	mu      sync.Mutex
-	records map[string]Record
-	byKey   map[string]string
-	pins    map[string]int
-	garbage map[string]bool
-	pending map[string]*downloadRequest
-	probe   Probe
+	root              string
+	ownerMarker       string
+	directoryMu       sync.RWMutex
+	directories       directoryState
+	validateDirectory func(string) error
+	repo              Repository
+	mu                sync.Mutex
+	records           map[string]Record
+	byKey             map[string]string
+	pins              map[fileLocation]int
+	garbage           map[fileLocation]bool
+	pending           map[string]*downloadRequest
+	probe             Probe
 }
 
 type downloadRequest struct {
-	owner, source string
-	done          chan struct{}
-	deleted       map[string]bool
-	check         func() error
+	owner, source, directory string
+	done                     chan struct{}
+	deleted                  map[string]bool
+	check                    func() error
 }
 
 func New(ctx context.Context, root string, repo Repository) (*Manager, error) {
@@ -42,43 +45,32 @@ func New(ctx context.Context, root string, repo Repository) (*Manager, error) {
 }
 
 func NewWithProbe(ctx context.Context, root string, repo Repository, probe Probe) (*Manager, error) {
+	return NewWithDirectoryValidation(ctx, root, repo, probe, nil)
+}
+
+func NewWithDirectoryValidation(ctx context.Context, root string, repo Repository, probe Probe, validate func(string) error) (*Manager, error) {
+	root, err := filepath.Abs(root)
+	if err != nil {
+		return nil, err
+	}
+	if validate != nil {
+		if err := validate(root); err != nil {
+			return nil, err
+		}
+	}
 	if err := os.MkdirAll(root, 0700); err != nil {
 		return nil, err
 	}
-	m := &Manager{root: root, repo: repo, probe: probe, records: map[string]Record{}, byKey: map[string]string{}, pins: map[string]int{}, garbage: map[string]bool{}, pending: map[string]*downloadRequest{}}
+	m := &Manager{root: root, repo: repo, probe: probe, validateDirectory: validate, records: map[string]Record{}, byKey: map[string]string{}, pins: map[fileLocation]int{}, garbage: map[fileLocation]bool{}, pending: map[string]*downloadRequest{}}
+	if err := m.loadDirectories(); err != nil {
+		return nil, err
+	}
 	records, err := repo.ListOnlineDownloads(ctx)
 	if err != nil {
 		return nil, err
 	}
-	valid := map[string]bool{}
-	for _, r := range records {
-		if !cacheID.MatchString(r.ID) || !cacheID.MatchString(r.Key) {
-			return nil, errors.New("invalid online audio cache record")
-		}
-		name := r.ID + ".audio"
-		info, err := os.Lstat(filepath.Join(root, name))
-		if err != nil && !os.IsNotExist(err) {
-			return nil, err
-		}
-		if err == nil && info.Mode().IsRegular() && info.Size() == r.SizeBytes && r.SizeBytes > 0 {
-			valid[name] = true
-			m.records[r.ID] = r
-			m.byKey[r.Key] = r.ID
-		} else if err := repo.ForgetOnlineDownload(ctx, r.target()); err != nil {
-			return nil, err
-		}
-	}
-	entries, err := os.ReadDir(root)
-	if err != nil {
+	if err = m.restoreDirectories(ctx, records); err != nil {
 		return nil, err
-	}
-	for _, e := range entries {
-		name := e.Name()
-		if !valid[name] && !e.IsDir() && (strings.HasPrefix(name, "partial-") || strings.HasSuffix(name, ".audio")) {
-			if err := os.Remove(filepath.Join(root, name)); err != nil {
-				return nil, err
-			}
-		}
 	}
 	if err = m.trimDue(ctx, time.Now()); err != nil {
 		return nil, err
@@ -118,7 +110,10 @@ func (m *Manager) Trim(ctx context.Context) error {
 			if total <= p.LimitBytes {
 				break
 			}
-			if m.pins[r.ID] > 0 {
+			if m.pins[r.location()] > 0 {
+				continue
+			}
+			if _, err := m.availableDirectory(r.Directory); err != nil {
 				continue
 			}
 			if err = m.remove(ctx, r); err != nil {
@@ -173,8 +168,8 @@ func (m *Manager) remove(ctx context.Context, r Record) error {
 	if m.byKey[r.Key] == r.ID {
 		delete(m.byKey, r.Key)
 	}
-	m.garbage[r.ID] = true
-	m.collect(r.ID)
+	m.garbage[r.location()] = true
+	m.collect(r.location())
 	return nil
 }
 
@@ -188,6 +183,9 @@ func (m *Manager) Delete(ctx context.Context, owner, source, id string) error {
 	r, ok := m.records[id]
 	if !ok || r.Owner != owner || r.Source != source {
 		return domain.Fail("NOT_FOUND", "Online download not found")
+	}
+	if _, err := m.availableDirectory(r.Directory); err != nil {
+		return err
 	}
 	if err := m.remove(ctx, r); err != nil {
 		return err
@@ -204,15 +202,19 @@ func (m *Manager) Delete(ctx context.Context, owner, source, id string) error {
 	return nil
 }
 
-func (m *Manager) collect(id string) {
-	if !m.garbage[id] || m.pins[id] > 0 {
+func (m *Manager) collect(location fileLocation) {
+	if !m.garbage[location] || m.pins[location] > 0 {
 		return
 	}
-	if err := os.Remove(filepath.Join(m.root, id+".audio")); err != nil && !os.IsNotExist(err) {
-		slog.Warn("Online audio cache file cleanup deferred", "versionId", id, "error", err)
+	dir, err := m.availableDirectory(location.directory)
+	if err != nil {
 		return
 	}
-	delete(m.garbage, id)
+	if err := os.Remove(filepath.Join(dir, location.id+".audio")); err != nil && !os.IsNotExist(err) {
+		slog.Warn("Online audio cache file cleanup deferred", "versionId", location.id, "error", err)
+		return
+	}
+	delete(m.garbage, location)
 }
 
 type readHandle struct {
@@ -251,18 +253,19 @@ func (m *Manager) pin(r Record) (*readHandle, error) {
 	if err := m.checkFile(r); err != nil {
 		return nil, err
 	}
-	f, err := os.Open(filepath.Join(m.root, r.ID+".audio"))
+	f, err := os.Open(filepath.Join(m.effectiveDirectory(r.Directory), r.ID+".audio"))
 	if err != nil {
 		return nil, err
 	}
-	m.pins[r.ID]++
+	location := r.location()
+	m.pins[location]++
 	return &readHandle{ReadCloser: f, file: f, version: r.Version, release: func() {
 		m.mu.Lock()
 		defer m.mu.Unlock()
-		m.pins[r.ID]--
-		if m.pins[r.ID] == 0 {
-			delete(m.pins, r.ID)
-			m.collect(r.ID)
+		m.pins[location]--
+		if m.pins[location] == 0 {
+			delete(m.pins, location)
+			m.collect(location)
 		}
 	}}, nil
 }
@@ -270,7 +273,11 @@ func (m *Manager) pin(r Record) (*readHandle, error) {
 var errDamaged = errors.New("online audio cache file changed")
 
 func (m *Manager) checkFile(r Record) error {
-	info, err := os.Lstat(filepath.Join(m.root, r.ID+".audio"))
+	dir, err := m.availableDirectory(r.Directory)
+	if err != nil {
+		return err
+	}
+	info, err := os.Lstat(filepath.Join(dir, r.ID+".audio"))
 	if err != nil {
 		return err
 	}

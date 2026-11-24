@@ -3,6 +3,8 @@
   "$id": "https://musicfs.invalid/contracts/http.schema.json",
   "title": "MusicFS HTTP v1 模型",
   "$defs": {
+    "OnlineDownloadDirectory": {"type":"object","additionalProperties":false,"required":["path","effectivePath"],"properties":{"path":{"type":"string","description":"管理员选择的服务器绝对目录。空字符串表示使用默认目录。"},"effectivePath":{"type":"string","minLength":1,"description":"新下载实际写入的服务器目录。"}}},
+    "SetOnlineDownloadDirectory": {"type":"object","additionalProperties":false,"required":["path"],"properties":{"path":{"type":"string","description":"选择可写的服务器绝对目录，留空恢复默认。"}}},
     "CatalogLyricsPluginID": {"enum":["musicfs.scraper.netease","musicfs.scraper.qqmusic","musicfs.scraper.lrclib"]},
     "LyricsPluginOrder": {"type":"array","uniqueItems":true,"maxItems":32,"items":{"$ref":"#/$defs/ID"}},
     "LyricsAutoSettings": {"type":"object","additionalProperties":false,"required":["revision","pluginOrder"],"properties":{"revision":{"type":"integer","minimum":0},"pluginOrder":{"$ref":"#/$defs/LyricsPluginOrder"}}},

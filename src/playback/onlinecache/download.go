@@ -76,7 +76,7 @@ func (m *Manager) open(ctx context.Context, scope Scope, expected pluginproto.On
 					continue
 				}
 			}
-			request = &downloadRequest{owner: scope.Owner, source: scope.Source, done: make(chan struct{}), check: check}
+			request = &downloadRequest{owner: scope.Owner, source: scope.Source, directory: m.DownloadDirectory().Path, done: make(chan struct{}), check: check}
 			m.pending[key] = request
 			m.mu.Unlock()
 			finish = func() { m.mu.Lock(); delete(m.pending, key); close(request.done); m.mu.Unlock() }
@@ -150,7 +150,15 @@ func (m *Manager) open(ctx context.Context, scope Scope, expected pluginproto.On
 func (m *Manager) download(ctx context.Context, scope Scope, key string, a pluginproto.OnlineAudio, request *downloadRequest, body io.ReadCloser, live *growingReader) (*readHandle, error) {
 	stop := context.AfterFunc(ctx, func() { body.Close() })
 	defer func() { stop(); body.Close() }()
-	f, err := os.CreateTemp(m.root, "partial-")
+	directory := ""
+	if request != nil {
+		directory = request.directory
+	}
+	dir, err := m.availableDirectory(directory)
+	if err != nil {
+		return nil, err
+	}
+	f, err := os.CreateTemp(dir, "partial-")
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +205,7 @@ func (m *Manager) download(ctx context.Context, scope Scope, key string, a plugi
 		return nil, err
 	}
 	id := hex.EncodeToString(hash.Sum(nil))
-	r := Record{Key: key, Owner: scope.Owner, Plugin: scope.Plugin, Source: scope.Source, Version: Version{ID: id, Quality: a.Quality, MIME: a.MIME, Codec: a.Codec, Container: a.Container, BitrateBps: a.BitrateBps, SampleRateHz: a.SampleRateHz, Channels: a.Channels, SizeBytes: n, DownloadedAt: time.Now().UTC()}}
+	r := Record{Key: key, Owner: scope.Owner, Plugin: scope.Plugin, Source: scope.Source, Directory: directory, Version: Version{ID: id, Quality: a.Quality, MIME: a.MIME, Codec: a.Codec, Container: a.Container, BitrateBps: a.BitrateBps, SampleRateHz: a.SampleRateHz, Channels: a.Channels, SizeBytes: n, DownloadedAt: time.Now().UTC()}}
 	m.measure(ctx, f, &r.Version)
 	if live != nil {
 		live.use(nil)
@@ -231,9 +239,12 @@ func (m *Manager) download(ctx context.Context, scope Scope, key string, a plugi
 			return nil, err
 		}
 	}
-	path := filepath.Join(m.root, id+".audio")
+	if _, err = m.availableDirectory(directory); err != nil {
+		return nil, err
+	}
+	path := filepath.Join(dir, id+".audio")
 	// 删除后发起的新请求已重新下载并验证相同内容，可接管旧读者仍打开的同一份物理文件。
-	reuse := m.garbage[id] && m.checkFile(r) == nil
+	reuse := m.garbage[r.location()] && m.checkFile(r) == nil
 	if !reuse {
 		if err = os.Rename(f.Name(), path); err != nil {
 			return nil, err
@@ -246,7 +257,7 @@ func (m *Manager) download(ctx context.Context, scope Scope, key string, a plugi
 		return nil, err
 	}
 	m.records[id] = r
-	delete(m.garbage, id)
+	delete(m.garbage, r.location())
 	m.byKey[key] = id
 	return m.pin(r)
 }
