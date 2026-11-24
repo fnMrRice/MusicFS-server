@@ -78,7 +78,7 @@ func (s *Store) SelectWorkScrapedField(ctx context.Context, owner, id string, re
 	}
 	work.Revision++
 	work.UpdatedAt = time.Now().UTC()
-	changed, err := m.tx.ExecContext(ctx, `UPDATE works SET revision=?,document=json_set(document,'$.revision',?,'$.updatedAt',?,?,json(?)) WHERE owner=? AND id=? AND revision=?`, work.Revision, work.Revision, work.UpdatedAt.Format(time.RFC3339Nano), "$.scrapedFields."+field.Field, string(raw), owner, id, revision)
+	changed, err := m.tx.ExecContext(ctx, `UPDATE works SET revision=?,document=json_set(document,'$.revision',CAST(? AS BIGINT),'$.updatedAt',?,?,json(?)) WHERE owner=? AND id=? AND revision=?`, work.Revision, work.Revision, work.UpdatedAt.Format(time.RFC3339Nano), "$.scrapedFields."+field.Field, string(raw), owner, id, revision)
 	if err != nil {
 		return 0, err
 	}

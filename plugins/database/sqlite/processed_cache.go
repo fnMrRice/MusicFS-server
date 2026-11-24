@@ -75,7 +75,7 @@ func authorizeProcessedCache(ctx context.Context, tx *sql.Tx, r processedcache.R
 }
 
 func (s *Store) PublishProcessedCache(ctx context.Context, r processedcache.Record, a processedcache.Authorization) (publishErr error) {
-	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", "")
+	ctx = s.logContext(ctx)
 	finish := pluginlog.Operation(ctx, "processedCache.publish")
 	defer func() { finish(publishErr) }()
 	tx, err := s.DB.BeginTx(ctx, nil)
@@ -105,7 +105,7 @@ func (s *Store) PublishProcessedCache(ctx context.Context, r processedcache.Reco
 }
 
 func (s *Store) CheckProcessedCache(ctx context.Context, r processedcache.Record, a processedcache.Authorization) (checkErr error) {
-	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", "")
+	ctx = s.logContext(ctx)
 	finish := pluginlog.Operation(ctx, "processedCache.check")
 	defer func() { finish(checkErr) }()
 	tx, err := s.DB.BeginTx(ctx, nil)

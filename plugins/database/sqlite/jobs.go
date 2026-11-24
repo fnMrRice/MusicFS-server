@@ -67,7 +67,7 @@ func readJob(row rowScanner) (jobs.Job, error) {
 }
 
 func (s *Store) Enqueue(ctx context.Context, owner, target string, plan pluginproto.ScanPlan, key string) (queued jobs.Job, duplicate bool, enqueueErr error) {
-	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", "")
+	ctx = s.logContext(ctx)
 	finish := pluginlog.Operation(ctx, "scan.queue.persist")
 	defer func() { finish(enqueueErr) }()
 	var j jobs.Job

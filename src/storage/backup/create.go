@@ -9,11 +9,13 @@ import (
 	"runtime/debug"
 	"time"
 
+	_ "github.com/fnMrRice/MusicFS-server/plugins/database/postgres"
 	_ "github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/core/version"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	_ "github.com/fnMrRice/MusicFS-server/src/storage/rpcbackend"
@@ -67,6 +69,16 @@ func Create(ctx context.Context, doc *config.Document, parent string) (Result, e
 	driver, err := storage.Lookup(c.Storage.Backend)
 	if err != nil {
 		return result, err
+	}
+	exclusions := stateExclusions{exportedDatabase: driver.SeparatePluginStateSnapshot}
+	if driver.Name == "postgres" && c.Storage.Options["passwordFile"] != "" {
+		exclusions.passwordPath, err = filepath.Abs(c.Storage.Options["passwordFile"])
+		if err == nil {
+			exclusions.passwordInfo, err = os.Stat(exclusions.passwordPath)
+		}
+		if err != nil {
+			return result, domain.Fail("INVALID_ARGUMENT", "Cannot identify the PostgreSQL password file for backup")
+		}
 	}
 	store, err := storage.OpenMaintenance(ctx, driver.Name, storage.Options{
 		DataRoot: c.DataRoot, Values: c.Storage.Options,
@@ -125,8 +137,16 @@ func Create(ctx context.Context, doc *config.Document, parent string) (Result, e
 		return result, err
 	}
 	var stateBytes int64
+	if driver.SeparatePluginStateSnapshot {
+		file, err := checksumFile(ctx, root, "state/"+plugindb.PortableStatePath, maxFileBytes)
+		if err != nil {
+			return result, err
+		}
+		m.Files = append(m.Files, file)
+		stateBytes += file.Size
+	}
 	for _, directory := range []string{"providers", "online", "writeback"} {
-		if err = copyState(ctx, state, root, directory, &m.Files, &stateBytes); err != nil {
+		if err = copyState(ctx, state, root, directory, exclusions, &m.Files, &stateBytes); err != nil {
 			return result, err
 		}
 	}

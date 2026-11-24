@@ -27,6 +27,9 @@ type Store struct {
 	scope string
 }
 
+// CreateValuesTable 是实例状态库和便携快照共用的表结构。
+const CreateValuesTable = `CREATE TABLE IF NOT EXISTS plugin_values(scope TEXT NOT NULL, key TEXT NOT NULL, revision INTEGER NOT NULL, value BLOB NOT NULL, PRIMARY KEY(scope,key))`
+
 func Open(ctx context.Context, path, plugin, instance string) (store *Store, openErr error) {
 	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", instance)
 	finish := pluginlog.Operation(ctx, "database.state.open")
@@ -47,7 +50,7 @@ func Open(ctx context.Context, path, plugin, instance string) (store *Store, ope
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
-	_, err = db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS plugin_values(scope TEXT NOT NULL, key TEXT NOT NULL, revision INTEGER NOT NULL, value BLOB NOT NULL, PRIMARY KEY(scope,key))`)
+	_, err = db.ExecContext(ctx, CreateValuesTable)
 	if err != nil {
 		db.Close()
 		return nil, err

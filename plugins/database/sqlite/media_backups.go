@@ -30,6 +30,11 @@ func readMediaBackup(row rowScanner) (mediastore.Backup, string, error) {
 const backupColumns = "id,database_path,state,object_count,missing_count,created_at,updated_at"
 
 func (s *Store) CreateMediaBackup(ctx context.Context, id, path string) (mediastore.Backup, error) {
+	return s.CreateMediaBackupWithSnapshot(ctx, id, path, s.Backup)
+}
+
+// CreateMediaBackupWithSnapshot 使各后端复用备份日志、快照验证和媒体回收保护。
+func (s *Store) CreateMediaBackupWithSnapshot(ctx context.Context, id, path string, snapshot func(context.Context, string) error) (mediastore.Backup, error) {
 	var empty mediastore.Backup
 	if !mediaID(id) || !filepath.IsAbs(path) || filepath.Ext(path) != ".sqlite" {
 		return empty, domain.Fail("INVALID_ARGUMENT", "Invalid backup snapshot target")
@@ -72,14 +77,13 @@ func (s *Store) CreateMediaBackup(ctx context.Context, id, path string) (mediast
 	if err = tx.Commit(); err != nil {
 		return empty, err
 	}
-	// VACUUM INTO neither overwrites an existing file nor reads references from a
-	// later live transaction. An interrupted intent remains explicitly preparing.
+	// 快照不能覆盖旧文件。中断时保留 preparing 状态，引用集合始终从已完成的快照读取。
 	if _, err = os.Lstat(path); err == nil {
 		return empty, domain.Fail("CONFLICT", "Backup destination already exists")
 	} else if !os.IsNotExist(err) {
 		return empty, err
 	}
-	if err = s.Backup(ctx, path); err != nil {
+	if err = snapshot(ctx, path); err != nil {
 		return empty, err
 	}
 	objects, err := readBackupSnapshot(ctx, path)

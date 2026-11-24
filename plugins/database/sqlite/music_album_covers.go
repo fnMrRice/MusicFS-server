@@ -53,7 +53,7 @@ func populateMusicAlbumCovers(ctx context.Context, query trackCoverQuery, owner 
  JOIN media_content_objects o ON o.id=c.object_id AND o.owner=? AND o.source_id=s.id
 )
  SELECT c.album_id,c.path FROM candidates c WHERE c.path IS NOT NULL AND c.path<>'' AND (
- c.path NOT LIKE '/api/v1/media/%' OR EXISTS(SELECT 1 FROM media_content_objects o
+ lower(c.path) NOT LIKE '/api/v1/media/%' OR EXISTS(SELECT 1 FROM media_content_objects o
  JOIN tracks t ON t.id=o.source_id AND t.owner=o.owner
  JOIN visible_music_sources s ON s.id=t.id
  WHERE o.owner=? AND o.id=substr(c.path,15) AND o.state='available'

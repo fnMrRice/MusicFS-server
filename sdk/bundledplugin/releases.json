@@ -23,6 +23,7 @@
     "musicfs.dsp.reverb": {"version": "0.1.0", "sources": ["dsp/effects/reverb.go", "@effect"]},
     "musicfs.plugin.decoder.channelmix": {"version": "0.1.0", "sources": ["dsp/channelmix/", "@dsp"]},
     "musicfs.plugin.storage.sqlite": {"version": "0.1.0", "sources": ["database/sqlite/", "@worker"]},
+    "musicfs.plugin.storage.postgres": {"version": "0.1.0", "sources": ["database/postgres/", "database/sqlite/"]},
     "musicfs.plugin.analysis.chromaprint": {"version": "0.1.0", "sources": ["analysis/chromaprint/"]},
     "musicfs.plugin.tags.flac": {"version": "0.1.0", "sources": ["tags/flac/"]},
     "musicfs.plugin.matching.standard": {"version": "0.1.0", "sources": ["matching/standard/"]},

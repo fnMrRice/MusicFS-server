@@ -16,7 +16,7 @@ import (
 )
 
 func bumpPersonalRevision(ctx context.Context, tx *sql.Tx, owner, kind string) error {
-	_, err := tx.ExecContext(ctx, "INSERT INTO personal_collection_revisions(owner,kind,revision) VALUES(?,?,1) ON CONFLICT(owner,kind) DO UPDATE SET revision=revision+1", owner, kind)
+	_, err := tx.ExecContext(ctx, "INSERT INTO personal_collection_revisions(owner,kind,revision) VALUES(?,?,1) ON CONFLICT(owner,kind) DO UPDATE SET revision=personal_collection_revisions.revision+1", owner, kind)
 	return err
 }
 

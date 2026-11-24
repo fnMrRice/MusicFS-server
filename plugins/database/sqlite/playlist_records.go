@@ -85,11 +85,7 @@ func playlistAudit(ctx context.Context, tx *sql.Tx, owner string, p playlists.Pl
 	if err != nil {
 		return err
 	}
-	result, err := tx.ExecContext(ctx, "INSERT INTO playlist_changes(owner,playlist_id,document) VALUES(?,?,?)", owner, p.ID, raw)
-	if err != nil {
-		return err
-	}
-	c.Sequence, err = result.LastInsertId()
+	err = tx.QueryRowContext(ctx, "INSERT INTO playlist_changes(owner,playlist_id,document) VALUES(?,?,?) RETURNING sequence", owner, p.ID, raw).Scan(&c.Sequence)
 	if err != nil {
 		return err
 	}

@@ -68,6 +68,10 @@ func builtinIdentity(pluginID string) *pluginproto.PluginIdentity {
 		identity.Name = "SQLite Database"
 		identity.LocalizedNames = map[string]string{"zh": "SQLite 数据库", "zh-Hans": "SQLite 数据库", "zh-Hant": "SQLite 資料庫"}
 		identity.Features = []string{"database"}
+	case "musicfs.plugin.storage.postgres":
+		identity.Name = "PostgreSQL Database"
+		identity.LocalizedNames = map[string]string{"zh": "PostgreSQL 数据库", "zh-Hans": "PostgreSQL 数据库", "zh-Hant": "PostgreSQL 資料庫"}
+		identity.Features = []string{"database"}
 	case "musicfs.dsp.gain":
 		identity.Name = "DSP Gain"
 		identity.LocalizedNames = map[string]string{"zh": "DSP 增益", "zh-Hans": "DSP 增益", "zh-Hant": "DSP 增益"}

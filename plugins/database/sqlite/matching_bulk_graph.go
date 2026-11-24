@@ -91,7 +91,7 @@ func (g *bulkMergeGraph) groups() [][]string {
 
 func readBulkMergeSources(ctx context.Context, tx *sql.Tx, owner string) (map[string]bulkMergeSource, error) {
 	rows, err := tx.QueryContext(ctx, `SELECT t.id,t.document,COALESCE(l.recording_id,''),COALESCE(l.decision,''),
- COALESCE(a.current=1 AND a.version=t.version AND a.track_id=t.id,0)
+ COALESCE(a.current=1 AND a.version=t.version AND a.track_id=t.id,false)
  FROM tracks t LEFT JOIN recording_source_links l ON l.owner=t.owner AND l.source_id=t.id
  LEFT JOIN source_assets a ON a.owner=t.owner AND a.id=t.asset_id WHERE t.owner=? ORDER BY t.id`, owner)
 	if err != nil {

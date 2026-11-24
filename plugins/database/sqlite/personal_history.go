@@ -123,7 +123,7 @@ func (s *Store) RecordPlaybackStarted(ctx context.Context, who auth.Session, inp
 		}
 	} else {
 		_, err = tx.ExecContext(ctx, `INSERT INTO music_playlist_entries(owner,playlist_id,binding_id,entry_id,track_id,forced_source_id,position,created_at,updated_at,play_count)
- VALUES(?,'recently-played','',?,?,?,0,?,?,1) ON CONFLICT(owner,playlist_id,binding_id,entry_id) DO UPDATE SET track_id=excluded.track_id,updated_at=excluded.updated_at,play_count=play_count+1`, who.User.ID, input.SourceTrackID, trackID, input.SourceTrackID, stamp, stamp)
+ VALUES(?,'recently-played','',?,?,?,0,?,?,1) ON CONFLICT(owner,playlist_id,binding_id,entry_id) DO UPDATE SET track_id=excluded.track_id,updated_at=excluded.updated_at,play_count=music_playlist_entries.play_count+1`, who.User.ID, input.SourceTrackID, trackID, input.SourceTrackID, stamp, stamp)
 		if err != nil {
 			return entry, err
 		}

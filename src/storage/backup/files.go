@@ -10,9 +10,11 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
 )
 
 type contextReader struct {
@@ -162,7 +164,13 @@ func canonical(name string) (string, error) {
 	}
 }
 
-func copyState(ctx context.Context, src, dst *os.Root, directory string, entries *[]File, total *int64) error {
+type stateExclusions struct {
+	exportedDatabase bool
+	passwordPath     string
+	passwordInfo     os.FileInfo
+}
+
+func copyState(ctx context.Context, src, dst *os.Root, directory string, exclusions stateExclusions, entries *[]File, total *int64) error {
 	if _, err := src.Lstat(directory); os.IsNotExist(err) {
 		return nil
 	} else if err != nil {
@@ -174,6 +182,26 @@ func copyState(ctx context.Context, src, dst *os.Root, directory string, entries
 		}
 		if err := ctx.Err(); err != nil {
 			return err
+		}
+		// 远端状态库已随主库导出。排除本机之前使用 SQLite 时留下的库及其日志。
+		if exclusions.exportedDatabase && portableStateFile(name) {
+			if entry.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		// 同时核对配置路径和打开文件的身份，覆盖轮换后的同名文件及原密码文件的硬链接。
+		if exclusions.passwordInfo != nil {
+			fullPath := filepath.Join(src.Name(), filepath.FromSlash(name))
+			rel, err := filepath.Rel(exclusions.passwordPath, fullPath)
+			if err == nil && rel == "." {
+				return nil
+			}
+			if entry.Type()&os.ModeSymlink != 0 {
+				if target, err := os.Stat(fullPath); err == nil && os.SameFile(target, exclusions.passwordInfo) {
+					return nil
+				}
+			}
 		}
 		if entry.Type()&os.ModeSymlink != 0 {
 			return domain.Fail("ACCESS_DENIED", "Plugin state links are unsupported")
@@ -189,6 +217,15 @@ func copyState(ctx context.Context, src, dst *os.Root, directory string, entries
 			return err
 		}
 		defer in.Close()
+		if exclusions.passwordInfo != nil {
+			info, err := in.Stat()
+			if err != nil {
+				return err
+			}
+			if os.SameFile(info, exclusions.passwordInfo) {
+				return nil
+			}
+		}
 		file, err := copyFile(ctx, in, dst, "state/"+name, min(maxFileBytes, MaxStateBytes-*total))
 		if err != nil {
 			return err
@@ -197,6 +234,17 @@ func copyState(ctx context.Context, src, dst *os.Root, directory string, entries
 		*entries = append(*entries, file)
 		return nil
 	})
+}
+
+func portableStateFile(name string) bool {
+	if runtime.GOOS == "windows" {
+		name = strings.ToLower(name)
+	}
+	switch name {
+	case plugindb.PortableStatePath, plugindb.PortableStatePath + "-wal", plugindb.PortableStatePath + "-shm", plugindb.PortableStatePath + "-journal":
+		return true
+	}
+	return false
 }
 
 func syncTree(root *os.Root) error {

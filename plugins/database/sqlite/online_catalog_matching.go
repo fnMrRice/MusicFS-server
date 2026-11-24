@@ -36,7 +36,7 @@ func localCatalogIndex(ctx context.Context, tx *sql.Tx, owner string) (map[strin
 	index := map[string][]localCatalogMember{}
 	err := musicRows(ctx, tx, ordinaryMusicSources+`SELECT s.track_id,coalesce(n.netease_id,''),
 		coalesce(json_extract(t.document,'$.title'),''),coalesce(json_extract(t.document,'$.artists'),'[]'),
-		coalesce(json_extract(t.document,'$.album'),''),coalesce(json_extract(t.document,'$.durationMs'),0)
+		coalesce(json_extract(t.document,'$.album'),''),coalesce(CAST(json_extract(t.document,'$.durationMs') AS BIGINT),0)
 		FROM tracks t JOIN music_sources s ON s.id=t.id AND s.owner=t.owner
 		JOIN source_assets a ON a.id=t.asset_id AND a.owner=t.owner AND a.track_id=t.id AND a.current=1 AND a.version=t.version
 		LEFT JOIN music_netease_asset_ids n ON n.asset_id=a.id
@@ -181,7 +181,8 @@ func attachCatalogGroup(ctx context.Context, m *matchingMutation, target string,
 		WHERE t.owner=? AND t.external_id=? AND t.root_id='online-audio' AND t.path='' AND p.plugin_id=?),
 		target_members AS (SELECT id FROM music_sources WHERE owner=? AND track_id=?)
 		SELECT EXISTS(SELECT 1 FROM match_exclusions WHERE owner=? AND excluded=1 AND
-		((left_source IN target_members AND right_source IN equivalent) OR (right_source IN target_members AND left_source IN equivalent)))`,
+		((left_source IN (SELECT id FROM target_members) AND right_source IN (SELECT id FROM equivalent))
+		 OR (right_source IN (SELECT id FROM target_members) AND left_source IN (SELECT id FROM equivalent))))`,
 		m.owner, knownID, pluginproto.OnlinePluginID(online.Netease), m.owner, target, m.owner).Scan(&excluded)
 	if err != nil || excluded {
 		return err

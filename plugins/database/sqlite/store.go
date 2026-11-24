@@ -16,7 +16,23 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-type Store struct{ DB *sql.DB }
+type Store struct {
+	DB       *sql.DB
+	pluginID string
+}
+
+// NewRepository 将共享业务事务绑定到已初始化的数据库及其插件日志。
+func NewRepository(db *sql.DB, pluginID string) *Store {
+	return &Store{DB: db, pluginID: pluginID}
+}
+
+func (s *Store) logContext(ctx context.Context) context.Context {
+	id := s.pluginID
+	if id == "" {
+		id = "musicfs.plugin.storage.sqlite"
+	}
+	return pluginlog.Context(ctx, id, "")
+}
 
 func Open(ctx context.Context, path string) (store *Store, openErr error) {
 	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", "")

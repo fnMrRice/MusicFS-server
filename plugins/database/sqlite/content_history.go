@@ -26,11 +26,11 @@ func separateHistoryTarget(ctx context.Context, tx *sql.Tx, owner, sourceTrackID
 		JOIN music_tracks m ON m.owner=s.owner AND m.id=s.track_id
 		JOIN work_packages p ON p.owner=t.owner JOIN works w ON w.owner=p.owner AND w.id=p.work_id
 		JOIN json_each(?) allowed ON allowed.value=w.content_type
-		JOIN json_each(p.document,'$.nodes') n
+		CROSS JOIN json_each(p.document,'$.nodes') n
 		WHERE t.owner=? AND t.id=? AND json_extract(n.value,'$.kind')='audio'
 		AND (json_extract(n.value,'$.sourceTrackId')=t.id OR
 		 (p.provider_id=t.provider AND p.root_id=t.root_id AND json_extract(n.value,'$.sourcePath')=t.path))
-		ORDER BY (json_extract(n.value,'$.sourceTrackId')=t.id) DESC,allowed.key,w.id LIMIT 1`,
+		ORDER BY (json_extract(n.value,'$.sourceTrackId')=t.id) DESC NULLS LAST,allowed.key,w.id LIMIT 1`,
 		string(types), owner, sourceTrackID).Scan(&target.TypeID, &target.WorkID, &target.WorkTitle, &target.TrackTitle)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil

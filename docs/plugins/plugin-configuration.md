@@ -2,7 +2,7 @@
 
 Local Files 的目录列表、名称、扫描默认值和监听设置由管理接口维护，持久化到 Server 管理的 `dataRoot/providers/plugin-config.sqlite`。具体建库、迁移及读写由所选数据库插件提供，SQLite 实现位于 `plugins/database/sqlite/state`；配置预加载只读，写入初始化在宿主取得数据锁后进行。数据库按插件 ID 与实例 ID 隔离；普通来源、刮削和音频插件不拿数据库文件路径、连接串或任意 SQL 权限。YAML 继续管理部署信息、启用开关和显式目录访问权限；未显式配置权限时使用下述默认授权。
 
-上述路径属于默认 SQLite 布局，其他已注册后端可采用自己的状态存储。目录配置接口适用于可信注册声明了 `Directories` 的 Provider；Local Files 是默认实现。导入 Schema 与默认值来自插件自己的配置声明，逐目录合并、监听、写回根校验和管理权限统一按目录能力执行。注册新的目录插件时仍须提供对应的运行工厂，并遵守相同的用户归属和目录权限约束。
+上述路径属于默认 SQLite 布局，选择 `storage.backend: postgres` 时，私有配置保存在同一个 PostgreSQL 库的 `musicfs_plugin_values` 表中，重启后的只读预加载使用相同的连接配置。目录配置接口适用于可信注册声明了 `Directories` 的 Provider；Local Files 是默认实现。导入 Schema 与默认值来自插件自己的配置声明，逐目录合并、监听、写回根校验和管理权限统一按目录能力执行。注册新的目录插件时仍须提供对应的运行工厂，并遵守相同的用户归属和目录权限约束。
 
 ## 部署授权
 

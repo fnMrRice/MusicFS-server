@@ -168,7 +168,7 @@ func moveTrackRelations(ctx context.Context, tx *sql.Tx, owner, target, donor st
 	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO music_manual_album_tracks(album_id,track_id,position)
  SELECT album_id,?,position FROM music_manual_album_tracks WHERE track_id=?
- ON CONFLICT(album_id,track_id) DO UPDATE SET position=min(position,excluded.position)`, target, donor)
+ ON CONFLICT(album_id,track_id) DO UPDATE SET position=min(music_manual_album_tracks.position,excluded.position)`, target, donor)
 	if err != nil {
 		return err
 	}

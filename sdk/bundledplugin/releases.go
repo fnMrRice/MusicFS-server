@@ -52,6 +52,7 @@ var (
 	ReverbVersion       = Version("musicfs.dsp.reverb")
 	ChannelMixVersion   = Version("musicfs.plugin.decoder.channelmix")
 	SQLiteVersion       = Version("musicfs.plugin.storage.sqlite")
+	PostgresVersion     = Version("musicfs.plugin.storage.postgres")
 	ChromaprintVersion  = Version("musicfs.plugin.analysis.chromaprint")
 	FLACVersion         = Version("musicfs.plugin.tags.flac")
 	MatchingVersion     = Version("musicfs.plugin.matching.standard")

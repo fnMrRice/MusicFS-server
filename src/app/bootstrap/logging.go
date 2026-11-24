@@ -60,8 +60,8 @@ func startLogging(c config.Config, output io.Writer) (*logging.Manager, func(), 
 	for _, p := range c.AudioDSP.Plugins {
 		ids = append(ids, p.Name)
 	}
-	if c.Storage.Backend == "plugin" {
-		ids = append(ids, "musicfs.plugin.storage.plugin")
+	if c.Storage.Backend != "" && c.Storage.Backend != "sqlite" {
+		ids = append(ids, "musicfs.plugin.storage."+c.Storage.Backend)
 	}
 	if err = m.RegisterPlugins(ids...); err != nil {
 		m.Close()

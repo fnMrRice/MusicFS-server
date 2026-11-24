@@ -43,7 +43,7 @@ func saveMusicPlaylistEntries(ctx context.Context, tx *sql.Tx, owner string, p p
 				VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(owner,playlist_id,binding_id,entry_id) DO UPDATE SET
 				track_id=excluded.track_id,forced_source_id=excluded.forced_source_id,source_contribution=excluded.source_contribution,
 				position=excluded.position,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
-				WHERE track_id<>excluded.track_id OR forced_source_id IS NOT excluded.forced_source_id OR source_contribution<>excluded.source_contribution OR position<>excluded.position`,
+				WHERE music_playlist_entries.track_id<>excluded.track_id OR music_playlist_entries.forced_source_id IS DISTINCT FROM excluded.forced_source_id OR music_playlist_entries.source_contribution<>excluded.source_contribution OR music_playlist_entries.position<>excluded.position`,
 				owner, p.ID, binding.ID, entry.ID, *track, forced, ref.SourceTrackID != nil, pos)
 			if err != nil {
 				return err

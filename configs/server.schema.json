@@ -16,7 +16,7 @@
         "plugins": {"type": "object", "maxProperties": 128, "propertyNames": {"type": "string", "pattern": "^[A-Za-z0-9]([A-Za-z0-9._-]{0,126}[A-Za-z0-9_-])?$", "not": {"pattern": "^([cC][oO][nN]|[pP][rR][nN]|[aA][uU][xX]|[nN][uU][lL]|[cC][oO][mM][0-9]|[lL][pP][tT][0-9])(\\.|$)"}}, "additionalProperties": {"enum": ["trace", "debug", "info", "warn", "error"]}, "default": {}, "description": "按插件 ID 覆盖等级；未列出的插件继承全局等级。"}
       }
     },
-    "storage": {"type":"object","additionalProperties":false,"description":"默认内置 SQLite 在 Server 主进程运行；旧官方 SQLite Worker 配置自动迁移。显式外部后端使用进程模式，数据库不能禁用。","properties":{"backend":{"type":"string","pattern":"^[a-z][a-z0-9-]{0,63}$","default":"sqlite"},"options":{"type":"object","maxProperties":32,"additionalProperties":{"type":"string","maxLength":4096}},"executable":{"$ref":"#/$defs/NonemptyPath"},"sha256":{"type":"string","pattern":"^[a-fA-F0-9]{64}$"},"args":{"type":"array","maxItems":64,"items":{"type":"string","maxLength":4096}},"execution":{"enum":["builtin","process"],"default":"builtin"}},"if":{"required":["backend"],"properties":{"backend":{"const":"plugin"}}},"then":{"required":["executable","sha256"]},"else":{"not":{"anyOf":[{"required":["executable"]},{"required":["sha256"]},{"required":["args"]}]}},"allOf":[{"if":{"required":["execution"],"properties":{"execution":{"const":"process"}}},"then":{"required":["backend"],"properties":{"backend":{"const":"plugin"}}}},{"if":{"required":["execution","backend"],"properties":{"execution":{"const":"builtin"},"backend":{"const":"plugin"}}},"then":{"anyOf":[{"properties":{"executable":{"pattern":"(^|[/\\\\])[mM][uU][sS][iI][cC][fF][sS]\\-[pP][lL][uU][gG][iI][nN]\\-[sS][tT][oO][rR][aA][gG][eE]\\-[sS][qQ][lL][iI][tT][eE](\\.[eE][xX][eE])?$"}}},{"properties":{"executable":{"pattern":"(^|[/\\\\])[mM][uU][sS][iI][cC][fF][sS]\\-[pP][lL][uU][gG][iI][nN]\\-[sS][qQ][lL][iI][tT][eE](\\.[eE][xX][eE])?$"}}},{"required":["args"],"properties":{"executable":{"pattern":"(^|[/\\\\])[mM][uU][sS][iI][cC][fF][sS]\\-[pP][lL][uU][gG][iI][nN][sS](\\.[eE][xX][eE])?$"},"args":{"enum":[["--plugin","storage-sqlite"],["--plugin=storage-sqlite"]]}}}]}}]},
+    "storage": {"type":"object","additionalProperties":false,"description":"存储后端默认使用内置 SQLite。选择 postgres 时主库和插件私有状态共用 options 指定的 PostgreSQL 数据库。","properties":{"backend":{"type":"string","pattern":"^[a-z][a-z0-9-]{0,63}$","default":"sqlite"},"options":{"type":"object","maxProperties":32,"additionalProperties":{"type":"string","maxLength":4096}},"executable":{"$ref":"#/$defs/NonemptyPath"},"sha256":{"type":"string","pattern":"^[a-fA-F0-9]{64}$"},"args":{"type":"array","maxItems":64,"items":{"type":"string","maxLength":4096}},"execution":{"enum":["builtin","process"],"default":"builtin"}},"if":{"required":["backend"],"properties":{"backend":{"const":"plugin"}}},"then":{"required":["executable","sha256"]},"else":{"not":{"anyOf":[{"required":["executable"]},{"required":["sha256"]},{"required":["args"]}]}},"allOf":[{"if":{"required":["execution"],"properties":{"execution":{"const":"process"}}},"then":{"required":["backend"],"properties":{"backend":{"const":"plugin"}}}},{"if":{"required":["execution","backend"],"properties":{"execution":{"const":"builtin"},"backend":{"const":"plugin"}}},"then":{"anyOf":[{"properties":{"executable":{"pattern":"(^|[/\\\\])[mM][uU][sS][iI][cC][fF][sS]\\-[pP][lL][uU][gG][iI][nN]\\-[sS][tT][oO][rR][aA][gG][eE]\\-[sS][qQ][lL][iI][tT][eE](\\.[eE][xX][eE])?$"}}},{"properties":{"executable":{"pattern":"(^|[/\\\\])[mM][uU][sS][iI][cC][fF][sS]\\-[pP][lL][uU][gG][iI][nN]\\-[sS][qQ][lL][iI][tT][eE](\\.[eE][xX][eE])?$"}}},{"required":["args"],"properties":{"executable":{"pattern":"(^|[/\\\\])[mM][uU][sS][iI][cC][fF][sS]\\-[pP][lL][uU][gG][iI][nN][sS](\\.[eE][xX][eE])?$"},"args":{"enum":[["--plugin","storage-sqlite"],["--plugin=storage-sqlite"]]}}}]}},{"if":{"required":["backend"],"properties":{"backend":{"const":"postgres"}}},"then":{"required":["options"],"properties":{"options":{"$ref":"#/$defs/PostgresOptions"}}}}]},
     "audioChannels": {"type": "object", "additionalProperties": false, "properties": {"outputLayout": {"enum": ["stereo", "5.1", "7.1"], "default": "stereo"}, "enabled": {"type": "boolean", "default": false}}, "description": "声道扩展插件默认禁用；仅显式启用时应用 outputLayout，修改后重启生效。禁用时编码器按来源声道选择兼容格式。"},
     "audioDSP": {
       "type": "object", "additionalProperties": false,
@@ -210,6 +210,20 @@
     }
   ],
   "$defs": {
+    "PostgresOptions": {
+      "type": "object", "additionalProperties": false, "required": ["host", "database", "user"],
+      "properties": {
+        "host": {"type": "string", "minLength": 1},
+        "port": {"type": "string", "pattern": "^[0-9]+$", "default": "5432"},
+        "database": {"type": "string", "minLength": 1},
+        "user": {"type": "string", "minLength": 1},
+        "passwordFile": {"$ref": "#/$defs/NonemptyPath"},
+        "passwordEnv": {"type": "string", "minLength": 1},
+        "sslMode": {"enum": ["disable", "require", "verify-ca", "verify-full"], "default": "verify-full"},
+        "sslRootCert": {"$ref": "#/$defs/NonemptyPath"}
+      },
+      "not": {"required": ["passwordFile", "passwordEnv"]}
+    },
     "DSPNode": {
       "type": "object", "additionalProperties": false, "required": ["name", "version"],
       "properties": {

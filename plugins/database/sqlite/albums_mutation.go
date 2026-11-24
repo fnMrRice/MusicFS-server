@@ -62,11 +62,7 @@ func recordAlbumChange(ctx context.Context, tx *sql.Tx, owner string, c albums.C
 	if err != nil {
 		return err
 	}
-	result, err := tx.ExecContext(ctx, "INSERT INTO album_changes(owner,target_kind,target_id,document) VALUES(?,?,?,?)", owner, c.Target.Kind, c.Target.ID, raw)
-	if err != nil {
-		return err
-	}
-	c.Sequence, err = result.LastInsertId()
+	err = tx.QueryRowContext(ctx, "INSERT INTO album_changes(owner,target_kind,target_id,document) VALUES(?,?,?,?) RETURNING sequence", owner, c.Target.Kind, c.Target.ID, raw).Scan(&c.Sequence)
 	if err != nil {
 		return err
 	}

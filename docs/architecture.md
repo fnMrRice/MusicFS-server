@@ -65,7 +65,7 @@ Server 是 Go 模块化单体，统一管理来源、曲库、歌单、资料补
 
 YAML 保存部署、权限和普通插件开关；Local Files 的实际目录及扫描/监听设置由管理 API 保存到宿主管理的插件配置数据库。permissions.readDirectories 是授权范围，添加目录不扩大权限，保存不自动扫描；默认授权及迁移见[实例配置](plugins/plugin-configuration.md)。插件声明角色、名称、版本和多实例能力，实例 UUID、插件 ID 和管理员别名彼此分离。
 
-SQLite 是必需后端，默认在主进程通过直接后端接口运行，显式进程配置才使用独立 Worker。主库的 Schema、内嵌 SQL 和迁移加载器位于 `plugins/database/sqlite/migrations`，实例状态库的建表、迁移及只读读取位于 `plugins/database/sqlite/state`；插件完成初始化后才返回可用后端。宿主保留业务数据与事务契约、后端选择、数据锁和生命周期协调，配置预加载只读且不建库。内置 DSP 提供增益、EQ、压缩器和混响，有状态定位从曲首重建后裁切；独立声道转换先确定 stereo/5.1/7.1 布局，再交给多声道效果链及 MP3/Opus 编码。外部 MFD1 v1 仍仅支持无状态双声道。数据库、声道转换与 DSP 在管理列表只读展示，变更部署配置后重启，见[存储插件](plugins/storage-plugins.md)及[DSP 与声道转换](plugins/dsp-effects.md)。
+存储后端由部署配置选择。默认 SQLite 和可选 PostgreSQL 均在主进程运行，显式进程配置可选独立 SQLite Worker。PostgreSQL 的原生迁移与实例状态位于 `plugins/database/postgres`。SQLite 主库的 Schema、内嵌 SQL 和迁移加载器位于 `plugins/database/sqlite/migrations`，实例状态库的建表、迁移及只读读取位于 `plugins/database/sqlite/state`；插件完成初始化后才返回可用后端。宿主保留业务数据与事务契约、后端选择、数据锁和生命周期协调，配置预加载只读且不建库。内置 DSP 提供增益、EQ、压缩器和混响，有状态定位从曲首重建后裁切；独立声道转换先确定 stereo/5.1/7.1 布局，再交给多声道效果链及 MP3/Opus 编码。外部 MFD1 v1 仍仅支持无状态双声道。数据库、声道转换与 DSP 在管理列表只读展示，变更部署配置后重启，见[存储插件](plugins/storage-plugins.md)及[DSP 与声道转换](plugins/dsp-effects.md)。
 
 ## 来源与歌单
 

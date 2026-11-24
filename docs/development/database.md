@@ -4,6 +4,8 @@
 
 结构以 [SQLite 迁移](../../plugins/database/sqlite/migrations/README.md)、[主库初始化](../../plugins/database/sqlite/store.go)及[实例状态建表](../../plugins/database/sqlite/state/store.go)为准。数据库后端的职责和访问边界见[存储后端](../plugins/storage-plugins.md)。
 
+PostgreSQL 的[原生迁移](../../plugins/database/postgres/schema/)维护对应的业务表、索引、视图和触发器。修改业务 SQL 后，可在 Server 仓库设置 `MUSICFS_TEST_POSTGRES_DSN` 指向测试数据库，运行 `go run ./scripts/check-postgres-queries`。该工具在临时 Schema 中准备可静态解析的仓储语句，动态构造的查询由数据库集成测试验证。
+
 ## 核心关系总览
 
 实线从引用表指向被引用表，表示 SQL 外键；虚线表示逻辑引用或视图依赖。总览仅选取核心表及关键字段，完整物理字段见分域详图。

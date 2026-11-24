@@ -30,7 +30,7 @@ func (s *Store) Claim(ctx context.Context) (jobs.Job, error) {
 	if j.NextAttemptAt != nil && now.Before(*j.NextAttemptAt) {
 		return jobs.Job{}, sql.ErrNoRows
 	}
-	_, err = tx.ExecContext(ctx, "INSERT INTO provider_scan_leases(owner,provider,last_generation,active_job_id) VALUES(?,?,1,?) ON CONFLICT(owner,provider) DO UPDATE SET last_generation=last_generation+1,active_job_id=excluded.active_job_id WHERE active_job_id IS NULL", j.Owner, j.ProviderInstanceID, j.ID)
+	_, err = tx.ExecContext(ctx, "INSERT INTO provider_scan_leases(owner,provider,last_generation,active_job_id) VALUES(?,?,1,?) ON CONFLICT(owner,provider) DO UPDATE SET last_generation=provider_scan_leases.last_generation+1,active_job_id=excluded.active_job_id WHERE provider_scan_leases.active_job_id IS NULL", j.Owner, j.ProviderInstanceID, j.ID)
 	if err != nil {
 		return j, err
 	}
@@ -72,7 +72,7 @@ func activeScan(ctx context.Context, tx *sql.Tx, given jobs.Job) (jobs.Job, erro
 }
 
 func (s *Store) Finish(ctx context.Context, given jobs.Job, n int, failure error) (finishErr error) {
-	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", "")
+	ctx = s.logContext(ctx)
 	finish := pluginlog.Operation(ctx, "scan.result.persist")
 	defer func() { finish(finishErr) }()
 	if n < 0 {

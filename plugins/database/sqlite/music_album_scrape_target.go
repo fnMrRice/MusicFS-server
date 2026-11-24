@@ -23,7 +23,7 @@ func (s *Store) MusicAlbumScrapeTarget(ctx context.Context, owner, id, provider 
 ), members AS (
  SELECT x.track_id FROM music_album_tracks x JOIN scope ON scope.id=x.track_id WHERE x.album_id=?
 ), sources AS (
- SELECT s.plugin_id,s.track_id,s.provider_instance_id=target.original_provider AS original
+ SELECT s.plugin_id,s.track_id,CASE WHEN s.provider_instance_id=target.original_provider THEN 1 ELSE 0 END AS original
  FROM target,members JOIN visible_music_sources v ON v.track_id=members.track_id
  JOIN music_sources s ON s.id=v.id WHERE (?='' OR s.provider_instance_id=?)
 )

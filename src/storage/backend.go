@@ -123,4 +123,7 @@ type Driver struct {
 	ReadPluginState     plugindb.ReadFactory
 	BackupSchemaVersion func() (int, error)
 	InspectBackup       func(context.Context, string) ([]mediastore.BackupObject, error)
+
+	// SeparatePluginStateSnapshot 表示后端在同一事务快照内另行导出实例状态库。
+	SeparatePluginStateSnapshot bool
 }

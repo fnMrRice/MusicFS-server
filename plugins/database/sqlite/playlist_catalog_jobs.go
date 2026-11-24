@@ -85,7 +85,7 @@ func (s *Store) PreparePlaylistCatalog(ctx context.Context, owner, instance, pla
 		SELECT DISTINCT c.account_id,c.external_id FROM candidates c LEFT JOIN remote_sync_jobs j ON j.id=c.catalog_job_id
 		WHERE (?='' OR c.account_id=?) AND (c.catalog_job_id IS NULL OR (j.state='failed' AND (
 			(json_extract(j.document,'$.Job.error.code')='RATE_LIMITED'
-			AND julianday('now') >= julianday(json_extract(j.document,'$.Job.updatedAt')) + max(60,coalesce(json_extract(j.document,'$.Job.error.retryAfter'),0))/86400.0)
+			AND julianday('now') >= julianday(json_extract(j.document,'$.Job.updatedAt')) + max(60,coalesce(CAST(json_extract(j.document,'$.Job.error.retryAfter') AS BIGINT),0))/86400.0)
 			OR (?<>'' AND json_extract(j.document,'$.Job.error.code') IN ('AUTH_REQUIRED','PLATFORM_AUTH_REQUIRED','AUTH_EXPIRED','ACCESS_DENIED','RESOURCE_CHANGED','SOURCE_OFFLINE','PLUGIN_DISABLED'))
 		)))
 		ORDER BY c.account_id,c.external_id LIMIT max(0,1024-(SELECT count(*) FROM remote_sync_jobs WHERE state IN ('queued','running')))`, func(rows *sql.Rows) error {

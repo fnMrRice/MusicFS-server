@@ -19,7 +19,7 @@ func specialPlaylist(ctx context.Context, tx *sql.Tx, owner, id string) (playlis
 		}
 	}
 	// 迁移会为已有账号创建两种歌单，首次读取同样可为新账号初始化。
-	_, err := tx.ExecContext(ctx, "INSERT OR IGNORE INTO personal_collection_revisions(owner,kind) VALUES(?,?)", owner, id)
+	_, err := tx.ExecContext(ctx, "INSERT INTO personal_collection_revisions(owner,kind) VALUES(?,?) ON CONFLICT(owner,kind) DO NOTHING", owner, id)
 	if err != nil {
 		return p, err
 	}

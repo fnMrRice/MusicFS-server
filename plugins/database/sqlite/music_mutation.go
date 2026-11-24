@@ -177,10 +177,10 @@ func unchangedMusicTrack(ctx context.Context, tx *sql.Tx, owner, id string, revi
 	albums, _ := json.Marshal(input.AlbumIDs)
 	var identical bool
 	err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM music_tracks WHERE owner=? AND id=? AND revision=? AND metadata_locked=1
- AND title=? AND localized_titles=coalesce(?,localized_titles) AND cover_path IS ? AND genre IS ? AND year IS ? AND rating IS ?
+ AND title=? AND localized_titles=coalesce(?,localized_titles) AND cover_path IS NOT DISTINCT FROM ? AND genre IS NOT DISTINCT FROM ? AND year IS NOT DISTINCT FROM ? AND rating IS NOT DISTINCT FROM ?
  AND NOT EXISTS(SELECT a.name,x.position FROM music_track_artists x JOIN music_artists a ON a.id=x.artist_id WHERE x.track_id=? EXCEPT SELECT value,key FROM json_each(?))
  AND (SELECT count(*) FROM music_track_artists WHERE track_id=?)=json_array_length(?)
- AND (? OR ((SELECT count(*) FROM music_manual_album_tracks WHERE track_id=?)=json_array_length(?) AND NOT EXISTS(
+ AND (?<>0 OR ((SELECT count(*) FROM music_manual_album_tracks WHERE track_id=?)=json_array_length(?) AND NOT EXISTS(
    SELECT album_id FROM music_manual_album_tracks WHERE track_id=? EXCEPT SELECT value FROM json_each(?)))))`, owner, id, revision, input.Title, titles, input.CoverPath, input.Genre, input.Year, input.Rating, id, string(artists), id, string(artists), input.AlbumIDs == nil, id, string(albums), id, string(albums)).Scan(&identical)
 	return identical, err
 }

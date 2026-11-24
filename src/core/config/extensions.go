@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 
+	pgoptions "github.com/fnMrRice/MusicFS-server/plugins/database/postgres/options"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio/dspchain"
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio/dspworker"
@@ -69,6 +70,11 @@ func (s StorageConfig) Validate() error {
 	for key, value := range s.Options {
 		if !validConfigID(key) || len(value) > 4096 || strings.ContainsRune(value, 0) {
 			return fmt.Errorf("invalid storage option")
+		}
+	}
+	if s.Backend == "postgres" {
+		if _, err := pgoptions.Parse(s.Options); err != nil {
+			return err
 		}
 	}
 	if len(s.Args) > 64 {

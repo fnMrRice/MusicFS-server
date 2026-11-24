@@ -4,7 +4,7 @@
 
 启动见[运行说明](running.md)；正式[示例配置](../../configs/server.example.yaml)和[编辑器 Schema](../../configs/server.schema.json)随代码维护。HTTP JSON、JSON-RPC、JSON Schema 和媒体清单继续使用各自格式。
 
-顶层 `storage` 选择存储后端，`audioDSP` 保留有序效果链及外部节点；`audioDSP.enabled` 默认 false，禁用服务端增益、均衡、压缩、混响及外部音效。Web 使用本地 DSP，即使服务端显式开启音效也通过 `dspExecution=client` 避免重复处理。`audioChannels.enabled` 同样默认 false，禁用声道插件并忽略历史输出布局；转码优先保留源声道，编码或客户端限制下才使用 FFmpeg 兼容降混。显式启用时 `outputLayout` 可选 `stereo`、`'5.1'` 或 `'7.1'`；这些都是启动配置，修改后重启生效。配置、范围与示例见[本地 DSP 边界](../playback/local-dsp.md)、[常见 DSP 与声道转换](../plugins/dsp-effects.md)、[DSP 协议](../plugins/dsp-plugins.md)及[存储插件](../plugins/storage-plugins.md)。显式启用的非空 DSP 链和环绕声输出要求可用音频实例；环绕声还要求内置音频执行与 Opus/WebM，客户端格式不兼容时明确拒绝。旧 MFD1 外部 DSP 只能用于双声道。
+顶层 `storage.backend` 默认为 `sqlite`。选择 `postgres` 后，`storage.options` 指定连接参数，主库和插件实例私有状态均写入该 PostgreSQL 数据库。完整示例见[存储后端配置](../plugins/storage-plugins.md)。`audioDSP` 保留有序效果链及外部节点；`audioDSP.enabled` 默认 false，禁用服务端增益、均衡、压缩、混响及外部音效。Web 使用本地 DSP，即使服务端显式开启音效也通过 `dspExecution=client` 避免重复处理。`audioChannels.enabled` 同样默认 false，禁用声道插件并忽略历史输出布局；转码优先保留源声道，编码或客户端限制下才使用 FFmpeg 兼容降混。显式启用时 `outputLayout` 可选 `stereo`、`'5.1'` 或 `'7.1'`；这些都是启动配置，修改后重启生效。配置、范围与示例见[本地 DSP 边界](../playback/local-dsp.md)、[常见 DSP 与声道转换](../plugins/dsp-effects.md)、[DSP 协议](../plugins/dsp-plugins.md)及[存储插件](../plugins/storage-plugins.md)。显式启用的非空 DSP 链和环绕声输出要求可用音频实例；环绕声还要求内置音频执行与 Opus/WebM，客户端格式不兼容时明确拒绝。旧 MFD1 外部 DSP 只能用于双声道。
 
 网易云、QQ 音乐、Apple Music 及 Bilibili 的每个实例可在 `instanceId` 同级配置 `ownerUserId`，省略时兼容为 `admin`。每个 MusicFS 用户使用自己的实例，同一用户的不同平台账号也应配置不同 UUID `instanceId` 并分别登录；单实例只保留一个当前平台账号。Bilibili 当前使用匿名公开内容，仍受实例归属约束。其他插件不接受 `ownerUserId`。实例归属是部署配置，变更需重启；不要通过修改既有实例的归属转移凭据，分配新 UUID 后重新登录。凭据加密范围包含平台、用户及实例，跨用户不可恢复旧凭据。
 
@@ -142,7 +142,7 @@ metadata:
 
 管理接口修改音乐目录时，已有根 ID 不能换绑到另一目录；新目录必须使用新 ID。已有根可保留路径并修改显示名。新增根只授予读取／扫描范围，不继承任何旧根写回授权；写回授权仍需显式配置并在重启时验证。
 
-`src/core/config` 提供以下内部接口，使用同一解析器及 SQLite 操作日志；HTTP 动态管理通过 `src/plugins/plugincontrol` 调用，管理 CLI 尚未实现。
+`src/core/config` 提供以下内部接口，使用同一解析器及所选存储后端的操作日志；HTTP 动态管理通过 `src/plugins/plugincontrol` 调用，管理 CLI 尚未实现。
 
 | 接口 | 当前职责 |
 | --- | --- |
@@ -158,7 +158,7 @@ metadata:
 
 ## 5. 原子替换与恢复边界
 
-写入先将操作意图以`prepared`持久保存到SQLite，记录旧/新修订、幂等键及目标，再在配置同目录创建临时文件、写入并同步、复核磁盘版本后原子替换。成功确认后标记`saved`；若结果不确定，保留待恢复日志，不仅修改内存并谎报完成。
+写入先将操作意图以 `prepared` 持久保存到所选数据库，记录旧/新修订、幂等键及目标，再在配置同目录创建临时文件、写入并同步、复核磁盘版本后原子替换。成功确认后标记`saved`；若结果不确定，保留待恢复日志，不仅修改内存并谎报完成。
 
 Linux保留文件所有者/组与权限，同步文件及目录后rename；Windows复制原文件DACL并保护其继承，使用带write-through的`MoveFileEx`替换，不退化为跨卷复制。权限或替换失败明确返回错误。配置旁的`.lock`文件协调遵守该锁的进程，锁文件可以保留；它不能防止不遵守锁的外部编辑器在最终检查与替换间竞争。手工编辑应停服或使用同一协调机制。
 
@@ -166,7 +166,7 @@ Linux保留文件所有者/组与权限，同步文件及目录后rename；Windo
 
 ## 内置插件程序与自动发现
 
-默认运行只启动 Server `musicfs`，全部官方内置插件都在主进程。普通插件省略 `execution` 时采用 `builtin`；旧路径、参数、摘要可保留，但内置模式不会执行这些文件。安装包继续提供 `musicfs-plugins` 的九种兼容入口，只有显式 `execution: process` 才启动所选程序。SQLite 默认由主进程直接打开，仍是不可禁用的必需组件；官方 DSP gain 同进程运行，只有加入 `audioDSP` 链才参与处理。FFmpeg、ffprobe、fpcalc 工具可按任务外部执行。
+默认运行只启动 Server `musicfs`，全部官方内置插件都在主进程。普通插件省略 `execution` 时采用 `builtin`；旧路径、参数、摘要可保留，但内置模式不会执行这些文件。安装包继续提供 `musicfs-plugins` 的九种兼容入口，只有显式 `execution: process` 才启动所选程序。存储是必需组件，默认由主进程直接打开 SQLite；官方 DSP gain 同进程运行，只有加入 `audioDSP` 链才参与处理。FFmpeg、ffprobe、fpcalc 工具可按任务外部执行。
 
 内置发现从编译内的固定目录补齐普通插件，不依赖插件文件。省略 `plugins` 时补齐默认目录；显式 `plugins` 列表且未设置 `pluginBundle` 时，只保留列出的范围，`plugins: []` 不隐式开启来源。`pluginBundle` 继续承载兼容的全目录发现/外部入口选择语义，空字符串不再是关闭内置发现的方式。SQLite、DSP 及四类固定算法按各自组装路径管理，不参加普通账号实例发现；不扫描 PATH 或执行任意目录项。
 

@@ -14,6 +14,14 @@ func resolvePaths(c *Config, base string) {
 	}
 	resolve(&c.PluginBundle)
 	resolve(&c.Storage.Executable)
+	if c.Storage.Backend == "postgres" {
+		for _, key := range []string{"passwordFile", "sslRootCert"} {
+			if path := c.Storage.Options[key]; path != "" {
+				resolve(&path)
+				c.Storage.Options[key] = path
+			}
+		}
+	}
 	c.Storage.SHA256 = strings.ToLower(c.Storage.SHA256)
 	for i := range c.AudioDSP.Plugins {
 		resolve(&c.AudioDSP.Plugins[i].Executable)

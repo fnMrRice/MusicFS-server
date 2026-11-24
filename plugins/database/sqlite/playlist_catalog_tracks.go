@@ -111,7 +111,7 @@ func importFavoriteTracks(ctx context.Context, tx *sql.Tx, owner string, ids []s
 		return err
 	}
 	result, err := tx.ExecContext(ctx, `INSERT INTO music_playlist_entries(owner,playlist_id,binding_id,entry_id,track_id,position,created_at,updated_at)
-		SELECT ?,'favorites','',value->>'$[0]',value->>'$[0]',0,value->>'$[1]',value->>'$[1]'
+		SELECT ?,'favorites','',json_extract(value,'$[0]'),json_extract(value,'$[0]'),0,json_extract(value,'$[1]'),json_extract(value,'$[1]')
 		FROM json_each(?) WHERE true ORDER BY key ON CONFLICT(owner,playlist_id,binding_id,entry_id) DO NOTHING`, owner, string(raw))
 	if err != nil {
 		return err

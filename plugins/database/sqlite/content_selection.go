@@ -194,7 +194,7 @@ func contentSelectedSlot(selection mediastore.Selection, field, language string)
 }
 
 func advanceContentRevision(ctx context.Context, tx *sql.Tx, owner, source string) (int64, error) {
-	if _, err := tx.ExecContext(ctx, "INSERT INTO media_selection_revisions(owner,source_id,revision) VALUES(?,?,1) ON CONFLICT(owner,source_id) DO UPDATE SET revision=revision+1", owner, source); err != nil {
+	if _, err := tx.ExecContext(ctx, "INSERT INTO media_selection_revisions(owner,source_id,revision) VALUES(?,?,1) ON CONFLICT(owner,source_id) DO UPDATE SET revision=media_selection_revisions.revision+1", owner, source); err != nil {
 		return 0, err
 	}
 	return contentRevision(ctx, tx, owner, source)

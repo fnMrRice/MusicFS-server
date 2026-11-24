@@ -82,6 +82,9 @@ func components(splitPlugins bool) []component {
 		item.Args = []string{"--plugin", selector}
 		item.Program = "musicfs-plugins"
 	}
+	builtins = append(builtins, component{Program: "musicfs", Execution: "builtin", PluginID: "musicfs.plugin.storage.postgres",
+		Version: bundledplugin.PostgresVersion, Protocol: "Go interface v1", Capabilities: []string{"storage.repositories", "storage.instance-state", "storage.snapshot"},
+		Requirements: []string{"PostgreSQL database configured in storage.options"}})
 	requirements := map[string]string{
 		"musicfs.plugin.analysis.chromaprint": "enabled fingerprinting and verified fpcalc tool",
 		"musicfs.plugin.tags.flac":            "authorized writeback and original-file protection",

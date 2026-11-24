@@ -23,7 +23,7 @@ type LocalSettings struct {
 }
 
 func PluginDatabasePath(c Config) string {
-	return filepath.Join(c.DataRoot, "providers", "plugin-config.sqlite")
+	return filepath.Join(c.DataRoot, filepath.FromSlash(plugindb.PortableStatePath))
 }
 
 func localSettings(i Instance) LocalSettings {

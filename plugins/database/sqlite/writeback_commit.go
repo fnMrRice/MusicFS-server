@@ -29,7 +29,7 @@ func validateWritebackResult(w writebackhost.Work, size int64, r writeback.Resul
 }
 
 func (s *Store) CommitWriteback(ctx context.Context, owner, id string, result writeback.Result, o library.Observation) (outcome writebackhost.Outcome, commitErr error) {
-	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", "")
+	ctx = s.logContext(ctx)
 	finish := pluginlog.Operation(ctx, "writeback.commit")
 	defer func() { finish(commitErr) }()
 	var empty writebackhost.Outcome

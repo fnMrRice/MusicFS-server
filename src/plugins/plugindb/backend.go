@@ -15,6 +15,9 @@ import (
 
 const ConfigurationKey = "host-configuration"
 
+// PortableStatePath 是宿主配置和所有插件实例共用的 SQLite 状态库在数据目录内的相对路径。
+const PortableStatePath = "providers/plugin-config.sqlite"
+
 // Backend 保留实例命名空间与原子比较并写入语义。
 type Backend interface {
 	Get(context.Context, string) (pluginproto.StateValue, error)

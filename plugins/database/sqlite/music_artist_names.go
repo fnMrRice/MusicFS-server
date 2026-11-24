@@ -21,8 +21,8 @@ func scrapedCreditNames(ctx context.Context, tx *sql.Tx, owner string, names []s
 	for _, name := range names {
 		var canonical string
 		err := tx.QueryRowContext(ctx, `SELECT coalesce((SELECT name FROM music_artists WHERE owner=? AND name=?),
- (SELECT min(a.name) FROM music_artists a WHERE a.owner=? AND (a.name=? COLLATE NOCASE OR EXISTS(
-  SELECT 1 FROM music_artist_localized_names n WHERE n.artist_id=a.id AND n.name=? COLLATE NOCASE)) HAVING count(*)=1),?)`,
+ (SELECT min(a.name) FROM music_artists a WHERE a.owner=? AND (a.name COLLATE NOCASE=? COLLATE NOCASE OR EXISTS(
+  SELECT 1 FROM music_artist_localized_names n WHERE n.artist_id=a.id AND n.name COLLATE NOCASE=? COLLATE NOCASE)) HAVING count(*)=1),?)`,
 			owner, name, owner, name, name, name).Scan(&canonical)
 		if err != nil {
 			return nil, err

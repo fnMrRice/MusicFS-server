@@ -1,19 +1,44 @@
 # 持久化后端插件
 
-提供受信任后端接口、内置 SQLite 后端及独立 SQLite Worker。PostgreSQL、MySQL、远程对象存储和跨语言存储 SDK 尚未实现。外部存储属于拥有全部核心数据访问能力的基础设施插件，不使用普通 Provider 的角色或权限。
+提供受信任后端接口、内置 SQLite、内置 PostgreSQL 及独立 SQLite Worker。MySQL、远程对象存储和跨语言存储 SDK 尚未实现。外部存储属于拥有全部核心数据访问能力的基础设施插件，不使用普通 Provider 的角色或权限。
 
-**数据库是必需的基础设施，不能被禁用。** `storage` 没有 `enabled` 开关；`enabled: false` 属于非法配置。管理插件列表展示已选择的数据库并标记 `required=true`、`stateMutable=false`，但不提供普通插件的启停操作。选择独立 SQLite 插件后，程序缺失、校验失败或退出都不能用停用/旁路继续提供正常存储服务，也不自动切换数据库。后续支持其他后端时只能在完成数据迁移后停服替换，不能把“无数据库”作为运行模式。
+**数据库是必需的基础设施，不能被禁用。** `storage` 没有 `enabled` 开关；`enabled: false` 属于非法配置。管理插件列表展示已选择的数据库并标记 `required=true`、`stateMutable=false`，但不提供普通插件的启停操作。选择独立 SQLite 插件后，程序缺失、校验失败或退出都不能用停用/旁路继续提供正常存储服务，也不自动切换数据库。已有部署更换数据库引擎时，需停服并迁移数据，不能把“无数据库”作为运行模式。
 
 内置 SQLite 使用 `musicfs.plugin.storage.sqlite` 身份；`storage.backend=plugin` 的协议目前只验证发行号而未声明具体后端身份，因此展示为 `musicfs.plugin.storage.plugin` /“外部数据库”，即使使用官方 SQLite Worker 也不从程序路径或参数猜测名称。`version` 使用实际成功握手的后端版本，绝不使用宿主传输适配器版本代替；其他受信任内置驱动使用其注册发行声明。`storage` 投影仅包含 `backend`、`mode=builtin/process` 和 `runtimeState=ready/unavailable/unknown`，可用性来自已打开后端的宿主内存信号，不在读取列表时探测数据库。基础设施没有普通管理实例，`instances=[]`；修改其状态返回 `UNSUPPORTED`，既不保存开关也不关闭数据库。
 
 ## 1. 配置与启动
 
-发布配置默认在 Server 主进程直接使用 SQLite 插件，主库与实例状态库均不启动插件进程。SQLite 是必需角色，不能通过普通插件管理停用：
+发布配置默认在 Server 主进程直接使用 SQLite 插件，主库与实例状态库均不启动插件进程。存储是必需角色，部署 YAML 省略后端时使用此默认值：
 
 ```yaml
 storage:
   backend: sqlite
 ```
+
+### PostgreSQL
+
+在 PostgreSQL 中准备独立数据库，将该库的 `public` Schema 的使用和建表权限授予 MusicFS 账号。Server 通过原生 Go 驱动 pgx 连接，首次启动自动执行 PostgreSQL 迁移。主库和插件私有状态共用此数据库，私有状态按插件、实例和键隔离。一个数据库同时供一个运行中的 Server 使用。
+
+```yaml
+storage:
+  backend: postgres
+  options:
+    host: db.example.net
+    port: '5432'
+    database: musicfs
+    user: musicfs
+    passwordFile: ./secrets/postgres-password
+    sslMode: verify-full
+    sslRootCert: ./certs/database-ca.pem
+```
+
+`host`、`database` 和 `user` 必填。端口默认 `5432`，选项值均为字符串。密码可用 `passwordFile` 指向单行密码文件，或用 `passwordEnv` 指定提供密码的环境变量名。密码文件应存放在数据备份目录之外，例如 `/run/secrets/musicfs-db-password`。`passwordFile`、`sslRootCert` 的相对路径以配置文件所在目录为基准。`sslMode` 默认 `verify-full`，也支持 `verify-ca`、`require` 和 `disable`。使用私有 CA 时指定 `sslRootCert`。
+
+新部署选择后端后即可启动。已有曲库切换引擎须停服并迁移主库及插件状态，编辑 YAML 不会复制现有数据。PostgreSQL 的离线备份使用同一事务导出主库和私有状态，恢复命令按便携格式生成 SQLite 部署。
+
+开发验证时，将 `MUSICFS_TEST_POSTGRES_DSN` 设置为测试 PostgreSQL 的连接 URL，使用有 `CREATEDB` 权限的测试账号。在 Server 仓库运行 `go test -count=1 -run Postgres ./tests/integration/storage ./tests/integration/backup ./tests/e2e`。每个用例独立创建数据库并在结束时清理。
+
+### 外部存储进程
 
 需要显式外部存储模式时，再构建兼容入口并计算实际程序摘要：
 

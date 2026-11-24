@@ -10,6 +10,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
 	"github.com/fnMrRice/MusicFS-server/src/storage"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
@@ -90,6 +91,9 @@ func verify(ctx context.Context, root *os.Root) (checkedBundle, error) {
 		if !seen[name] {
 			return b, domain.Fail("INVALID_ARGUMENT", "Backup configuration or media manifest is missing")
 		}
+	}
+	if driver.SeparatePluginStateSnapshot && !seen["state/"+plugindb.PortableStatePath] {
+		return b, domain.Fail("INVALID_ARGUMENT", "Backup plugin state snapshot is missing")
 	}
 	if err = readJSON(root, "manifest.json", &b.Media); err != nil {
 		return b, err

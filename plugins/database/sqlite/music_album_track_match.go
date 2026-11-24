@@ -79,10 +79,10 @@ func albumMatchingMembers(ctx context.Context, tx *sql.Tx, owner, album string) 
 	if err != nil {
 		return nil, err
 	}
-	err = musicRows(ctx, tx, `SELECT x.track_id,min(json_extract(t.document,'$.durationMs')),max(json_extract(t.document,'$.durationMs'))
+	err = musicRows(ctx, tx, `SELECT x.track_id,min(CAST(json_extract(t.document,'$.durationMs') AS BIGINT)),max(CAST(json_extract(t.document,'$.durationMs') AS BIGINT))
  FROM music_album_tracks x JOIN music_sources s ON s.track_id=x.track_id JOIN tracks t ON t.id=s.id
  WHERE x.album_id=? AND s.owner=? AND json_valid(t.document) AND json_type(t.document,'$.durationMs')='integer'
- AND json_extract(t.document,'$.durationMs')>0 GROUP BY x.track_id`, func(r *sql.Rows) error {
+ AND CAST(json_extract(t.document,'$.durationMs') AS BIGINT)>0 GROUP BY x.track_id`, func(r *sql.Rows) error {
 		var id string
 		var shortest, longest int64
 		if err := r.Scan(&id, &shortest, &longest); err != nil {

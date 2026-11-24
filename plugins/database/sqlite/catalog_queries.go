@@ -14,7 +14,7 @@ import (
 )
 
 func (s *Store) CreateCatalogQuery(ctx context.Context, owner string, input catalog.Query, limit int, key string) (queryResult catalog.Page, queryErr error) {
-	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", "")
+	ctx = s.logContext(ctx)
 	finish := pluginlog.Operation(ctx, "catalog.query.create")
 	defer func() { finish(queryErr) }()
 	q, err := input.Normalize()
@@ -99,7 +99,7 @@ func (s *Store) CreateCatalogQuery(ctx context.Context, owner string, input cata
 }
 
 func (s *Store) CatalogQueryPage(ctx context.Context, owner, id, cursor string, limit int, expected *catalog.Query) (queryResult catalog.Page, queryErr error) {
-	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", "")
+	ctx = s.logContext(ctx)
 	finish := pluginlog.Operation(ctx, "catalog.query.page")
 	defer func() { finish(queryErr) }()
 	limit, err := catalog.PageLimit(limit)

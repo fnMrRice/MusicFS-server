@@ -17,6 +17,14 @@ logging:
   plugins: {}
 storage:
   backend: 'sqlite'
+  # 使用 PostgreSQL 时，改为 backend: postgres 并启用以下连接参数。
+  # options:
+  #   host: db.example.net
+  #   port: '5432'
+  #   database: musicfs
+  #   user: musicfs
+  #   passwordEnv: MUSICFS_DB_PASSWORD
+  #   sslMode: verify-full
 audioDSP:
   # 服务端音效默认停用，Web 在本地实时处理。
   enabled: false

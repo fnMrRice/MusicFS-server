@@ -154,7 +154,7 @@ func matchingPool(ctx context.Context, tx *sql.Tx, owner string, anchor matching
  AND NOT EXISTS(SELECT 1 FROM match_exclusions e WHERE e.owner=t.owner AND e.excluded=1 AND ((e.left_source=t.id AND e.right_source=?) OR (e.right_source=t.id AND e.left_source=?)))
  AND NOT (EXISTS(SELECT 1 FROM recording_source_links l WHERE l.owner=t.owner AND l.source_id=? AND l.recording_id IS NOT NULL) AND EXISTS(SELECT 1 FROM recording_source_links r WHERE r.owner=t.owner AND r.source_id=t.id AND r.recording_id IS NOT NULL))
  ORDER BY CASE WHEN a.file_sha512=? AND t.size=? THEN 0 ELSE 1 END,
- CASE WHEN lower(trim(json_extract(t.document,'$.title')))=lower(trim(?)) AND abs(json_extract(t.document,'$.durationMs')-?)<=2000
+ CASE WHEN lower(trim(json_extract(t.document,'$.title')))=lower(trim(?)) AND abs(CAST(json_extract(t.document,'$.durationMs') AS BIGINT)-?)<=2000
  AND EXISTS(SELECT 1 FROM json_each(t.document,'$.artists') x JOIN json_each(?) y ON lower(trim(x.value))=lower(trim(y.value)) WHERE trim(x.value)!='') THEN 0 ELSE 1 END,t.id LIMIT ?`, owner, anchor.Input.Asset.SourceTrackID, anchor.Input.Asset.SourceTrackID, anchor.Input.Asset.SourceTrackID, anchor.Input.Asset.SourceTrackID, hash, size, anchor.Input.Title, anchor.Input.DurationMs, string(artists), limit)
 	if err != nil {
 		return nil, err

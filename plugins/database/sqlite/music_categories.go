@@ -77,7 +77,7 @@ func (s *Store) MusicAlbums(ctx context.Context, owner string, q music.Query) (m
 	err = musicRows(ctx, tx, musicCategoryScope+`SELECT `+albumColumns+`,COUNT(DISTINCT scope.id) FROM music_albums a
  LEFT JOIN music_album_tracks x ON x.album_id=a.id LEFT JOIN scope ON scope.id=x.track_id
  WHERE a.owner=? AND a.id>? AND instr(lower(a.name),lower(?))>0 AND `+ordinaryMusicAlbumMetadata+`
- AND (NOT ? OR NOT EXISTS(SELECT 1 FROM music_album_scraped_fields f WHERE f.album_id=a.id))
+ AND (?=0 OR NOT EXISTS(SELECT 1 FROM music_album_scraped_fields f WHERE f.album_id=a.id))
  GROUP BY a.id HAVING COUNT(scope.id)>0 OR (?='' AND a.origin='manual' AND COUNT(x.track_id)=0)
  ORDER BY a.id LIMIT ?`, func(r *sql.Rows) error {
 		var a music.AlbumItem
@@ -151,7 +151,7 @@ func (s *Store) MusicGenres(ctx context.Context, owner string, q music.Query) (m
 	}
 	defer tx.Rollback()
 	err = musicRows(ctx, tx, musicCategoryScope+`SELECT min(m.genre),COUNT(*) FROM music_tracks m JOIN scope ON scope.id=m.id
- WHERE coalesce(m.genre,'')<>'' AND m.genre COLLATE NOCASE>? AND instr(lower(m.genre),lower(?))>0
+ WHERE coalesce(m.genre,'')<>'' AND m.genre COLLATE NOCASE>? COLLATE NOCASE AND instr(lower(m.genre),lower(?))>0
  GROUP BY m.genre COLLATE NOCASE ORDER BY m.genre COLLATE NOCASE LIMIT ?`, func(r *sql.Rows) error {
 		var item music.GenreItem
 		if e := r.Scan(&item.Name, &item.TrackCount); e != nil {
