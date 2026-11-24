@@ -16,6 +16,12 @@ type bulkMergeGroup struct {
 	target  string
 }
 
+// 后台任务只传递统计，逐曲审计和完整幂等收据保留在存储端。
+func (s *Store) BulkMergeSummary(ctx context.Context, owner string, request matching.BulkMergeRequest, key string) (matching.BulkMergeCounts, error) {
+	result, err := s.BulkMerge(ctx, owner, request, key)
+	return result.BulkMergeCounts, err
+}
+
 func (s *Store) BulkMerge(ctx context.Context, owner string, request matching.BulkMergeRequest, key string) (matching.BulkMergeResult, error) {
 	result := matching.BulkMergeResult{}
 	if err := request.Validate(); err != nil {

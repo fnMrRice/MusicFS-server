@@ -1231,3 +1231,11 @@ DROP TABLE previous_playlist_link_additions;
 DROP TABLE previous_playlist_links;
 CREATE INDEX playlist_links_local ON playlist_links(owner,playlist_id);
 CREATE INDEX playlist_link_additions_ready ON playlist_link_additions(retry_at,id);
+-- migration: 047_online_downloads.sql
+-- 每个来源可拥有多份独立下载。索引仅记录已经完整写入并发布的文件。
+CREATE TABLE online_downloads (
+ id TEXT PRIMARY KEY, lookup_key TEXT NOT NULL, owner TEXT NOT NULL, plugin_id TEXT NOT NULL,
+ source_id TEXT NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
+ document TEXT NOT NULL CHECK(json_valid(document))
+);
+CREATE INDEX online_downloads_source ON online_downloads(owner,source_id);

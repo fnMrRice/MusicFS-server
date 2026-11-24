@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
@@ -15,6 +16,9 @@ func (s *Store) CancelRefreshTask(ctx context.Context, owner, id string) (tasks.
 		return tasks.Task{}, err
 	}
 	defer tx.Rollback()
+	if strings.HasPrefix(id, operationPrefix) {
+		return cancelQueuedOperation(ctx, tx, owner, id)
+	}
 	j, err := refreshJob(ctx, tx, owner, id)
 	if err != nil {
 		return tasks.Task{}, err

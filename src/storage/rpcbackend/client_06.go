@@ -9,16 +9,34 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
-	"github.com/fnMrRice/MusicFS-server/src/library/recommendations"
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
-	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
-	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
+	"time"
 )
+
+func (c *Client) PlaybackReset(a0 context.Context) (err error) {
+	err = c.Invoke(a0, "PlaybackReset", []any{}, []any{})
+	return err
+}
+
+func (c *Client) PlaybackSave(a0 context.Context, a1 string, a2 string, a3 string, a4 []uint8, a5 string, a6 time.Time) (err error) {
+	err = c.Invoke(a0, "PlaybackSave", []any{a1, a2, a3, a4, a5, a6}, []any{})
+	return err
+}
+
+func (c *Client) Playlist(a0 context.Context, a1 string, a2 string) (r0 playlists.Playlist, err error) {
+	err = c.Invoke(a0, "Playlist", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) PlaylistChanges(a0 context.Context, a1 string, a2 string, a3 int64, a4 int) (r0 []playlists.PlaylistChange, err error) {
+	err = c.Invoke(a0, "PlaylistChanges", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) PlaylistLinks(a0 context.Context, a1 string) (r0 []playlists.PlaylistLink, err error) {
 	err = c.Invoke(a0, "PlaylistLinks", []any{a1}, []any{&r0})
@@ -120,24 +138,4 @@ func (c *Client) QueueHash(a0 context.Context, a1 string, a2 identification.Hash
 func (c *Client) QueueRemoteSync(a0 context.Context, a1 string, a2 string, a3 int64, a4 playlists.Binding, a5 string) (r0 playlists.SyncJob, r1 bool, err error) {
 	err = c.Invoke(a0, "QueueRemoteSync", []any{a1, a2, a3, a4, a5}, []any{&r0, &r1})
 	return r0, r1, err
-}
-
-func (c *Client) QueueWriteback(a0 context.Context, a1 string, a2 writebackhost.Request, a3 writeback.Target, a4 string) (r0 writebackhost.Job, r1 bool, err error) {
-	err = c.Invoke(a0, "QueueWriteback", []any{a1, a2, a3, a4}, []any{&r0, &r1})
-	return r0, r1, err
-}
-
-func (c *Client) ReadRecommendationPage(a0 context.Context, a1 string, a2 string, a3 int) (r0 recommendations.SavedPage, err error) {
-	err = c.Invoke(a0, "ReadRecommendationPage", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) RebuildPlaylist(a0 context.Context, a1 string, a2 string, a3 playlists.RebuildRequest, a4 string) (r0 playlists.AggregateSnapshot, err error) {
-	err = c.Invoke(a0, "RebuildPlaylist", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) RecordBackupObject(a0 context.Context, a1 string, a2 string, a3 string) (err error) {
-	err = c.Invoke(a0, "RecordBackupObject", []any{a1, a2, a3}, []any{})
-	return err
 }

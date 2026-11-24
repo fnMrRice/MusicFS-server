@@ -228,7 +228,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	handler.RegisterHashing(hashes)
 	handler.RegisterFingerprinting(fingerprints)
 	handler.RegisterMedia(content)
-	scraperSettings, err := configureOnlineScrapers(handler, store, content, metadata)
+	scrapers, err := configureOnlineScrapers(handler, store, content, metadata)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
@@ -259,7 +259,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	matchingAutomation.OnJobChanged(handler.NotifyPluginJobs)
 	settingsProviders := append(codecsettings.Providers(), matchingAutomation.Provider())
 	settingsProviders = append(settingsProviders, onlinePlaybackSettings()...)
-	settingsProviders = append(settingsProviders, scraperSettings...)
+	settingsProviders = append(settingsProviders, scrapers.SettingsProviders()...)
 	handler.RegisterPluginSettings(settings.New(store, settingsProviders...))
 	beforeMatching := cleanup
 	cleanup = func() { matchingAutomation.Close(); beforeMatching() }
@@ -341,6 +341,14 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	beforeDownloads := cleanup
 	cleanup = func() { downloads.Close(); beforeDownloads() }
 	matchingAutomation.Start(ctx)
+	operations := tasks.NewOperationQueue(store, libraryTaskExecutor(store, scrapers), handler.NotifyTask)
+	if err := operations.Start(ctx); err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	handler.RegisterLibraryTasks(operations)
+	beforeOperations := cleanup
+	cleanup = func() { operations.Close(); beforeOperations() }
 	stopLinks := links.Start(ctx)
 	beforeLinks := cleanup
 	cleanup = func() { stopLinks(); beforeLinks() }

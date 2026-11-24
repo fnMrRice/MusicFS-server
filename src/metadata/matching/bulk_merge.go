@@ -11,6 +11,10 @@ type BulkMergeRequest struct {
 
 type BulkMergeResult struct {
 	Mutation
+	BulkMergeCounts
+}
+
+type BulkMergeCounts struct {
 	MergedGroups  int `json:"mergedGroups"`
 	MergedSources int `json:"mergedSources"`
 	SkippedGroups int `json:"skippedGroups"`

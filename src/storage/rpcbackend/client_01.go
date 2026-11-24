@@ -5,7 +5,6 @@ package rpcbackend
 import (
 	"context"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/library/albums"
 	"github.com/fnMrRice/MusicFS-server/src/library/catalog"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
@@ -17,8 +16,14 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/tasks"
 	"time"
 )
+
+func (c *Client) Candidates(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 matching.CandidatePage, err error) {
+	err = c.Invoke(a0, "Candidates", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) CatalogArtist(a0 context.Context, a1 string, a2 string) (r0 catalog.Artist, err error) {
 	err = c.Invoke(a0, "CatalogArtist", []any{a1, a2}, []any{&r0})
@@ -90,6 +95,11 @@ func (c *Client) ClaimMediaGarbage(a0 context.Context, a1 time.Time, a2 int) (r0
 	return r0, err
 }
 
+func (c *Client) ClaimOperation(a0 context.Context) (r0 *tasks.Operation, err error) {
+	err = c.Invoke(a0, "ClaimOperation", []any{}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) ClaimRemoteSync(a0 context.Context) (r0 playlists.SyncJob, err error) {
 	err = c.Invoke(a0, "ClaimRemoteSync", []any{}, []any{&r0})
 	return r0, err
@@ -127,15 +137,5 @@ func (c *Client) ConfirmContentHistory(a0 context.Context, a1 string, a2 string,
 
 func (c *Client) ContentObject(a0 context.Context, a1 string, a2 string) (r0 mediastore.ContentObject, err error) {
 	err = c.Invoke(a0, "ContentObject", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) ContentSelection(a0 context.Context, a1 string, a2 string) (r0 mediastore.Selection, err error) {
-	err = c.Invoke(a0, "ContentSelection", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) Cover(a0 context.Context, a1 string, a2 albums.Target) (r0 albums.CoverSelection, err error) {
-	err = c.Invoke(a0, "Cover", []any{a1, a2}, []any{&r0})
 	return r0, err
 }

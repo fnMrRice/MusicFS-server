@@ -2,9 +2,11 @@ package storage_test
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/src/storage"
+	"github.com/fnMrRice/MusicFS-server/src/tasks"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 
@@ -48,5 +50,27 @@ func TestRefreshTaskPersistenceWorkerContract(t *testing.T) {
 	}
 	if _, err = store.GetRefreshTask(ctx, "other", job.ID); err == nil {
 		t.Fatal("RPC exposed another owner's task")
+	}
+
+	// 队列协议须保留 JSON 请求、运行状态、空结果和完成后的统计。
+	payload := json.RawMessage(`{"mode":"title_artist","expectedRevision":0}`)
+	queued, err := store.EnqueueOperation(ctx, "owner", tasks.BulkMerge, "library-operation-rpc", payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	op, err := store.ClaimOperation(ctx)
+	if err != nil || op == nil || op.Task.ID != queued.ID || string(op.Payload) != string(payload) {
+		t.Fatal("operation RPC lost the queued request", op, err)
+	}
+	result, progress := tasks.Result{MergedGroups: 1, MergedSources: 2}, tasks.Progress{Total: 1, Completed: 1}
+	if err = store.FinishOperation(ctx, queued.ID, "succeeded", progress, result, nil); err != nil {
+		t.Fatal(err)
+	}
+	completed, err := store.GetRefreshTask(ctx, "owner", queued.ID)
+	if err != nil || completed.Status != "succeeded" || completed.Result != result || completed.Progress != progress {
+		t.Fatal("operation RPC lost completion", completed, err)
+	}
+	if next, err := store.ClaimOperation(ctx); err != nil || next != nil {
+		t.Fatal("empty operation queue did not return nil", next, err)
 	}
 }

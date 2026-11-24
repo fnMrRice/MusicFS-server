@@ -12,15 +12,41 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/recommendations"
-	"github.com/fnMrRice/MusicFS-server/src/library/works"
+	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/candidates"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/playback/onlinecache"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) ReplayWorkPackage(a0 context.Context, a1 string, a2 string, a3 string, a4 string) (r0 workpackages.Package, r1 bool, err error) {
+	err = c.Invoke(a0, "ReplayWorkPackage", []any{a1, a2, a3, a4}, []any{&r0, &r1})
+	return r0, r1, err
+}
+
+func (c *Client) ReplayWriteback(a0 context.Context, a1 string, a2 writebackhost.Request, a3 string) (r0 writebackhost.Job, r1 bool, err error) {
+	err = c.Invoke(a0, "ReplayWriteback", []any{a1, a2, a3}, []any{&r0, &r1})
+	return r0, r1, err
+}
+
+func (c *Client) ReserveEnrichmentPreview(a0 context.Context, a1 enrichment.Work, a2 int64) (err error) {
+	err = c.Invoke(a0, "ReserveEnrichmentPreview", []any{a1, a2}, []any{})
+	return err
+}
+
+func (c *Client) ResolveTrackSelection(a0 context.Context, a1 string, a2 library.TrackSelection) (r0 library.TrackSelectionResult, err error) {
+	err = c.Invoke(a0, "ResolveTrackSelection", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) Result(a0 context.Context, a1 string, a2 string, a3 string, a4 string) (r0 []uint8, err error) {
+	err = c.Invoke(a0, "Result", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) RevokeTimeline(a0 context.Context, a1 string, a2 string, a3 int64, a4 string) (r0 timeline.Evidence, err error) {
 	err = c.Invoke(a0, "RevokeTimeline", []any{a1, a2, a3, a4}, []any{&r0})
@@ -115,29 +141,4 @@ func (c *Client) SelectContentGuarded(a0 context.Context, a1 string, a2 mediasto
 func (c *Client) SelectCover(a0 context.Context, a1 string, a2 albums.SelectCoverRequest, a3 string, a4 mediastore.Guard) (r0 albums.CoverSelection, err error) {
 	err = c.Invoke(a0, "SelectCover", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
-}
-
-func (c *Client) SelectMusicAlbumScrapedField(a0 context.Context, a1 string, a2 string, a3 int64, a4 works.ScrapedField, a5 string) (r0 int64, err error) {
-	err = c.Invoke(a0, "SelectMusicAlbumScrapedField", []any{a1, a2, a3, a4, a5}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SelectMusicAlbumScrapedFields(a0 context.Context, a1 string, a2 string, a3 int64, a4 []works.ScrapedField, a5 string) (r0 int64, err error) {
-	err = c.Invoke(a0, "SelectMusicAlbumScrapedFields", []any{a1, a2, a3, a4, a5}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SelectRecordingCover(a0 context.Context, a1 string, a2 library.SelectRecordingCoverRequest, a3 string) (r0 library.RecordingCover, err error) {
-	err = c.Invoke(a0, "SelectRecordingCover", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SelectWorkScrapedField(a0 context.Context, a1 string, a2 string, a3 int64, a4 works.ScrapedField, a5 string) (r0 int64, err error) {
-	err = c.Invoke(a0, "SelectWorkScrapedField", []any{a1, a2, a3, a4, a5}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SetConfigOperationStatus(a0 context.Context, a1 string, a2 string) (err error) {
-	err = c.Invoke(a0, "SetConfigOperationStatus", []any{a1, a2}, []any{})
-	return err
 }

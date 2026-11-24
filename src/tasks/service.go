@@ -118,6 +118,9 @@ func (s *Service) wait(done <-chan struct{}) bool {
 
 func (s *Service) describe(task *Task) {
 	task.OwnerName, task.ProviderName = task.OwnerID, task.ProviderInstanceID
+	if task.Kind == AlbumAutoScrape || task.Kind == BulkMerge {
+		return
+	}
 	task.Roots = make([]Root, 0, len(task.RootIDs))
 	for _, id := range task.RootIDs {
 		task.Roots = append(task.Roots, Root{ID: id, Name: id})

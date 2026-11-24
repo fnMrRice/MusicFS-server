@@ -17,6 +17,10 @@ func (s *Server) NotifyScan(owner, jobID string, refreshMetadata bool) {
 // NotifyRefreshTask 同时更新扫描详情和任务队列，包括扫描结束后的元数据阶段。
 func (s *Server) NotifyRefreshTask(owner, taskID string) {
 	s.notifyActivity(owner, "scans")
+	s.NotifyTask(owner, taskID)
+}
+
+func (s *Server) NotifyTask(owner, taskID string) {
 	s.control.mu.Lock()
 	defer s.control.mu.Unlock()
 	for conn := range s.control.connections {

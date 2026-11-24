@@ -9,11 +9,31 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
-	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
-	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/library/recommendations"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 )
+
+func (c *Client) QueueWriteback(a0 context.Context, a1 string, a2 writebackhost.Request, a3 writeback.Target, a4 string) (r0 writebackhost.Job, r1 bool, err error) {
+	err = c.Invoke(a0, "QueueWriteback", []any{a1, a2, a3, a4}, []any{&r0, &r1})
+	return r0, r1, err
+}
+
+func (c *Client) ReadRecommendationPage(a0 context.Context, a1 string, a2 string, a3 int) (r0 recommendations.SavedPage, err error) {
+	err = c.Invoke(a0, "ReadRecommendationPage", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) RebuildPlaylist(a0 context.Context, a1 string, a2 string, a3 playlists.RebuildRequest, a4 string) (r0 playlists.AggregateSnapshot, err error) {
+	err = c.Invoke(a0, "RebuildPlaylist", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) RecordBackupObject(a0 context.Context, a1 string, a2 string, a3 string) (err error) {
+	err = c.Invoke(a0, "RecordBackupObject", []any{a1, a2, a3}, []any{})
+	return err
+}
 
 func (c *Client) RecordPlaybackStarted(a0 context.Context, a1 auth.Session, a2 personal.PlaybackStarted) (r0 personal.Entry, err error) {
 	err = c.Invoke(a0, "RecordPlaybackStarted", []any{a1, a2}, []any{&r0})
@@ -47,6 +67,11 @@ func (c *Client) RecoverHashes(a0 context.Context) (err error) {
 
 func (c *Client) RecoverJobs(a0 context.Context) (err error) {
 	err = c.Invoke(a0, "RecoverJobs", []any{}, []any{})
+	return err
+}
+
+func (c *Client) RecoverOperations(a0 context.Context) (err error) {
+	err = c.Invoke(a0, "RecoverOperations", []any{}, []any{})
 	return err
 }
 
@@ -107,30 +132,5 @@ func (c *Client) RemoteSource(a0 context.Context, a1 string, a2 string) (r0 play
 
 func (c *Client) RemoteSyncJob(a0 context.Context, a1 string, a2 string) (r0 playlists.SyncJob, err error) {
 	err = c.Invoke(a0, "RemoteSyncJob", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) ReplayWorkPackage(a0 context.Context, a1 string, a2 string, a3 string, a4 string) (r0 workpackages.Package, r1 bool, err error) {
-	err = c.Invoke(a0, "ReplayWorkPackage", []any{a1, a2, a3, a4}, []any{&r0, &r1})
-	return r0, r1, err
-}
-
-func (c *Client) ReplayWriteback(a0 context.Context, a1 string, a2 writebackhost.Request, a3 string) (r0 writebackhost.Job, r1 bool, err error) {
-	err = c.Invoke(a0, "ReplayWriteback", []any{a1, a2, a3}, []any{&r0, &r1})
-	return r0, r1, err
-}
-
-func (c *Client) ReserveEnrichmentPreview(a0 context.Context, a1 enrichment.Work, a2 int64) (err error) {
-	err = c.Invoke(a0, "ReserveEnrichmentPreview", []any{a1, a2}, []any{})
-	return err
-}
-
-func (c *Client) ResolveTrackSelection(a0 context.Context, a1 string, a2 library.TrackSelection) (r0 library.TrackSelectionResult, err error) {
-	err = c.Invoke(a0, "ResolveTrackSelection", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) Result(a0 context.Context, a1 string, a2 string, a3 string, a4 string) (r0 []uint8, err error) {
-	err = c.Invoke(a0, "Result", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
 }

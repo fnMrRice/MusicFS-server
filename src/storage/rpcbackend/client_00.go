@@ -86,6 +86,11 @@ func (c *Client) BulkMerge(a0 context.Context, a1 string, a2 matching.BulkMergeR
 	return r0, err
 }
 
+func (c *Client) BulkMergeSummary(a0 context.Context, a1 string, a2 matching.BulkMergeRequest, a3 string) (r0 matching.BulkMergeCounts, err error) {
+	err = c.Invoke(a0, "BulkMergeSummary", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) CancelCatalogQuery(a0 context.Context, a1 string, a2 string) (err error) {
 	err = c.Invoke(a0, "CancelCatalogQuery", []any{a1, a2}, []any{})
 	return err
@@ -128,10 +133,5 @@ func (c *Client) CancelWriteback(a0 context.Context, a1 string, a2 string) (r0 w
 
 func (c *Client) CandidateSnapshot(a0 context.Context, a1 string, a2 string, a3 []string, a4 int) (r0 matching.Snapshot, err error) {
 	err = c.Invoke(a0, "CandidateSnapshot", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) Candidates(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 matching.CandidatePage, err error) {
-	err = c.Invoke(a0, "Candidates", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
 }

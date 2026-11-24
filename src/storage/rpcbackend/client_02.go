@@ -4,10 +4,8 @@ package rpcbackend
 
 import (
 	"context"
-	"github.com/fnMrRice/MusicFS-server/sdk/fault"
+	"encoding/json"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
-	"github.com/fnMrRice/MusicFS-server/src/core/auth"
-	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
 	"github.com/fnMrRice/MusicFS-server/src/library/catalog"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
@@ -17,7 +15,18 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/tasks"
 )
+
+func (c *Client) ContentSelection(a0 context.Context, a1 string, a2 string) (r0 mediastore.Selection, err error) {
+	err = c.Invoke(a0, "ContentSelection", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) Cover(a0 context.Context, a1 string, a2 albums.Target) (r0 albums.CoverSelection, err error) {
+	err = c.Invoke(a0, "Cover", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) CreateCatalogQuery(a0 context.Context, a1 string, a2 catalog.Query, a3 int, a4 string) (r0 catalog.Page, err error) {
 	err = c.Invoke(a0, "CreateCatalogQuery", []any{a1, a2, a3, a4}, []any{&r0})
@@ -104,6 +113,11 @@ func (c *Client) Enqueue(a0 context.Context, a1 string, a2 string, a3 pluginprot
 	return r0, r1, err
 }
 
+func (c *Client) EnqueueOperation(a0 context.Context, a1 string, a2 string, a3 string, a4 json.RawMessage) (r0 tasks.Task, err error) {
+	err = c.Invoke(a0, "EnqueueOperation", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) EnrichmentCandidate(a0 context.Context, a1 string, a2 string) (r0 enrichment.PreviewCandidate, err error) {
 	err = c.Invoke(a0, "EnrichmentCandidate", []any{a1, a2}, []any{&r0})
 	return r0, err
@@ -122,19 +136,4 @@ func (c *Client) ExpandSourceAlbum(a0 context.Context, a1 string, a2 string, a3 
 func (c *Client) FailFingerprint(a0 context.Context, a1 identification.FingerprintJob, a2 string) (err error) {
 	err = c.Invoke(a0, "FailFingerprint", []any{a1, a2}, []any{})
 	return err
-}
-
-func (c *Client) FailRemoteSync(a0 context.Context, a1 playlists.SyncJob, a2 *fault.Error) (err error) {
-	err = c.Invoke(a0, "FailRemoteSync", []any{a1, a2}, []any{})
-	return err
-}
-
-func (c *Client) FindAuth(a0 context.Context, a1 string) (r0 auth.Session, err error) {
-	err = c.Invoke(a0, "FindAuth", []any{a1}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) FindConfigOperation(a0 context.Context, a1 string, a2 string) (r0 config.Operation, r1 bool, err error) {
-	err = c.Invoke(a0, "FindConfigOperation", []any{a1, a2}, []any{&r0, &r1})
-	return r0, r1, err
 }

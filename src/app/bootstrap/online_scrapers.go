@@ -21,7 +21,7 @@ type onlineScraperRepository interface {
 	settings.Repository
 }
 
-func configureOnlineScrapers(handler *api.Server, repository onlineScraperRepository, content *mediastore.ContentService, metadata *enrichmentworker.Service) ([]settings.Provider, error) {
+func configureOnlineScrapers(handler *api.Server, repository onlineScraperRepository, content *mediastore.ContentService, metadata *enrichmentworker.Service) (*onlinescrape.Service, error) {
 	client := &http.Client{Timeout: 12 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	plugins := online.Catalog(client, os.Getenv("MUSICFS_ACOUSTID_API_KEY"))
 	service, err := onlinescrape.NewWithSettings(plugins, repository)
@@ -32,5 +32,5 @@ func configureOnlineScrapers(handler *api.Server, repository onlineScraperReposi
 	service.SetLocalLyricsLookup(metadata.LocalLyrics)
 	handler.RegisterOnlineScrapers(service, repository, content, client)
 	handler.RegisterOnlineAlbumScrapers(service, repository)
-	return service.SettingsProviders(), nil
+	return service, nil
 }

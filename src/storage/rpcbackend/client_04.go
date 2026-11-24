@@ -6,16 +6,36 @@ import (
 	"context"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
-	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/playback/onlinecache"
 	"github.com/fnMrRice/MusicFS-server/src/playback/processedcache"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"github.com/fnMrRice/MusicFS-server/src/tasks"
 )
+
+func (c *Client) GetPluginOperation(a0 context.Context, a1 string, a2 string) (r0 plugincontrol.Operation, err error) {
+	err = c.Invoke(a0, "GetPluginOperation", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) GetPluginSettings(a0 context.Context, a1 string, a2 string) (r0 settings.Record, err error) {
+	err = c.Invoke(a0, "GetPluginSettings", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) GetPublication(a0 context.Context, a1 string, a2 string) (r0 mediastore.Publication, err error) {
+	err = c.Invoke(a0, "GetPublication", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) GetRefreshTask(a0 context.Context, a1 string, a2 string) (r0 tasks.Task, err error) {
+	err = c.Invoke(a0, "GetRefreshTask", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) GetWriteback(a0 context.Context, a1 string, a2 string) (r0 writebackhost.Job, err error) {
 	err = c.Invoke(a0, "GetWriteback", []any{a1, a2}, []any{&r0})
@@ -114,25 +134,5 @@ func (c *Client) MatchingAction(a0 context.Context, a1 string, a2 string) (r0 *s
 
 func (c *Client) MatchingLibrary(a0 context.Context, a1 string) (r0 matching.LibrarySnapshot, err error) {
 	err = c.Invoke(a0, "MatchingLibrary", []any{a1}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) MatchingOwners(a0 context.Context) (r0 []string, err error) {
-	err = c.Invoke(a0, "MatchingOwners", []any{}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) MatchingRevision(a0 context.Context, a1 string) (r0 int64, err error) {
-	err = c.Invoke(a0, "MatchingRevision", []any{a1}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) MatchingRun(a0 context.Context, a1 string) (r0 matching.Run, err error) {
-	err = c.Invoke(a0, "MatchingRun", []any{a1}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) MergeMusicAlbumMetadata(a0 context.Context, a1 string, a2 string, a3 int64, a4 []works.ScrapedField, a5 []string, a6 string) (r0 int64, err error) {
-	err = c.Invoke(a0, "MergeMusicAlbumMetadata", []any{a1, a2, a3, a4, a5, a6}, []any{&r0})
 	return r0, err
 }

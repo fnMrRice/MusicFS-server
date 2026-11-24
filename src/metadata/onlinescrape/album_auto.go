@@ -9,6 +9,7 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/sdk/scraper"
 	"github.com/fnMrRice/MusicFS-server/src/library/music"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -21,6 +22,21 @@ type AutoAlbumCandidate struct {
 
 // SearchAlbum 按音乐源选择平台，用曲库的专辑名搜索，返回最多三个可继续读取的发行版。
 func (s *Service) SearchAlbum(ctx context.Context, owner string, album music.AlbumScrapeTarget) ([]AutoAlbumCandidate, error) {
+	ranked, err := s.rankAlbums(ctx, owner, album)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]AutoAlbumCandidate, len(ranked))
+	for i, match := range ranked {
+		page := searchPage{items: []searchItem{match.item}, size: match.item.size}
+		item := s.issue(owner, match.plugin, "albumDetails", page, mediastore.ContentTarget{})[0]
+		result[i] = AutoAlbumCandidate{Candidate: item, PluginID: match.plugin}
+	}
+	return result, nil
+}
+
+// 排名只读取在线查询缓存；仅交给浏览器的候选需要占用预览令牌。
+func (s *Service) rankAlbums(ctx context.Context, owner string, album music.AlbumScrapeTarget) ([]albumMatch, error) {
 	var plugins []string
 	switch album.SourcePluginID {
 	case "musicfs.plugin.source.netease":
@@ -46,10 +62,10 @@ func (s *Service) SearchAlbum(ctx context.Context, owner string, album music.Alb
 			budget = min(budget, time.Until(deadline)/time.Duration(len(plugins)-i))
 		}
 		search, cancel := context.WithTimeout(ctx, budget)
-		items, err := s.Search(search, owner, plugin, "albumDetails", scraper.Query{Album: album.Name})
+		page, err := s.lookup(search, owner, plugin, "albumDetails", scraper.Query{Album: album.Name}, false)
 		cancel()
 		if err != nil {
-			if ctx.Err() == context.Canceled {
+			if ctx.Err() != nil {
 				return nil, ctx.Err()
 			}
 			if firstFailure == nil {
@@ -58,14 +74,13 @@ func (s *Service) SearchAlbum(ctx context.Context, owner string, album music.Alb
 			continue
 		}
 		seen := map[string]bool{}
-		for _, item := range items {
-			match := rankAlbum(title, artist, item)
+		for _, item := range page.items {
+			match := rankAlbum(title, artist, item.Item)
 			if match.similarity == 0 || seen[item.ID] {
 				continue
 			}
 			seen[item.ID] = true
-			match.candidate = AutoAlbumCandidate{Candidate: item, PluginID: plugin}
-			match.priority = i
+			match.item, match.plugin, match.priority = item, plugin, i
 			ranked = append(ranked, match)
 			if match.exact == 1 && (artist == "" || match.artist == 1) {
 				best++
@@ -82,15 +97,12 @@ func (s *Service) SearchAlbum(ctx context.Context, owner string, album music.Alb
 		return cmp.Or(cmp.Compare(b.exact, a.exact), cmp.Compare(b.similarity, a.similarity),
 			cmp.Compare(b.artist, a.artist), cmp.Compare(a.priority, b.priority))
 	})
-	result := make([]AutoAlbumCandidate, min(len(ranked), maxAutoAlbumCandidates))
-	for i := range result {
-		result[i] = ranked[i].candidate
-	}
-	return result, nil
+	return ranked[:min(len(ranked), maxAutoAlbumCandidates)], nil
 }
 
 type albumMatch struct {
-	candidate     AutoAlbumCandidate
+	item          searchItem
+	plugin        string
 	exact, artist int
 	priority      int
 	similarity    float64
@@ -100,7 +112,7 @@ func albumLabel(name string) string {
 	return strings.ToLower(strings.Join(strings.Fields(norm.NFKC.String(name)), " "))
 }
 
-func rankAlbum(title, artist string, item Candidate) albumMatch {
+func rankAlbum(title, artist string, item scraper.Item) albumMatch {
 	var match albumMatch
 	check := func(name string) {
 		name = albumLabel(name)

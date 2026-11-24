@@ -16,6 +16,7 @@ type Repository interface {
 	ManualLink(context.Context, string, LinkRequest, string) (Mutation, error)
 	SetDefaultSource(context.Context, string, DefaultSourceRequest, string) (Mutation, error)
 	BulkMerge(context.Context, string, BulkMergeRequest, string) (BulkMergeResult, error)
+	BulkMergeSummary(context.Context, string, BulkMergeRequest, string) (BulkMergeCounts, error)
 	Unlink(context.Context, string, UnlinkRequest, string) (Mutation, error)
 	Split(context.Context, string, SplitRequest, string) (Mutation, error)
 	SetExclusion(context.Context, string, ExclusionRequest, string) (Mutation, error)

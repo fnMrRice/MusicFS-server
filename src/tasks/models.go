@@ -14,16 +14,21 @@ type Root struct {
 }
 
 type Progress struct {
+	Total             int `json:"total"`
+	Completed         int `json:"completed"`
 	Observed          int `json:"observed"`
 	MetadataTotal     int `json:"metadataTotal"`
 	MetadataCompleted int `json:"metadataCompleted"`
 }
 
 type Result struct {
-	Updated  int `json:"updated"`
-	Retained int `json:"retained"`
-	NotFound int `json:"notFound"`
-	Failed   int `json:"failed"`
+	MergedGroups  int `json:"mergedGroups"`
+	MergedSources int `json:"mergedSources"`
+	SkippedGroups int `json:"skippedGroups"`
+	Updated       int `json:"updated"`
+	Retained      int `json:"retained"`
+	NotFound      int `json:"notFound"`
+	Failed        int `json:"failed"`
 }
 
 type Task struct {
@@ -54,6 +59,7 @@ type Page struct {
 
 // Repository 的空 owner 仅供已获管理员授权的全量查询使用。
 type Repository interface {
+	OperationRepository
 	ListRefreshTasks(context.Context, string, string, int) (Page, error)
 	GetRefreshTask(context.Context, string, string) (Task, error)
 	CancelRefreshTask(context.Context, string, string) (Task, error)

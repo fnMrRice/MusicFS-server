@@ -10,12 +10,37 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/sourcedisplay"
-	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
+	"github.com/fnMrRice/MusicFS-server/src/tasks"
 )
+
+func (c *Client) SelectMusicAlbumScrapedField(a0 context.Context, a1 string, a2 string, a3 int64, a4 works.ScrapedField, a5 string) (r0 int64, err error) {
+	err = c.Invoke(a0, "SelectMusicAlbumScrapedField", []any{a1, a2, a3, a4, a5}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SelectMusicAlbumScrapedFields(a0 context.Context, a1 string, a2 string, a3 int64, a4 []works.ScrapedField, a5 string) (r0 int64, err error) {
+	err = c.Invoke(a0, "SelectMusicAlbumScrapedFields", []any{a1, a2, a3, a4, a5}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SelectRecordingCover(a0 context.Context, a1 string, a2 library.SelectRecordingCoverRequest, a3 string) (r0 library.RecordingCover, err error) {
+	err = c.Invoke(a0, "SelectRecordingCover", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SelectWorkScrapedField(a0 context.Context, a1 string, a2 string, a3 int64, a4 works.ScrapedField, a5 string) (r0 int64, err error) {
+	err = c.Invoke(a0, "SelectWorkScrapedField", []any{a1, a2, a3, a4, a5}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SetConfigOperationStatus(a0 context.Context, a1 string, a2 string) (err error) {
+	err = c.Invoke(a0, "SetConfigOperationStatus", []any{a1, a2}, []any{})
+	return err
+}
 
 func (c *Client) SetDefaultSource(a0 context.Context, a1 string, a2 matching.DefaultSourceRequest, a3 string) (r0 matching.Mutation, err error) {
 	err = c.Invoke(a0, "SetDefaultSource", []any{a1, a2, a3}, []any{&r0})
@@ -92,6 +117,11 @@ func (c *Client) UnlockCover(a0 context.Context, a1 string, a2 albums.UnlockCove
 	return r0, err
 }
 
+func (c *Client) UpdateOperation(a0 context.Context, a1 string, a2 tasks.Progress, a3 tasks.Result) (err error) {
+	err = c.Invoke(a0, "UpdateOperation", []any{a1, a2, a3}, []any{})
+	return err
+}
+
 func (c *Client) UpdateProgress(a0 context.Context, a1 jobs.Job, a2 int) (err error) {
 	err = c.Invoke(a0, "UpdateProgress", []any{a1, a2}, []any{})
 	return err
@@ -104,35 +134,5 @@ func (c *Client) UpdateRelease(a0 context.Context, a1 string, a2 string, a3 albu
 
 func (c *Client) UpdateSourceAlbum(a0 context.Context, a1 string, a2 string, a3 albums.UpdateSourceAlbumRequest, a4 string) (r0 albums.SourceAlbum, err error) {
 	err = c.Invoke(a0, "UpdateSourceAlbum", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) UpdateWork(a0 context.Context, a1 string, a2 string, a3 works.UpdateRequest, a4 string) (r0 works.Work, err error) {
-	err = c.Invoke(a0, "UpdateWork", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) Work(a0 context.Context, a1 string, a2 string) (r0 works.Work, err error) {
-	err = c.Invoke(a0, "Work", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) WorkPackage(a0 context.Context, a1 string, a2 string, a3 string) (r0 workpackages.Package, err error) {
-	err = c.Invoke(a0, "WorkPackage", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) WorkPackages(a0 context.Context, a1 string, a2 string) (r0 []workpackages.Package, err error) {
-	err = c.Invoke(a0, "WorkPackages", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) WorkScrapedFields(a0 context.Context, a1 string, a2 string) (r0 []works.ScrapedField, err error) {
-	err = c.Invoke(a0, "WorkScrapedFields", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) Works(a0 context.Context, a1 string, a2 works.Query) (r0 []works.Work, err error) {
-	err = c.Invoke(a0, "Works", []any{a1, a2}, []any{&r0})
 	return r0, err
 }

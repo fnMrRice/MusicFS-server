@@ -10,10 +10,30 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
-	"time"
 )
+
+func (c *Client) MatchingOwners(a0 context.Context) (r0 []string, err error) {
+	err = c.Invoke(a0, "MatchingOwners", []any{}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) MatchingRevision(a0 context.Context, a1 string) (r0 int64, err error) {
+	err = c.Invoke(a0, "MatchingRevision", []any{a1}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) MatchingRun(a0 context.Context, a1 string) (r0 matching.Run, err error) {
+	err = c.Invoke(a0, "MatchingRun", []any{a1}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) MergeMusicAlbumMetadata(a0 context.Context, a1 string, a2 string, a3 int64, a4 []works.ScrapedField, a5 []string, a6 string) (r0 int64, err error) {
+	err = c.Invoke(a0, "MergeMusicAlbumMetadata", []any{a1, a2, a3, a4, a5, a6}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) MergeMusicAlbumTracks(a0 context.Context, a1 string, a2 string, a3 music.MergeTracksInput, a4 string) (r0 music.Track, err error) {
 	err = c.Invoke(a0, "MergeMusicAlbumTracks", []any{a1, a2, a3, a4}, []any{&r0})
@@ -112,25 +132,5 @@ func (c *Client) PersonalProfile(a0 context.Context, a1 string) (r0 personal.Pro
 
 func (c *Client) PlaybackOwner(a0 context.Context, a1 string) (r0 string, err error) {
 	err = c.Invoke(a0, "PlaybackOwner", []any{a1}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) PlaybackReset(a0 context.Context) (err error) {
-	err = c.Invoke(a0, "PlaybackReset", []any{}, []any{})
-	return err
-}
-
-func (c *Client) PlaybackSave(a0 context.Context, a1 string, a2 string, a3 string, a4 []uint8, a5 string, a6 time.Time) (err error) {
-	err = c.Invoke(a0, "PlaybackSave", []any{a1, a2, a3, a4, a5, a6}, []any{})
-	return err
-}
-
-func (c *Client) Playlist(a0 context.Context, a1 string, a2 string) (r0 playlists.Playlist, err error) {
-	err = c.Invoke(a0, "Playlist", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) PlaylistChanges(a0 context.Context, a1 string, a2 string, a3 int64, a4 int) (r0 []playlists.PlaylistChange, err error) {
-	err = c.Invoke(a0, "PlaylistChanges", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
 }

@@ -11,7 +11,7 @@
 | 批量展示来源引用 | `/source-refs/lookup`、`/online-instances/{id}/tracks/lookup`；保留顺序、重复项和单项错误 |
 | 个人资料、收藏、最近播放 | `/me/profile`、`/me/favorites`、`/me/recently-played`；见[个人数据](../library/personal-library.md) |
 | 插件管理和配置 | `/admin/plugins` 及操作查询；见[插件管理](../plugins/plugin-management.md) |
-| 目录刷新任务队列 | 单目录 `POST /provider-instances/{id}/scan-jobs`，`GET /tasks`、`GET /tasks/{id}`、`POST /tasks/{id}/cancel`；见[刷新任务](../library/tasks.md) |
+| 曲库任务队列 | 单目录刷新 `POST /provider-instances/{id}/scan-jobs`、专辑批量刮削 `POST /tasks/album-scrape`、重复音乐合并 `POST /tasks/bulk-merge`。查询和取消共用 `/tasks`，见[曲库任务](../library/tasks.md)。 |
 | 管理员日志等级 | `GET/PUT /admin/logging`；全局与插件覆盖整组替换，当前进程生效，重启恢复配置文件；见[日志](../operations/logging.md) |
 | 播放控制与连接保活 | `/control` 的 `musicfs.control.v1` WebSocket；发送创建、停止、seek、recover、recover-source 请求及心跳；[控制协议](control-channel.md) |
 | 能力与本机状态通知 | WS `capabilities.changed` 触发重新读取本人可见来源与能力；loopback 连接另接收 `lifecycle.changed` |

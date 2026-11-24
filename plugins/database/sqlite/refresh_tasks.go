@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
@@ -66,6 +67,14 @@ func (s *Store) GetRefreshTask(ctx context.Context, owner, id string) (tasks.Tas
 		return tasks.Task{}, err
 	}
 	defer tx.Rollback()
+	return readLibraryTask(ctx, tx, owner, id)
+}
+
+func readLibraryTask(ctx context.Context, tx *sql.Tx, owner, id string) (tasks.Task, error) {
+	if strings.HasPrefix(id, operationPrefix) {
+		op, err := getOperation(ctx, tx, owner, id)
+		return op.Task, err
+	}
 	j, err := refreshJob(ctx, tx, owner, id)
 	if err != nil {
 		return tasks.Task{}, err
@@ -85,13 +94,17 @@ func (s *Store) ListRefreshTasks(ctx context.Context, owner, cursor string, limi
 	defer tx.Rollback()
 	var cursorTime string
 	if cursor != "" {
-		j, err := refreshJob(ctx, tx, owner, cursor)
+		cursorTask, err := readLibraryTask(ctx, tx, owner, cursor)
 		if err != nil {
 			return page, domain.Fail("INVALID_ARGUMENT", "Invalid task cursor")
 		}
-		cursorTime = j.CreatedAt.Format(time.RFC3339Nano)
+		cursorTime = cursorTask.CreatedAt.Format(time.RFC3339Nano)
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT id FROM jobs WHERE json_extract(plan,'$.refreshMetadata')=1 AND (?='' OR owner=?) AND (?='' OR rtrim(created_at,'Z')<rtrim(?,'Z') OR (created_at=? AND id<?)) ORDER BY rtrim(created_at,'Z') DESC,id DESC LIMIT ?`, owner, owner, cursor, cursorTime, cursorTime, cursor, limit+1)
+	rows, err := tx.QueryContext(ctx, `SELECT id FROM (
+ SELECT id,owner,created_at FROM jobs WHERE json_extract(plan,'$.refreshMetadata')=1
+ UNION ALL SELECT id,owner,created_at FROM library_operations
+ ) AS all_tasks WHERE (?='' OR owner=?) AND (?='' OR rtrim(created_at,'Z')<rtrim(?,'Z') OR (created_at=? AND id<?))
+ ORDER BY rtrim(created_at,'Z') DESC,id DESC LIMIT ?`, owner, owner, cursor, cursorTime, cursorTime, cursor, limit+1)
 	if err != nil {
 		return page, err
 	}
@@ -115,20 +128,16 @@ func (s *Store) ListRefreshTasks(ctx context.Context, owner, cursor string, limi
 		ids = ids[:limit]
 	}
 	for _, id := range ids {
-		j, err := refreshJob(ctx, tx, owner, id)
-		if err != nil {
-			return page, err
-		}
-		task, err := refreshTask(ctx, tx, j)
+		task, err := readLibraryTask(ctx, tx, owner, id)
 		if err != nil {
 			return page, err
 		}
 		page.Items = append(page.Items, task)
 	}
-	err = tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM jobs j LEFT JOIN refresh_task_cancellations c ON c.job_id=j.id
+	err = tx.QueryRowContext(ctx, `SELECT (SELECT COUNT(*) FROM library_operations WHERE (?='' OR owner=?) AND state IN ('queued','running')) + COUNT(*) FROM jobs j LEFT JOIN refresh_task_cancellations c ON c.job_id=j.id
  WHERE json_extract(j.plan,'$.refreshMetadata')=1 AND (?='' OR j.owner=?) AND
  ((c.job_id IS NOT NULL AND c.completed_at IS NULL) OR (c.job_id IS NULL AND
- (j.state IN ('queued','retry_wait','running') OR (j.state='succeeded' AND EXISTS(SELECT 1 FROM metadata_automation a WHERE a.scan_job_id=j.id AND a.owner=j.owner AND a.scan_generation=j.generation AND a.plan_digest=j.plan_digest AND a.reason='refreshMetadata' AND a.state IN ('queued','preparing','running'))))))`, owner, owner).Scan(&page.ActiveCount)
+ (j.state IN ('queued','retry_wait','running') OR (j.state='succeeded' AND EXISTS(SELECT 1 FROM metadata_automation a WHERE a.scan_job_id=j.id AND a.owner=j.owner AND a.scan_generation=j.generation AND a.plan_digest=j.plan_digest AND a.reason='refreshMetadata' AND a.state IN ('queued','preparing','running'))))))`, owner, owner, owner, owner).Scan(&page.ActiveCount)
 	return page, err
 }
 

@@ -4,6 +4,9 @@ package rpcbackend
 
 import (
 	"context"
+	"github.com/fnMrRice/MusicFS-server/sdk/fault"
+	"github.com/fnMrRice/MusicFS-server/src/core/auth"
+	"github.com/fnMrRice/MusicFS-server/src/core/config"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
@@ -11,11 +14,24 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/playback/onlinecache"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"github.com/fnMrRice/MusicFS-server/src/tasks"
 )
+
+func (c *Client) FailRemoteSync(a0 context.Context, a1 playlists.SyncJob, a2 *fault.Error) (err error) {
+	err = c.Invoke(a0, "FailRemoteSync", []any{a1, a2}, []any{})
+	return err
+}
+
+func (c *Client) FindAuth(a0 context.Context, a1 string) (r0 auth.Session, err error) {
+	err = c.Invoke(a0, "FindAuth", []any{a1}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) FindConfigOperation(a0 context.Context, a1 string, a2 string) (r0 config.Operation, r1 bool, err error) {
+	err = c.Invoke(a0, "FindConfigOperation", []any{a1, a2}, []any{&r0, &r1})
+	return r0, r1, err
+}
 
 func (c *Client) FindDerived(a0 context.Context, a1 string, a2 string) (r0 mediastore.DerivedObject, err error) {
 	err = c.Invoke(a0, "FindDerived", []any{a1, a2}, []any{&r0})
@@ -72,6 +88,11 @@ func (c *Client) FinishMediaBackup(a0 context.Context, a1 string) (err error) {
 	return err
 }
 
+func (c *Client) FinishOperation(a0 context.Context, a1 string, a2 string, a3 tasks.Progress, a4 tasks.Result, a5 *fault.Error) (err error) {
+	err = c.Invoke(a0, "FinishOperation", []any{a1, a2, a3, a4, a5}, []any{})
+	return err
+}
+
 func (c *Client) FinishPlaylistAddition(a0 context.Context, a1 int64, a2 string, a3 int64) (err error) {
 	err = c.Invoke(a0, "FinishPlaylistAddition", []any{a1, a2, a3}, []any{})
 	return err
@@ -114,25 +135,5 @@ func (c *Client) GetJob(a0 context.Context, a1 string, a2 string) (r0 jobs.Job, 
 
 func (c *Client) GetLink(a0 context.Context, a1 string, a2 string) (r0 matching.Link, err error) {
 	err = c.Invoke(a0, "GetLink", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) GetPluginOperation(a0 context.Context, a1 string, a2 string) (r0 plugincontrol.Operation, err error) {
-	err = c.Invoke(a0, "GetPluginOperation", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) GetPluginSettings(a0 context.Context, a1 string, a2 string) (r0 settings.Record, err error) {
-	err = c.Invoke(a0, "GetPluginSettings", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) GetPublication(a0 context.Context, a1 string, a2 string) (r0 mediastore.Publication, err error) {
-	err = c.Invoke(a0, "GetPublication", []any{a1, a2}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) GetRefreshTask(a0 context.Context, a1 string, a2 string) (r0 tasks.Task, err error) {
-	err = c.Invoke(a0, "GetRefreshTask", []any{a1, a2}, []any{&r0})
 	return r0, err
 }

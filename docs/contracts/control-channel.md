@@ -49,7 +49,7 @@ Server 在每次心跳和命令时重新核验登录会话；登录过期或被�
 | `POST /lifecycle/leases` | 创建本机客户端租约 |
 | `POST /lifecycle/leases/{id}/renew` | 显式续租 |
 | `POST /lifecycle/leases/{id}/release` | 显式释放租约 |
-| `POST /tasks/subscription` | 为本连接订阅目录刷新任务队列，新的订阅替换原范围 |
+| `POST /tasks/subscription` | 为本连接订阅任务队列，包含目录刷新、专辑自动刮削和重复音乐合并，新订阅替换原范围 |
 
 Server 返回 `{type:"response",id,status,body?}`，`id` 对应原请求，`status` 和 `body` 复用对应 HTTP 状态及 JSON 正文；无正文的成功响应可省略 `body`。错误正文沿用 `code/message/requestId/retryAfter`。播放请求仍检查当前用户、会话、资产与 `attemptId`；同一播放会话的 seek/recover 串行执行，迟到结果不得覆盖较新的尝试。
 
