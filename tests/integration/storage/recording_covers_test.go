@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
@@ -15,6 +16,32 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func TestRecordingCoverLookupUsesTrackSources(t *testing.T) {
+	s := evidenceStore(t)
+	// 复用封面刷新视图，确保单个录音的封面查询能直接定位其来源。
+	rows, err := s.DB.QueryContext(t.Context(), `EXPLAIN QUERY PLAN SELECT object_id FROM music_track_covers WHERE track_id=?
+		ORDER BY (object_id IS preferred) DESC,width*height DESC,min(width,height) DESC,object_id LIMIT 1`, "recording")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var plan []string
+	for rows.Next() {
+		var id, parent, unused int
+		var detail string
+		if err := rows.Scan(&id, &parent, &unused, &detail); err != nil {
+			t.Fatal(err)
+		}
+		plan = append(plan, detail)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(strings.Join(plan, "\n"), "music_sources_by_track (track_id=?)") {
+		t.Fatalf("cover lookup did not start from indexed track sources: %v", plan)
+	}
+}
 
 func recordingArtwork(t *testing.T, s *sqlite.Store, track library.Track, width, height int) mediastore.ContentObject {
 	t.Helper()

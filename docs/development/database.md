@@ -40,7 +40,9 @@
 - 作品包的目录树与音轨引用存于 `work_packages.document`，通过 JSON 节点中的 `sourceTrackId` 引用来源。`document`、`request`、`description` 等 BLOB 列多为序列化业务模型；歌词、封面、缩略图及指纹明细正文存于独立文件，数据库保存索引、绑定和发布状态。
 - 实例库的 `plugin_values` 按插件 ID 与实例 UUID 组成的 `scope` 隔离，以 `(scope,key)` 为联合主键，通过 `revision` 原子比较更新 JSON 值；它与主库之间没有跨库外键。
 
-主库其余 9 个视图用于观测、导入和封面/元数据刷新：`music_observed_tracks`、`music_import_sources`、`music_imported_credits`、`music_import_cd_packages`、`music_import_cd_albums`、`music_track_covers`、`music_refresh_cover`、`music_refresh_metadata`、`music_refresh_album_cover`。详图只展开直接用于专辑查询的 `music_album_tracks`。其余视图定义及该视图的曲序变更见 [011—045 历史批次中的 037 和 041 迁移](../../plugins/database/sqlite/migrations/045_batch_011_045.sql)。
+主库其余 9 个视图用于观测、导入和封面/元数据刷新：`music_observed_tracks`、`music_import_sources`、`music_imported_credits`、`music_import_cd_packages`、`music_import_cd_albums`、`music_track_covers`、`music_refresh_cover`、`music_refresh_metadata`、`music_refresh_album_cover`。详图只展开直接用于专辑查询的 `music_album_tracks`。其余视图定义及该视图的曲序变更见 [011—046 历史批次中的 037 和 041 迁移](../../plugins/database/sqlite/migrations/046_batch_011_046.sql)。
+
+迁移 [050](../../plugins/database/sqlite/migrations/050_music_cover_sources.sql) 增加 `music_sources(track_id,owner,id)` 索引。录音关联变更后，封面触发器使用曲目编号找到对应来源，再按原有规则选择封面。
 
 ## 更新图示
 
