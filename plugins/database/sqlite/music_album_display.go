@@ -26,8 +26,9 @@ func displayAlbums[T any](albums []T, scope albumContext, credit func(T) albumCr
 		return albums
 	}
 	type choice struct {
-		id   string
-		rank int
+		id      string
+		rank    int
+		curated int
 	}
 	choices := make(map[string]choice, len(albums))
 	keys := make([]string, len(albums))
@@ -37,22 +38,28 @@ func displayAlbums[T any](albums []T, scope albumContext, credit func(T) albumCr
 		keys[i] = key
 		rank := 3
 		switch {
-		case c.provider == "":
-			rank = 0
 		case c.id == scope.albumID:
+			rank = 0
+		case c.provider == "":
 			rank = 1
 		case c.provider == scope.providerID:
 			rank = 2
 		}
 		current, exists := choices[key]
-		if !exists || rank < current.rank || rank == current.rank && c.id < current.id {
-			choices[key] = choice{c.id, rank}
+		if c.provider == "" {
+			current.curated++
 		}
+		if !exists || rank < current.rank || rank == current.rank && c.id < current.id {
+			current.id, current.rank = c.id, rank
+		}
+		choices[key] = current
 	}
 	result := albums[:0]
 	for i, album := range albums {
 		c := credit(album)
-		if c.provider == "" || c.id == scope.albumID || choices[keys[i]].id == c.id {
+		group := choices[keys[i]]
+		// 进入某张标签专辑时链接留在当前专辑；多张已确认的同名发行仍分别可见。
+		if c.id == group.id || (group.curated > 1 && c.provider == "") {
 			result = append(result, album)
 		}
 	}

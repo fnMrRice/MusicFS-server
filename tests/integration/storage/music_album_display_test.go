@@ -73,8 +73,8 @@ func TestMergedTrackAlbumCreditsKeepMembershipAndSourceContext(t *testing.T) {
 		t.Fatal("manually maintained album did not take precedence", current.Albums)
 	}
 	onlineRows := albumRows(t, s, onlineAlbum.ID, "")
-	if len(onlineRows) != 1 || len(onlineRows[0].Albums) != 2 {
-		t.Fatal("filtered album view lost the requested credit or the curated release", onlineRows)
+	if len(onlineRows) != 1 || len(onlineRows[0].Albums) != 1 || onlineRows[0].Albums[0].ID != onlineAlbum.ID || !slices.Equal(onlineRows[0].AlbumIDs, current.AlbumIDs) {
+		t.Fatal("filtered album should show its own credit and keep complete membership", onlineRows)
 	}
 	album, err := s.MusicAlbum(ctx, "admin", localAlbum.ID)
 	if err != nil {
