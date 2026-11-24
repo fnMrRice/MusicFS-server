@@ -15,6 +15,7 @@ import (
 )
 
 type networkInput struct {
+	format         *networkFormat
 	audio          pluginproto.OnlineAudio
 	ranges         *onlineRepresentation
 	scope          onlinecache.Scope
@@ -59,6 +60,7 @@ func (s *Service) networkInput(ctx context.Context, t library.Track) (networkInp
 	repo, _ := s.repo.(settings.Repository)
 	p, err := onlinecache.ReadPreferences(ctx, repo, t.Owner, input.scope.Plugin)
 	input.preferences = p
+	input.format = &networkFormat{ready: make(chan struct{})}
 	return input, err
 }
 
@@ -84,7 +86,7 @@ func (n networkInput) watch(ctx context.Context, cancel context.CancelFunc) {
 	}()
 }
 
-func (s *Service) networkReader(ctx context.Context, a *session) (io.ReadCloser, error) {
+func (s *Service) openNetworkReader(ctx context.Context, a *session) (io.ReadCloser, error) {
 	n := a.network
 	ctx = provider.WithPlaybackQuality(ctx, n.preferences.Quality)
 	r, _ := s.library.Runtime(a.track.ProviderID)

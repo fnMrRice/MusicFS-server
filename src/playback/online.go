@@ -61,7 +61,7 @@ func (s *Service) prepareOnline(ctx context.Context, owner string, t library.Tra
 
 func (p *preparedInput) describeOnline(id string, expiry time.Time, transport string) Description {
 	audio := p.network.audio
-	profile := OutputProfile{MIME: audio.MIME, Codec: &audio.Codec, Container: &audio.Container, Transport: transport, SampleRate: audio.SampleRateHz}
+	profile := OutputProfile{MIME: audio.MIME, Codec: &audio.Codec, Container: &audio.Container, Transport: transport, SampleRate: audio.SampleRateHz, Channels: audio.Channels}
 	if audio.BitrateBps != nil {
 		profile.BitrateBps = int(*audio.BitrateBps)
 	}

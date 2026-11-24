@@ -55,21 +55,22 @@ type Processing struct {
 	Parameters map[string]float64 `json:"parameters,omitempty"`
 }
 type Description struct {
-	SourceTrackID       string        `json:"sourceTrackId"`
-	DSPExecution        string        `json:"dspExecution"`
-	SessionID           string        `json:"sessionId"`
-	AttemptID           string        `json:"attemptId"`
-	AssetID             string        `json:"assetId"`
-	RepresentationID    string        `json:"representationId"`
-	DeliveryMode        string        `json:"deliveryMode"`
-	OutputProfile       OutputProfile `json:"outputProfile"`
-	StreamURL           string        `json:"streamUrl"`
-	ExpiresAt           time.Time     `json:"expiresAt"`
-	SeekMode            string        `json:"seekMode"`
-	SeekableRange       *Range        `json:"seekableRange"`
-	PositionOriginMs    int64         `json:"positionOriginMs"`
-	EffectiveProcessing []Processing  `json:"effectiveProcessing"`
-	ResumeDecision      string        `json:"resumeDecision"`
+	SourceTrackID        string        `json:"sourceTrackId"`
+	DSPExecution         string        `json:"dspExecution"`
+	SessionID            string        `json:"sessionId"`
+	AttemptID            string        `json:"attemptId"`
+	AssetID              string        `json:"assetId"`
+	RepresentationID     string        `json:"representationId"`
+	DeliveryMode         string        `json:"deliveryMode"`
+	OutputProfile        OutputProfile `json:"outputProfile"`
+	OutputProfilePending bool          `json:"outputProfilePending,omitempty"`
+	StreamURL            string        `json:"streamUrl"`
+	ExpiresAt            time.Time     `json:"expiresAt"`
+	SeekMode             string        `json:"seekMode"`
+	SeekableRange        *Range        `json:"seekableRange"`
+	PositionOriginMs     int64         `json:"positionOriginMs"`
+	EffectiveProcessing  []Processing  `json:"effectiveProcessing"`
+	ResumeDecision       string        `json:"resumeDecision"`
 }
 type ObservedError struct {
 	Code          string         `json:"code"`

@@ -46,6 +46,24 @@ func TestNeteaseLogoutStopsOpenMedia(t *testing.T) {
 	}
 }
 
+func TestNeteasePlaybackChannelLayout(t *testing.T) {
+	for _, tc := range []struct {
+		layout   string
+		channels int
+	}{{"null", 0}, {`"mono"`, 1}, {`"stereo"`, 2}, {`"5.1"`, 6}, {`"unknown"`, 0}} {
+		t.Run(tc.layout, func(t *testing.T) {
+			t.Parallel()
+			c := scoped(t, online.Netease, roundTrip(func(r *http.Request) (*http.Response, error) {
+				return response(`{"code":200,"data":[{"id":42,"code":200,"level":"lossless","size":400,"type":"flac","url":"https://m8.music.126.net/audio","channelLayout":` + tc.layout + `}]}`).RoundTrip(r)
+			}))
+			audio, err := c.DescribeAudio(t.Context(), "42")
+			if err != nil || audio.Channels != tc.channels {
+				t.Fatalf("channels=%d error=%v", audio.Channels, err)
+			}
+		})
+	}
+}
+
 func TestNeteaseRejectsUnavailableOrIncompleteMedia(t *testing.T) {
 	for _, tc := range []struct{ name, item, code string }{
 		{"preview", `"url":"https://m8.music.126.net/song","freeTrialInfo":{"start":0,"end":30}`, "ACCESS_DENIED"},

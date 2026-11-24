@@ -1171,7 +1171,7 @@
       "type": "object", "additionalProperties": false, "required": ["sourceTrackId", "capabilities", "preferences"],
       "properties": {"trackId": {"$ref": "#/$defs/ID"}, "forcedSourceTrackId": {"$ref": "#/$defs/ID"}, "sourceTrackId": {"$ref": "#/$defs/ID"}, "capabilities": {"$ref": "#/$defs/Capabilities"}, "preferences": {"$ref": "#/$defs/Preferences"}}
     },
-    "OutputProfile": {"type": "object", "required": ["mime", "codec", "container", "transport"], "properties": {"id": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"}, "mime": {"type": "string", "minLength": 1}, "codec": {"$ref": "#/$defs/NullableString"}, "container": {"$ref": "#/$defs/NullableString"}, "transport": {"enum": ["htmlAudio", "nativeHttp"]}, "sampleRate": {"type": "integer", "minimum": 1, "maximum": 1048575}, "channels": {"type": "integer", "minimum": 1, "maximum": 8}, "layout": {"type": "string", "minLength": 1, "maxLength": 128}, "bitrateBps": {"type": "integer", "minimum": 1}}, "if": {"required": ["id"]}, "then": {"required": ["sampleRate", "channels", "layout"]}},
+    "OutputProfile": {"type": "object", "required": ["mime", "codec", "container", "transport"], "properties": {"id": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"}, "mime": {"type": "string", "minLength": 1}, "codec": {"$ref": "#/$defs/NullableString"}, "container": {"$ref": "#/$defs/NullableString"}, "transport": {"enum": ["htmlAudio", "nativeHttp"]}, "sampleRate": {"type": "integer", "minimum": 1, "maximum": 1048575}, "channels": {"type": "integer", "minimum": 1, "maximum": 32}, "layout": {"type": "string", "minLength": 1, "maxLength": 128}, "bitrateBps": {"type": "integer", "minimum": 1}}, "if": {"required": ["id"]}, "then": {"required": ["sampleRate", "channels", "layout"]}},
     "Playback": {
       "type": "object",
       "required": ["sourceTrackId", "dspExecution", "sessionId", "attemptId", "assetId", "representationId", "deliveryMode", "outputProfile", "streamUrl", "expiresAt", "seekMode", "seekableRange", "positionOriginMs", "effectiveProcessing", "resumeDecision"],
@@ -1181,6 +1181,7 @@
         "sessionId": {"$ref": "#/$defs/ID"}, "attemptId": {"$ref": "#/$defs/ID"},
         "assetId": {"$ref": "#/$defs/ID"}, "representationId": {"$ref": "#/$defs/ID"},
         "deliveryMode": {"enum": ["proxy", "processed"]}, "outputProfile": {"$ref": "#/$defs/OutputProfile"},
+        "outputProfilePending": {"type": "boolean", "description": "在线音频打开后可查询本次播放尝试的实际声道数。"},
         "streamUrl": {"type": "string", "pattern": "^/api/v1/playback/sessions/[^/?#]+/attempts/[^/?#]+/stream$"},
         "expiresAt": {"$ref": "#/$defs/Timestamp"}, "seekMode": {"enum": ["byteRange", "timeRestart", "none"]},
         "seekableRange": {"anyOf": [{"type": "null"}, {"type": "object", "required": ["startMs", "endMs"], "properties": {"startMs": {"type": "integer", "minimum": 0}, "endMs": {"type": "integer", "minimum": 0}, "growing": {"type": "boolean"}}}]},

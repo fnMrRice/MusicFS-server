@@ -12,6 +12,13 @@ import (
 
 func (s *Server) RegisterPlayback(service *playback.Service) {
 	s.registerTimeline(service)
+	s.Handle("GET /api/v1/playback/sessions/{id}/attempts/{attempt}/output-profile", true, false, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
+		profile, err := service.AttemptOutputProfile(r.Context(), a, r.PathValue("id"), r.PathValue("attempt"))
+		if err != nil {
+			return err
+		}
+		return WriteJSON(w, http.StatusOK, profile)
+	})
 	s.Handle("DELETE /api/v1/source-tracks/{sourceId}/downloads/{versionId}", true, true, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
 		if err := service.DeleteOnlineDownload(r.Context(), a.User.ID, r.PathValue("sourceId"), r.PathValue("versionId")); err != nil {
 			return err

@@ -16,18 +16,19 @@ import (
 var mediaMD5 = regexp.MustCompile(`^[a-fA-F0-9]{32}$`)
 
 type playerResource struct {
-	ID         json.Number     `json:"id"`
-	Code       int             `json:"code"`
-	URL        string          `json:"url"`
-	Level      string          `json:"level"`
-	Type       string          `json:"type"`
-	Encoding   string          `json:"encodeType"`
-	MD5        string          `json:"md5"`
-	Size       int64           `json:"size"`
-	Bitrate    int64           `json:"br"`
-	SampleRate int             `json:"sr"`
-	Time       int64           `json:"time"`
-	FreeTrial  json.RawMessage `json:"freeTrialInfo"`
+	ID            json.Number     `json:"id"`
+	Code          int             `json:"code"`
+	URL           string          `json:"url"`
+	Level         string          `json:"level"`
+	Type          string          `json:"type"`
+	Encoding      string          `json:"encodeType"`
+	MD5           string          `json:"md5"`
+	Size          int64           `json:"size"`
+	Bitrate       int64           `json:"br"`
+	SampleRate    int             `json:"sr"`
+	ChannelLayout json.RawMessage `json:"channelLayout"`
+	Time          int64           `json:"time"`
+	FreeTrial     json.RawMessage `json:"freeTrialInfo"`
 }
 
 // AudioResource 只使用当前已登录账号的播放接口。签名地址只在插件内部流转。
@@ -74,6 +75,11 @@ func (c *Client) AudioResource(ctx context.Context, id string) (pluginproto.Onli
 		return empty, "", upstreamInvalid()
 	}
 	audio := pluginproto.OnlineAudio{ExternalID: id, Quality: r.Level, SizeBytes: r.Size, SampleRateHz: r.SampleRate}
+	// 仅映射明确的布局名称。该字段常为空，音质名称本身无法确定声道数。
+	var layout string
+	if json.Unmarshal(r.ChannelLayout, &layout) == nil {
+		audio.Channels = map[string]int{"mono": 1, "stereo": 2, "5.1": 6, "5.1(side)": 6, "7.1": 8}[strings.ToLower(strings.TrimSpace(layout))]
+	}
 	if r.MD5 != "" {
 		if !mediaMD5.MatchString(r.MD5) {
 			return empty, "", upstreamInvalid()

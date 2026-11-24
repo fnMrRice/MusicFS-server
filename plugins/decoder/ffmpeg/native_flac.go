@@ -1,10 +1,10 @@
 package audioffmpeg
 
 import (
-	"encoding/binary"
 	"io"
 	"os"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/audiotypes"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 )
 
@@ -27,19 +27,15 @@ func InspectNativeFLAC(path string, fileSize int64) (NativeFLAC, error) {
 	if fileSize < int64(len(header))+6 {
 		return NativeFLAC{}, invalid()
 	}
-	if _, err := io.ReadFull(f, header[:]); err != nil || string(header[:4]) != "fLaC" || header[4]&0x7f != 0 || flacBlockLength(header[5:8]) != 34 {
+	if _, err := io.ReadFull(f, header[:]); err != nil {
 		return NativeFLAC{}, invalid()
 	}
-	info := header[8:]
-	minimumBlock, maximumBlock := binary.BigEndian.Uint16(info[:2]), binary.BigEndian.Uint16(info[2:4])
-	minimumFrame, maximumFrame := flacBlockLength(info[4:7]), flacBlockLength(info[7:10])
-	properties := binary.BigEndian.Uint64(info[10:18])
-	rate, channels, bits := int(properties>>44), int(properties>>41&7)+1, int(properties>>36&31)+1
-	if minimumBlock < 16 || maximumBlock < minimumBlock || minimumFrame > 0 && maximumFrame > 0 && maximumFrame < minimumFrame || rate == 0 || bits < 4 {
+	rate, channels, samples, ok := audiotypes.FLACStreamInfo(header[:])
+	if !ok {
 		return NativeFLAC{}, invalid()
 	}
 	result := NativeFLAC{Channels: channels, SampleRate: rate}
-	if samples := int64(properties & ((1 << 36) - 1)); samples > 0 {
+	if samples > 0 {
 		duration := samples * 1000 / int64(rate)
 		result.DurationMs = &duration
 	}

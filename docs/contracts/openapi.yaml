@@ -279,6 +279,10 @@
       "parameters": [{"$ref": "#/components/parameters/ID"}],
       "post": {"operationId": "recoverPlayback", "parameters": [{"$ref": "#/components/parameters/CSRF"}, {"$ref": "#/components/parameters/Idempotency"}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/Recover"}}}}, "responses": {"200": {"$ref": "#/components/responses/Playback"}, "default": {"$ref": "#/components/responses/Error"}}}
     },
+    "/playback/sessions/{id}/attempts/{attemptId}/output-profile": {
+      "parameters": [{"$ref": "#/components/parameters/ID"}, {"name": "attemptId", "in": "path", "required": true, "schema": {"type": "string", "minLength": 1}}],
+      "get": {"operationId": "getPlaybackOutputProfile", "description": "只读取当前登录会话所属播放尝试的输出格式。已打开在线音频后，短暂等待本次媒体的实际探测结果。未知声道省略。", "responses": {"200": {"description": "当前输出格式", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/OutputProfile"}}}}, "default": {"$ref": "#/components/responses/Error"}}}
+    },
     "/playback/sessions/{id}/attempts/{attemptId}/stream": {
       "parameters": [{"$ref": "#/components/parameters/ID"}, {"name": "attemptId", "in": "path", "required": true, "schema": {"type": "string", "minLength": 1}}],
       "get": {"operationId": "getStream", "description": "只能使用服务器返回的 opaque streamUrl。每个请求校验 Cookie、会话归属、尝试状态、期限和固定版本。流开始后错误只能中止，不能追加 JSON。", "parameters": [

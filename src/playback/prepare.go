@@ -219,7 +219,9 @@ func (r preparationReader) Read(p []byte) (int, error) {
 func (p *preparedInput) describe(id string, gain float64, expiry time.Time, transport string) Description {
 	t := p.track
 	if p.online {
-		return p.describeOnline(id, expiry, transport)
+		d := p.describeOnline(id, expiry, transport)
+		d.OutputProfilePending = d.OutputProfile.Channels == 0
+		return d
 	}
 	d := Description{SessionID: id, SourceTrackID: t.ID, AssetID: t.AssetID, DeliveryMode: "proxy", OutputProfile: OutputProfile{MIME: t.MIME, Codec: t.Codec, Container: t.Container, Transport: transport,
 		SampleRate: p.profile.SampleRate, Channels: p.profile.Channels, Layout: p.profile.Layout, BitrateBps: p.profile.BitrateBps}, ExpiresAt: expiry, SeekMode: "byteRange", EffectiveProcessing: []Processing{}, ResumeDecision: "continue"}

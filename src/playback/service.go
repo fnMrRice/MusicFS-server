@@ -78,6 +78,7 @@ type Service struct {
 	cache         *processedcache.Manager
 	downloads     *onlinecache.Manager
 	downloadTasks sync.WaitGroup
+	profileProbes sync.WaitGroup
 	ctx           context.Context
 	cancel        context.CancelFunc
 	done          chan struct{}
@@ -179,6 +180,7 @@ func (s *Service) Close() {
 	s.collect()
 	s.mu.Unlock()
 	s.downloadTasks.Wait()
+	s.profileProbes.Wait()
 	if s.cache != nil {
 		s.cache.Close()
 	}

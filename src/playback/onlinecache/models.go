@@ -63,6 +63,9 @@ func Matches(scope Scope, expected, actual pluginproto.OnlineAudio) bool {
 	if expected.SampleRateHz > 0 && actual.SampleRateHz > 0 && expected.SampleRateHz != actual.SampleRateHz {
 		return false
 	}
+	if expected.Channels > 0 && actual.Channels > 0 && expected.Channels != actual.Channels {
+		return false
+	}
 	actual.SizeBytes = expected.SizeBytes
 	if expected.Version == "" {
 		actual.Version = ""

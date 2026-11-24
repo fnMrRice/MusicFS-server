@@ -72,7 +72,7 @@ func TestOnlinePlaybackFormatFollowsCurrentRendition(t *testing.T) {
 			t.Fatal(err)
 		}
 		out := d.OutputProfile
-		if d.SourceTrackID != f.track.ID || d.DeliveryMode != "proxy" || out.MIME != want.mime || out.SampleRate != want.sampleRate || out.Channels != 0 ||
+		if d.SourceTrackID != f.track.ID || d.DeliveryMode != "proxy" || !d.OutputProfilePending || out.MIME != want.mime || out.SampleRate != want.sampleRate || out.Channels != 0 ||
 			out.Codec == nil || *out.Codec != want.codec || out.Container == nil || *out.Container != want.codec || out.BitrateBps != int(want.bitrate) {
 			t.Fatalf("playback of %s reported %+v", step.quality, d)
 		}
@@ -87,6 +87,14 @@ func TestOnlinePlaybackFormatFollowsCurrentRendition(t *testing.T) {
 		if w.Code != http.StatusOK || w.Header().Get("Content-Type") != want.mime || !bytes.Equal(w.Body.Bytes(), want.content) || f.opened.Load() != step.opens {
 			t.Fatalf("wrong %s response or cache selection: status=%d type=%s opens=%d", step.quality, w.Code, w.Header().Get("Content-Type"), f.opened.Load())
 		}
+		got, err := f.player.AttemptOutputProfile(ctx, who, d.SessionID, d.AttemptID)
+		if err != nil || got.Channels != 2 || f.opened.Load() != step.opens {
+			t.Fatalf("online output probe returned %+v, %v; upstream requests: %d", got, err, f.opened.Load())
+		}
+		_, err = f.player.AttemptOutputProfile(ctx, who, d.SessionID, "stale-attempt")
+		recoveryError(t, err, "CONFLICT")
+		_, err = f.player.AttemptOutputProfile(ctx, auth.Session{}, d.SessionID, d.AttemptID)
+		recoveryError(t, err, "NOT_FOUND")
 		if err = f.player.Stop(ctx, who, d.SessionID); err != nil {
 			t.Fatal(err)
 		}
