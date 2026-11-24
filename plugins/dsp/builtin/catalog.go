@@ -43,7 +43,10 @@ func Catalog() []Descriptor {
 		}},
 		{Name: "channelmix", DisplayName: "声道转换", Description: "转换中间声道布局；扩展声道不合成环绕声。", Parameters: []Parameter{
 			{Key: "outputChannels", Label: "输出声道", DefaultValue: 2, Min: 1, Max: 8, Step: 1,
-				Options: []ParameterOption{{"单声道", 1}, {"立体声", 2}, {"5.1", 6}, {"7.1", 8}}},
+				Options: []ParameterOption{
+					{Label: "单声道", Value: 1}, {Label: "立体声", Value: 2},
+					{Label: "5.1", Value: 6}, {Label: "7.1", Value: 8},
+				}},
 		}},
 	}
 	for i := range items {

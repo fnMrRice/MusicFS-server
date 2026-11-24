@@ -8,37 +8,29 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/playback/audio"
 )
 
-type legacyNode struct {
+type testNode struct {
 	configured bool
-	format     audio.Format
+	output     audio.Output
 	process    func(*audio.Block)
 }
 
-func (n *legacyNode) Configure(format audio.Format) error {
-	n.configured, n.format = true, format
-	return nil
+func (n *testNode) DescribeIO(audio.Format) (audio.Output, error) {
+	return n.output, nil
 }
-func (n *legacyNode) Process(block *audio.Block) error {
+func (n *testNode) ConfigureIO(audio.Format) (audio.Output, error) {
+	n.configured = true
+	return n.output, nil
+}
+func (n *testNode) Process(block *audio.Block) error {
 	if n.process != nil {
 		n.process(block)
 	}
 	return nil
 }
-func (*legacyNode) Reset() error       { return nil }
-func (*legacyNode) Drain() error       { return nil }
-func (*legacyNode) Close() error       { return nil }
-func (*legacyNode) DelayFrames() int64 { return 0 }
-
-type explicitNode struct {
-	legacyNode
-	output audio.Output
-}
-
-func (n *explicitNode) DescribeIO(audio.Format) (audio.Output, error) { return n.output, nil }
-func (n *explicitNode) ConfigureIO(format audio.Format) (audio.Output, error) {
-	_ = n.Configure(format)
-	return n.output, nil
-}
+func (*testNode) Reset() error       { return nil }
+func (*testNode) Drain() error       { return nil }
+func (*testNode) Close() error       { return nil }
+func (*testNode) DelayFrames() int64 { return 0 }
 
 func registryFor(t *testing.T, name string, node audio.Node) *audio.Registry {
 	t.Helper()
@@ -49,35 +41,52 @@ func registryFor(t *testing.T, name string, node audio.Node) *audio.Registry {
 	return registry
 }
 
-func TestLegacyNodeIOPreservesFormatWithoutConfiguring(t *testing.T) {
-	node := &legacyNode{}
+func TestNodeDescribesOutputWithoutConfiguring(t *testing.T) {
 	want := audio.Output{Format: audio.Canonical, CanContinueDSP: true}
+	node := &testNode{output: want}
 	got, err := audio.DescribeIO(node, audio.Canonical)
 	if err != nil || got != want || node.configured {
 		t.Fatalf("declaration changed node state: output=%+v err=%v configured=%v", got, err, node.configured)
 	}
-	chain, err := audio.NewChain(registryFor(t, "legacy", node), []audio.NodeSpec{{Name: "legacy", Version: 1}})
+	chain, err := audio.NewChain(registryFor(t, "pcm", node), []audio.NodeSpec{{Name: "pcm", Version: 1}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer chain.Close()
 	got, err = chain.ConfigureIO(audio.Canonical)
 	if err != nil || got != want || chain.Output() != want || !node.configured {
-		t.Fatalf("legacy IO configuration failed: output=%+v err=%v", got, err)
+		t.Fatalf("IO configuration failed: output=%+v err=%v", got, err)
 	}
 	if err = chain.Process(&audio.Block{Format: audio.Canonical, Frames: 1, Samples: []float32{0.2, -0.3}}); err != nil {
 		t.Fatal(err)
 	}
 }
 
+func TestRegistryRejectsInvalidDeclaredAndConfiguredOutputs(t *testing.T) {
+	registry := registryFor(t, "invalid", &testNode{})
+	node, err := registry.Create("invalid", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer node.Close()
+	if _, err := node.DescribeIO(audio.Canonical); err == nil {
+		t.Fatal("registry accepted invalid declared output")
+	}
+	if _, err := node.ConfigureIO(audio.Canonical); err == nil {
+		t.Fatal("registry accepted invalid configured output")
+	}
+}
+
 func TestTerminalDSPOutputMustBeLast(t *testing.T) {
 	for _, terminalFirst := range []bool{true, false} {
-		node := &explicitNode{output: audio.Output{Format: audio.Canonical, CanContinueDSP: false}}
+		node := &testNode{output: audio.Output{Format: audio.Canonical, CanContinueDSP: false}}
 		registry := registryFor(t, "terminal", node)
-		if err := registry.Register("legacy", func(map[string]float64) (audio.Node, error) { return &legacyNode{}, nil }); err != nil {
+		if err := registry.Register("pcm", func(map[string]float64) (audio.Node, error) {
+			return &testNode{output: audio.Output{Format: audio.Canonical, CanContinueDSP: true}}, nil
+		}); err != nil {
 			t.Fatal(err)
 		}
-		specs := []audio.NodeSpec{{Name: "legacy", Version: 1}, {Name: "terminal", Version: 1}}
+		specs := []audio.NodeSpec{{Name: "pcm", Version: 1}, {Name: "terminal", Version: 1}}
 		if terminalFirst {
 			specs[0], specs[1] = specs[1], specs[0]
 		}
@@ -117,13 +126,13 @@ func TestChainRejectsOutputDeclarationAndTimingViolations(t *testing.T) {
 		"nonfinite":     func(block *audio.Block) { block.Samples[0] = float32(math.NaN()) },
 	} {
 		t.Run(name, func(t *testing.T) {
-			node := &explicitNode{legacyNode: legacyNode{process: corrupt}, output: audio.Output{Format: audio.Canonical, CanContinueDSP: true}}
+			node := &testNode{process: corrupt, output: audio.Output{Format: audio.Canonical, CanContinueDSP: true}}
 			chain, err := audio.NewChain(registryFor(t, "bad", node), []audio.NodeSpec{{Name: "bad", Version: 1}})
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer chain.Close()
-			if err := chain.Configure(audio.Canonical); err != nil {
+			if _, err := chain.ConfigureIO(audio.Canonical); err != nil {
 				t.Fatal(err)
 			}
 			block := &audio.Block{Format: audio.Canonical, Frames: 1, Samples: []float32{0.2, -0.3}, PositionFrames: 256, Sequence: 7, End: true}
@@ -157,7 +166,7 @@ func TestBuiltinChainNegotiatesEachNodeAndPreservesFrameTimeline(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer chain.Close()
-	if err = chain.Configure(audio.Canonical); err != nil {
+	if _, err = chain.ConfigureIO(audio.Canonical); err != nil {
 		t.Fatal(err)
 	}
 	if chain.Output() != declared || chain.Stateless() {
@@ -181,7 +190,7 @@ func TestEmptyChainAndFailedReconfiguration(t *testing.T) {
 	if err = chain.Process(nil); err == nil {
 		t.Fatal("unconfigured chain accepted block")
 	}
-	if err = chain.Configure(audio.Canonical); err != nil {
+	if _, err = chain.ConfigureIO(audio.Canonical); err != nil {
 		t.Fatal(err)
 	}
 	if err = chain.Process(nil); err == nil {
@@ -191,7 +200,7 @@ func TestEmptyChainAndFailedReconfiguration(t *testing.T) {
 	if err = chain.Process(&audio.Block{Format: mono}); err == nil {
 		t.Fatal("different input format accepted")
 	}
-	if err = chain.Configure(audio.Format{}); err == nil {
+	if _, err = chain.ConfigureIO(audio.Format{}); err == nil {
 		t.Fatal("invalid format accepted")
 	}
 	if chain.Output() != (audio.Output{}) || chain.Process(&audio.Block{Format: audio.Canonical}) == nil {

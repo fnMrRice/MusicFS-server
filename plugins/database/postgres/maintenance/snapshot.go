@@ -84,7 +84,7 @@ func writeDatabase(ctx context.Context, path string, write func(*sql.Tx) error) 
 }
 
 func copyPluginState(ctx context.Context, src, dst *sql.Tx) error {
-	if _, err := dst.ExecContext(ctx, state.CreateValuesTable); err != nil {
+	if _, err := dst.ExecContext(ctx, state.CreateSchema); err != nil {
 		return err
 	}
 	var initialized bool
@@ -106,6 +106,9 @@ func copyPluginState(ctx context.Context, src, dst *sql.Tx) error {
 		var revision int64
 		var value []byte
 		if err := rows.Scan(&plugin, &instance, &key, &revision, &value); err != nil {
+			return err
+		}
+		if err := plugindb.ValidateScope(plugin, instance); err != nil {
 			return err
 		}
 		if _, err := insert.ExecContext(ctx, plugin+"\x00"+instance, key, revision, value); err != nil {

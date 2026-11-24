@@ -286,14 +286,16 @@ func TestRealPersistenceWorker(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "plugin-config.sqlite")
 		cfg := plugindb.BackendConfig{Name: "plugin", Executable: options.Executable, SHA256: options.SHA256}
 		ctx := context.Background()
-		value, err := plugindb.ReadBackend(ctx, cfg, path, "test-plugin", "first-instance", "settings")
+		const firstID = "b1548e96-3081-5c9c-8376-bf290e369d51"
+		const secondID = "16b003e5-1bab-52bb-be10-0e83ec1c40ea"
+		value, err := plugindb.ReadBackend(ctx, cfg, path, "test-plugin", firstID, "settings")
 		if err != nil || value.Revision != 0 {
 			t.Fatalf("missing private state did not return an empty revision: %+v %v", value, err)
 		}
 		if _, err = os.Stat(path); !os.IsNotExist(err) {
 			t.Fatalf("read-only startup created database: %v", err)
 		}
-		first, err := plugindb.OpenBackend(ctx, cfg, path, "test-plugin", "first-instance")
+		first, err := plugindb.OpenBackend(ctx, cfg, path, "test-plugin", firstID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -306,7 +308,7 @@ func TestRealPersistenceWorker(t *testing.T) {
 		if _, err = first.CompareAndSet(ctx, pluginproto.StateRequest{Key: "settings", Value: body}); err == nil {
 			t.Fatal("stale private state revision accepted")
 		}
-		second, err := plugindb.OpenBackend(ctx, cfg, path, "test-plugin", "second-instance")
+		second, err := plugindb.OpenBackend(ctx, cfg, path, "test-plugin", secondID)
 		if err != nil {
 			t.Fatal(err)
 		}

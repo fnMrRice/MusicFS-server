@@ -12,11 +12,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginid"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
 	_ "modernc.org/sqlite"
 )
 
@@ -27,39 +26,47 @@ type Store struct {
 	scope string
 }
 
-// CreateValuesTable 是实例状态库和便携快照共用的表结构。
-const CreateValuesTable = `CREATE TABLE IF NOT EXISTS plugin_values(scope TEXT NOT NULL, key TEXT NOT NULL, revision INTEGER NOT NULL, value BLOB NOT NULL, PRIMARY KEY(scope,key))`
-
 func Open(ctx context.Context, path, plugin, instance string) (store *Store, openErr error) {
 	ctx = pluginlog.Context(ctx, "musicfs.plugin.storage.sqlite", instance)
 	finish := pluginlog.Operation(ctx, "database.state.open")
 	defer func() { finish(openErr) }()
-	if plugin == "" || instance == "" {
-		return nil, domain.Fail("ACCESS_DENIED", "Database scope is required")
+	store, err := scoped(plugin, instance)
+	if err != nil {
+		return nil, err
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return nil, err
 	}
+	db, err := openDatabase(path, "_pragma=journal_mode(WAL)&_pragma=synchronous(FULL)&_txlock=immediate")
+	if err != nil {
+		return nil, err
+	}
+	if err := checkSchema(ctx, db, true); err != nil {
+		db.Close()
+		return nil, err
+	}
+	store.db = db
+	return store, nil
+}
+
+func scoped(plugin, instance string) (*Store, error) {
+	if err := plugindb.ValidateScope(plugin, instance); err != nil {
+		return nil, err
+	}
+	return &Store{scope: plugin + "\x00" + instance}, nil
+}
+
+func openDatabase(path, options string) (*sql.DB, error) {
 	p := filepath.ToSlash(path)
 	if !strings.HasPrefix(p, "/") {
 		p = "/" + p
 	}
 	u := url.URL{Scheme: "file", Path: p}
-	db, err := sql.Open("sqlite", u.String()+"?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=synchronous(FULL)")
-	if err != nil {
-		return nil, err
+	db, err := sql.Open("sqlite", u.String()+"?_pragma=busy_timeout(5000)&"+options)
+	if err == nil {
+		db.SetMaxOpenConns(1)
 	}
-	db.SetMaxOpenConns(1)
-	_, err = db.ExecContext(ctx, CreateValuesTable)
-	if err != nil {
-		db.Close()
-		return nil, err
-	}
-	if err := migratePluginScopes(ctx, db); err != nil {
-		db.Close()
-		return nil, err
-	}
-	return &Store{db: db, scope: pluginid.Canonical(plugin) + "\x00" + instanceid.Canonical(instance)}, nil
+	return db, err
 }
 
 func (s *Store) Close() error { return s.db.Close() }
@@ -72,6 +79,11 @@ func (s *Store) Get(ctx context.Context, key string) (value pluginproto.StateVal
 	if !keyPattern.MatchString(key) {
 		return v, domain.Fail("INVALID_ARGUMENT", "Invalid database key")
 	}
+	return s.get(ctx, key)
+}
+
+func (s *Store) get(ctx context.Context, key string) (pluginproto.StateValue, error) {
+	var v pluginproto.StateValue
 	err := s.db.QueryRowContext(ctx, `SELECT revision,value FROM plugin_values WHERE scope=? AND key=?`, s.scope, key).Scan(&v.Revision, &v.Value)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = nil

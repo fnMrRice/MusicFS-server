@@ -11,7 +11,7 @@ import (
 func TestRecommendationsActualWorkerCacheAndFailureState(t *testing.T) {
 	path := onlineBinary(t, "./tests/testkit/online-worker", "online-fixture")
 	cfg := onlineConfig(t, path, online.Netease)
-	cfg.Args = []string{"recommendation-rate-limit"}
+	cfg.Args = []string{"recommendation-rate-limit", "45"}
 	w := onlineStart(t, cfg)
 	loginOnlineFixture(t, w)
 	s, err := recommendations.New([]recommendations.Runtime{{Owner: cfg.UserID, InstanceID: cfg.InstanceID, Platform: cfg.Platform, ConfigRevision: "anonymous-v1", Provider: w}}, recommendations.Config{})

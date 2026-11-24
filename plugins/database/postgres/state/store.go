@@ -9,11 +9,9 @@ import (
 	"errors"
 	"regexp"
 
-	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
-	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginid"
 )
 
 //go:embed 001_plugin_values.sql
@@ -28,10 +26,10 @@ type store struct {
 }
 
 func scoped(db *sql.DB, plugin, instance string) (*store, error) {
-	if plugin == "" || instance == "" {
-		return nil, domain.Fail("ACCESS_DENIED", "Database scope is required")
+	if err := plugindb.ValidateScope(plugin, instance); err != nil {
+		return nil, err
 	}
-	return &store{db: db, plugin: pluginid.Canonical(plugin), instance: instanceid.Canonical(instance)}, nil
+	return &store{db: db, plugin: plugin, instance: instance}, nil
 }
 
 type querier interface {

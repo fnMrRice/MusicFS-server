@@ -10,23 +10,22 @@ import (
 )
 
 type Root struct {
-	ID             string                       `json:"id"`
-	Name           string                       `json:"name"`
-	PathConfigured bool                         `json:"pathConfigured"`
-	ImportDefaults *pluginproto.ImportOverrides `json:"importDefaults,omitempty"`
+	ID             string                      `json:"id"`
+	Name           string                      `json:"name"`
+	PathConfigured bool                        `json:"pathConfigured"`
+	ImportDefaults pluginproto.ImportOverrides `json:"importDefaults"`
 }
 type Configuration struct {
-	PluginID                    string                     `json:"pluginId"`
-	InstanceID                  string                     `json:"instanceId"`
-	Revision                    string                     `json:"revision"`
-	Name                        string                     `json:"name"`
-	Roots                       []Root                     `json:"roots"`
-	Watch                       *config.WatchConfig        `json:"watch"`
-	ImportOptions               *pluginproto.Configuration `json:"importOptions"`
-	FFmpegConfigured            bool                       `json:"ffmpegConfigured"`
-	FFprobeConfigured           bool                       `json:"ffprobeConfigured"`
-	Schema                      map[string]any             `json:"schema"`
-	RootImportDefaultsSupported bool                       `json:"rootImportDefaultsSupported,omitempty"`
+	PluginID          string                     `json:"pluginId"`
+	InstanceID        string                     `json:"instanceId"`
+	Revision          string                     `json:"revision"`
+	Name              string                     `json:"name"`
+	Roots             []Root                     `json:"roots"`
+	Watch             *config.WatchConfig        `json:"watch"`
+	ImportOptions     *pluginproto.Configuration `json:"importOptions"`
+	FFmpegConfigured  bool                       `json:"ffmpegConfigured"`
+	FFprobeConfigured bool                       `json:"ffprobeConfigured"`
+	Schema            map[string]any             `json:"schema"`
 }
 
 func (m *Manager) Configuration(id string) (Configuration, error) {
@@ -48,7 +47,6 @@ func (m *Manager) Configuration(id string) (Configuration, error) {
 		v.Roots = append(v.Roots, Root{ID: r.ID, Name: r.Name, PathConfigured: r.Path != "", ImportDefaults: completeImportDefaults(options)})
 	}
 	if pluginconfig.SupportsDirectories(p.PluginID) {
-		v.RootImportDefaultsSupported = true
 		watch := config.DefaultWatch()
 		if i.Config.Watch != nil {
 			watch = *i.Config.Watch
@@ -65,8 +63,8 @@ func (m *Manager) Configuration(id string) (Configuration, error) {
 	return v, nil
 }
 
-func completeImportDefaults(options pluginproto.ImportOptions) *pluginproto.ImportOverrides {
-	return &pluginproto.ImportOverrides{Recursive: &options.Recursive, MaxDepth: &options.MaxDepth,
+func completeImportDefaults(options pluginproto.ImportOptions) pluginproto.ImportOverrides {
+	return pluginproto.ImportOverrides{Recursive: &options.Recursive, MaxDepth: &options.MaxDepth,
 		ImportLyrics: &options.ImportLyrics, ImportArtwork: &options.ImportArtwork, ExcludePatterns: &options.ExcludePatterns,
 		SkipHidden: &options.SkipHidden, RespectNoMedia: &options.RespectNoMedia}
 }

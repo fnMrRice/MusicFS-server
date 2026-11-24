@@ -61,7 +61,7 @@ Content-Type: application/json
 
 ## 批量合并
 
-`GET /matching/revision` 在支持批量合并时附加 `bulkMergeAvailable: true`。旧客户端仍可使用原人工接口；新客户端连接未声明该能力的服务端时隐藏批量入口。
+`GET /matching/revision` 返回当前用户的关联修订。客户端将确认操作时读取的修订作为 `expectedRevision` 提交。
 
 用户确认批量操作后，调用 `POST /matching/bulk-merge`，携带正常写请求的会话、Origin、CSRF 和新的 `Idempotency-Key`。请求体仅接受以下两种形式：
 

@@ -21,11 +21,16 @@ type historyNode struct {
 	process  func()
 }
 
-func (*historyNode) Configure(audio.Format) error { return nil }
-func (*historyNode) Reset() error                 { return nil }
-func (n *historyNode) Drain() error               { n.drained = true; return nil }
-func (*historyNode) Close() error                 { return nil }
-func (*historyNode) DelayFrames() int64           { return 0 }
+func (*historyNode) DescribeIO(format audio.Format) (audio.Output, error) {
+	return audio.PCMOutput(format)
+}
+func (n *historyNode) ConfigureIO(format audio.Format) (audio.Output, error) {
+	return n.DescribeIO(format)
+}
+func (*historyNode) Reset() error       { return nil }
+func (n *historyNode) Drain() error     { n.drained = true; return nil }
+func (*historyNode) Close() error       { return nil }
+func (*historyNode) DelayFrames() int64 { return 0 }
 func (n *historyNode) Process(block *audio.Block) error {
 	if n.process != nil {
 		n.process()

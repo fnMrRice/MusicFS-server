@@ -31,7 +31,7 @@ func TestEffectsLogCanonicalIdentityAndPreserveNodeCapabilities(t *testing.T) {
 		if !ok || state.Stateless() || node.DelayFrames() != 0 {
 			t.Fatalf("node capabilities changed: %s", name)
 		}
-		if err = node.Configure(audio.Canonical); err != nil {
+		if _, err = node.ConfigureIO(audio.Canonical); err != nil {
 			t.Fatal(err)
 		}
 		block := &audio.Block{Format: audio.Canonical, Frames: 2, Samples: []float32{0.5, -0.5, 0.25, -0.25}}

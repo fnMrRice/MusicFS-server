@@ -140,7 +140,7 @@ func TestSavedDefaultPermissionsDoNotOverrideRevocationOrEmptySettings(t *testin
 	if _, err := config.InitializeLocalDirectories(context.Background(), doc.Config, func() []string { return []string{music} }); err != nil {
 		t.Fatal(err)
 	}
-	db, err := state.Open(context.Background(), config.PluginDatabasePath(doc.Config), "musicfs.plugin.source.localfiles", "local")
+	db, err := state.Open(context.Background(), config.PluginDatabasePath(doc.Config), "musicfs.plugin.source.localfiles", doc.Config.Plugins[0].Instances[0].InstanceID)
 	if err != nil {
 		t.Fatal(err)
 	}

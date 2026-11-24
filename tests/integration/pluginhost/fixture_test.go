@@ -88,7 +88,7 @@ func startOnline(t *testing.T) (*pluginhost.OnlineWorker, string) {
 
 func localConfig(t *testing.T, mode string) pluginhost.Config {
 	t.Helper()
-	return pluginhost.Config{Executable: fixtureBinary, SHA256: fixtureSHA, Args: []string{mode, t.TempDir()}, StateDir: t.TempDir(), DatabasePath: filepath.Join(t.TempDir(), "plugins.sqlite"), UserID: "admin", InstanceID: "local",
+	return pluginhost.Config{Executable: fixtureBinary, SHA256: fixtureSHA, Args: []string{mode, t.TempDir()}, StateDir: t.TempDir(), DatabasePath: filepath.Join(t.TempDir(), "plugins.sqlite"), UserID: "admin", InstanceID: "b1548e96-3081-5c9c-8376-bf290e369d51",
 		Roots: []sourceaccess.RootConfig{{ID: "one", Path: t.TempDir()}, {ID: "two", Path: t.TempDir()}}}
 }
 

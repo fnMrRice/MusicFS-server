@@ -15,7 +15,7 @@ import (
 func TestContentHistoriesIsolateAccountsAndReplay(t *testing.T) {
 	ctx, path := t.Context(), filepath.Join(t.TempDir(), "plugins.sqlite")
 	open := func(plugin string) *state.Store {
-		db, err := state.Open(ctx, path, plugin, "instance")
+		db, err := state.Open(ctx, path, plugin, "b1548e96-3081-5c9c-8376-bf290e369d51")
 		if err != nil {
 			t.Fatal(err)
 		}

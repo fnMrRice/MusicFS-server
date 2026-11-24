@@ -18,7 +18,7 @@ func TestPostgresICUMusicOrderingAndCursor(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer store.Close()
-	state, err := plugindb.OpenBackend(ctx, plugindb.BackendConfig{Name: "postgres", DataRoot: root, Options: options}, "", "musicfs.plugin.test", "state")
+	state, err := plugindb.OpenBackend(ctx, plugindb.BackendConfig{Name: "postgres", DataRoot: root, Options: options}, "", "musicfs.plugin.test", "b1548e96-3081-5c9c-8376-bf290e369d51")
 	if err != nil {
 		t.Fatal(err)
 	}

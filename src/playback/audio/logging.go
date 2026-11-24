@@ -2,6 +2,7 @@ package audio
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
@@ -21,17 +22,14 @@ func createLoggedNode(name string, factory Factory, params map[string]float64) (
 	ctx := pluginlog.Context(context.Background(), id, "")
 	finish := pluginlog.Operation(ctx, "dsp.create")
 	node, err := factory(params)
+	if node == nil && err == nil {
+		err = fmt.Errorf("invalid DSP node")
+	}
 	finish(err)
 	if err != nil {
 		return nil, err
 	}
 	return &loggedNode{Node: node, ctx: ctx}, nil
-}
-
-func (n *loggedNode) Configure(format Format) (err error) {
-	finish := pluginlog.Operation(n.ctx, "dsp.configure")
-	defer func() { finish(err) }()
-	return n.Node.Configure(format)
 }
 
 func (n *loggedNode) DescribeIO(format Format) (Output, error) {
@@ -41,25 +39,36 @@ func (n *loggedNode) DescribeIO(format Format) (Output, error) {
 func (n *loggedNode) ConfigureIO(format Format) (output Output, err error) {
 	finish := pluginlog.Operation(n.ctx, "dsp.configure")
 	defer func() { finish(err) }()
-	return configureIO(n.Node, format)
+	if err := format.Validate(); err != nil {
+		return Output{}, err
+	}
+	output, err = n.Node.ConfigureIO(format)
+	if err != nil {
+		return Output{}, err
+	}
+	return validateOutput(format, output)
 }
 
-func (n *loggedNode) Process(block *Block) (err error) {
+func (n *loggedNode) Process(block *Block) error {
 	logger := pluginlog.Logger(n.ctx)
-	started := time.Now()
-	logger.Log(n.ctx, pluginlog.LevelTrace, "DSP effect block started")
-	defer func() {
-		if err != nil {
-			logger.WarnContext(n.ctx, "DSP effect block failed", "errorCode", pluginlog.ErrorCode(err))
-			return
-		}
+	trace := logger.Enabled(n.ctx, pluginlog.LevelTrace)
+	var started time.Time
+	if trace {
+		started = time.Now()
+		logger.Log(n.ctx, pluginlog.LevelTrace, "DSP effect block started")
+	}
+	if err := n.Node.Process(block); err != nil {
+		logger.WarnContext(n.ctx, "DSP effect block failed", "errorCode", pluginlog.ErrorCode(err))
+		return err
+	}
+	if trace {
 		frames, samples := 0, 0
 		if block != nil {
 			frames, samples = block.Frames, len(block.Samples)
 		}
 		logger.Log(n.ctx, pluginlog.LevelTrace, "DSP effect block completed", "frames", frames, "sampleCount", samples, "durationUs", time.Since(started).Microseconds())
-	}()
-	return n.Node.Process(block)
+	}
+	return nil
 }
 
 func (n *loggedNode) Reset() (err error) {

@@ -164,7 +164,7 @@ func enabledTarget(root *yaml.Node, plugin, instance string) *yaml.Node {
 }
 
 func mappingValue(node *yaml.Node, key string) *yaml.Node {
-	if node.Kind != yaml.MappingNode {
+	if node == nil || node.Kind != yaml.MappingNode {
 		return nil
 	}
 	for i := 0; i+1 < len(node.Content); i += 2 {

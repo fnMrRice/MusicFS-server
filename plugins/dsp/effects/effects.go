@@ -42,26 +42,20 @@ type node struct {
 	output     []float64
 }
 
-func (n *node) Configure(format audio.Format) error {
-	if err := format.Validate(); err != nil {
-		return err
-	}
-	n.algorithm.prepare(format)
-	n.format = format
-	n.output = make([]float64, format.Channels)
-	n.configured = true
-	return nil
-}
-
 func (*node) DescribeIO(format audio.Format) (audio.Output, error) {
 	return audio.PCMOutput(format)
 }
 
 func (n *node) ConfigureIO(format audio.Format) (audio.Output, error) {
-	if err := n.Configure(format); err != nil {
+	output, err := n.DescribeIO(format)
+	if err != nil {
 		return audio.Output{}, err
 	}
-	return n.DescribeIO(format)
+	n.algorithm.prepare(format)
+	n.format = format
+	n.output = make([]float64, format.Channels)
+	n.configured = true
+	return output, nil
 }
 
 func (n *node) Process(block *audio.Block) error {

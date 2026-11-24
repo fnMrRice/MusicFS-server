@@ -77,11 +77,18 @@ func TestMatchingBulkMergeHTTPValidationPrivacyAndIdempotency(t *testing.T) {
 		}
 		return w
 	}
-	revision := request("GET", "/matching/revision", "", "", nil)
-	testkit.ValidateHTTP(t, "MatchingRevision", revision.Body.Bytes())
-	if revision.Code != 200 || !bytes.Contains(revision.Body.Bytes(), []byte(`"bulkMergeAvailable":true`)) {
-		t.Fatal("bulk capability is missing")
+	checkRevision := func(want int64) {
+		t.Helper()
+		revision := request("GET", "/matching/revision", "", "", nil)
+		testkit.ValidateHTTP(t, "MatchingRevision", revision.Body.Bytes())
+		var result struct {
+			Revision int64 `json:"revision"`
+		}
+		if revision.Code != 200 || json.Unmarshal(revision.Body.Bytes(), &result) != nil || result.Revision != want {
+			t.Fatalf("unexpected matching revision: %d %s", revision.Code, revision.Body.String())
+		}
 	}
+	checkRevision(0)
 	valid := `{"expectedRevision":0,"mode":"title_artist"}`
 	for _, tc := range []struct {
 		name   string
@@ -125,6 +132,7 @@ func TestMatchingBulkMergeHTTPValidationPrivacyAndIdempotency(t *testing.T) {
 	if err := json.Unmarshal(merged.Body.Bytes(), &result); err != nil || result.MergedGroups != 1 || result.MergedSources != 2 || result.SkippedGroups != 0 || result.Revision != 1 {
 		t.Fatalf("incorrect owner-scoped result: %+v %v", result, err)
 	}
+	checkRevision(1)
 	replayed := request("POST", "/matching/bulk-merge", valid, "bulk-http-success", nil)
 	if replayed.Code != 200 || !bytes.Equal(replayed.Body.Bytes(), merged.Body.Bytes()) {
 		t.Fatal("bulk idempotent response changed")

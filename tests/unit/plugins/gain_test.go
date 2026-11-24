@@ -13,7 +13,7 @@ func TestGainChangesPCMAndValidatesFormat(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = node.Configure(audio.Canonical); err != nil {
+	if _, err = node.ConfigureIO(audio.Canonical); err != nil {
 		t.Fatal(err)
 	}
 	block := audio.Block{Format: audio.Canonical, Samples: []float32{.25, -.25, .5, -.5}, Frames: 2}

@@ -8,16 +8,6 @@ type Output struct {
 	CanContinueDSP bool   `json:"canContinueDSP"`
 }
 
-// IOConfigurer 在配置时协商输入和输出；旧 Node 仍按同格式 PCM 节点兼容。
-type IOConfigurer interface {
-	ConfigureIO(input Format) (Output, error)
-}
-
-// IODescriber 无需启动处理或修改节点状态即可检查输入和输出约束。
-type IODescriber interface {
-	DescribeIO(input Format) (Output, error)
-}
-
 // PCMOutput 返回可继续处理的同格式 PCM 声明。
 func PCMOutput(input Format) (Output, error) {
 	if err := input.Validate(); err != nil {
@@ -26,7 +16,7 @@ func PCMOutput(input Format) (Output, error) {
 	return Output{Format: input, CanContinueDSP: true}, nil
 }
 
-// DescribeIO 读取显式声明；兼容旧节点时固定保持输入格式。
+// DescribeIO 校验节点的只读格式声明。
 func DescribeIO(node Node, input Format) (Output, error) {
 	if node == nil {
 		return Output{}, fmt.Errorf("invalid DSP node")
@@ -34,31 +24,11 @@ func DescribeIO(node Node, input Format) (Output, error) {
 	if err := input.Validate(); err != nil {
 		return Output{}, err
 	}
-	if descriptor, ok := node.(IODescriber); ok {
-		output, err := descriptor.DescribeIO(input)
-		if err != nil {
-			return Output{}, err
-		}
-		return validateOutput(input, output)
-	}
-	if _, explicit := node.(IOConfigurer); explicit {
-		return Output{}, fmt.Errorf("UNSUPPORTED: DSP node has no read-only IO declaration")
-	}
-	return PCMOutput(input)
-}
-
-func configureIO(node Node, input Format) (Output, error) {
-	if configurer, ok := node.(IOConfigurer); ok {
-		output, err := configurer.ConfigureIO(input)
-		if err != nil {
-			return Output{}, err
-		}
-		return validateOutput(input, output)
-	}
-	if err := node.Configure(input); err != nil {
+	output, err := node.DescribeIO(input)
+	if err != nil {
 		return Output{}, err
 	}
-	return PCMOutput(input)
+	return validateOutput(input, output)
 }
 
 func validateOutput(input Format, output Output) (Output, error) {
@@ -90,7 +60,7 @@ func (c *Chain) DescribeIO(input Format) (Output, error) {
 		if !output.CanContinueDSP {
 			return Output{}, fmt.Errorf("UNSUPPORTED: DSP node %d follows a terminal output", index)
 		}
-		output, err = DescribeIO(node, output.Format)
+		output, err = node.DescribeIO(output.Format)
 		if err != nil {
 			return Output{}, fmt.Errorf("DSP node %d: %w", index, err)
 		}
@@ -98,5 +68,5 @@ func (c *Chain) DescribeIO(input Format) (Output, error) {
 	return output, nil
 }
 
-// Output 仅在 Configure 或 ConfigureIO 成功后返回协商结果。
+// Output 在 ConfigureIO 成功后返回协商结果。
 func (c *Chain) Output() Output { return c.output }

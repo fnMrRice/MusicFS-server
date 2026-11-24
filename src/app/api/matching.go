@@ -44,9 +44,8 @@ func (s *Server) RegisterMatching(service matchingAPI) {
 			return err
 		}
 		return WriteJSON(w, http.StatusOK, struct {
-			Revision           int64 `json:"revision"`
-			BulkMergeAvailable bool  `json:"bulkMergeAvailable"`
-		}{revision, true})
+			Revision int64 `json:"revision"`
+		}{revision})
 	})
 	s.Handle("POST /api/v1/source-tracks/{id}/match-candidates/refresh", true, true, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		var input struct {

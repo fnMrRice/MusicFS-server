@@ -26,8 +26,6 @@ def set_member(text, container, name, value):
 schema_path = root / 'docs/contracts/http.schema.json'
 schema = schema_path.read_text(encoding='utf-8')
 definitions = json.loads(schema)['$defs']
-revision = copy.deepcopy(definitions['MatchingRevision'])
-revision['properties']['bulkMergeAvailable'] = {'type': 'boolean'}
 request = {
     'type': 'object', 'additionalProperties': False,
     'required': ['expectedRevision', 'mode'],
@@ -47,7 +45,7 @@ result['properties']['changes'].pop('maxItems', None)
 for name in ['mergedGroups', 'mergedSources', 'skippedGroups']:
     result['required'].append(name)
     result['properties'][name] = {'type': 'integer', 'minimum': 0}
-for name, value in [('MatchingRevision', revision), ('BulkMergeRequest', request), ('BulkMergeResult', result)]:
+for name, value in [('BulkMergeRequest', request), ('BulkMergeResult', result)]:
     schema = set_member(schema, '$defs', name, value)
 schema_path.write_text(schema, encoding='utf-8')
 
@@ -64,9 +62,6 @@ path = {'post': {
     }
 }}
 api = set_member(api, 'paths', '/matching/bulk-merge', path)
-revision_path = json.loads(api)['paths']['/matching/revision']
-revision_path['get']['description'] = '返回本人全局人工关联修订；初始为0。bulkMergeAvailable 为 true 时支持全库批量关联，旧服务未返回此字段时客户端隐藏该入口。'
-api = set_member(api, 'paths', '/matching/revision', revision_path)
 api_path.write_text(api, encoding='utf-8')
 
 fixtures_path = root / 'tests/testdata/contracts/api/matching.json'

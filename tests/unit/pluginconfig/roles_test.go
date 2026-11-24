@@ -1,6 +1,7 @@
 package pluginconfig_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
@@ -34,8 +35,8 @@ func TestOfficialManifestInstancePolicy(t *testing.T) {
 			if role == "audio" && (len(manifest.Plugin.Features) != 1 || manifest.Plugin.Features[0] != "audio-codec") {
 				t.Fatal("official audio plugin is not classified as an audio codec", manifest.Plugin)
 			}
-			if pluginID == "musicfs.scraper.local" && (role != "scraper" || len(manifest.Plugin.Features) != 1 || manifest.Plugin.Features[0] != "metadata") {
-				t.Fatal("metadata classification changed the scraper role or retained legacy features", manifest)
+			if pluginID == "musicfs.scraper.local" && (role != "scraper" || len(manifest.Plugin.Features) != 2 || !slices.Contains(manifest.Plugin.Features, "metadata") || !slices.Contains(manifest.Plugin.Features, "scraper")) {
+				t.Fatal("local scraper must declare its metadata and scraper features", manifest.Plugin)
 			}
 			if err := pluginconfig.ValidateManifest(manifest, role); err != nil {
 				t.Fatal(err)

@@ -6,7 +6,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginconfig"
 	"go.yaml.in/yaml/v3"
 )
@@ -70,19 +69,24 @@ func discoverBundle(root *yaml.Node, base string) error {
 		}
 	}
 	for _, entry := range bundledPlugins {
-		var builtinNode *yaml.Node
+		var node *yaml.Node
 		for _, p := range list.Content {
 			if id := mappingValue(p, "pluginId"); id != nil && id.Value == entry.id {
-				builtinNode = p
+				node = p
 				break
 			}
 		}
 		// 显式列表限定启用范围，不能靠发现隐式补齐账号或功能依赖。
-		if builtinNode == nil && !discoverAll {
+		if node == nil && !discoverAll {
 			continue
 		}
-		if builtinNode == nil || mappingValue(builtinNode, "execution") == nil || mappingValue(builtinNode, "execution").Value != "process" {
-			if err := discoverBuiltin(list, builtinNode, entry.id, entry.instance, used); err != nil {
+		execution := mappingValue(node, "execution")
+		if execution == nil || execution.Value != "process" {
+			node, err := discoverBuiltin(list, node, entry.id)
+			if err != nil {
+				return err
+			}
+			if err := discoverDefaultInstance(node, entry.instance, used); err != nil {
 				return err
 			}
 			continue
@@ -103,20 +107,6 @@ func discoverBundle(root *yaml.Node, base string) error {
 		configuredPath := path
 		if relative, err := filepath.Rel(base, path); err == nil {
 			configuredPath = relative
-		}
-		var node *yaml.Node
-		for _, p := range list.Content {
-			if id := mappingValue(p, "pluginId"); id != nil && id.Value == entry.id {
-				node = p
-				break
-			}
-		}
-		if node == nil {
-			node = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-			if err := setNode(node, "pluginId", entry.id); err != nil {
-				return err
-			}
-			list.Content = append(list.Content, node)
 		}
 		if executable := mappingValue(node, "executable"); executable != nil {
 			candidate := executable.Value
@@ -169,18 +159,8 @@ func discoverBundle(root *yaml.Node, base string) error {
 				}
 			}
 		}
-		if mappingValue(node, "instances") == nil {
-			legacy := entry.instance
-			id := instanceid.Canonical(legacy)
-			for used[id] {
-				legacy += "-builtin"
-				id = instanceid.Canonical(legacy)
-			}
-			used[strings.ToLower(id)] = true
-			instances := []Instance{{InstanceID: id, Enabled: true}}
-			if err := setNode(node, "instances", instances); err != nil {
-				return err
-			}
+		if err := discoverDefaultInstance(node, entry.instance, used); err != nil {
+			return err
 		}
 	}
 	return nil

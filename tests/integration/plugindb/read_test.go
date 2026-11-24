@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite/state"
@@ -16,11 +17,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugindb"
 )
 
-func TestReadLegacyScopeLeavesOldServerStateIntact(t *testing.T) {
+func TestCurrentScopesPreserveStoredSettingsDuringStartup(t *testing.T) {
 	ctx := context.Background()
 	values := []storedValue{
-		{"musicfs.localfiles\x00local", plugindb.ConfigurationKey, 7, `{"name":"My library"}`},
-		{"musicfs.localfiles\x00other", plugindb.ConfigurationKey, 2, `{"name":"Other library"}`},
+		{"musicfs.plugin.source.localfiles\x00" + instanceid.Canonical("local"), plugindb.ConfigurationKey, 7, `{"name":"My library"}`},
+		{"musicfs.plugin.source.localfiles\x00" + instanceid.Canonical("other"), plugindb.ConfigurationKey, 2, `{"name":"Other library"}`},
 	}
 	path := legacyDatabase(t, values)
 	before, err := os.ReadFile(path)
@@ -31,7 +32,7 @@ func TestReadLegacyScopeLeavesOldServerStateIntact(t *testing.T) {
 		t.Helper()
 		value, err := state.Read(ctx, path, "musicfs.plugin.source.localfiles", instanceid.Canonical("local"), plugindb.ConfigurationKey)
 		if err != nil || value.Revision != wantRevision || string(value.Value) != values[0].value {
-			t.Fatalf("legacy read changed or lost its scope: %+v %v", value, err)
+			t.Fatalf("configuration read changed or lost its scope: %+v %v", value, err)
 		}
 	}
 	read(7)
@@ -42,8 +43,7 @@ func TestReadLegacyScopeLeavesOldServerStateIntact(t *testing.T) {
 	if got := readStoredValues(t, path); !reflect.DeepEqual(values, got) {
 		t.Fatalf("configuration read migrated state before the server lock: %+v", got)
 	}
-	// Simulate a legacy server still updating its original scope while a new
-	// process loads configuration, before the new process acquires its lock.
+	// 配置预读发生在加锁之前，应能在下次查询看到其他进程刚写入的修订。
 	writer, err := sql.Open("sqlite", filepath.ToSlash(path))
 	if err != nil {
 		t.Fatal(err)
@@ -60,11 +60,15 @@ func TestReadLegacyScopeLeavesOldServerStateIntact(t *testing.T) {
 	defer runtime.Close()
 	value, err := runtime.Get(ctx, plugindb.ConfigurationKey)
 	if err != nil || value.Revision != 8 {
-		t.Fatalf("later runtime migration lost the latest legacy revision: %+v %v", value, err)
+		t.Fatalf("runtime lost the latest revision: %+v %v", value, err)
+	}
+	var version int
+	if err := writer.QueryRow("PRAGMA user_version").Scan(&version); err != nil || version != 1 {
+		t.Fatalf("validated state schema was not persisted: version=%d err=%v", version, err)
 	}
 }
 
-func TestReadRejectsAmbiguousScopesWithoutWriting(t *testing.T) {
+func TestObsoleteScopesRequireExplicitUpgrade(t *testing.T) {
 	values := []storedValue{
 		{"musicfs.localfiles\x00local", "legacy-only", 7, `null`},
 		{"musicfs.plugin.source.localfiles\x00" + instanceid.Canonical("local"), "current-only", 11, `null`},
@@ -75,6 +79,10 @@ func TestReadRejectsAmbiguousScopesWithoutWriting(t *testing.T) {
 	var detail *domain.Error
 	if !errors.As(err, &detail) || detail.Code != "CONFLICT" {
 		t.Fatalf("expected explicit conflict instead of choosing a scope: %v", err)
+	}
+	if store, openErr := state.Open(t.Context(), path, "musicfs.plugin.source.localfiles", instanceid.Canonical("local")); openErr == nil {
+		store.Close()
+		t.Fatal("obsolete scopes were accepted by the writer")
 	}
 	if after := readStoredValues(t, path); !reflect.DeepEqual(before, after) {
 		t.Fatalf("conflict changed persisted state: %+v", after)
@@ -89,5 +97,27 @@ func TestReadDoesNotCreateMissingDatabase(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Dir(path)); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("read created the database directory: %v", err)
+	}
+}
+
+func TestScopeFormatMatchesDatabaseUpgradeCheck(t *testing.T) {
+	const id = "b1548e96-3081-5c9c-8376-bf290e369d51"
+	for _, tc := range []struct{ plugin, instance string }{
+		{"musicfs.localfiles", id},
+		{"musicfs.plugin.source.localfiles", "local"},
+		{"musicfs.plugin.source.localfiles", strings.ToUpper(id)},
+		{"musicfs.plugin.source.localfiles", "00000000-0000-0000-0000-000000000000"},
+		{"musicfs.plugin.test\x00part", id},
+	} {
+		path := legacyDatabase(t, []storedValue{{tc.plugin + "\x00" + tc.instance, "value", 1, "null"}})
+		if db, err := state.Open(t.Context(), path, tc.plugin, tc.instance); err == nil {
+			db.Close()
+			t.Fatal("invalid input scope was accepted")
+		}
+		_, err := state.Read(t.Context(), path, "musicfs.plugin.test", id, "value")
+		var detail *domain.Error
+		if !errors.As(err, &detail) || detail.Code != "CONFLICT" {
+			t.Fatalf("invalid persisted scope passed the schema check: %v", err)
+		}
 	}
 }

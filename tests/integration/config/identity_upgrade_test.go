@@ -64,7 +64,7 @@ plugins:
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := db.Exec(`INSERT INTO plugin_values VALUES(?,?,7,?)`, "musicfs.localfiles\x00local", key, encoded); err != nil {
+		if _, err := db.Exec(`INSERT INTO plugin_values VALUES(?,?,7,?)`, "musicfs.plugin.source.localfiles\x00"+instanceid.Canonical("local"), key, encoded); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -17,7 +17,7 @@ func TestGainSupportsConfiguredChannelLayouts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := node.Configure(format); err != nil {
+			if _, err := node.ConfigureIO(format); err != nil {
 				t.Fatal(err)
 			}
 			input := make([]float32, format.Channels*4)
@@ -58,7 +58,7 @@ func TestGainRejectsUnconfiguredFormatChangesAndInvalidSamples(t *testing.T) {
 	}
 	for _, layout := range []string{"7.1", "mono", "5.1", "stereo"} {
 		format, _ := audio.FormatForLayout(layout)
-		if err := node.Configure(format); err != nil {
+		if _, err := node.ConfigureIO(format); err != nil {
 			t.Fatal(err)
 		}
 		if err := node.Process(nil); err == nil {
@@ -88,7 +88,7 @@ func TestGainRejectsUnconfiguredFormatChangesAndInvalidSamples(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := node.Configure(audio.Format{}); err == nil {
+	if _, err := node.ConfigureIO(audio.Format{}); err == nil {
 		t.Fatal("accepted unsupported format")
 	}
 	if err := node.Close(); err != nil {

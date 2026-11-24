@@ -30,6 +30,7 @@ func TestRecommendationsActualServerPartialFailuresCacheAndRestart(t *testing.T)
 	cfg.Plugins[0].Instances[0].Name = "  display fallback  "
 	cfg.Plugins[0].Instances = append(cfg.Plugins[0].Instances, config.Instance{InstanceID: "7a202030-76d0-5655-b70e-aa3833cc17de"})
 	t.Run("grouped-read-cache-refresh", func(t *testing.T) {
+		cfg.Plugins[0].Args = []string{"recommendation-rate-limit", "2"}
 		path := writeYAMLConfiguration(t, cfg)
 		stop := startAudioYAMLServer(t, path, cfg, base)
 		c := login(t, base, cfg.AdminToken)

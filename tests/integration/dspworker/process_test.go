@@ -119,7 +119,7 @@ func TestExternalDSPRejectsChangedExecutableAndIdentity(t *testing.T) {
 }
 
 func TestExternalDSPRejectsUnsupportedContracts(t *testing.T) {
-	for _, mode := range []string{"stateful", "delayed", "version", "missing-version", "blank-version", "invalid-version"} {
+	for _, mode := range []string{"stateful", "delayed", "mono", "terminal", "version", "missing-version", "blank-version", "invalid-version"} {
 		t.Run(mode, func(t *testing.T) {
 			p, err := dspworker.New(context.Background(), helperConfig(t, mode), nil)
 			if p != nil {

@@ -10,7 +10,7 @@ import (
 func TestDatabaseRPCScopeAndProtectedConfiguration(t *testing.T) {
 	cfg := localConfig(t, "database")
 	a := startLocal(t, cfg)
-	cfg.InstanceID = "two"
+	cfg.InstanceID = "16b003e5-1bab-52bb-be10-0e83ec1c40ea"
 	cfg.StateDir = t.TempDir()
 	b := startLocal(t, cfg)
 	call := func(w interface {

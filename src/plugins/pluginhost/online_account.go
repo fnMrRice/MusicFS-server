@@ -19,7 +19,7 @@ func (w *OnlineWorker) initializeAccount(ctx context.Context) error {
 		return domain.Fail("TEMPORARY_FAILURE", "Platform credential store is unavailable")
 	}
 	w.accountStore = store
-	secret, err := w.loadAccount(store)
+	secret, err := store.Load()
 	if err != nil {
 		return domain.Fail("TEMPORARY_FAILURE", "Platform credential store cannot be read")
 	}

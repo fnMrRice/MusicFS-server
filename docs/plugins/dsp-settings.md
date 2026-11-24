@@ -24,9 +24,9 @@ Web 的 DSP 和输出布局在浏览器本地实时执行。服务端效果和�
 
 ## 插件输入输出
 
-`audio.Node` 原入口保持兼容，新节点可实现 `IODescriber.DescribeIO(input Format)` 和 `IOConfigurer.ConfigureIO(input Format)`。返回 `audio.Output{Format, CanContinueDSP}`，宿主逐节点协商并核验实际音频块。`CanContinueDSP=false` 表示可以交给最终消费者，但不能再接下一个 DSP；该标记属于插件声明，不能由页面随意覆盖。
+每个 `audio.Node` 都通过 `DescribeIO` 描述输出，通过 `ConfigureIO` 配置处理状态。两者返回 `audio.Output{Format, CanContinueDSP}`。预览只调用前者，播放时宿主按配置结果核验实际音频块。`CanContinueDSP=false` 表示该节点只能放在链尾。
 
-当前音频块为 48 kHz 交错 f32le PCM，允许 mono、stereo、5.1、7.1 布局转换，不允许改变帧数、时间轴或追加曲尾。新内置节点都输出可继续 DSP 的 PCM；最终 MP3 / Opus 编码在链后完成，压缩字节不能当作 PCM 串入 DSP。旧节点兼容为同格式输出；旧外部协议的格式限制保持独立。
+当前音频块为 48 kHz 交错 f32le PCM，允许 mono、stereo、5.1、7.1 布局转换。节点须保持帧数与时间轴，且不能追加曲尾。内置节点都输出可继续处理的 PCM，最终 MP3 / Opus 编码在链后完成。外部 MFD1 v1 节点须声明并输出可继续处理的立体声 PCM。
 
 播放入口先将源布局自动适配到所选编码布局，再执行用户增益与可编辑链。因此中途转成其他布局后，需要在链末转回所选输出；保存时显示不匹配错误，不自动插入不可见节点。参数和能力声明由内置插件目录提供。
 

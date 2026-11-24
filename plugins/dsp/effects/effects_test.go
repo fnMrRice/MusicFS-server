@@ -26,7 +26,7 @@ func configured(t *testing.T, create audio.Factory, params map[string]float64) a
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = node.Close() })
-	if err := node.Configure(audio.Canonical); err != nil {
+	if _, err := node.ConfigureIO(audio.Canonical); err != nil {
 		t.Fatal(err)
 	}
 	return node
@@ -84,14 +84,14 @@ func TestStreamingStateLifecycleAndIsolation(t *testing.T) {
 						t.Fatal(err)
 					}
 				case "configure":
-					if err := node.Configure(audio.Canonical); err != nil {
+					if _, err := node.ConfigureIO(audio.Canonical); err != nil {
 						t.Fatal(err)
 					}
 				case "close-configure":
 					if err := node.Close(); err != nil {
 						t.Fatal(err)
 					}
-					if err := node.Configure(audio.Canonical); err != nil {
+					if _, err := node.ConfigureIO(audio.Canonical); err != nil {
 						t.Fatal(err)
 					}
 				}
@@ -142,10 +142,10 @@ func TestInvalidBlocksDoNotMutateInputOrState(t *testing.T) {
 			if err := node.Reset(); err != nil {
 				t.Fatal(err)
 			}
-			if err := node.Configure(audio.Format{}); err == nil {
+			if _, err := node.ConfigureIO(audio.Format{}); err == nil {
 				t.Fatal("accepted unsupported format")
 			}
-			if err := node.Configure(audio.Canonical); err != nil {
+			if _, err := node.ConfigureIO(audio.Canonical); err != nil {
 				t.Fatal(err)
 			}
 			for _, block := range []*audio.Block{nil, {}, {Format: audio.Canonical, Frames: 1}, {Format: audio.Canonical, Frames: audio.MaxBlockFrames + 1, Samples: make([]float32, (audio.MaxBlockFrames+1)*2)}} {

@@ -30,8 +30,12 @@ func Serve(ctx context.Context, input io.Reader, output io.Writer, name, version
 		return fail(output, err)
 	}
 	defer node.Close()
-	if err = node.Configure(request.Format); err != nil {
+	configured, err := node.ConfigureIO(request.Format)
+	if err != nil {
 		return fail(output, err)
+	}
+	if configured.Format != request.Format || !configured.CanContinueDSP {
+		return fail(output, fmt.Errorf("UNSUPPORTED: DSP v1 requires chainable stereo PCM"))
 	}
 	stateless, ok := node.(interface{ Stateless() bool })
 	if node.DelayFrames() != 0 || !ok || !stateless.Stateless() {

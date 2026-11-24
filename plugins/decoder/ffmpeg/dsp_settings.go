@@ -128,7 +128,7 @@ func (p *Processor) ValidateSettings(ctx context.Context, options dspsettings.Op
 			if options.BufferFrames > 4096 {
 				return nil, fmt.Errorf("UNSUPPORTED: external DSP v1 allows at most 4096 buffer frames")
 			}
-			return externalContract{}, nil
+			return &externalDSP{ctx: ctx, config: plugin, params: params}, nil
 		}); err != nil {
 			return err
 		}
@@ -164,19 +164,3 @@ func (p *Processor) DeploymentIdentity() ProcessingIdentity {
 	}
 	return p.runtime().identity
 }
-
-// 外部 v1 声明固定立体声，无状态、不改变帧和声道格式。
-type externalContract struct{}
-
-func (externalContract) DescribeIO(format audio.Format) (audio.Output, error) {
-	if format != audio.Canonical {
-		return audio.Output{}, fmt.Errorf("UNSUPPORTED: external DSP v1 requires stereo output and input")
-	}
-	return audio.Output{Format: format, CanContinueDSP: true}, nil
-}
-func (externalContract) Configure(audio.Format) error { return nil }
-func (externalContract) Process(*audio.Block) error   { return nil }
-func (externalContract) Reset() error                 { return nil }
-func (externalContract) Drain() error                 { return nil }
-func (externalContract) Close() error                 { return nil }
-func (externalContract) DelayFrames() int64           { return 0 }

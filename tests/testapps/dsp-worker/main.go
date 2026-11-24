@@ -19,6 +19,16 @@ type helperNode struct {
 }
 
 func (h *helperNode) Stateless() bool { return h.mode != "stateful" }
+func (h *helperNode) ConfigureIO(format audio.Format) (audio.Output, error) {
+	output, err := h.Node.ConfigureIO(format)
+	switch h.mode {
+	case "mono":
+		output.Format, _ = audio.FormatForLayout("mono")
+	case "terminal":
+		output.CanContinueDSP = false
+	}
+	return output, err
+}
 func (h *helperNode) DelayFrames() int64 {
 	if h.mode == "delayed" {
 		return 1

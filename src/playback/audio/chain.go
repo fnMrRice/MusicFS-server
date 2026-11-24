@@ -35,11 +35,6 @@ func NewChain(registry *Registry, specs []NodeSpec) (*Chain, error) {
 	return chain, nil
 }
 
-func (c *Chain) Configure(format Format) error {
-	_, err := c.ConfigureIO(format)
-	return err
-}
-
 func (c *Chain) ConfigureIO(format Format) (Output, error) {
 	c.configured = false
 	c.input, c.output, c.outputs = Format{}, Output{}, nil
@@ -53,7 +48,7 @@ func (c *Chain) ConfigureIO(format Format) (Output, error) {
 			return Output{}, fmt.Errorf("UNSUPPORTED: DSP node %d follows a terminal output", index)
 		}
 		var err error
-		output, err = configureIO(node, output.Format)
+		output, err = node.ConfigureIO(output.Format)
 		if err != nil {
 			return Output{}, fmt.Errorf("DSP node %d: %w", index, err)
 		}

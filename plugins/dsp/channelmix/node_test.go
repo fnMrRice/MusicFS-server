@@ -20,7 +20,7 @@ func TestNodeDeclaresEveryTargetAndPreservesBlockTiming(t *testing.T) {
 		if err := node.Process(&audio.Block{Format: audio.Canonical}); err == nil {
 			t.Fatal("DescribeIO configured the node")
 		}
-		if err = node.Configure(audio.Canonical); err != nil {
+		if _, err = node.ConfigureIO(audio.Canonical); err != nil {
 			t.Fatal(err)
 		}
 		block := &audio.Block{Format: audio.Canonical, Frames: 1, Samples: []float32{0.75, -0.25}, Sequence: 4, PositionFrames: 800, End: true, Discontinuity: true}
@@ -60,7 +60,7 @@ func TestNodeRejectsInvalidParametersAndBlocks(t *testing.T) {
 	if err != nil || declaration.Format != audio.Canonical {
 		t.Fatalf("default output changed: %+v %v", declaration, err)
 	}
-	if err = node.Configure(audio.Canonical); err != nil {
+	if _, err = node.ConfigureIO(audio.Canonical); err != nil {
 		t.Fatal(err)
 	}
 	mono, _ := audio.FormatForLayout("mono")

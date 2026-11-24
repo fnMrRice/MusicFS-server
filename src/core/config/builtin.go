@@ -9,39 +9,36 @@ import (
 )
 
 // discoverBuiltin 只从编译内置目录补齐配置，不依赖外部插件程序存在。
-func discoverBuiltin(list, node *yaml.Node, id, legacy string, used map[string]bool) error {
+func discoverBuiltin(list, node *yaml.Node, id string) (*yaml.Node, error) {
 	if node == nil {
 		node = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
 		if err := setNode(node, "pluginId", id); err != nil {
-			return err
+			return nil, err
 		}
 		list.Content = append(list.Content, node)
 		if err := setNode(node, "enabled", true); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	for _, field := range []struct {
-		key   string
-		value any
-	}{{"execution", "builtin"}} {
-		if mappingValue(node, field.key) == nil {
-			if err := setNode(node, field.key, field.value); err != nil {
-				return err
-			}
+	if mappingValue(node, "execution") == nil {
+		if err := setNode(node, "execution", "builtin"); err != nil {
+			return nil, err
 		}
 	}
-	if mappingValue(node, "instances") == nil {
-		id := instanceid.Canonical(legacy)
-		for used[id] {
-			legacy += "-builtin"
-			id = instanceid.Canonical(legacy)
-		}
-		used[id] = true
-		if err := setNode(node, "instances", []Instance{{InstanceID: id, Enabled: true}}); err != nil {
-			return err
-		}
+	return node, nil
+}
+
+func discoverDefaultInstance(node *yaml.Node, name string, used map[string]bool) error {
+	if mappingValue(node, "instances") != nil {
+		return nil
 	}
-	return nil
+	id := instanceid.Canonical(name)
+	for used[id] {
+		name += "-builtin"
+		id = instanceid.Canonical(name)
+	}
+	used[id] = true
+	return setNode(node, "instances", []Instance{{InstanceID: id, Enabled: true}})
 }
 
 // NormalizeRuntime 补齐日志默认值，并将旧随包 SQLite/DSP 配置迁移为主进程内执行。

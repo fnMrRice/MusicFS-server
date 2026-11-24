@@ -83,7 +83,7 @@ storage:
 
 同程序内扩展可注册完整 `storage.Driver`。外部扩展使用 `storage/rpcbackend.Serve` 包装实现，宿主通过 `storage.backend=plugin` 选择可执行程序，不需要把新实现编译进宿主。首版外部 SDK 使用 Go：插件与宿主须匹配完整 Repository/DTO 合同；它不承诺任意旧版本二进制兼容或 C++ 通用 ABI。
 
-批量音乐合并在 `matching.Repository` 新增 `BulkMerge`，后端须在一个事务中保留来源权限、完整录音成员、排除关系、全局修订、幂等统计与审计。该方法改变完整接口摘要；使用独立存储 Worker 时须与 Server 配套重新构建，旧 Worker 不能继续复用。HTTP 客户端通过 `/matching/revision` 的 `bulkMergeAvailable` 判断是否提供批量入口。
+`matching.Repository.BulkMerge` 要求存储后端在同一事务中校验来源权限、完整录音成员和排除关系，并持久化修订、幂等统计与审计。使用独立存储 Worker 时须与 Server 配套构建。
 
 Driver 同时提供主库、维护、实例状态初始化 `OpenPluginState` 及实例状态只读工厂 `ReadPluginState`，私有状态的实现随所选数据库驱动提供；`src/plugins/plugindb` 只保留状态接口、选择和 RPC 调度。宿主继续定义实例命名空间、原子比较更新、事务和文件发布契约，并协调数据锁及生命周期。当前内置后端和静态备份校验仍使用 SQLite 插件代码；源码迁移不代表宿主已经消除全部 SQLite 依赖。
 

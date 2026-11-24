@@ -45,7 +45,7 @@ Server 提供插件/实例状态查询、开关与设置管理，要求管理员
 
 `GET /admin/plugins` 的每个插件项必须包含有效 `version`。七种普通随包插件从 [sdk/bundledplugin/releases.go](../../sdk/bundledplugin/releases.go) 读取与 Worker 同源的发行声明；没有实例或尚无有效握手版本时仍返回声明，包括未启动、待配置、已禁用和启动失败的情况。成功握手的有效版本优先，不使用 Server 版本、实例修订或空字符串填充。未知插件 ID 仍由配置及管理层拒绝。版本可展示不等于 Worker 已就绪，客户端仍须读取实例运行状态；旧 Server 缺字段时的界面兼容提示不放宽当前 API 必填约束。
 
-本地音乐 `displayCount` 由宿主统计有效授权根，单位为“个允许访问的目录”，待配置、已禁用或 Worker 未运行时仍展示。添加、编辑和移除音乐目录不改变已确定的授权范围；Worker 不接收未添加路径。目录配置 GET 通过 `rootImportDefaultsSupported:true` 声明逐目录覆盖能力，`roots[].importDefaults` 返回有效值；PUT 可在 `musicRoots[]` 内保存对应目录的覆盖，不改变其他目录。客户端把插件管理中的权限数量与音乐源中的已添加列表分开呈现，完整兼容规则见[目录管理](plugin-configuration.md)。
+本地音乐 `displayCount` 由宿主统计有效授权根，单位为“个允许访问的目录”，待配置、已禁用或 Worker 未运行时仍展示。添加、编辑和移除音乐目录不改变已确定的授权范围；Worker 不接收未添加路径。目录配置 GET 在 `roots[].importDefaults` 返回各目录的有效值。PUT 可在 `musicRoots[]` 内保存对应目录的覆盖，不改变其他目录。客户端把插件管理中的权限数量与音乐源中的已添加列表分开呈现，字段与继承规则见[目录管理](plugin-configuration.md)。
 
 两条插件列表默认只返回当前 MusicFS 用户的在线账号实例，共享非账号插件实例仍保留；管理员显式设置 `allUsers=true` 可查看所有用户实例，省略或 `false` 均保持本人范围。管理快照的账号实例携带 `ownerUserId`，可选 `accountName` 仅来自当前已验证、未过期且可用的平台账号显示快照，未登录或离线时省略；该字段不能作为授权依据，也不包含令牌、Cookie 或登录链接。
 

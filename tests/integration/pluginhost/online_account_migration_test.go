@@ -1,7 +1,7 @@
 package pluginhost_test
 
 import (
-	"encoding/json"
+	"bytes"
 	"path/filepath"
 	"testing"
 
@@ -10,7 +10,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginhost"
 )
 
-func TestAccountMigrationAuthenticatesLegacyScopeAndRebindsUUID(t *testing.T) {
+func TestAccountBoundToObsoleteIdentityIsRejected(t *testing.T) {
 	stateDir := filepath.Join(t.TempDir(), "netease-public")
 	id := instanceid.Canonical("netease-public")
 	dir := filepath.Join(stateDir, "credentials")
@@ -22,47 +22,19 @@ func TestAccountMigrationAuthenticatesLegacyScopeAndRebindsUUID(t *testing.T) {
 	if err := legacy.Save(original); err != nil {
 		t.Fatal(err)
 	}
-	current, err := accountstore.Open(dir, "netease\x00admin\x00"+id)
-	if err != nil {
-		t.Fatal(err)
-	}
 	cfg, _ := onlineConfig(t)
 	cfg.StateDir, cfg.InstanceID = stateDir, id
-	w, err := pluginhost.StartOnline(t.Context(), cfg)
-	if err != nil {
-		t.Fatal("legacy account migration failed")
+	if worker, err := pluginhost.StartOnline(t.Context(), cfg); err == nil {
+		worker.Close()
+		t.Fatal("credential bound to a previous identity was accepted")
 	}
-	if err := w.Close(); err != nil {
-		t.Fatal(err)
-	}
-	secret, err := current.Load()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var fields struct {
-		InstanceID string            `json:"instanceId"`
-		AccountID  string            `json:"accountId"`
-		Cookies    map[string]string `json:"cookies"`
-	}
-	if json.Unmarshal(secret, &fields) != nil || fields.InstanceID != id || fields.AccountID != "account" || fields.Cookies["session"] != "test-secret" {
-		t.Fatal("account identity or credential was not preserved")
-	}
-	if _, err := current.Load(); err != nil {
-		t.Fatal("migrated credential does not authenticate its UUID")
-	}
-	if _, err := legacy.Load(); err == nil {
-		t.Fatal("migrated credential still authenticates the old scope")
-	}
-	w, err = pluginhost.StartOnline(t.Context(), cfg)
-	if err != nil {
-		t.Fatal("migration is not restart-safe")
-	}
-	if err := w.Close(); err != nil {
-		t.Fatal(err)
+	secret, err := legacy.Load()
+	if err != nil || !bytes.Equal(secret, original) {
+		t.Fatal("rejected credential was modified")
 	}
 }
 
-func TestAccountMigrationRejectsDifferentInstanceAndOwner(t *testing.T) {
+func TestAccountRejectsDifferentInstanceAndOwner(t *testing.T) {
 	for _, owner := range []string{"admin", "other"} {
 		t.Run(owner, func(t *testing.T) {
 			stateDir := filepath.Join(t.TempDir(), "old")
@@ -85,7 +57,7 @@ func TestAccountMigrationRejectsDifferentInstanceAndOwner(t *testing.T) {
 				t.Fatal("account crossed the instance or owner boundary")
 			}
 			if _, err := legacy.Load(); err != nil {
-				t.Fatal("rejected migration modified the original credential")
+				t.Fatal("failed authentication modified the original credential")
 			}
 		})
 	}

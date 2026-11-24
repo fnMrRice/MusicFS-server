@@ -18,23 +18,31 @@ type externalDSP struct {
 }
 
 func (*externalDSP) DescribeIO(format audio.Format) (audio.Output, error) {
-	return externalContract{}.DescribeIO(format)
+	if format != audio.Canonical {
+		return audio.Output{}, fmt.Errorf("UNSUPPORTED: external DSP v1 requires stereo output and input")
+	}
+	return audio.Output{Format: format, CanContinueDSP: true}, nil
 }
 
-func (n *externalDSP) Configure(format audio.Format) error {
-	if _, err := n.DescribeIO(format); err != nil {
-		return err
+func (n *externalDSP) ConfigureIO(format audio.Format) (audio.Output, error) {
+	output, err := n.DescribeIO(format)
+	if err != nil {
+		return audio.Output{}, err
 	}
 	n.Close()
 	process, err := dspworker.New(n.ctx, n.config, n.params)
 	if err != nil {
-		return err
+		return audio.Output{}, err
+	}
+	if err := process.Configure(format); err != nil {
+		process.Close()
+		return audio.Output{}, err
 	}
 	n.process = process
 	if n.versions != nil {
 		n.versions[n.config.Name] = process.PluginVersion()
 	}
-	return process.Configure(format)
+	return output, nil
 }
 
 func (n *externalDSP) Process(block *audio.Block) error {

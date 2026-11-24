@@ -16,7 +16,7 @@ func configuredFormat(t *testing.T, factory audio.Factory, params map[string]flo
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = node.Close() })
-	if err := node.Configure(format); err != nil {
+	if _, err := node.ConfigureIO(format); err != nil {
 		t.Fatal(err)
 	}
 	return node
@@ -64,7 +64,7 @@ func TestMultichannelBlockSizesAndStateLifecycle(t *testing.T) {
 				format, _ := audio.FormatForLayout(layout)
 				input := multichannelSignal(7000, format.Channels)
 				baseline := renderFormat(t, configuredFormat(t, factory.create, factory.params, format), format, input, 4096, false)
-				if err := reused.Configure(format); err != nil {
+				if _, err := reused.ConfigureIO(format); err != nil {
 					t.Fatal(err)
 				}
 				if actual := renderFormat(t, reused, format, input, 257, false); !slices.Equal(actual, baseline) {

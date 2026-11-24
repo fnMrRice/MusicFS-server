@@ -36,7 +36,7 @@ func buildRequestedDSP(ctx context.Context, r StartRequest, format audio.Format)
 	if err != nil {
 		return nil, err
 	}
-	if err = chain.Configure(format); err != nil {
+	if _, err = chain.ConfigureIO(format); err != nil {
 		return nil, err
 	}
 	return chain, nil

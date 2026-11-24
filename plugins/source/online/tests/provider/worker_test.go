@@ -137,7 +137,7 @@ func TestOnlineWorkerOversizedResultDoesNotCorruptControlChannel(t *testing.T) {
 	}))
 	hello(t, peer)
 	authenticate(t, peer)
-	assertCode(t, peer.Call(context.Background(), "provider.online.search", pluginproto.OnlineSearch{Context: scope(), Query: "large", Limit: 2}, nil), "RATE_LIMITED")
+	assertCode(t, peer.Call(context.Background(), "provider.online.search", pluginproto.OnlineSearch{Context: scope(), Query: "large", Limit: 2}, nil), "UNSUPPORTED")
 	var descriptor pluginproto.OnlineResult[pluginproto.OnlineDescriptor]
 	if err := peer.Call(context.Background(), "provider.online.describe", pluginproto.OnlineScope{Context: scope()}, &descriptor); err != nil {
 		t.Fatalf("oversized result killed peer: %v", err)

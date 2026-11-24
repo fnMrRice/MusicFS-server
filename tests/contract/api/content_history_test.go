@@ -22,7 +22,7 @@ func TestPlaybackReceiptRoutesOnlyToOwningHistory(t *testing.T) {
 		d contenttype.Descriptor
 		h func(contenttype.HistoryState) contenttype.History
 	}{{cdalbum.Descriptor(), cdalbum.History}, {asmr.Descriptor(), asmr.History}, {radio.Descriptor(), radio.History}} {
-		db, err := state.Open(t.Context(), path, plugin.d.PluginID, "history")
+		db, err := state.Open(t.Context(), path, plugin.d.PluginID, "b1548e96-3081-5c9c-8376-bf290e369d51")
 		if err != nil {
 			t.Fatal(err)
 		}

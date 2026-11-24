@@ -114,7 +114,9 @@ func TestPostgresPrivateStatePreloadAndConcurrentWriters(t *testing.T) {
 	options := testkit.PostgresOptions(t)
 	db := testkit.PostgresDatabase(t, options)
 	ctx := t.Context()
-	initial, err := state.Read(ctx, db, "plugin", "first", "settings")
+	const first = "b1548e96-3081-5c9c-8376-bf290e369d51"
+	const second = "16b003e5-1bab-52bb-be10-0e83ec1c40ea"
+	initial, err := state.Read(ctx, db, "plugin", first, "settings")
 	if err != nil || initial.Revision != 0 {
 		t.Fatalf("unexpected initial state: %#v, %v", initial, err)
 	}
@@ -126,7 +128,7 @@ func TestPostgresPrivateStatePreloadAndConcurrentWriters(t *testing.T) {
 	for range 2 {
 		pool := testkit.PostgresDatabase(t, options)
 		go func() {
-			s, err := state.Open(ctx, pool, "plugin", "first")
+			s, err := state.Open(ctx, pool, "plugin", first)
 			if err == nil {
 				defer s.Close()
 				_, err = s.CompareAndSet(ctx, pluginproto.StateRequest{Key: "settings", Value: []byte("null")})
@@ -153,7 +155,7 @@ func TestPostgresPrivateStatePreloadAndConcurrentWriters(t *testing.T) {
 	for _, scope := range []struct {
 		plugin, instance string
 		want             int64
-	}{{"plugin", "first", 1}, {"plugin", "second", 0}, {"another", "first", 0}} {
+	}{{"plugin", first, 1}, {"plugin", second, 0}, {"another", first, 0}} {
 		got, err := state.Read(ctx, db, scope.plugin, scope.instance, "settings")
 		if err != nil || got.Revision != scope.want || (scope.want == 1 && string(got.Value) != "null") {
 			t.Fatalf("unexpected scope state: %#v, %v", got, err)

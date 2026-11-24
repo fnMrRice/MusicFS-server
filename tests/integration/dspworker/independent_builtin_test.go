@@ -11,7 +11,12 @@ import (
 // 该节点直接交换左右声道，不复用任何官方 DSP 算法。
 type independentSwap struct{}
 
-func (independentSwap) Configure(audio.Format) error { return nil }
+func (independentSwap) DescribeIO(format audio.Format) (audio.Output, error) {
+	return audio.PCMOutput(format)
+}
+func (n independentSwap) ConfigureIO(format audio.Format) (audio.Output, error) {
+	return n.DescribeIO(format)
+}
 func (independentSwap) Process(block *audio.Block) error {
 	for i := 0; i+1 < len(block.Samples); i += 2 {
 		block.Samples[i], block.Samples[i+1] = block.Samples[i+1], block.Samples[i]
@@ -61,7 +66,7 @@ func TestIndependentBuiltinDSPExecutesRegisteredFactory(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer node.Close()
-	if err = node.Configure(audio.Canonical); err != nil {
+	if _, err = node.ConfigureIO(audio.Canonical); err != nil {
 		t.Fatal(err)
 	}
 	if err = node.Process(&block); err != nil || block.Samples[0] != 1 || block.Samples[1] != -1 {

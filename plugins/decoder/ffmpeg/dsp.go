@@ -89,7 +89,7 @@ func buildDSPFormatVersions(ctx context.Context, gain float64, chain []audio.Nod
 	if err != nil {
 		return nil, err
 	}
-	if err = result.Configure(format); err != nil {
+	if _, err = result.ConfigureIO(format); err != nil {
 		result.Close()
 		return nil, err
 	}

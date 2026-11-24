@@ -33,23 +33,18 @@ func NewGain(db float64) (audio.Node, error) {
 	logger.Debug("DSP gain node created")
 	return &Gain{multiplier: float32(math.Pow(10, db/20)), logger: logger}, nil
 }
-func (g *Gain) Configure(format audio.Format) error {
-	if err := format.Validate(); err != nil {
-		return err
-	}
-	g.format = format
-	g.configured = true
-	g.log().Debug("DSP gain node configured")
-	return nil
-}
 func (*Gain) DescribeIO(format audio.Format) (audio.Output, error) {
 	return audio.PCMOutput(format)
 }
 func (g *Gain) ConfigureIO(format audio.Format) (audio.Output, error) {
-	if err := g.Configure(format); err != nil {
+	output, err := g.DescribeIO(format)
+	if err != nil {
 		return audio.Output{}, err
 	}
-	return g.DescribeIO(format)
+	g.format = format
+	g.configured = true
+	g.log().Debug("DSP gain node configured")
+	return output, nil
 }
 func (g *Gain) Process(block *audio.Block) (processErr error) {
 	defer func() {

@@ -23,7 +23,9 @@ func TestIsolationPersistenceAndConcurrentRevision(t *testing.T) {
 		t.Cleanup(func() { db.Close() })
 		return db
 	}
-	a, b, sibling, other := open("plugin-a", "one"), open("plugin-a", "one"), open("plugin-a", "two"), open("plugin-b", "one")
+	const first = "b1548e96-3081-5c9c-8376-bf290e369d51"
+	const second = "16b003e5-1bab-52bb-be10-0e83ec1c40ea"
+	a, b, sibling, other := open("plugin-a", first), open("plugin-a", first), open("plugin-a", second), open("plugin-b", first)
 	r := pluginproto.StateRequest{Key: "preferences", Value: []byte(`{"recursive":true}`)}
 	if _, err := a.CompareAndSet(ctx, r); err != nil {
 		t.Fatal(err)
@@ -52,7 +54,7 @@ func TestIsolationPersistenceAndConcurrentRevision(t *testing.T) {
 	}
 	a.Close()
 	b.Close()
-	v, err := open("plugin-a", "one").Get(ctx, r.Key)
+	v, err := open("plugin-a", first).Get(ctx, r.Key)
 	if err != nil || v.Revision != 2 || string(v.Value) != string(r.Value) {
 		t.Fatalf("reopen lost settings: %+v %v", v, err)
 	}

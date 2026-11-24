@@ -40,9 +40,6 @@ func TestRootImportDefaultsPersistWithoutChangingOtherDirectories(t *testing.T) 
 		if err := json.Unmarshal(w.Body.Bytes(), &view); err != nil {
 			t.Fatal(err)
 		}
-		if !view.RootImportDefaultsSupported {
-			t.Fatal("missing root configuration capability")
-		}
 		return view
 	}
 	save(1, []map[string]any{
@@ -56,7 +53,7 @@ func TestRootImportDefaultsPersistWithoutChangingOtherDirectories(t *testing.T) 
 	if !view.ImportOptions.ImportDefaults.Recursive || !view.ImportOptions.ImportDefaults.RespectNoMedia {
 		t.Fatal("root edit changed instance defaults")
 	}
-	// Older clients omit root settings; rename must preserve existing overrides.
+	// 仅重命名目录时保留此前保存的覆盖值。
 	save(2, []map[string]any{{"id": "music", "name": "Renamed"}, {"id": "child", "name": "Recursive", "importDefaults": options(false, true)}}, 202)
 	view = read()
 	if view.Roots[0].Name != "Renamed" || *view.Roots[0].ImportDefaults.Recursive || *view.Roots[1].ImportDefaults.Recursive || *view.Roots[0].ImportDefaults.SkipHidden {

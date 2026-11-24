@@ -11,14 +11,13 @@ import (
 )
 
 func TestPersistenceContractFingerprints(t *testing.T) {
-	// 主库曲目和队列条目携带在线封面入口，原始平台地址只在服务端传递。
-	// 其余接口继续保留源码目录迁移前的指纹，目录调整不应改变协议身份。
+	// 主库契约包括批量合并摘要与后台操作队列。仅调整源码目录应保留协议指纹。
 	for _, test := range []struct {
 		name     string
 		contract reflect.Type
 		want     string
 	}{
-		{"backend", reflect.TypeFor[storage.Backend](), "3ee7e3accf50a3b6be034fcaa35c4394d065029fc428dd01444cbca575391dcf"},
+		{"backend", reflect.TypeFor[storage.Backend](), "0064d54be2dea7ee66ad54fe08c4f2079847540ee30a5af1463474b3dbd39ba1"},
 		{"maintenance", reflect.TypeFor[storage.Maintenance](), "c2b65a92a0386d7990000f825babaf527dfb541184711fca13d26cc5298fa013"},
 		{"plugin-state", reflect.TypeFor[plugindb.Backend](), "3585f631ae09e5d4694d439d5d2a72e5d8d2f30cf9b64ac2003dd674eb12c401"},
 	} {

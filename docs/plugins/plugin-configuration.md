@@ -68,7 +68,7 @@ Windows 上，使用默认权限的实例首次启用并启动 Server 时，宿�
 
 使用管理员会话、CSRF、`If-Match` 与 `Idempotency-Key`。GET 继续返回脱敏配置与可写字段 Schema，不公开真实磁盘路径；普通 Provider 接口也只公开根 ID 和名称。设置字段省略时保留，musicRoots/watch/importDefaults 提交时整组替换。已有根可以省略 path 改名；同一根 ID 不可换绑目录。新增目录须存在且可访问。空 musicRoots 表示移除全部目录，实例恢复待配置，不删除已有曲库记录。
 
-逐目录查找配置由 GET 的 `rootImportDefaultsSupported:true` 声明，每个 `roots[]` 条目返回完整有效的 `importDefaults`。PUT 的 `musicRoots[].importDefaults` 是可选覆盖，使用与实例 `importDefaults` 相同的字段和校验：插件默认 → 实例默认 → 目录覆盖 → 单次扫描请求覆盖。已有根省略此字段保留已保存的目录配置，兼容旧客户端只提交 ID/名称的写入；新目录省略则继承实例默认。目录配置随完整快照持久化，重启后保持；该目录的遍历、文件通知和缺失对账使用同一有效范围。旧 Server 不声明此能力时，Web 不发送目录覆盖字段，也不把全局选项展示成逐目录设置。
+GET 返回每个 `roots[]` 条目的完整有效设置 `importDefaults`。PUT 的 `musicRoots[].importDefaults` 是可选覆盖，使用与实例 `importDefaults` 相同的字段和校验：插件默认 → 实例默认 → 目录覆盖 → 单次扫描请求覆盖。更新已有目录时省略此字段会保留其设置。新目录省略时继承实例默认值。目录配置随完整快照持久化，重启后保持；该目录的遍历、文件通知和缺失对账使用同一有效范围。Web 的目录编辑器使用该目录的有效设置初始化表单。
 
 保存返回 202 与 operationId，Server 排空旧实例、重建访问授权和监听器，再更新能力；通过插件操作接口读取实际应用结果。持久化成功与实例就绪是不同阶段。Local Files 配置修改不会回写 YAML，即使 YAML 文件只读也可保存；全局插件开关及其他插件设置仍走既有 YAML 流程；停用只保存开关，重启 Server 后生效。配置重建使用当前运行开关，不提前应用待重启停用。
 

@@ -62,11 +62,6 @@ func (n *Node) ConfigureIO(input audio.Format) (audio.Output, error) {
 	return output, nil
 }
 
-func (n *Node) Configure(input audio.Format) error {
-	_, err := n.ConfigureIO(input)
-	return err
-}
-
 func (n *Node) Process(block *audio.Block) error {
 	if n.converter == nil {
 		return fmt.Errorf("DSP channel conversion not configured")

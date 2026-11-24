@@ -50,6 +50,8 @@ func rebindFixture(t *testing.T) (*pluginhost.Worker, pluginhost.Config, pluginh
 	if err = os.Rename(file, file+".backup"); err != nil {
 		t.Fatal(err)
 	}
+	// Windows 以内容散列标识版本，替换一个 PCM 采样才能验证旧版本失效。
+	raw[len(raw)-1] ^= 1
 	if err = os.WriteFile(file, raw, 0600); err != nil {
 		t.Fatal(err)
 	}
