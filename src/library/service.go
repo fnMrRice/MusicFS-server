@@ -34,6 +34,7 @@ type Runtime struct {
 	Gate               *plugincontrol.Gate
 	OpenAudio          func(context.Context, string) (pluginproto.OnlineAudio, io.ReadCloser, error)
 	DescribeAudio      func(context.Context, string) (pluginproto.OnlineAudio, error)
+	OnlineTrackDetails func(context.Context, string) (pluginproto.TrackDetails, error)
 	AuthorizeAudio     func(context.Context) (*plugincontrol.Gate, error)
 	AudioAccount       func(context.Context) (online.AccountView, <-chan struct{}, error)
 	AudioPluginID      string

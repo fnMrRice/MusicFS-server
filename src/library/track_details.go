@@ -21,6 +21,20 @@ func (s *Service) Details(ctx context.Context, owner, id string) (TrackDetails, 
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
+	if r, ok := s.Runtime(track.ProviderID); ok && r.AuthorizeAudio != nil {
+		if r.Owner != owner {
+			return TrackDetails{}, domain.Fail("NOT_FOUND", "Provider not found")
+		}
+		if r.OnlineTrackDetails == nil {
+			return TrackDetails{}, domain.Fail("UNSUPPORTED", "Provider does not support track details")
+		}
+		// 在线宿主负责实例准入、账号复核与外部编号校验。
+		details, err := r.OnlineTrackDetails(ctx, track.ExternalID)
+		if err != nil {
+			return TrackDetails{}, err
+		}
+		return TrackDetails{SourceTrackID: track.ID, ProviderInstanceID: r.ID, TrackDetails: details}, nil
+	}
 	lease, err := s.HoldRead(ctx, owner, track.ProviderID)
 	if err != nil {
 		return TrackDetails{}, err

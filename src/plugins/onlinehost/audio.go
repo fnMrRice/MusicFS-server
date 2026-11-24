@@ -41,6 +41,9 @@ func (s *Service) ConfigureAudio(lib *library.Service) error {
 		describe := func(ctx context.Context, external string) (pluginproto.OnlineAudio, error) {
 			return s.describeAudio(ctx, owner, id, external)
 		}
+		details := func(ctx context.Context, external string) (pluginproto.TrackDetails, error) {
+			return s.TrackDetails(ctx, owner, id, external)
+		}
 		account := func(ctx context.Context) (online.AccountView, <-chan struct{}, error) {
 			current, err := s.Runtime(ctx, owner, id, "")
 			if err != nil {
@@ -70,7 +73,11 @@ func (s *Service) ConfigureAudio(lib *library.Service) error {
 				return availability, "authRequired"
 			}
 		}
-		if err := lib.AddAudioRuntime(library.Runtime{ID: id, Owner: owner, Name: r.Name, SourceType: r.descriptor.SourceType, OpenAudio: open, DescribeAudio: describe, AuthorizeAudio: authorize, AudioAccount: account, ProviderStatus: status, AudioPluginID: pluginproto.OnlinePluginID(r.Platform), Plugin: r.descriptor.Plugin}); err != nil {
+		if err := lib.AddAudioRuntime(library.Runtime{
+			ID: id, Owner: owner, Name: r.Name, SourceType: r.descriptor.SourceType,
+			OpenAudio: open, DescribeAudio: describe, AuthorizeAudio: authorize, AudioAccount: account,
+			OnlineTrackDetails: details, ProviderStatus: status, AudioPluginID: pluginproto.OnlinePluginID(r.Platform), Plugin: r.descriptor.Plugin,
+		}); err != nil {
 			return err
 		}
 	}
