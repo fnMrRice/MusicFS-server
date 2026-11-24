@@ -139,3 +139,11 @@ func (w *OnlineWorker) PlatformSessionSnapshot() online.AccountView {
 		return w.accountDisplay.current()
 	}
 }
+
+// PlatformDisplaySession 复用账号公开状态。重启后须先验证恢复的凭据，常规列表读取不争用插件 RPC。
+func (w *OnlineWorker) PlatformDisplaySession(ctx context.Context) (online.AccountView, error) {
+	if err := w.verifyRestoredAccount(ctx); err != nil {
+		return online.AccountView{}, err
+	}
+	return w.PlatformSessionSnapshot(), nil
+}

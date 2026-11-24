@@ -111,8 +111,12 @@ func TestRestoredNeteaseAccountRetriesTemporaryFailureAndClearsExpiredCredential
 		t.Fatalf("temporarily unavailable account: %+v %v", view, err)
 	}
 	time.Sleep(3100 * time.Millisecond)
+	display, err := w.PlatformDisplaySession(ctx)
+	if err != nil || display.AccountID != view.AccountID || display.Revision == "" || display.State != "signedIn" {
+		t.Fatalf("first available display after credential restoration: %+v %v", display, err)
+	}
 	account, revision, binding, err := w.RecommendationAccountScope(ctx)
-	if err != nil || account != view.AccountID || revision == "" || binding == "" {
+	if err != nil || account != view.AccountID || revision != display.Revision || binding == "" {
 		t.Fatalf("recommendation account after retry: %q %v", account, err)
 	}
 	instances, err = host.Instances(ctx, cfg.UserID)

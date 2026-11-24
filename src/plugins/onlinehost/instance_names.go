@@ -51,41 +51,58 @@ func runtimeAccountName(ctx context.Context, runtime Runtime) string {
 		return ""
 	}
 	view := provider.PlatformSessionSnapshot()
-	if view.State != "signedIn" || view.AccountID == "" || view.Revision == "" || (view.ExpiresAt != nil && !time.Now().Before(*view.ExpiresAt)) {
+	if !view.VerifiedAt(time.Now()) {
 		return ""
 	}
 	return view.DisplayName
 }
 
 func (s *Service) runtimeInstance(ctx context.Context, runtime Runtime) Instance {
-	ctx, current, release, err := s.AcquireRuntime(ctx, runtime.Owner, runtime.InstanceID)
-	if err == nil {
-		defer release()
-		runtime = current
-	}
-	pluginID := pluginproto.OnlinePluginID(runtime.Platform)
+	runtime, availability, view := s.displayStatus(ctx, runtime)
 	name := runtimeAlias(runtime)
-	availability := "offline"
-	accountID, accountRevision := "", ""
-	if err == nil {
-		if view, err := platformSession(ctx, runtime); err == nil {
-			availability = "available"
-			accountID, accountRevision = view.AccountID, view.Revision
-			if view.DisplayName != "" {
-				name = view.DisplayName
-			}
-		} else {
-			var failure *domain.Error
-			if errors.As(err, &failure) && (failure.Code == "PLATFORM_AUTH_REQUIRED" || failure.Code == "AUTH_REQUIRED") {
-				availability = "loginRequired"
-			}
-		}
+	if view.DisplayName != "" {
+		name = view.DisplayName
 	}
 	return Instance{
-		InstanceID: runtime.InstanceID, Name: name, PluginID: pluginID,
-		AccountID: accountID, AccountRevision: accountRevision, Availability: availability,
+		InstanceID: runtime.InstanceID, Name: name, PluginID: pluginproto.OnlinePluginID(runtime.Platform),
+		AccountID: view.AccountID, AccountRevision: view.Revision, Availability: availability,
 		OnlineDescriptor: runtime.descriptor.Clone(),
 	}
+}
+
+// 两个来源列表共用进程和账号的展示状态。读音频和平台写入仍需实时授权。
+func (s *Service) displayStatus(ctx context.Context, runtime Runtime) (Runtime, string, online.AccountView) {
+	var empty online.AccountView
+	ctx, current, release, err := s.AcquireRuntime(ctx, runtime.Owner, runtime.InstanceID)
+	if err != nil {
+		return runtime, "offline", empty
+	}
+	defer release()
+	if current.descriptor.Authentication == "anonymous" {
+		return current, "available", empty
+	}
+	var view online.AccountView
+	switch p := current.Provider.(type) {
+	case interface {
+		PlatformDisplaySession(context.Context) (online.AccountView, error)
+	}:
+		view, err = p.PlatformDisplaySession(ctx)
+	case interface{ PlatformSessionSnapshot() online.AccountView }:
+		view = p.PlatformSessionSnapshot()
+	default:
+		view, err = platformSession(ctx, current)
+	}
+	if err != nil {
+		var failure *domain.Error
+		if errors.As(err, &failure) && (failure.Code == "PLATFORM_AUTH_REQUIRED" || failure.Code == "AUTH_REQUIRED") {
+			return current, "loginRequired", empty
+		}
+		return current, "offline", empty
+	}
+	if !view.VerifiedAt(time.Now()) {
+		return current, "loginRequired", empty
+	}
+	return current, "available", view
 }
 
 func runtimeAlias(runtime Runtime) string {

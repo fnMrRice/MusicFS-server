@@ -56,7 +56,21 @@ func (s *Service) ConfigureAudio(lib *library.Service) error {
 			}
 			return s.watchAudioAccount(ctx, current)
 		}
-		if err := lib.AddAudioRuntime(library.Runtime{ID: id, Owner: owner, Name: r.Name, SourceType: r.descriptor.SourceType, OpenAudio: open, DescribeAudio: describe, AuthorizeAudio: authorize, AudioAccount: account, AudioPluginID: pluginproto.OnlinePluginID(r.Platform), Plugin: r.descriptor.Plugin}); err != nil {
+		status := func(ctx context.Context) (string, string) {
+			current, availability, _ := s.displayStatus(ctx, r)
+			if current.descriptor.Authentication == "anonymous" {
+				return availability, "notRequired"
+			}
+			switch availability {
+			case "available":
+				return availability, "authorized"
+			case "loginRequired":
+				return "unavailable", "authRequired"
+			default:
+				return availability, "authRequired"
+			}
+		}
+		if err := lib.AddAudioRuntime(library.Runtime{ID: id, Owner: owner, Name: r.Name, SourceType: r.descriptor.SourceType, OpenAudio: open, DescribeAudio: describe, AuthorizeAudio: authorize, AudioAccount: account, ProviderStatus: status, AudioPluginID: pluginproto.OnlinePluginID(r.Platform), Plugin: r.descriptor.Plugin}); err != nil {
 			return err
 		}
 	}

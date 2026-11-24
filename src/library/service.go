@@ -37,6 +37,7 @@ type Runtime struct {
 	AuthorizeAudio     func(context.Context) (*plugincontrol.Gate, error)
 	AudioAccount       func(context.Context) (online.AccountView, <-chan struct{}, error)
 	AudioPluginID      string
+	ProviderStatus     func(context.Context) (availability, accountState string)
 }
 type Probe func(context.Context, io.ReadSeeker, int64) (Observation, error)
 type ProbeSession func(context.Context) (context.Context, Probe, func(), error)
@@ -73,6 +74,7 @@ func (s *Service) Providers(ctx context.Context, user string) []Provider {
 			continue
 		}
 		availability := "offline"
+		accountState := "notRequired"
 		capabilities := []string{}
 		if r.Worker != nil {
 			select {
@@ -82,12 +84,10 @@ func (s *Service) Providers(ctx context.Context, user string) []Provider {
 				capabilities = append(capabilities, r.Worker.Manifest.Capabilities...)
 			}
 		}
-		if r.SourceType == pluginproto.SourceNetwork && r.AuthorizeAudio != nil {
-			if _, err := r.AuthorizeAudio(ctx); err == nil {
-				availability = "available"
-			}
+		if r.ProviderStatus != nil {
+			availability, accountState = r.ProviderStatus(ctx)
 		}
-		items = append(items, Provider{ID: r.ID, Name: r.Name, SourceType: r.SourceType, Plugin: r.Plugin.Clone(), Capabilities: capabilities, Availability: availability, AccountState: "notRequired", ScanState: s.repo.ProviderScanState(ctx, user, r.ID), Configuration: safeProviderConfiguration(r), Roots: s.providerRoots(ctx, r)})
+		items = append(items, Provider{ID: r.ID, Name: r.Name, SourceType: r.SourceType, Plugin: r.Plugin.Clone(), Capabilities: capabilities, Availability: availability, AccountState: accountState, ScanState: s.repo.ProviderScanState(ctx, user, r.ID), Configuration: safeProviderConfiguration(r), Roots: s.providerRoots(ctx, r)})
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
 	return items
