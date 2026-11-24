@@ -4,6 +4,7 @@ package onlineartwork
 import (
 	"context"
 	"io"
+	"mime"
 	"net/http"
 	"sync"
 	"time"
@@ -154,7 +155,12 @@ func (s *Service) objectID(ctx context.Context, owner, id string) (string, error
 		return "", domain.Fail("SOURCE_UNAVAILABLE", "Artwork is unavailable")
 	}
 	meta := mediastore.ContentMetadata{Target: selection.Target, Field: "artwork", Origin: mediastore.Origin{Kind: "import", InstanceID: t.ProviderID, CandidateID: t.ExternalID}}
-	object, err := s.media.Upload(ctx, owner, meta, resp.Header.Get("Content-Type"), domain.NewID(), resp.Body)
+	declared := resp.Header.Get("Content-Type")
+	// 网易云 CDN 对部分 JPEG 声明 image/jpg，媒体库仍会检测文件头并完整解码图片。
+	if mediaType, _, parseErr := mime.ParseMediaType(declared); parseErr == nil && mediaType == "image/jpg" {
+		declared = "image/jpeg"
+	}
+	object, err := s.media.Upload(ctx, owner, meta, declared, domain.NewID(), resp.Body)
 	if err != nil {
 		return "", err
 	}

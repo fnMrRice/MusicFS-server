@@ -5,9 +5,11 @@ import (
 	"context"
 	"errors"
 	"image"
+	"image/jpeg"
 	"image/png"
 	"io"
 	"net/http"
+	"os"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -168,5 +170,45 @@ func TestOnlineArtworkRejectsUnsafeReferencesAndRedirects(t *testing.T) {
 	}))
 	if _, _, err = s.Open(ctx, "admin", track.ID); err == nil || requests != 1 {
 		t.Fatal("redirect left the CDN allowlist")
+	}
+}
+
+func TestOnlineArtworkAcceptsNetEaseJPEGContentType(t *testing.T) {
+	ctx, f := t.Context(), setup(t)
+	if err := f.store.BindMusicSourcePlugins(ctx, map[string]string{"net": pluginproto.OnlinePluginID(online.Netease)}); err != nil {
+		t.Fatal(err)
+	}
+	var fixture bytes.Buffer
+	if err := jpeg.Encode(&fixture, image.NewRGBA(image.Rect(0, 0, 13, 21)), nil); err != nil {
+		t.Fatal(err)
+	}
+	data := fixture.Bytes()
+	if path := os.Getenv("MUSICFS_TEST_NETEASE_JPEG"); path != "" {
+		var err error
+		data, err = os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	raw := "https://p1.music.126.net/album/cover.jpg"
+	track, err := f.store.PublishOnlineTrack(ctx, "admin", "net", online.Track{ExternalID: "27965255", Title: "18 Years", Artists: []string{}, CoverURL: &raw})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := onlineartwork.New(artTracks{f}, &artProvider{}, f.service, artTransport(func(_ *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"image/jpg"}}, Body: io.NopCloser(bytes.NewReader(data))}, nil
+	}))
+	object, body, err := s.Open(ctx, "admin", track.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer body.Close()
+	actual, err := io.ReadAll(body)
+	if err != nil || !bytes.Equal(actual, data) || object.MIME != "image/jpeg" || object.Width < 1 || object.Height < 1 {
+		t.Fatalf("NetEase JPEG response was not validated and cached: %v", err)
+	}
+	current, err := f.store.FindTrack(ctx, "admin", track.ID)
+	if err != nil || current.CoverObjectID == nil || *current.CoverObjectID != object.ID {
+		t.Fatal("JPEG not selected for the imported source", err)
 	}
 }
