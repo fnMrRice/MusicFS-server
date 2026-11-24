@@ -17,11 +17,11 @@ import (
 
 // QQMusic 查询 QQ 音乐网页的公开目录，只向固定平台地址发送资料请求。
 func QQMusic(client *http.Client) scraper.Plugin {
-	return newLookupPlugin(client, "qqmusic", "QQ 音乐", []string{"trackDetails", "albumDetails", "albumTracks", "artwork"}, searchQQMusic, "y.gtimg.cn")
+	return newLookupPlugin(client, "qqmusic", "QQ 音乐", []string{"trackDetails", "albumDetails", "albumTracks", "artwork", "lyrics"}, searchQQMusic, "y.gtimg.cn")
 }
 
 func searchQQMusic(ctx context.Context, client *http.Client, field string, q scraper.Query) ([]scraper.Item, error) {
-	album := field != "trackDetails"
+	album := field != "trackDetails" && field != "lyrics"
 	ids := []string{q.ExternalID}
 	if q.ExternalID != "" {
 		if !qqMusicMID.MatchString(q.ExternalID) {
@@ -51,6 +51,16 @@ func searchQQMusic(ctx context.Context, client *http.Client, field string, q scr
 			item, err = qqAlbum(ctx, client, mid, field)
 		} else {
 			item, err = qqTrack(ctx, client, mid)
+			if err == nil && field == "lyrics" {
+				item.Lyrics, err = qqLyrics(ctx, client, mid)
+				if err == nil && item.Lyrics == "" {
+					continue
+				}
+				item.Format = "text"
+				if lyricTimestamp.MatchString(item.Lyrics) {
+					item.Format = "lrc"
+				}
+			}
 		}
 		if errors.Is(err, errCatalogMissing) {
 			continue
@@ -63,6 +73,26 @@ func searchQQMusic(ctx context.Context, client *http.Client, field string, q scr
 		}
 	}
 	return items, nil
+}
+
+func qqLyrics(ctx context.Context, client *http.Client, mid string) (string, error) {
+	params := url.Values{"songmid": {mid}, "format": {"json"}, "nobase64": {"1"}}
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric_new.fcg?"+params.Encode(), nil)
+	if err != nil {
+		return "", err
+	}
+	request.Header.Set("Referer", "https://y.qq.com/")
+	var result struct {
+		Code, Retcode *int
+		Lyric         string
+	}
+	if err := readCatalogJSON(client, request, &result); err != nil {
+		return "", err
+	}
+	if result.Code == nil || *result.Code != 0 || (result.Retcode != nil && *result.Retcode != 0) {
+		return "", errors.New("QQ Music lyrics lookup unavailable")
+	}
+	return strings.TrimSpace(html.UnescapeString(result.Lyric)), nil
 }
 
 func qqSuggestions(ctx context.Context, client *http.Client, term, artist string, album bool) ([]string, error) {

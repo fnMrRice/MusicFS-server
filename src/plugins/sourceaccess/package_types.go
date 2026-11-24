@@ -153,5 +153,10 @@ func (a *Access) OpenPackageFile(ctx context.Context, scope Scope, rootID, relat
 		a.Revoke(scope.TaskID)
 		return nil, err
 	}
+	if err = h.VerifyIndexedVersion(); err != nil {
+		h.Close()
+		a.Revoke(scope.TaskID)
+		return nil, err
+	}
 	return h, nil
 }

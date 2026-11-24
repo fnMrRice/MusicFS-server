@@ -95,7 +95,8 @@ func (s *Service) automate(ctx context.Context, repo enrichment.AutomationReposi
 	if !p.Enabled {
 		return false, repo.FinishAutomation(ctx, w.TriggerID, "skipped", nil)
 	}
-	if len(p.InstancePriority) == 0 {
+	orderedLyrics := w.Reason == "refreshMetadata" && s.LyricsCatalog != nil
+	if len(p.InstancePriority) == 0 && !orderedLyrics {
 		return fail(domain.Fail("UNSUPPORTED", "No available scraper instances"))
 	}
 	if w.JobID == nil {
@@ -108,9 +109,15 @@ func (s *Service) automate(ctx context.Context, repo enrichment.AutomationReposi
 			return fail(domain.Fail("RESOURCE_CHANGED", "Automatic metadata source changed"))
 		}
 		r := enrichment.JobRequest{SourceTrackIDs: []string{w.SourceTrackID}, Fields: p.Fields, Languages: p.Languages, InstanceIDs: p.InstancePriority}
-		j, _, err := s.submit(ctx, w.Owner, r, "automatic-"+w.TriggerID, func(ctx context.Context, owner string, request enrichment.JobRequest, _ string) (enrichment.Job, bool, error) {
-			return repo.QueueAutomaticEnrichment(ctx, owner, w.TriggerID, request)
-		})
+		var j enrichment.Job
+		if orderedLyrics {
+			// 本地插件未启用时仍可查找在线歌词。执行时分别检查每个插件和目标的授权。
+			j, _, err = repo.QueueAutomaticEnrichment(ctx, w.Owner, w.TriggerID, r)
+		} else {
+			j, _, err = s.submit(ctx, w.Owner, r, "automatic-"+w.TriggerID, func(ctx context.Context, owner string, request enrichment.JobRequest, _ string) (enrichment.Job, bool, error) {
+				return repo.QueueAutomaticEnrichment(ctx, owner, w.TriggerID, request)
+			})
+		}
 		if err != nil {
 			if failureCode(err) == "RATE_LIMITED" {
 				return true, nil

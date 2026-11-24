@@ -20,6 +20,9 @@ func ValidateSearchResult(result SearchResult, target Target, fields []string) e
 	seen := map[string]bool{}
 	var total int64
 	for _, c := range result.Candidates {
+		if c.Origin == "catalog" && c.Basis == "matchedTrack" {
+			return fmt.Errorf("PROTOCOL_MISMATCH: reserved host candidate provenance")
+		}
 		if c.Target != target || !slices.Contains(fields, c.Field) || !ValidRef(c.CandidateID) || seen[c.CandidateID] || !validText(c.Language, 35, false) || !ValidProvenance(c.Origin, c.Basis, c.Field) {
 			return fmt.Errorf("PROTOCOL_MISMATCH: scraper candidate scope mismatch")
 		}

@@ -45,7 +45,7 @@ func (s *Server) registerScrapedTrack(catalog *onlinescrape.Service, media onlin
 		if ok {
 			return WriteJSON(w, http.StatusOK, replayed)
 		}
-		selected, err := catalog.Candidate(owner, input.PluginID, r.PathValue("field"), input.CandidateToken)
+		selected, err := catalog.CandidateForTrack(owner, input.PluginID, r.PathValue("field"), input.CandidateToken, target)
 		if err != nil {
 			return err
 		}

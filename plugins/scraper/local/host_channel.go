@@ -102,13 +102,10 @@ func (c *hostChannel) serveInput(w http.ResponseWriter, r *http.Request, ref str
 		w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 		return
 	}
-	if err := input.Validate(); err != nil {
-		w.WriteHeader(http.StatusConflict)
-		return
-	}
+	// 会话在搜索开始前校验输入；所有分块都读取同一个受保护的句柄。
 	body := make([]byte, int(end-start+1))
 	n, err := input.Reader.ReadAt(body, start)
-	if n != len(body) || (err != nil && err != io.EOF) || input.Validate() != nil {
+	if n != len(body) || (err != nil && err != io.EOF) || c.ctx.Err() != nil {
 		w.WriteHeader(http.StatusConflict)
 		return
 	}

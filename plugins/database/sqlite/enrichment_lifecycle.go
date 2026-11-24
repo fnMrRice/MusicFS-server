@@ -157,7 +157,11 @@ func validateEnrichmentCandidate(ctx context.Context, tx *sql.Tx, w enrichment.W
 	if !enrichment.ValidRef(c.CandidateID) || c.Target != w.Target || len(c.InstanceID) < 1 || len(c.InstanceID) > 128 || (c.Field != "lyrics" && c.Field != "artwork") || len(c.Language) > 35 || len(c.Basis) > 64 || c.ExpiresAt.Before(time.Now()) || c.ExpiresAt.After(time.Now().Add(enrichment.CandidateLifetime+time.Second)) {
 		return bad()
 	}
-	if !slices.Contains(w.Request.InstanceIDs, c.InstanceID) || !slices.Contains(w.Request.Fields, c.Field) {
+	fromRequestedSource := slices.Contains(w.Request.InstanceIDs, c.InstanceID)
+	if c.MatchedCatalogLyrics() {
+		fromRequestedSource = w.DirectoryRefresh
+	}
+	if !fromRequestedSource || !slices.Contains(w.Request.Fields, c.Field) {
 		return bad()
 	}
 	if !enrichment.ValidProvenance(c.Origin, c.Basis, c.Field) {

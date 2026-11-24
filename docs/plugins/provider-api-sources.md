@@ -13,7 +13,7 @@
 | Bangumi | 从 v0 的 `subjects`、`persons` 和 `episodes` 读取音乐条目、人物、曲目表及图像 | [Bangumi API](https://bangumi.github.io/api/) · [OpenAPI 源文件](https://github.com/bangumi/api) |
 | AcoustID | 向 `/v2/lookup` 提交 Chromaprint 指纹及音频时长，取得候选 MusicBrainz 录音编号。部署时需要 AcoustID 应用密钥 | [AcoustID Web Service](https://acoustid.org/webservice) |
 | 网易云音乐 | 使用网页目录的搜索、歌曲详情、歌词、专辑及歌手接口。刮削不需要平台账号 | [MusicFS 的请求路径](../../plugins/scraper/online/netease.go) · [社区接口参考 api-enhanced](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced) |
-| QQ 音乐 | 通过网页搜索建议 `smartbox_new.fcg` 和 `musicu.fcg` 查歌曲、专辑、曲目表及封面 | [曲目请求](../../plugins/scraper/online/qqmusic.go) · [专辑请求](../../plugins/scraper/online/qqmusic_album.go) · [社区接口参考 QQMusicApi](https://github.com/jsososo/QQMusicApi) |
+| QQ 音乐 | 通过网页搜索建议 `smartbox_new.fcg` 和 `musicu.fcg` 查歌曲、专辑、曲目表及封面，按歌曲 MID 从 `fcg_query_lyric_new.fcg` 读取歌词 | [曲目和歌词请求](../../plugins/scraper/online/qqmusic.go) · [专辑请求](../../plugins/scraper/online/qqmusic_album.go) · [社区接口参考 QQMusicApi](https://github.com/jsososo/QQMusicApi) |
 | DLsite | 按 RJ 编号查询商店页面使用的 JSON 端点 `/home/product/info/ajax`，读取作品与社团资料、封面 | [DLsite 商店端点](https://www.dlsite.com/home/product/info/ajax)（需要 `product_id`） · [MusicFS 请求与字段映射](../../plugins/scraper/online/dlsite.go) |
 | 本地歌词与封面 | 从 MP3 的 USLT、APIC 帧，FLAC 注释与图片块，以及同目录的歌词、封面文件读取资料 | [ID3v2.3](https://id3.org/id3v2.3.0) · [ID3v2.4 帧定义](https://id3.org/id3v2.4.0-frames) · [FLAC 格式](https://www.rfc-editor.org/rfc/rfc9639.html) · [本地文件规则](../../plugins/scraper/local/README.md) |
 

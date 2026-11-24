@@ -74,60 +74,42 @@ func (s *Service) OpenScrape(ctx context.Context, owner, task, trackID string, f
 	if err = h.Target.Validate(); err != nil {
 		return nil, err
 	}
-	audio, err := s.Open(ctx, t, task)
+	lease, err := s.holdTask(ctx, owner, t.ProviderID, task)
 	if err != nil {
 		return nil, err
 	}
-	ctx = s.taskContext(t.ProviderID, task, ctx)
-	h.ctx = ctx
-	guard, err := audio.Stable(ctx)
-	audio.Close()
+	if lease.runtime.Worker == nil || lease.runtime.Worker.Access == nil {
+		return nil, domain.Fail("SOURCE_OFFLINE", "Provider is offline")
+	}
+	h.ctx = lease.Context()
+	scope := sourceaccess.Scope{UserID: owner, InstanceID: t.ProviderID, TaskID: task, AssetID: t.AssetID}
+	files, err := lease.runtime.Worker.Access.OpenScrapeFiles(h.ctx, scope, t.RootID, t.Path, t.Version, t.Size, fields)
 	if err != nil {
 		return nil, err
 	}
-	h.guards = append(h.guards, guard)
-	ref, err := newScrapeRef()
-	if err != nil {
-		return nil, err
+	// 先接管全部读取保护，构造任一输入失败时由 Close 统一释放。
+	for _, file := range files {
+		if file.Reader != nil {
+			h.guards = append(h.guards, file.Reader)
+		}
 	}
-	h.Inputs = append(h.Inputs, enrichment.Input{Resource: enrichment.Resource{ResourceRef: ref, Version: t.Version, Kind: "audio", SizeBytes: t.Size, Match: "embedded"}, Reader: guard, Validate: h.Validate})
-	match, matched, err := audiocodecs.Detect(guard, t.Size)
+	for _, file := range files {
+		ref, err := newScrapeRef()
+		if err != nil {
+			return nil, err
+		}
+		if file.Issue != "" {
+			h.Issues = append(h.Issues, enrichment.Issue{ResourceRef: ref, Code: file.Issue})
+			continue
+		}
+		resource := enrichment.Resource{ResourceRef: ref, Version: file.Version, Kind: file.Kind, SizeBytes: file.SizeBytes, Match: file.Match}
+		h.Inputs = append(h.Inputs, enrichment.Input{Resource: resource, Reader: file.Reader, Validate: h.Validate})
+	}
+	match, matched, err := audiocodecs.Detect(h.Inputs[0].Reader, t.Size)
 	if err != nil {
 		return nil, err
 	}
 	h.Encrypted = matched && match.RequiresDecode
-	scope := sourceaccess.Scope{UserID: owner, InstanceID: t.ProviderID, TaskID: task, AssetID: t.AssetID}
-	runtime, ok := s.Runtime(t.ProviderID)
-	if !ok || runtime.Worker == nil {
-		return nil, domain.Fail("SOURCE_OFFLINE", "Provider is offline")
-	}
-	access := runtime.Worker.Access
-	sidecars, err := access.AuthorizeSidecars(ctx, scope, t.RootID, t.Path, t.Version, fields)
-	if err != nil {
-		return nil, err
-	}
-	var sidecarBytes int64
-	for _, sidecar := range sidecars {
-		r := sidecar.Resource
-		if r.SizeBytes > (32<<20)-sidecarBytes {
-			h.Issues = append(h.Issues, enrichment.Issue{ResourceRef: r.ResourceRef, Code: "UNSUPPORTED"})
-			continue
-		}
-		file, err := access.Open(ctx, scope, r.ResourceRef)
-		if err != nil {
-			h.Issues = append(h.Issues, enrichment.Issue{ResourceRef: r.ResourceRef, Code: "RESOURCE_CHANGED"})
-			continue
-		}
-		stable, err := file.Stable(ctx)
-		file.Close()
-		if err != nil {
-			h.Issues = append(h.Issues, enrichment.Issue{ResourceRef: r.ResourceRef, Code: "UNSUPPORTED"})
-			continue
-		}
-		h.guards = append(h.guards, stable)
-		sidecarBytes += r.SizeBytes
-		h.Inputs = append(h.Inputs, enrichment.Input{Resource: enrichment.Resource{ResourceRef: r.ResourceRef, Version: r.ObservedVersion, Kind: sidecar.Kind, SizeBytes: r.SizeBytes, Match: sidecar.Match}, Reader: stable, Validate: h.Validate})
-	}
 	if err = h.Validate(); err != nil {
 		return nil, err
 	}

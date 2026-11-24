@@ -28,7 +28,7 @@ func (s *Store) queueEnrichment(ctx context.Context, owner string, request enric
 	if err != nil {
 		return empty, false, err
 	}
-	if len(request.InstanceIDs) == 0 {
+	if len(request.InstanceIDs) == 0 && triggerID == "" {
 		return empty, false, domain.Fail("UNSUPPORTED", "No scraper instances selected")
 	}
 	raw, err := json.Marshal(request)
@@ -50,6 +50,9 @@ func (s *Store) queueEnrichment(ctx context.Context, owner string, request enric
 		}
 		if err = activeAutomation(ctx, tx, triggerID); err != nil {
 			return empty, false, err
+		}
+		if len(request.InstanceIDs) == 0 && w.Reason != "refreshMetadata" {
+			return empty, false, domain.Fail("UNSUPPORTED", "No scraper instances selected")
 		}
 		if len(request.SourceTrackIDs) != 1 || request.SourceTrackIDs[0] != w.SourceTrackID {
 			return empty, false, domain.Fail("CONFLICT", "Automatic metadata target changed")
@@ -149,7 +152,9 @@ func (s *Store) ClaimEnrichment(ctx context.Context) (enrichment.Work, error) {
 	}
 	defer tx.Rollback()
 	var target, request []byte
-	err = tx.QueryRowContext(ctx, `SELECT j.owner,j.id,t.target,t.generation,j.request FROM enrichment_jobs j JOIN enrichment_targets t ON t.job_id=j.id WHERE j.state IN ('queued','running') AND t.state='queued' ORDER BY j.created_at,j.id,t.source_id LIMIT 1`).Scan(&w.Owner, &w.JobID, &target, &w.Generation, &request)
+	err = tx.QueryRowContext(ctx, `SELECT j.owner,j.id,t.target,t.generation,j.request,
+ EXISTS(SELECT 1 FROM metadata_automation a WHERE a.state='running' AND a.job_id=j.id AND a.owner=j.owner AND a.reason='refreshMetadata')
+ FROM enrichment_jobs j JOIN enrichment_targets t ON t.job_id=j.id WHERE j.state IN ('queued','running') AND t.state='queued' ORDER BY j.created_at,j.id,t.source_id LIMIT 1`).Scan(&w.Owner, &w.JobID, &target, &w.Generation, &request, &w.DirectoryRefresh)
 	if err != nil {
 		return w, err
 	}

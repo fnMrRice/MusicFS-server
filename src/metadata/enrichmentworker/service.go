@@ -12,6 +12,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/onlinescrape"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/audioruntime"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
@@ -40,6 +41,8 @@ type runningTask struct {
 type Service struct {
 	// OnRefreshChanged 在启动前设置，逐曲元数据结果落盘后通知刷新任务。
 	OnRefreshChanged func(owner, scanID string)
+	// LyricsCatalog 在启动前注入，供目录刷新按用户设置查找歌词。
+	LyricsCatalog *onlinescrape.Service
 
 	runtimeMu sync.RWMutex
 	repo      enrichment.Repository

@@ -3,6 +3,7 @@ package plugins_test
 import (
 	"context"
 	"crypto/sha512"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,7 +11,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 )
 
-func TestSidecarGrantsAreExactVersionedAndReadOnly(t *testing.T) {
+func TestScrapeFilesAreExactVersionedAndReadOnly(t *testing.T) {
 	root := t.TempDir()
 	contents := map[string][]byte{"track.mp3": []byte("ID3-test-audio"), "track.lrc": []byte("[00:01]中文"), "track.txt": []byte("translation"), "other.lrc": []byte("not authorized"), "cover.jpg": []byte("picture")}
 	for name, body := range contents {
@@ -27,24 +28,28 @@ func TestSidecarGrantsAreExactVersionedAndReadOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	scope := sourceaccess.Scope{UserID: "owner", InstanceID: "scraper", TaskID: "task", AssetID: "asset"}
-	grants, err := a.AuthorizeSidecars(context.Background(), scope, "root", "track.mp3", entry.ObservedVersion, []string{"lyrics"})
-	if err != nil || len(grants) != 2 {
-		t.Fatalf("exact sibling grants: %d %v", len(grants), err)
+	files, err := a.OpenScrapeFiles(context.Background(), scope, "root", "track.mp3", entry.ObservedVersion, entry.SizeBytes, []string{"lyrics"})
+	if err != nil || len(files) != 3 {
+		t.Fatalf("exact protected inputs: %d %v", len(files), err)
 	}
-	for _, grant := range grants {
-		if grant.Kind != "lyrics" || grant.Match != "exactStem" || grant.Resource.RelativePath == "other.lrc" {
-			t.Fatal("grant escaped exact selected siblings")
+	expected := []string{"track.mp3", "track.lrc", "track.txt"}
+	for i, file := range files {
+		if file.Issue != "" || file.Reader == nil || file.Version == "" {
+			t.Fatalf("unavailable protected input: %+v", file)
 		}
-		wrong := scope
-		wrong.AssetID = "other"
-		if _, err = a.Open(context.Background(), wrong, grant.Resource.ResourceRef); err == nil {
-			t.Fatal("grant crossed asset scope")
+		defer file.Reader.Close()
+		if i > 0 && (file.Kind != "lyrics" || file.Match != "exactStem") {
+			t.Fatal("authorized an unselected sibling")
 		}
-		h, err := a.Open(context.Background(), scope, grant.Resource.ResourceRef)
-		if err != nil {
+		body, err := io.ReadAll(io.NewSectionReader(file.Reader, 0, file.SizeBytes))
+		if err != nil || string(body) != string(contents[expected[i]]) {
+			t.Fatalf("unexpected protected input: %q %v", body, err)
+		}
+	}
+	for _, file := range files {
+		if err := file.Reader.Close(); err != nil {
 			t.Fatal(err)
 		}
-		h.Close()
 	}
 	for name, before := range contents {
 		after, err := os.ReadFile(filepath.Join(root, name))
@@ -52,18 +57,18 @@ func TestSidecarGrantsAreExactVersionedAndReadOnly(t *testing.T) {
 			t.Fatal("source bytes changed")
 		}
 	}
-	if _, err = a.AuthorizeSidecars(context.Background(), scope, "root", "../track.mp3", entry.ObservedVersion, []string{"lyrics"}); err == nil {
+	if _, err = a.OpenScrapeFiles(context.Background(), scope, "root", "../track.mp3", entry.ObservedVersion, entry.SizeBytes, []string{"lyrics"}); err == nil {
 		t.Fatal("relative path escape accepted")
 	}
-	if err = os.WriteFile(filepath.Join(root, "track.mp3"), []byte("replaced-audio"), 0600); err != nil {
+	if err = os.WriteFile(filepath.Join(root, "track.mp3"), []byte("new-test-audio"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = a.AuthorizeSidecars(context.Background(), scope, "root", "track.mp3", entry.ObservedVersion, []string{"lyrics"}); err == nil {
+	if _, err = a.OpenScrapeFiles(context.Background(), scope, "root", "track.mp3", entry.ObservedVersion, entry.SizeBytes, []string{"lyrics"}); err == nil {
 		t.Fatal("stale source authorized new sidecars")
 	}
 }
 
-func TestSidecarSymlinksAreNotGranted(t *testing.T) {
+func TestScrapeFilesExcludeLinkedSidecars(t *testing.T) {
 	root := t.TempDir()
 	outside := filepath.Join(t.TempDir(), "outside.txt")
 	if err := os.WriteFile(outside, []byte("outside content"), 0600); err != nil {
@@ -83,8 +88,9 @@ func TestSidecarSymlinksAreNotGranted(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	grants, err := a.AuthorizeSidecars(context.Background(), sourceaccess.Scope{UserID: "owner", InstanceID: "scraper", TaskID: "task", AssetID: "asset"}, "root", "track.mp3", entry.ObservedVersion, []string{"lyrics"})
-	if err != nil || len(grants) != 0 {
-		t.Fatalf("linked lyrics authorized: %d %v", len(grants), err)
+	files, err := a.OpenScrapeFiles(context.Background(), sourceaccess.Scope{UserID: "owner", InstanceID: "scraper", TaskID: "task", AssetID: "asset"}, "root", "track.mp3", entry.ObservedVersion, entry.SizeBytes, []string{"lyrics"})
+	if err != nil || len(files) != 1 || files[0].Kind != "audio" {
+		t.Fatalf("linked lyrics authorized: %d %v", len(files), err)
 	}
+	files[0].Reader.Close()
 }

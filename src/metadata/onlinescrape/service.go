@@ -19,6 +19,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/settings"
+	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
 type Candidate struct {
@@ -31,16 +32,18 @@ type preview struct {
 	field        works.ScrapedField
 	expires      time.Time
 	size         int
+	target       mediastore.ContentTarget
 }
 
 type Service struct {
-	plugins  map[string]scraper.Plugin
-	gate     chan struct{}
-	albums   albumCache
-	mu       sync.Mutex
-	previews []preview
-	bytes    int
-	settings settings.Repository
+	plugins     map[string]scraper.Plugin
+	gate        chan struct{}
+	albums      albumCache
+	mu          sync.Mutex
+	previews    []preview
+	bytes       int
+	settings    settings.Repository
+	localLyrics LocalLyricsLookup
 }
 
 func New(plugins []scraper.Plugin) (*Service, error) {
@@ -95,6 +98,14 @@ func (s *Service) Search(ctx context.Context, owner, id, field string, q scraper
 }
 
 func (s *Service) SearchWithRefresh(ctx context.Context, owner, id, field string, q scraper.Query, refresh bool) ([]Candidate, error) {
+	page, err := s.lookup(ctx, owner, id, field, q, refresh)
+	if err != nil {
+		return nil, err
+	}
+	return s.issue(owner, id, field, *page, mediastore.ContentTarget{}), nil
+}
+
+func (s *Service) lookup(ctx context.Context, owner, id, field string, q scraper.Query, refresh bool) (*searchPage, error) {
 	p := s.plugins[id]
 	if p == nil {
 		return nil, domain.Fail("NOT_FOUND", "Unknown scraper plugin")
@@ -156,7 +167,7 @@ func (s *Service) SearchWithRefresh(ctx context.Context, owner, id, field string
 		}
 		return nil, domain.Fail("SOURCE_UNAVAILABLE", "Scraper source request failed")
 	}
-	return s.issue(owner, id, field, page), nil
+	return &page, nil
 }
 
 func (s *Service) admit(id string) error {
@@ -210,7 +221,7 @@ func preparePage(items []scraper.Item, field string, hosts []string) (searchPage
 	return page, nil
 }
 
-func (s *Service) issue(owner, id, field string, page searchPage) []Candidate {
+func (s *Service) issue(owner, id, field string, page searchPage, target mediastore.ContentTarget) []Candidate {
 	now := time.Now()
 	result := make([]Candidate, 0, len(page.items))
 	pending := make([]preview, 0, len(page.items))
@@ -219,7 +230,7 @@ func (s *Service) issue(owner, id, field string, page searchPage) []Candidate {
 		result = append(result, Candidate{Item: cloneItem(entry.Item), Token: token})
 		pending = append(pending, preview{
 			owner: owner, token: token, field: works.ScrapedField{Field: field, PluginID: id, Item: entry.Item},
-			expires: now.Add(30 * time.Minute), size: entry.size,
+			expires: now.Add(30 * time.Minute), size: entry.size, target: target,
 		})
 	}
 	s.mu.Lock()
@@ -260,10 +271,17 @@ func hasFieldContent(field string, item scraper.Item) bool {
 }
 
 func (s *Service) Candidate(owner, plugin, field, token string) (works.ScrapedField, error) {
+	return s.CandidateForTrack(owner, plugin, field, token, mediastore.ContentTarget{})
+}
+
+func (s *Service) CandidateForTrack(owner, plugin, field, token string, target mediastore.ContentTarget) (works.ScrapedField, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, p := range s.previews {
 		if p.token == token && p.owner == owner && p.field.Field == field && p.field.PluginID == plugin && time.Now().Before(p.expires) {
+			if p.target.SourceTrackID != "" && p.target != target {
+				return works.ScrapedField{}, domain.Fail("RESOURCE_CHANGED", "Local lyrics candidate belongs to another source or asset version")
+			}
 			result := p.field
 			result.Item = cloneItem(result.Item)
 			return result, nil

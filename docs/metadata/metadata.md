@@ -69,6 +69,10 @@ Content-Type: application/json
 
 ## 导入歌词与自动补缺
 
+目录刷新和 Web 自动歌词搜索使用当前用户保存的歌词刮削顺序。默认先读本地音频的内嵌歌词和同名的 `.lrc`、`.txt`，缺失时依次查询网易云音乐、QQ 音乐。首个有匹配歌词的来源会结束搜索。用户可以调整顺序、移除来源或加入 LRCLIB；清空顺序会停用自动歌词搜索。指定单个来源的手动搜索可独立使用。目录刷新仍会处理本地封面。
+
+Windows 刮削音频和封面时，宿主先取得禁止写入的文件句柄并校验一次内容版本，所有分块复用该句柄。发布时检查受保护的文件、授权路径和曲库当前的资产版本。
+
 Local Files 的当前配置声明为 `local-import-v7`，默认开启 `importLyrics=true` 和 `importArtwork=true`。未显式覆盖时，新目录扫描成功后会导入同名旁置 LRC 或内嵌歌词；可设在实例或目录的 `importDefaults`，也可在本次扫描的 `options` 覆盖。已有实例或目录显式保存的 `importLyrics=false` 继续生效，不自动迁移为开启；需要补齐时可使用目录「刷新元数据」。扫描只为本轮授权范围内成功观察的来源创建持久触发记录，绑定扫描代次、来源和资产版本；失败或取消不触发成功导入。
 
 歌词导入只补歌词，封面导入只补封面，全局 `metadata.automatic.enabled=false` 时两者仍按扫描选项执行；全局自动策略可另行选择歌词、封面、语言和实例顺序。具体配置见[配置说明](../operations/configuration.md#自动补齐策略)。三种原因分别记录为 `importLyrics`、`importArtwork` 和 `automatic`；全局关闭仅使 `automatic` 记录为 skipped。

@@ -144,19 +144,25 @@ func (a *Access) open(rootID, path, version string) (*Handle, error) {
 		h.Close()
 		return nil, fmt.Errorf("RESOURCE_CHANGED: source version changed")
 	}
-	observed, identity := h.Entry.ObservedVersion, h.Entry.FileIdentity
+	identity := h.Entry.FileIdentity
 	h.checkPath = func() error {
-		current, err := a.open(rootID, path, observed)
-		if err != nil {
-			return fmt.Errorf("RESOURCE_CHANGED: source path no longer identifies this version")
-		}
-		if current.Entry.FileIdentity != identity {
-			current.Close()
-			return fmt.Errorf("RESOURCE_CHANGED: protected source path was replaced")
-		}
-		return current.Close()
+		return a.checkFileIdentity(rootID, path, identity)
 	}
 	return h, nil
+}
+
+// 重新从授权根打开路径，只比较文件身份。内容版本由持有该文件的读取方校验。
+func (a *Access) checkFileIdentity(rootID, path, identity string) error {
+	current, err := a.openPath(rootID, path)
+	if err != nil {
+		return fmt.Errorf("RESOURCE_CHANGED: source path is unavailable")
+	}
+	defer current.Close()
+	currentID, err := fileIdentity(current)
+	if err != nil || currentID != identity {
+		return fmt.Errorf("RESOURCE_CHANGED: protected source path was replaced")
+	}
+	return nil
 }
 
 // OpenIndexed 在授权根内打开当前普通文件，保留索引版本供调用方关联曲目。

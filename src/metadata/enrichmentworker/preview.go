@@ -53,8 +53,12 @@ func (s *Service) preview(ctx context.Context, w enrichment.Work, instance strin
 	if err != nil || !reflect.DeepEqual(fetched, c) || int64(body.Len()) != c.SizeBytes || validated.SHA256 != c.SHA256 || int64(len(validated.Bytes)) != c.SizeBytes || validated.Format != c.Format || validated.MIME != c.MIME {
 		return failedPreview(p, "PROTOCOL_MISMATCH"), nil
 	}
-	metadata := mediastore.ContentMetadata{Target: enrichment.ContentTarget(w.Target), Field: p.Field, Language: p.Language, Format: p.Format, Origin: mediastore.Origin{Kind: "scraper", InstanceID: instance, CandidateID: p.CandidateID}}
-	digest := sha256.Sum256([]byte(fmt.Sprintf("%s/%s/%d/%s/%s", w.JobID, w.Target.SourceTrackID, w.Generation, instance, p.CandidateID)))
+	return s.storePreview(ctx, w, input, p, validated.Bytes)
+}
+
+func (s *Service) storePreview(ctx context.Context, w enrichment.Work, input *library.ScrapeInput, p enrichment.PreviewCandidate, body []byte) (enrichment.PreviewCandidate, error) {
+	metadata := mediastore.ContentMetadata{Target: enrichment.ContentTarget(w.Target), Field: p.Field, Language: p.Language, Format: p.Format, Origin: mediastore.Origin{Kind: "scraper", InstanceID: p.InstanceID, CandidateID: p.CandidateID}}
+	digest := sha256.Sum256([]byte(fmt.Sprintf("%s/%s/%d/%s/%s", w.JobID, w.Target.SourceTrackID, w.Generation, p.InstanceID, p.CandidateID)))
 	guard := func(publish func() error) error {
 		return input.Publish(func() error {
 			if err := s.repo.CurrentEnrichment(ctx, w); err != nil {
@@ -63,7 +67,7 @@ func (s *Service) preview(ctx context.Context, w enrichment.Work, instance strin
 			return publish()
 		})
 	}
-	object, err := s.content.UploadGuarded(ctx, w.Owner, metadata, p.MIME, fmt.Sprintf("scrape-%x", digest), bytes.NewReader(body.Bytes()), guard)
+	object, err := s.content.UploadGuarded(ctx, w.Owner, metadata, p.MIME, fmt.Sprintf("scrape-%x", digest), bytes.NewReader(body), guard)
 	if err != nil {
 		return p, err
 	}

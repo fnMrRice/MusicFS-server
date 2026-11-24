@@ -31,7 +31,7 @@ Bangumi 的音乐章节可以把艺人署名写在曲名里。插件会将能够
 | 插件 | 声明的内容 | 查询方式 |
 | --- | --- | --- |
 | 网易云音乐 | 曲目详情、歌词、专辑详情、完整专辑曲目、封面、歌手详情及图像 | 按名称或相应的歌曲、专辑、歌手编号搜索。支持 `music.163.com/album?id=…` 及 `/#/album?id=…` 专辑页面。 |
-| QQ 音乐 | 曲目详情、专辑详情、完整专辑曲目、封面 | 按名称、歌曲 MID 或专辑 MID 搜索。专辑页面可使用 `y.qq.com/n/ryqq/albumDetail/{MID}` 或 `/n/ryqq_v2/albumDetail/{MID}`。 |
+| QQ 音乐 | 曲目详情、歌词、专辑详情、完整专辑曲目、封面 | 按名称、歌曲 MID 或专辑 MID 搜索。专辑页面可使用 `y.qq.com/n/ryqq/albumDetail/{MID}` 或 `/n/ryqq_v2/albumDetail/{MID}`。 |
 | MusicBrainz | 曲目详情、专辑详情、专辑曲目、歌手详情 | 名称、对应实体的 MBID，或录音的 ISRC。[接口](https://musicbrainz.org/doc/MusicBrainz_API) |
 | Cover Art Archive | 专辑封面 | 具体发行版 MBID，或用专辑名找到对应版本。[接口](https://musicbrainz.org/doc/Cover_Art_Archive/API) |
 | LRCLIB | 歌词 | 歌名、艺人、专辑、时长，或歌词记录编号；返回同步 LRC 或纯文本。[接口](https://lrclib.net/docs) |
@@ -40,7 +40,9 @@ Bangumi 的音乐章节可以把艺人署名写在曲名里。插件会将能够
 | DLsite | 作品详情、封面 | 用 RJ 作品编号精确查询，使用商店页面自身的 JSON 接口。字段和访问能力可能随商店变更。 |
 | AcoustID | 录音识别 | 提供整曲 Chromaprint 指纹与时长（秒），返回候选 MusicBrainz 录音编号。部署时在 Server 进程设置环境变量 `MUSICFS_ACOUSTID_API_KEY`，重启后启用。免费服务适用非商业使用。[接口与注册](https://acoustid.org/webservice) |
 
-网易云音乐和 QQ 音乐从各自的公开目录读取资料，无需启用对应的音乐源或登录平台账号。需要歌词时可选择网易云音乐；QQ 音乐的歌词接口在匿名访问时未返回正文。
+网易云音乐和 QQ 音乐从各自的公开目录读取资料，无需启用对应的音乐源或登录平台账号。QQ 音乐按歌曲 MID 查询歌词，上游提供时间标记时返回 LRC 格式。
+
+歌词自动搜索默认依次尝试本地、网易云音乐、QQ 音乐。账号可以增加 LRCLIB、移除来源或调整顺序。`GET /scrapers/lyrics-auto-settings` 返回当前修订和 `pluginOrder`，保存时通过同一路径的 PUT 提交 `expectedRevision` 和完整顺序。空数组关闭自动查找。`POST /scrapers/lyrics-auto-search` 只返回首个命中来源的候选。指定 `localOnly` 和 `sourceTrackId` 可单独查询该曲目的本地歌词，即使自动顺序中已移除本地，也可使用此方式查询。本地候选仅可选回对应的曲目和文件版本。
 
 作品以来源链接保存图片，预览时由浏览器向相应站点加载。对曲目选用封面时，Server 按图片主机声明验证下载和重定向，再经媒体服务校验图片字节。每个字段展示的候选取决于上游实际收录。在线查询在用户主动操作时发起，本地目录扫描保持原有导入策略。
 

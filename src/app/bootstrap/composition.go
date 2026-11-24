@@ -226,7 +226,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	handler.RegisterHashing(hashes)
 	handler.RegisterFingerprinting(fingerprints)
 	handler.RegisterMedia(content)
-	scraperSettings, err := configureOnlineScrapers(handler, store, content)
+	scraperSettings, err := configureOnlineScrapers(handler, store, content, metadata)
 	if err != nil {
 		cleanup()
 		return nil, nil, err

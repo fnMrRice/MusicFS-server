@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime"
 	"sync"
 
-	"github.com/fnMrRice/MusicFS-server/sdk/audioformat"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 )
 
@@ -23,13 +23,11 @@ type StableReader struct {
 	mu         sync.Mutex
 	protection stableProtection
 	entry      pluginproto.Entry
-	root, path string
 	checkPath  func() error
 	closed     bool
 	failure    error
 	done       chan struct{}
 	stop       func() bool
-	formats    *audioformat.Registry
 }
 
 // Stable refuses filesystems or platforms that cannot guarantee a stable read.
@@ -47,8 +45,8 @@ func (h *Handle) Stable(ctx context.Context) (*StableReader, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &StableReader{protection: p, entry: h.Entry, root: h.rootID, path: h.path, checkPath: h.checkPath, formats: h.formats, done: make(chan struct{})}
-	if err := s.Validate(); err != nil {
+	s := &StableReader{protection: p, entry: h.Entry, checkPath: h.checkPath, done: make(chan struct{})}
+	if err := s.validateLocked(true); err != nil {
 		s.Close()
 		return nil, err
 	}
@@ -101,12 +99,11 @@ func (s *StableReader) ReadAt(p []byte, offset int64) (int, error) {
 	return n, readErr
 }
 
-// Validate checks protection, the open file version, and the original authorized
-// root/path binding. A rename cannot quietly substitute another file for it.
+// Validate 复核读取保护与授权路径。Windows 只读保护期间复用首次验证的内容版本。
 func (s *StableReader) Validate() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.validateLocked()
+	return s.validateLocked(false)
 }
 
 // Publish retains protection while a short publication transaction runs. A
@@ -114,19 +111,31 @@ func (s *StableReader) Validate() error {
 func (s *StableReader) Publish(commit func() error) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if err := s.validateLocked(); err != nil {
+	if err := s.validateLocked(false); err != nil {
 		return err
 	}
 	return commit()
 }
 
-func (s *StableReader) validateLocked() error {
+func (s *StableReader) validateLocked(initial bool) error {
 	if err := s.activeLocked(); err != nil {
 		return err
 	}
-	entry, err := describe(s.protection.file, s.root, s.path, s.formats)
-	if err != nil || entry.ObservedVersion != s.entry.ObservedVersion {
-		return fmt.Errorf("RESOURCE_CHANGED: protected source version changed")
+	// Windows 句柄拒绝写入和删除共享，取得保护后只需计算一次完整摘要。
+	// Linux 的版本还包含租约期间可能改变的 inode 属性，复核只需读取属性。
+	if initial || runtime.GOOS != "windows" {
+		file := s.protection.file
+		info, err := file.Stat()
+		if err != nil || !info.Mode().IsRegular() || info.Size() != s.entry.SizeBytes {
+			return fmt.Errorf("RESOURCE_CHANGED: protected source size changed")
+		}
+		version, err := ObservedVersion(file, info, s.entry.FileIdentity)
+		if err != nil || s.entry.ObservedVersion != "" && version != s.entry.ObservedVersion {
+			return fmt.Errorf("RESOURCE_CHANGED: protected source version changed")
+		}
+		if initial {
+			s.entry.ObservedVersion = version
+		}
 	}
 	if err := s.checkPath(); err != nil {
 		return err

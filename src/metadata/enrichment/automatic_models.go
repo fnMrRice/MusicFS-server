@@ -91,7 +91,12 @@ type AutomationRepository interface {
 // EligibleAutomatic 仅自动选用带单曲归属证据的候选，不接受目录级封面。
 func EligibleAutomatic(c PreviewCandidate, p AutomaticPolicy) bool {
 	return c.Status == "available" && c.PreviewObjectID != nil && slices.Contains(p.Fields, c.Field) &&
-		slices.Contains(p.InstancePriority, c.InstanceID) && TrackSpecificCandidate(c)
+		(slices.Contains(p.InstancePriority, c.InstanceID) && TrackSpecificCandidate(c) || c.MatchedCatalogLyrics())
+}
+
+// MatchedCatalogLyrics 只标记宿主通过有序歌词搜索匹配并保存的正文。
+func (c PreviewCandidate) MatchedCatalogLyrics() bool {
+	return c.Field == "lyrics" && c.Origin == "catalog" && c.Basis == "matchedTrack"
 }
 
 // TrackSpecificCandidate 判断候选是否来自单曲本身或同名旁车资源。

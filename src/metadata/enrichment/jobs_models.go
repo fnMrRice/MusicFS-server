@@ -74,10 +74,11 @@ type Job struct {
 // Work is a private execution ticket. A recovered or cancelled target cannot
 // publish with a prior generation, even if an old process completes later.
 type Work struct {
-	Owner, JobID string
-	Target       Target
-	Generation   int64
-	Request      JobRequest
+	Owner, JobID     string
+	DirectoryRefresh bool
+	Target           Target
+	Generation       int64
+	Request          JobRequest
 }
 type Outcome struct {
 	Candidates  []PreviewCandidate

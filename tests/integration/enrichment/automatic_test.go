@@ -48,6 +48,11 @@ func rescanAutomaticOptions(t *testing.T, f fixture, options pluginproto.ImportO
 
 func rescanAutomaticPlan(t *testing.T, f fixture, p pluginproto.ScanPlan) jobs.Job {
 	t.Helper()
+	return rescanAutomaticPlanWithTags(t, f, p, nil)
+}
+
+func rescanAutomaticPlanWithTags(t *testing.T, f fixture, p pluginproto.ScanPlan, tags map[string]library.Observation) jobs.Job {
+	t.Helper()
 	ctx := context.Background()
 	if _, _, err := f.store.Enqueue(ctx, "admin", "local", p, domain.NewID()); err != nil {
 		t.Fatal(err)
@@ -66,7 +71,9 @@ func rescanAutomaticPlan(t *testing.T, f fixture, p pluginproto.ScanPlan) jobs.J
 		if err != nil {
 			t.Fatal(err)
 		}
-		items = append(items, library.Observation{Observation: pluginproto.Observation{ExternalID: name, RootID: "root", RelativePath: name, ObservedVersion: e.ObservedVersion, SizeBytes: e.SizeBytes, MIME: e.MIME, DisplayName: name}})
+		item := tags[name]
+		item.Observation = pluginproto.Observation{ExternalID: name, RootID: "root", RelativePath: name, ObservedVersion: e.ObservedVersion, SizeBytes: e.SizeBytes, MIME: e.MIME, DisplayName: name}
+		items = append(items, item)
 	}
 	if err = f.store.Publish(ctx, j, testkit.ScanPublication(j, items)); err != nil {
 		t.Fatal(err)

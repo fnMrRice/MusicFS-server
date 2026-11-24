@@ -96,10 +96,22 @@ func (s *Service) collect(ctx context.Context, w enrichment.Work, out *enrichmen
 	for _, issue := range input.Issues {
 		addIssue(out, "", issue.Code)
 	}
+	if w.DirectoryRefresh && s.LyricsCatalog != nil {
+		err = s.collectRefresh(ctx, w, task, input, out, trace)
+	} else {
+		err = s.collectInstances(ctx, w, task, input, w.Request.Fields, out, trace)
+	}
+	if err != nil {
+		return err
+	}
+	return input.Validate()
+}
+
+func (s *Service) collectInstances(ctx context.Context, w enrichment.Work, task string, input *library.ScrapeInput, fields []string, out *enrichment.Outcome, trace *documentTrace) error {
 	completed := false
 	var lastFailure error
 	for _, id := range w.Request.InstanceIDs {
-		if err = ctx.Err(); err != nil {
+		if err := ctx.Err(); err != nil {
 			return err
 		}
 		r, ok := s.Runtime(id)
@@ -110,13 +122,13 @@ func (s *Service) collect(ctx context.Context, w enrichment.Work, out *enrichmen
 			finishAttempt(attempt, lastFailure)
 			continue
 		}
-		if !r.Descriptor.Supports(w.Request.Fields, w.Request.Query) {
+		if !r.Descriptor.Supports(fields, w.Request.Query) {
 			lastFailure = domain.Fail("UNSUPPORTED", "Scraper capabilities changed while queued")
 			addIssue(out, id, "UNSUPPORTED")
 			finishAttempt(attempt, lastFailure)
 			continue
 		}
-		err = s.scrape(ctx, w, task, r, input, out, trace, attempt)
+		err := s.scrape(ctx, w, task, r, input, fields, out, trace, attempt)
 		finishAttempt(attempt, err)
 		if err != nil {
 			lastFailure = err
@@ -135,7 +147,7 @@ func (s *Service) collect(ctx context.Context, w enrichment.Work, out *enrichmen
 		}
 		return domain.Fail("UNSUPPORTED", "No scraper completed the metadata search")
 	}
-	return input.Validate()
+	return nil
 }
 
 func addIssue(out *enrichment.Outcome, instance, code string) {
@@ -150,7 +162,7 @@ func addIssue(out *enrichment.Outcome, instance, code string) {
 	}
 }
 
-func (s *Service) scrape(ctx context.Context, w enrichment.Work, task string, r Runtime, input *library.ScrapeInput, out *enrichment.Outcome, trace *documentTrace, attempt *enrichment.ScraperAttempt) error {
+func (s *Service) scrape(ctx context.Context, w enrichment.Work, task string, r Runtime, input *library.ScrapeInput, fields []string, out *enrichment.Outcome, trace *documentTrace, attempt *enrichment.ScraperAttempt) error {
 	started := time.Now()
 	slog.DebugContext(ctx, "Metadata scraper started", "jobId", w.JobID, "instanceId", r.ID)
 	lease, err := r.Gate.AcquireEpoch(ctx, r.Epoch)
@@ -181,11 +193,11 @@ func (s *Service) scrape(ctx context.Context, w enrichment.Work, task string, r 
 	}
 	defer session.Close()
 	attempt.PluginVersion = session.PluginVersion()
-	result, err := session.Search(ctx, w.Request.Fields, w.Request.Languages, w.Request.Query)
+	result, err := session.Search(ctx, fields, w.Request.Languages, w.Request.Query)
 	if err != nil {
 		return err
 	}
-	if err := enrichment.ValidateSearchResult(result, w.Target, w.Request.Fields); err != nil {
+	if err := enrichment.ValidateSearchResult(result, w.Target, fields); err != nil {
 		return err
 	}
 	slog.DebugContext(ctx, "Metadata search completed", "jobId", w.JobID, "instanceId", r.ID, "candidates", len(result.Candidates), "issues", len(result.Issues), "durationMs", time.Since(started).Milliseconds())

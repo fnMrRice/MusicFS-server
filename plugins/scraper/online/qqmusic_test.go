@@ -3,6 +3,7 @@ package online
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -112,6 +113,44 @@ func TestQQMusicTrackSuggestionsAndExactIdentity(t *testing.T) {
 	}
 	if _, err := plugin.Search(t.Context(), "trackDetails", scraper.Query{ExternalID: "../song"}); err == nil {
 		t.Fatal("accepted invalid MID")
+	}
+}
+
+func TestQQMusicLyricsFromSongMID(t *testing.T) {
+	for _, tc := range []struct{ body, format string }{
+		{"[00:12.21]One &amp; two", "lrc"}, {"Plain lyrics", "text"}, {"", ""},
+	} {
+		catalog := qqTestClient(t, "A", func(r qqTestRequest) string {
+			if r.Param.SongMID != "SongA" {
+				t.Fatalf("unexpected song %#v", r)
+			}
+			return `{"track_info":` + qqSongFixture + `}`
+		})
+		transport := catalog.Transport
+		catalog.Transport = lookupTestTransport(func(r *http.Request) (*http.Response, error) {
+			if r.URL.Path != "/lyric/fcgi-bin/fcg_query_lyric_new.fcg" {
+				return transport.RoundTrip(r)
+			}
+			if r.URL.Host != "c.y.qq.com" || r.URL.Query().Get("songmid") != "SongA" || r.URL.Query().Get("nobase64") != "1" || r.Header.Get("Referer") != "https://y.qq.com/" {
+				t.Fatalf("unexpected lyrics request %v", r.URL)
+			}
+			w := httptest.NewRecorder()
+			if err := json.NewEncoder(w).Encode(map[string]any{"code": 0, "lyric": tc.body}); err != nil {
+				t.Fatal(err)
+			}
+			return w.Result(), nil
+		})
+		items, err := QQMusic(catalog).Search(t.Context(), "lyrics", scraper.Query{Title: "A"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if tc.format == "" {
+			if len(items) != 0 {
+				t.Fatal("returned empty lyrics", items)
+			}
+		} else if len(items) != 1 || items[0].Format != tc.format || items[0].Lyrics != html.UnescapeString(tc.body) || items[0].ID != "SongA" {
+			t.Fatal(items)
+		}
 	}
 }
 

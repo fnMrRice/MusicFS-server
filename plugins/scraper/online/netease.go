@@ -177,7 +177,7 @@ func neteaseCandidate(ctx context.Context, client *http.Client, field string, it
 			}
 			if !response.Nolyric && !response.Uncollected && strings.TrimSpace(response.Lrc.Lyric) != "" {
 				item.Lyrics, item.Format = response.Lrc.Lyric, "text"
-				if neteaseTimestamp.MatchString(item.Lyrics) {
+				if lyricTimestamp.MatchString(item.Lyrics) {
 					item.Format = "lrc"
 				}
 			}

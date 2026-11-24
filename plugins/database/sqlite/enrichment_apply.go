@@ -62,8 +62,8 @@ func (s *Store) applyEnrichment(ctx context.Context, owner, candidateID, expecte
 	if c.Status != "available" || c.PreviewObjectID == nil || *c.PreviewObjectID != expectedObjectID {
 		return empty, domain.Fail("CONFLICT", "Metadata candidate does not match this selection revision")
 	}
-	if automatic && !enrichment.TrackSpecificCandidate(c) {
-		return empty, domain.Fail("UNSUPPORTED", "Automatic metadata requires a local track-specific candidate")
+	if automatic && !enrichment.TrackSpecificCandidate(c) && !(refreshMetadata && c.MatchedCatalogLyrics()) {
+		return empty, domain.Fail("UNSUPPORTED", "Automatic metadata requires a track-specific candidate")
 	}
 	var jobState, targetState, expires string
 	var candidateGeneration, targetGeneration int64

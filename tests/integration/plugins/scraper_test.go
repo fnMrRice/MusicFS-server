@@ -6,6 +6,8 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"fmt"
+	"image"
+	"image/png"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -58,6 +60,47 @@ func scraperInput(id, kind string, body []byte) scraperlocal.Input {
 		match = "embedded"
 	}
 	return scraperlocal.Input{Resource: enrichment.Resource{ResourceRef: strings.Repeat(id, 48), Version: "resource-v1", Kind: kind, SizeBytes: int64(len(body)), Match: match}, Reader: bytes.NewReader(body), Validate: func() error { return nil }}
+}
+
+func TestScraperArtworkValidationAcrossChunks(t *testing.T) {
+	host, err := scraperlocal.NewHost(scraperlocal.Config{Builtin: true, InstanceID: scraperScope("cover").InstanceID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	validateCover := func(cover []byte) int64 {
+		t.Helper()
+		input := scraperInput("a", "artwork", cover)
+		var checks atomic.Int64
+		input.Validate = func() error {
+			checks.Add(1)
+			return nil
+		}
+		session, err := host.Open(t.Context(), scraperScope("cover"), scraperTarget(), []scraperlocal.Input{input})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer session.Close()
+		result, err := session.Search(t.Context(), []string{"artwork"}, nil, nil)
+		if err != nil || len(result.Candidates) != 1 {
+			t.Fatalf("artwork search: %+v %v", result, err)
+		}
+		var body bytes.Buffer
+		if _, err := session.Fetch(t.Context(), result.Candidates[0].CandidateID, &body); err != nil || !bytes.Equal(body.Bytes(), cover) {
+			t.Fatalf("artwork fetch: got %d bytes, want %d, err %v", body.Len(), len(cover), err)
+		}
+		return checks.Load()
+	}
+	// 无压缩灰度图可稳定跨越多个 64 KiB 分块，无需随机填充图片。
+	var large bytes.Buffer
+	encoder := png.Encoder{CompressionLevel: png.NoCompression}
+	if err := encoder.Encode(&large, image.NewGray(image.Rect(0, 0, 1024, 1024))); err != nil {
+		t.Fatal(err)
+	}
+	smallChecks := validateCover(testkit.ScraperPNG())
+	largeChecks := validateCover(large.Bytes())
+	if smallChecks == 0 || largeChecks != smallChecks {
+		t.Fatalf("artwork validation depends on chunk count: single chunk %d checks, multiple chunks %d", smallChecks, largeChecks)
+	}
 }
 
 func TestActualScraperWorkerSearchFetchAndVersionGuards(t *testing.T) {

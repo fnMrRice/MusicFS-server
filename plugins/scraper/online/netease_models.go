@@ -35,7 +35,7 @@ type neteaseSong struct {
 	Album, AL        neteaseAlbum
 }
 
-var neteaseTimestamp = regexp.MustCompile(`(?m)^\s*\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?\]`)
+var lyricTimestamp = regexp.MustCompile(`(?m)^\s*\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?\]`)
 var neteaseTimeZone = time.FixedZone("UTC+8", 8*60*60)
 
 // 平台搜索结果有时返回同一 CDN 的 HTTP 链接，交付图片前统一使用 HTTPS 并校验域名。
