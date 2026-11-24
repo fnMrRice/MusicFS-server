@@ -3,7 +3,9 @@ package plugins_test
 import (
 	"bytes"
 	"context"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
@@ -32,9 +34,23 @@ func TestCatalogMetadataActualProbeTagsRateAndUnknownValues(t *testing.T) {
 	if m.NetEaseID != "9007199254740993" {
 		t.Fatalf("missing embedded NetEase track ID: %q", m.NetEaseID)
 	}
+	if m.BitDepth != 16 {
+		t.Fatalf("unexpected FLAC bit depth: %d", m.BitDepth)
+	}
 	wave := toneWave(1)
 	unknown, err := audioffmpeg.ProbeMetadata(context.Background(), ffprobe, bytes.NewReader(wave), int64(len(wave)))
 	if err != nil || unknown.Album != nil || unknown.Genre != nil || unknown.Year != nil || unknown.SampleRateHz == nil || *unknown.SampleRateHz != 48000 {
 		t.Fatal(unknown, err)
+	}
+	if unknown.BitDepth != 16 {
+		t.Fatalf("unexpected PCM bit depth: %d", unknown.BitDepth)
+	}
+	mp3, err := os.ReadFile(filepath.Join("..", "..", "testdata", "audio", "vbr-untagged.mp3"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lossy, err := audioffmpeg.ProbeMetadata(t.Context(), ffprobe, bytes.NewReader(mp3), int64(len(mp3)))
+	if err != nil || lossy.BitDepth != 0 {
+		t.Fatalf("unexpected MP3 metadata: %+v, %v", lossy, err)
 	}
 }

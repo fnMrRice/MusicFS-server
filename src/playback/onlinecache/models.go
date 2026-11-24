@@ -12,14 +12,18 @@ import (
 )
 
 type Version struct {
-	ID           string    `json:"versionId"`
-	Quality      string    `json:"quality"`
-	MIME         string    `json:"mime"`
-	Codec        string    `json:"codec"`
-	Container    string    `json:"container"`
-	SizeBytes    int64     `json:"sizeBytes"`
-	BitrateBps   *int64    `json:"bitrateBps,omitempty"`
-	DownloadedAt time.Time `json:"downloadedAt"`
+	ID             string    `json:"versionId"`
+	Quality        string    `json:"quality"`
+	MIME           string    `json:"mime"`
+	Codec          string    `json:"codec"`
+	Container      string    `json:"container"`
+	SizeBytes      int64     `json:"sizeBytes"`
+	BitrateBps     *int64    `json:"bitrateBps,omitempty"`
+	SampleRateHz   int       `json:"sampleRateHz,omitempty"`
+	Channels       int       `json:"channels,omitempty"`
+	BitDepth       int       `json:"bitDepth,omitempty"`
+	FormatMeasured bool      `json:"formatMeasured,omitempty"`
+	DownloadedAt   time.Time `json:"downloadedAt"`
 }
 
 type Scope struct {
@@ -44,6 +48,7 @@ type Repository interface {
 	settings.Repository
 	ListOnlineDownloads(context.Context) ([]Record, error)
 	SaveOnlineDownload(context.Context, Record) error
+	UpdateOnlineDownload(context.Context, Record) error
 	ForgetOnlineDownload(context.Context, DownloadTarget) error
 }
 

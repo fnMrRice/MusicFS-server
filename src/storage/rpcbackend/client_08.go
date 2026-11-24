@@ -6,7 +6,6 @@ import (
 	"context"
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/library"
-	"github.com/fnMrRice/MusicFS-server/src/library/albums"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/music"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
@@ -22,6 +21,11 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) RemoteSyncJob(a0 context.Context, a1 string, a2 string) (r0 playlists.SyncJob, err error) {
+	err = c.Invoke(a0, "RemoteSyncJob", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) ReplayWorkPackage(a0 context.Context, a1 string, a2 string, a3 string, a4 string) (r0 workpackages.Package, r1 bool, err error) {
 	err = c.Invoke(a0, "ReplayWorkPackage", []any{a1, a2, a3, a4}, []any{&r0, &r1})
@@ -135,10 +139,5 @@ func (c *Client) SelectContent(a0 context.Context, a1 string, a2 mediastore.Sele
 
 func (c *Client) SelectContentGuarded(a0 context.Context, a1 string, a2 mediastore.SelectRequest, a3 string, a4 mediastore.Guard) (r0 mediastore.Selection, err error) {
 	err = c.Invoke(a0, "SelectContentGuarded", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SelectCover(a0 context.Context, a1 string, a2 albums.SelectCoverRequest, a3 string, a4 mediastore.Guard) (r0 albums.CoverSelection, err error) {
-	err = c.Invoke(a0, "SelectCover", []any{a1, a2, a3, a4}, []any{&r0})
 	return r0, err
 }

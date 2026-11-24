@@ -36,6 +36,7 @@ func serveOnline(w http.ResponseWriter, r *http.Request, stream *playback.Stream
 			if err != nil {
 				return err
 			}
+			w.Header().Set("Content-Type", stream.OutputMIME())
 		}
 		http.ServeContent(w, r, "audio", time.Time{}, audio)
 		return output.err
@@ -57,6 +58,7 @@ func serveOnline(w http.ResponseWriter, r *http.Request, stream *playback.Stream
 		return err
 	}
 	defer body.Close()
+	w.Header().Set("Content-Type", stream.OutputMIME())
 	stop := context.AfterFunc(stream.Context, func() { body.Close() })
 	defer stop()
 	buffer := make([]byte, 32<<10)

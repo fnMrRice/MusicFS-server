@@ -124,7 +124,7 @@ func New(ctx context.Context, repo Repository, lib *library.Service, processor a
 		}
 	}
 	if repo, ok := repo.(onlinecache.Repository); ok {
-		s.downloads, err = onlinecache.New(ctx, filepath.Join(dir, "online"), repo)
+		s.downloads, err = onlinecache.NewWithProbe(ctx, filepath.Join(dir, "online"), repo, s.probeDownloadedAudio)
 		if err != nil {
 			cancel()
 			if s.cache != nil {

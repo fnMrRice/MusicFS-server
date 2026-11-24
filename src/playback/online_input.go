@@ -17,6 +17,8 @@ import (
 type networkInput struct {
 	format         *networkFormat
 	audio          pluginproto.OnlineAudio
+	profile        OutputProfile
+	profilePending bool
 	ranges         *onlineRepresentation
 	scope          onlinecache.Scope
 	preferences    onlinecache.Preferences

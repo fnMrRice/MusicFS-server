@@ -37,6 +37,19 @@ func (s *Server) registerOnlineDisplay(service *onlinehost.Service) {
 		if err != nil {
 			return err
 		}
-		return WriteJSON(w, http.StatusOK, result)
+		ids := make([]string, 0, len(result.Items))
+		for _, item := range result.Items {
+			if item.Track != nil {
+				ids = append(ids, item.Track.ExternalID)
+			}
+		}
+		downloads, err := s.pageDownloads(r, session.User.ID, ids)
+		if err != nil {
+			return err
+		}
+		return WriteJSON(w, http.StatusOK, struct {
+			online.PlaylistTracksPage
+			pageDownloads
+		}{result, downloads})
 	})
 }

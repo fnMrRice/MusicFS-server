@@ -11,18 +11,20 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/playback/onlinecache"
 )
 
 const CookieName = "musicfs_session"
 const MaxRequestBytes = 64 << 10
 
 type Options struct {
-	Auth           *auth.Service
-	InstanceID     string
-	Ready          func() bool
-	SecureCookie   bool
-	Logger         *slog.Logger
-	ControlTimeout time.Duration
+	Auth            *auth.Service
+	InstanceID      string
+	Ready           func() bool
+	SecureCookie    bool
+	Logger          *slog.Logger
+	ControlTimeout  time.Duration
+	OnlineDownloads onlinecache.TrackVersionReader
 }
 
 type Handler func(http.ResponseWriter, *http.Request, auth.Session) error

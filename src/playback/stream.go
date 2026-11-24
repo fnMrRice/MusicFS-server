@@ -30,6 +30,12 @@ type Stream struct {
 	Online          bool
 	OpenOnlineRange func() (io.ReadSeeker, error)
 	openOnline      func() (io.ReadCloser, error)
+	networkFormat   *networkFormat
+}
+
+// OutputMIME 在正文已打开时优先使用本次文件的实测类型，也可直接用于 HEAD。
+func (s *Stream) OutputMIME() string {
+	return s.networkFormat.available(s.Description.OutputProfile).MIME
 }
 
 func (s *Stream) Close() {

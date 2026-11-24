@@ -52,6 +52,23 @@ func (s *Store) ForgetOnlineDownload(ctx context.Context, target onlinecache.Dow
 	return err
 }
 
+// 回填只更新仍存在的同一下载版本，已经删除的副本不能重新出现。
+func (s *Store) UpdateOnlineDownload(ctx context.Context, r onlinecache.Record) error {
+	raw, err := json.Marshal(r.Version)
+	if err != nil {
+		return err
+	}
+	result, err := s.DB.ExecContext(ctx, "UPDATE online_downloads SET document=? WHERE owner=? AND source_id=? AND id=? AND lookup_key=?", string(raw), r.Owner, r.Source, r.ID, r.Key)
+	if err != nil {
+		return err
+	}
+	count, err := result.RowsAffected()
+	if err == nil && count != 1 {
+		return domain.Fail("NOT_FOUND", "Online download no longer exists")
+	}
+	return err
+}
+
 func readDownloadVersions(ctx context.Context, q trackCoverQuery, owner, ids string, apply func(string, onlinecache.Version)) error {
 	rows, err := q.QueryContext(ctx, `SELECT source_id,document FROM online_downloads WHERE owner=? AND source_id IN(SELECT value FROM json_each(?))
  ORDER BY json_extract(document,'$.downloadedAt') DESC,id`, owner, ids)

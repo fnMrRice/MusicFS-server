@@ -27,6 +27,7 @@ type Manager struct {
 	pins    map[string]int
 	garbage map[string]bool
 	pending map[string]*downloadRequest
+	probe   Probe
 }
 
 type downloadRequest struct {
@@ -37,10 +38,14 @@ type downloadRequest struct {
 }
 
 func New(ctx context.Context, root string, repo Repository) (*Manager, error) {
+	return NewWithProbe(ctx, root, repo, nil)
+}
+
+func NewWithProbe(ctx context.Context, root string, repo Repository, probe Probe) (*Manager, error) {
 	if err := os.MkdirAll(root, 0700); err != nil {
 		return nil, err
 	}
-	m := &Manager{root: root, repo: repo, records: map[string]Record{}, byKey: map[string]string{}, pins: map[string]int{}, garbage: map[string]bool{}, pending: map[string]*downloadRequest{}}
+	m := &Manager{root: root, repo: repo, probe: probe, records: map[string]Record{}, byKey: map[string]string{}, pins: map[string]int{}, garbage: map[string]bool{}, pending: map[string]*downloadRequest{}}
 	records, err := repo.ListOnlineDownloads(ctx)
 	if err != nil {
 		return nil, err
@@ -127,6 +132,7 @@ func (m *Manager) Trim(ctx context.Context) error {
 
 func (m *Manager) Run(ctx context.Context) {
 	for {
+		m.measureExisting(ctx)
 		now := time.Now()
 		next := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
 		timer := time.NewTimer(time.Until(next))
@@ -233,6 +239,11 @@ func (m *Manager) lookup(ctx context.Context, key string) (*readHandle, error) {
 func (r *readHandle) Close() (err error) {
 	r.once.Do(func() { err = r.ReadCloser.Close(); r.release() })
 	return err
+}
+
+// DownloadVersion 只返回打开时已确认的本地文件属性，增长中的临时文件没有固定版本。
+func (r *readHandle) DownloadVersion() (Version, bool) {
+	return r.version, r.version.FormatMeasured
 }
 
 // 调用方持有 mu。打开的文件被清理任务计为占用中，关闭后才可回收。

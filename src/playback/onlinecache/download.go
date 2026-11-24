@@ -166,6 +166,7 @@ func (m *Manager) download(ctx context.Context, scope Scope, key string, a plugi
 	dest := []io.Writer{f, hash}
 	if live != nil {
 		live.use(f)
+		defer live.use(nil)
 		dest = append(dest, live)
 	}
 	limit := pluginproto.MaxOnlineAudioBytes
@@ -173,9 +174,6 @@ func (m *Manager) download(ctx context.Context, scope Scope, key string, a plugi
 		limit = a.SizeBytes
 	}
 	n, err := io.Copy(io.MultiWriter(dest...), io.LimitReader(body, limit+1))
-	if live != nil {
-		live.use(nil)
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +197,11 @@ func (m *Manager) download(ctx context.Context, scope Scope, key string, a plugi
 		return nil, err
 	}
 	id := hex.EncodeToString(hash.Sum(nil))
-	r := Record{Key: key, Owner: scope.Owner, Plugin: scope.Plugin, Source: scope.Source, Version: Version{ID: id, Quality: a.Quality, MIME: a.MIME, Codec: a.Codec, Container: a.Container, BitrateBps: a.BitrateBps, SizeBytes: n, DownloadedAt: time.Now().UTC()}}
+	r := Record{Key: key, Owner: scope.Owner, Plugin: scope.Plugin, Source: scope.Source, Version: Version{ID: id, Quality: a.Quality, MIME: a.MIME, Codec: a.Codec, Container: a.Container, BitrateBps: a.BitrateBps, SampleRateHz: a.SampleRateHz, Channels: a.Channels, SizeBytes: n, DownloadedAt: time.Now().UTC()}}
+	m.measure(ctx, f, &r.Version)
+	if live != nil {
+		live.use(nil)
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if err = ctx.Err(); err != nil {

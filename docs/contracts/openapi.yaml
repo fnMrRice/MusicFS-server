@@ -281,7 +281,7 @@
     },
     "/playback/sessions/{id}/attempts/{attemptId}/output-profile": {
       "parameters": [{"$ref": "#/components/parameters/ID"}, {"name": "attemptId", "in": "path", "required": true, "schema": {"type": "string", "minLength": 1}}],
-      "get": {"operationId": "getPlaybackOutputProfile", "description": "只读取当前登录会话所属播放尝试的输出格式。已打开在线音频后，短暂等待本次媒体的实际探测结果。未知声道省略。", "responses": {"200": {"description": "当前输出格式", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/OutputProfile"}}}}, "default": {"$ref": "#/components/responses/Error"}}}
+      "get": {"operationId": "getPlaybackOutputProfile", "description": "只读取当前登录会话所属播放尝试的输出格式。在线音频命中已测量的下载文件时返回该文件的编码信息。打开音频后可短暂等待当前媒体的探测结果。", "responses": {"200": {"description": "当前输出格式", "content": {"application/json": {"schema": {"$ref": "./http.schema.json#/$defs/OutputProfile"}}}}, "default": {"$ref": "#/components/responses/Error"}}}
     },
     "/playback/sessions/{id}/attempts/{attemptId}/stream": {
       "parameters": [{"$ref": "#/components/parameters/ID"}, {"name": "attemptId", "in": "path", "required": true, "schema": {"type": "string", "minLength": 1}}],

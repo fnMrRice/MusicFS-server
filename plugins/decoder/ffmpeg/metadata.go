@@ -60,7 +60,7 @@ func ProbeMetadata(ctx context.Context, ffprobePath string, input io.ReadSeeker,
 	server := &http.Server{Handler: mux, ReadHeaderTimeout: 2 * time.Second, IdleTimeout: 2 * time.Second, MaxHeaderBytes: 8192, BaseContext: func(net.Listener) context.Context { return ctx }}
 	go server.Serve(listener)
 	defer server.Close()
-	const entries = "program_version=version:stream=codec_name,bit_rate,duration,sample_rate,channels,channel_layout:format=format_name,duration,bit_rate:format_tags=title,artist,album,genre,date,year"
+	const entries = "program_version=version:stream=codec_name,bit_rate,duration,sample_rate,channels,channel_layout,bits_per_raw_sample,bits_per_sample:format=format_name,duration,bit_rate:format_tags=title,artist,album,genre,date,year"
 	probe := func(fields string) (string, error) {
 		return toolOutput(ctx, ffprobePath, "-v", "error", "-protocol_whitelist", "http,tcp", "-format_whitelist", inputFormats, "-select_streams", "a:0", "-show_entries", fields, "-show_program_version", "-of", "json", "http://"+listener.Addr().String()+path)
 	}
@@ -83,6 +83,8 @@ func ProbeMetadata(ctx context.Context, ffprobePath string, input io.ReadSeeker,
 			SampleRate string `json:"sample_rate"`
 			Channels   int    `json:"channels"`
 			Layout     string `json:"channel_layout"`
+			RawBits    string `json:"bits_per_raw_sample"`
+			PCMBits    int    `json:"bits_per_sample"`
 		} `json:"streams"`
 		Format struct {
 			Name     string            `json:"format_name"`
@@ -98,6 +100,15 @@ func ProbeMetadata(ctx context.Context, ffprobePath string, input io.ReadSeeker,
 	result.ProbeVersion = wire.ProgramVersion.Version
 	result.Codec = &stream.Codec
 	result.Container = &wire.Format.Name
+	// 优先保留源音频的有效位深。PCM 也可以从编码样本宽度读取位深。
+	// 有损音频的解码器输出格式不能用来推断源文件位深。
+	depth, _ := strconv.Atoi(stream.RawBits)
+	if depth == 0 && strings.HasPrefix(stream.Codec, "pcm_") {
+		depth = stream.PCMBits
+	}
+	if depth > 0 && depth <= 64 {
+		result.BitDepth = depth
+	}
 	if stream.Channels >= 1 && stream.Channels <= 32 {
 		result.Channels = stream.Channels
 		result.Layout = stream.Layout

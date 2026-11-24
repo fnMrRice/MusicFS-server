@@ -14,18 +14,18 @@ type SeekableAudio interface {
 	ReadAvailableAt(context.Context, []byte, int64, int64) (int, error)
 }
 
-// CachedSize 只使用有平台版本、账号及音质均相符的完整文件。
-func (m *Manager) CachedSize(scope Scope, a pluginproto.OnlineAudio) int64 {
+// CachedVersion 只返回与本次平台授权、账号及音质均相符的完整文件。
+func (m *Manager) CachedVersion(scope Scope, a pluginproto.OnlineAudio) (Version, bool) {
 	if a.Version == "" {
-		return 0
+		return Version{}, false
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	r, ok := m.records[m.byKey[Key(scope, a)]]
 	if !ok || m.checkFile(r) != nil {
-		return 0
+		return Version{}, false
 	}
-	return r.SizeBytes
+	return r.Version, true
 }
 
 func (m *Manager) OpenSeekable(ctx context.Context, scope Scope, a pluginproto.OnlineAudio, prefs Preferences, size int64, open OpenUpstream) (SeekableAudio, error) {

@@ -75,6 +75,7 @@ type Backend interface {
 	plugincontrol.Repository
 	processedcache.Repository
 	onlinecache.Repository
+	onlinecache.TrackVersionReader
 	recommendations.Repository
 	sourcedisplay.Repository
 	timeline.Repository

@@ -61,7 +61,7 @@ func (s *Server) RegisterOnline(service *onlinehost.Service) {
 		if err != nil {
 			return err
 		}
-		return WriteJSON(w, http.StatusOK, page)
+		return s.writeOnlineSearchPage(w, r, session.User.ID, page)
 	})
 	s.Handle("GET /api/v1/online-instances/{id}/tracks/{externalId}", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		if _, err := onlineQuery(r); err != nil {
@@ -116,7 +116,14 @@ func (s *Server) RegisterOnline(service *onlinehost.Service) {
 		if err != nil {
 			return err
 		}
-		return WriteJSON(w, http.StatusOK, page)
+		downloads, err := s.pageDownloads(r, session.User.ID, externalTrackIDs(page.Tracks))
+		if err != nil {
+			return err
+		}
+		return WriteJSON(w, http.StatusOK, struct {
+			online.DailySongsPage
+			pageDownloads
+		}{page, downloads})
 	})
 	s.Handle("POST /api/v1/online-instances/{id}/tracks/{externalId}/resolve", true, true, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		if _, err := onlineQuery(r); err != nil {

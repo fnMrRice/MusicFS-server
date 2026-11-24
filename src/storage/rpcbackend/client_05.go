@@ -12,6 +12,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/playback/onlinecache"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
 
@@ -105,6 +106,11 @@ func (c *Client) NextWriteback(a0 context.Context) (r0 writebackhost.Work, err e
 	return r0, err
 }
 
+func (c *Client) OnlineTrackVersions(a0 context.Context, a1 string, a2 string, a3 []string) (r0 map[string][]onlinecache.Version, err error) {
+	err = c.Invoke(a0, "OnlineTrackVersions", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) PendingConfigOperations(a0 context.Context, a1 string) (r0 []config.Operation, err error) {
 	err = c.Invoke(a0, "PendingConfigOperations", []any{a1}, []any{&r0})
 	return r0, err
@@ -127,10 +133,5 @@ func (c *Client) PersonalCollection(a0 context.Context, a1 string, a2 string, a3
 
 func (c *Client) PersonalProfile(a0 context.Context, a1 string) (r0 personal.Profile, err error) {
 	err = c.Invoke(a0, "PersonalProfile", []any{a1}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) PlaybackOwner(a0 context.Context, a1 string) (r0 string, err error) {
-	err = c.Invoke(a0, "PlaybackOwner", []any{a1}, []any{&r0})
 	return r0, err
 }

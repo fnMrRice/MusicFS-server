@@ -42,7 +42,7 @@ func (s *Server) registerOnlineEntities(service *onlinehost.Service) {
 			if err != nil {
 				return err
 			}
-			return WriteJSON(w, http.StatusOK, page)
+			return s.writeOnlineSearchPage(w, r, session.User.ID, page)
 		})
 	}
 }

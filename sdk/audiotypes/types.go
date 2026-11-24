@@ -32,7 +32,7 @@ type Metadata struct {
 	Artists                                             []string
 	Album, Genre                                        *string
 	Year, SampleRateHz                                  *int64
-	Channels                                            int
+	Channels, BitDepth                                  int
 	Layout, BitrateOrigin, ProbeVersion, ProbeAlgorithm string
 }
 

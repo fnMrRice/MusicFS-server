@@ -29,7 +29,7 @@ func Serve(w http.ResponseWriter, r *http.Request, stream *playback.Stream) erro
 	}()
 	output := &deliveryWriter{ResponseWriter: w, controller: controller, ctx: stream.Context, sessionID: stream.Description.SessionID}
 	w = output
-	w.Header().Set("Content-Type", stream.Description.OutputProfile.MIME)
+	w.Header().Set("Content-Type", stream.OutputMIME())
 	w.Header().Set("Cache-Control", "private, no-store")
 	if stream.Online {
 		return serveOnline(w, r, stream, output)

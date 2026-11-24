@@ -39,6 +39,7 @@ type OutputProfile struct {
 	Transport  string  `json:"transport"`
 	SampleRate int     `json:"sampleRate,omitempty"`
 	Channels   int     `json:"channels,omitempty"`
+	BitDepth   int     `json:"bitDepth,omitempty"`
 	Layout     string  `json:"layout,omitempty"`
 	BitrateBps int     `json:"bitrateBps,omitempty"`
 }

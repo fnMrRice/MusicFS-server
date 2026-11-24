@@ -209,7 +209,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	isReady := func() bool {
 		return (ready == nil || ready()) && (!hasAvailability || availability.Available())
 	}
-	handler := api.New(api.Options{Auth: sessions, InstanceID: instance, Ready: isReady, SecureCookie: c.TLSCert != "", Logger: log})
+	handler := api.New(api.Options{Auth: sessions, InstanceID: instance, Ready: isReady, SecureCookie: c.TLSCert != "", Logger: log, OnlineDownloads: store})
 	queue.OnChanged = handler.NotifyScan
 	metadata.OnRefreshChanged = handler.NotifyRefreshTask
 	handler.RegisterLibrary(lib)

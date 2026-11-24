@@ -10,6 +10,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/sdk/provider"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
+	"github.com/fnMrRice/MusicFS-server/src/playback/onlinecache"
 )
 
 // prepareOnline 只验证权限和播放能力；建立会话不触发上游音频请求。
@@ -26,10 +27,22 @@ func (s *Service) prepareOnline(ctx context.Context, owner string, t library.Tra
 	if audio.Validate() != nil || audio.ExternalID != t.ExternalID {
 		return nil, domain.Fail("PROTOCOL_MISMATCH", "Invalid network audio description")
 	}
-	if !supports(r.Capabilities, audio.MIME) {
+	var cached onlinecache.Version
+	canCache := s.downloads != nil && input.preferences.LimitBytes > 0
+	if canCache {
+		cached, _ = s.downloads.CachedVersion(input.scope, audio)
+	}
+	profile := OutputProfile{MIME: audio.MIME, Codec: &audio.Codec, Container: &audio.Container, SampleRate: audio.SampleRateHz, Channels: audio.Channels}
+	if audio.BitrateBps != nil {
+		profile.BitrateBps = int(*audio.BitrateBps)
+	}
+	input.profile = measuredOnlineProfile(profile, cached)
+	// 同步下载或仅在打开正文后取得字节版本时，实际文件格式可能晚于会话创建。
+	input.profilePending = input.profile.Channels == 0 || canCache && !cached.FormatMeasured && (!input.preferences.Stream || audio.Version == "")
+	if !supports(r.Capabilities, input.profile.MIME) {
 		return nil, domain.Fail("UNSUPPORTED", "Client does not support the network audio format")
 	}
-	t.MIME, t.Codec, t.Container = audio.MIME, &audio.Codec, &audio.Container
+	t.MIME, t.Codec, t.Container = input.profile.MIME, input.profile.Codec, input.profile.Container
 	processor, _ := s.audioSnapshot()
 	processor, err = s.processorForUser(ctx, owner, processor, r.Preferences.DSPExecution == "client")
 	if err != nil {
@@ -49,8 +62,8 @@ func (s *Service) prepareOnline(ctx context.Context, owner string, t library.Tra
 	}
 	if s.downloads != nil && duration != nil && *duration > 0 {
 		size := audio.SizeBytes
-		if size <= 0 && input.preferences.LimitBytes > 0 {
-			size = s.downloads.CachedSize(input.scope, audio)
+		if size <= 0 {
+			size = cached.SizeBytes
 		}
 		if size > 0 {
 			input.ranges = &onlineRepresentation{size: size, duration: *duration, ready: make(chan struct{})}
@@ -60,12 +73,9 @@ func (s *Service) prepareOnline(ctx context.Context, owner string, t library.Tra
 }
 
 func (p *preparedInput) describeOnline(id string, expiry time.Time, transport string) Description {
-	audio := p.network.audio
-	profile := OutputProfile{MIME: audio.MIME, Codec: &audio.Codec, Container: &audio.Container, Transport: transport, SampleRate: audio.SampleRateHz, Channels: audio.Channels}
-	if audio.BitrateBps != nil {
-		profile.BitrateBps = int(*audio.BitrateBps)
-	}
-	d := Description{SessionID: id, SourceTrackID: p.track.ID, AssetID: p.track.AssetID, DeliveryMode: "proxy", OutputProfile: profile, ExpiresAt: expiry, SeekMode: "none", DSPExecution: p.dspExecution, EffectiveProcessing: []Processing{}, ResumeDecision: "continue"}
+	profile := p.network.profile
+	profile.Transport = transport
+	d := Description{SessionID: id, SourceTrackID: p.track.ID, AssetID: p.track.AssetID, DeliveryMode: "proxy", OutputProfile: profile, OutputProfilePending: p.network.profilePending, ExpiresAt: expiry, SeekMode: "none", DSPExecution: p.dspExecution, EffectiveProcessing: []Processing{}, ResumeDecision: "continue"}
 	if ranges := p.network.ranges; ranges != nil {
 		d.SeekMode = "byteRange"
 		d.SeekableRange = &Range{EndMs: ranges.duration, Growing: true}
@@ -82,7 +92,7 @@ func (s *Service) onlineStream(ctx context.Context, a *session, id, attempt stri
 	streamCtx, cancel := context.WithCancel(a.attemptCtx)
 	unlink := context.AfterFunc(ctx, cancel)
 	a.active++
-	stream := &Stream{Description: a.description, Context: streamCtx, Online: true, Cancel: func() { unlink(); cancel() }}
+	stream := &Stream{Description: a.description, Context: streamCtx, Online: true, networkFormat: a.network.format, Cancel: func() { unlink(); cancel() }}
 	stream.release = func() { s.mu.Lock(); a.active--; s.mu.Unlock() }
 	if ranges := a.network.ranges; ranges != nil {
 		stream.Size = ranges.size
