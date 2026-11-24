@@ -30,11 +30,13 @@ func populateOnlineCoverPaths(ctx context.Context, query trackCoverQuery, owner 
 	if err != nil {
 		return err
 	}
-	rows, err := query.QueryContext(ctx, `SELECT s.id,t.asset_id,n.id FROM music_sources s JOIN tracks t ON s.id=t.id AND s.owner=t.owner
+	// 先按本页缺少封面的来源 ID 查找，再沿规范曲目查询同组在线版本。
+	rows, err := query.QueryContext(ctx, `SELECT s.id,t.asset_id,n.id FROM json_each(?) ids
+		CROSS JOIN music_sources s ON s.id=ids.value JOIN tracks t ON s.id=t.id AND s.owner=t.owner
 		JOIN music_sources n ON n.owner=s.owner AND n.track_id=s.track_id JOIN tracks a ON a.owner=n.owner AND a.id=n.id
-		WHERE s.owner=? AND s.id IN (SELECT value FROM json_each(?)) AND n.plugin_id=? AND a.root_id='online-audio'
+		WHERE s.owner=? AND n.plugin_id=? AND a.root_id='online-audio'
 		AND json_extract(a.document,'$.availability')='available' AND coalesce(json_extract(a.document,'$._providerCoverUrl'),'legacy')<>''
-		ORDER BY s.id,n.id`, owner, string(raw), pluginproto.OnlinePluginID(online.Netease))
+		ORDER BY s.id,n.id`, string(raw), owner, pluginproto.OnlinePluginID(online.Netease))
 	if err != nil {
 		return err
 	}

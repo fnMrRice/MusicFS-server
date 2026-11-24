@@ -33,19 +33,24 @@ func populateMusicAlbumCovers(ctx context.Context, query trackCoverQuery, owner 
 	if err != nil {
 		return err
 	}
-	rows, err := query.QueryContext(ctx, musicVisible+`, target_albums AS (
- SELECT a.id,a.owner,a.cover_path FROM music_albums a WHERE a.owner=? AND a.id IN(SELECT value FROM json_each(?))
+	// 让各回退分支共用本页的专辑成员，并从请求的主键开始读取，避免为每一张专辑重新枚举曲库。
+	rows, err := query.QueryContext(ctx, musicVisible+`, target_albums AS MATERIALIZED (
+ SELECT a.id,a.cover_path FROM json_each(?) ids CROSS JOIN music_albums a ON a.id=ids.value WHERE a.owner=?
+), target_members AS MATERIALIZED (
+ SELECT x.album_id,x.position,x.track_id FROM music_album_tracks x WHERE x.album_id IN (SELECT id FROM target_albums)
+), target_sources AS MATERIALIZED (
+ SELECT id,track_id FROM visible_music_sources WHERE track_id IN (SELECT track_id FROM target_members)
 ), candidates AS (
  SELECT a.id AS album_id,CASE f.field WHEN 'artwork' THEN 0 ELSE 1 END AS priority,
   json_extract(f.document,'$.item.imageUrl') AS path,0 AS position,f.field AS identity
  FROM target_albums a JOIN music_album_scraped_fields f ON f.album_id=a.id WHERE f.field IN ('artwork','albumDetails')
  UNION ALL SELECT a.id,2,a.cover_path,0,a.id FROM target_albums a
- UNION ALL SELECT a.id,3,m.cover_path,x.position,m.id FROM target_albums a JOIN music_album_tracks x ON x.album_id=a.id
- JOIN music_tracks m ON m.id=x.track_id AND m.owner=a.owner JOIN visible_music_tracks v ON v.id=m.id
- UNION ALL SELECT a.id,4,'/api/v1/media/'||c.object_id,x.position,c.object_id FROM target_albums a
- JOIN music_album_tracks x ON x.album_id=a.id JOIN visible_music_tracks v ON v.id=x.track_id
- JOIN music_track_covers c ON c.track_id=x.track_id JOIN media_content_objects o ON o.id=c.object_id AND o.owner=a.owner
- JOIN visible_music_sources s ON s.id=o.source_id AND s.track_id=x.track_id
+ UNION ALL SELECT x.album_id,3,m.cover_path,x.position,m.id FROM target_members x CROSS JOIN music_tracks m
+ ON m.id=x.track_id AND m.owner=? WHERE m.cover_path IS NOT NULL AND m.cover_path<>''
+ AND EXISTS(SELECT 1 FROM visible_music_tracks v WHERE v.id=m.id)
+ UNION ALL SELECT x.album_id,4,'/api/v1/media/'||c.object_id,x.position,c.object_id FROM target_members x
+ JOIN target_sources s ON s.track_id=x.track_id JOIN music_track_covers c ON c.track_id=x.track_id
+ JOIN media_content_objects o ON o.id=c.object_id AND o.owner=? AND o.source_id=s.id
 )
  SELECT c.album_id,c.path FROM candidates c WHERE c.path IS NOT NULL AND c.path<>'' AND (
  c.path NOT LIKE '/api/v1/media/%' OR EXISTS(SELECT 1 FROM media_content_objects o
@@ -53,7 +58,7 @@ func populateMusicAlbumCovers(ctx context.Context, query trackCoverQuery, owner 
  JOIN visible_music_sources s ON s.id=t.id
  WHERE o.owner=? AND o.id=substr(c.path,15) AND o.state='available'
  AND json_extract(t.document,'$.availability')='available'))
- ORDER BY c.album_id,c.priority,c.position,c.identity`, owner, owner, owner, owner, string(raw), owner)
+ ORDER BY c.album_id,c.priority,c.position,c.identity`, owner, owner, owner, string(raw), owner, owner, owner, owner)
 	if err != nil {
 		return err
 	}

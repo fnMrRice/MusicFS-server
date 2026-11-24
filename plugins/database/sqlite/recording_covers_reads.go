@@ -68,13 +68,14 @@ func readRecordingCoverStates(ctx context.Context, query trackCoverQuery, owner 
 	if err != nil {
 		return nil, err
 	}
+	// 先按本页录音定位成员，再查成员封面，避免遍历账号的全部封面绑定。
 	rows, err := query.QueryContext(ctx, `SELECT r.id,COALESCE(p.revision,0),p.object_id,
  c.object_id,c.source_id,c.provider,c.asset_id,c.version,c.width,c.height
  FROM recordings r LEFT JOIN recording_cover_preferences p ON p.owner=r.owner AND p.recording_id=r.id
  LEFT JOIN (SELECT l.recording_id,t.owner,b.object_id,t.id AS source_id,t.provider,t.asset_id,t.version,
  CAST(COALESCE(json_extract(o.document,'$.width'),0) AS INTEGER) AS width,
  CAST(COALESCE(json_extract(o.document,'$.height'),0) AS INTEGER) AS height
- FROM recording_source_links l JOIN tracks t ON t.owner=l.owner AND t.id=l.source_id`+currentTrackCoverJoins+`
+ FROM recording_source_links l CROSS JOIN tracks t ON t.owner=l.owner AND t.id=l.source_id`+currentTrackCoverJoins+`
  WHERE l.owner=? AND l.recording_id IN (SELECT value FROM json_each(?)) AND json_extract(t.document,'$.availability')='available') c
  ON c.owner=r.owner AND c.recording_id=r.id
  WHERE r.owner=? AND r.id IN (SELECT value FROM json_each(?))`, owner, string(raw), owner, string(raw))

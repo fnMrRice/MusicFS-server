@@ -86,6 +86,16 @@ func TestMusicAlbumCoverPriorityAndVisibleSourceFallback(t *testing.T) {
 		t.Fatal(err)
 	}
 	expect("/api/v1/media/" + art.ID)
+	// 显式选用的媒体封面可以来自当前用户可见的另一张专辑。
+	otherSong := visibilityObservation("unrelated", "elsewhere/other.wav", "Other Singer", "Other Album", "Jazz", "wav")
+	outside := visibilityScan(t, s, "admin", "other-album", otherSong)[0]
+	outsideArt := libraryArtwork(t, s, "admin", outside)
+	current, _ = s.MusicAlbum(ctx, "admin", album.ID)
+	outsidePath := "/api/v1/media/" + outsideArt.ID
+	if _, err = s.SaveMusicAlbum(ctx, "admin", album.ID, current.Revision, music.AlbumFields{Name: "Album", CoverPath: &outsidePath}, domain.NewID()); err != nil {
+		t.Fatal(err)
+	}
+	expect(outsidePath)
 	foreign := visibilityScan(t, s, "other", "private", visible)[0]
 	foreignArt := libraryArtwork(t, s, "other", foreign)
 	current, _ = s.MusicAlbum(ctx, "admin", album.ID)
