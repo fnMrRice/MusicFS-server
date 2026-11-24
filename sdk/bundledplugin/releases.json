@@ -10,8 +10,8 @@
   },
   "plugins": {
     "musicfs.plugin.source.localfiles": {"version": "0.3.0", "sources": ["source/localfiles/", "@worker"]},
-    "musicfs.plugin.decoder.ffmpeg": {"version": "0.7.0", "sources": ["decoder/ffmpeg/", "@worker"]},
-    "musicfs.plugin.decoder.ncm": {"version": "0.1.0", "sources": ["decoder/ncm/", "@worker"]},
+    "musicfs.plugin.decoder.ffmpeg": {"version": "0.7.0", "sources": ["decoder/ffmpeg/", "decoder/internal/neteasetag/", "@worker"]},
+    "musicfs.plugin.decoder.ncm": {"version": "0.1.0", "sources": ["decoder/ncm/", "decoder/internal/neteasetag/", "@worker"]},
     "musicfs.scraper.local": {"version": "0.1.0", "sources": ["scraper/local/", "@worker"]},
     "musicfs.plugin.source.netease": {"version": "0.1.0", "sources": ["source/online/netease/", "source/online/internal/policies/netease.go", "source/online/cmd/musicfs-plugin-netease/", "@provider"]},
     "musicfs.plugin.source.qqmusic": {"version": "0.1.0", "sources": ["source/online/qqmusic/", "source/online/internal/policies/qqmusic.go", "source/online/cmd/musicfs-plugin-qqmusic/", "@provider"]},
