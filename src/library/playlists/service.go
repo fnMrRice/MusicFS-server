@@ -47,7 +47,9 @@ func (s *Service) authorize(ctx context.Context, owner string, ref RemoteRef) (B
 	if err := ref.Validate(); err != nil {
 		return Binding{}, err
 	}
-	b, err := s.remote.Authorize(ctx, owner, ref)
+	b, err := RetryRemoteRead(ctx, func(ctx context.Context) (Binding, error) {
+		return s.remote.Authorize(ctx, owner, ref)
+	})
 	if err != nil {
 		return b, err
 	}
@@ -156,7 +158,7 @@ func FailureCode(err error) string {
 	var known *domain.Error
 	if errors.As(err, &known) {
 		switch known.Code {
-		case "AUTH_REQUIRED", "PLATFORM_AUTH_REQUIRED", "AUTH_EXPIRED", "ACCESS_DENIED", "NOT_FOUND", "SOURCE_OFFLINE", "PLUGIN_DISABLED", "RATE_LIMITED", "RESOURCE_CHANGED", "CONFLICT", "UNSUPPORTED", "CANCELED", "INVALID_ARGUMENT":
+		case "AUTH_REQUIRED", "PLATFORM_AUTH_REQUIRED", "AUTH_EXPIRED", "ACCESS_DENIED", "NOT_FOUND", "SOURCE_OFFLINE", "PLUGIN_DISABLED", "RATE_LIMITED", "RISK_CONTROL", "RESOURCE_CHANGED", "CONFLICT", "UNSUPPORTED", "CANCELED", "INVALID_ARGUMENT", "PROTOCOL_MISMATCH":
 			return known.Code
 		}
 	}

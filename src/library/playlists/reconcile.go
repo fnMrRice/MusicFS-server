@@ -68,7 +68,7 @@ func Reconcile(previous Snapshot, o Observation, next Snapshot, sources map[stri
 		next.Entries = append(next.Entries, entry)
 	}
 	if len(next.Entries) > MaxSnapshotEntries {
-		return Snapshot{}, domain.Fail("RATE_LIMITED", "Remote snapshot exceeds its limit")
+		return Snapshot{}, domain.Fail("UNSUPPORTED", "Remote snapshot exceeds its limit")
 	}
 	return next, nil
 }

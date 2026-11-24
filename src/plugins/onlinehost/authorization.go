@@ -29,13 +29,19 @@ func platformSession(ctx context.Context, r Runtime) (online.AccountView, error)
 }
 
 func call[T any](ctx context.Context, s *Service, owner, id string, f func(context.Context, Runtime) (T, error)) (T, error) {
+	return callWithAccount(ctx, s, owner, id, func(ctx context.Context, r Runtime, _ online.AccountView) (T, error) {
+		return f(ctx, r)
+	})
+}
+
+func callWithAccount[T any](ctx context.Context, s *Service, owner, id string, f func(context.Context, Runtime, online.AccountView) (T, error)) (T, error) {
 	return callControl(ctx, s, owner, id, func(ctx context.Context, r Runtime) (T, error) {
 		var empty T
 		before, err := platformSession(ctx, r)
 		if err != nil {
 			return empty, err
 		}
-		value, err := f(ctx, r)
+		value, err := f(ctx, r, before)
 		if err != nil {
 			return empty, err
 		}

@@ -71,7 +71,7 @@ func (s *Store) ImportRemotePlaylist(ctx context.Context, owner string, b playli
 	return result, merged, tx.Commit()
 }
 
-// 空闲扫描只安排尚未入库的歌单；成功登录后，也可重试该账号已有的鉴权失败任务。
+// 空闲时补齐未安排的歌单及已过冷却期的限流失败。鉴权失败等对应账号重新就绪。
 func (s *Store) PreparePlaylistCatalog(ctx context.Context, owner, instance, platform, revision, account string) error {
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -83,8 +83,11 @@ func (s *Store) PreparePlaylistCatalog(ctx context.Context, owner, instance, pla
 		SELECT account_id,external_id,catalog_job_id FROM remote_playlists WHERE owner=? AND instance_id=?
 		UNION SELECT account_id,external_id,catalog_job_id FROM playlist_links WHERE owner=? AND instance_id=? AND platform=?)
 		SELECT DISTINCT c.account_id,c.external_id FROM candidates c LEFT JOIN remote_sync_jobs j ON j.id=c.catalog_job_id
-		WHERE (c.catalog_job_id IS NULL AND (?='' OR c.account_id=?)) OR (c.account_id=? AND ?<>'' AND j.state='failed'
-		AND json_extract(j.document,'$.Job.error.code') IN ('AUTH_REQUIRED','PLATFORM_AUTH_REQUIRED','AUTH_EXPIRED','ACCESS_DENIED','RESOURCE_CHANGED','SOURCE_OFFLINE','PLUGIN_DISABLED'))
+		WHERE (?='' OR c.account_id=?) AND (c.catalog_job_id IS NULL OR (j.state='failed' AND (
+			(json_extract(j.document,'$.Job.error.code')='RATE_LIMITED'
+			AND julianday('now') >= julianday(json_extract(j.document,'$.Job.updatedAt')) + max(60,coalesce(json_extract(j.document,'$.Job.error.retryAfter'),0))/86400.0)
+			OR (?<>'' AND json_extract(j.document,'$.Job.error.code') IN ('AUTH_REQUIRED','PLATFORM_AUTH_REQUIRED','AUTH_EXPIRED','ACCESS_DENIED','RESOURCE_CHANGED','SOURCE_OFFLINE','PLUGIN_DISABLED'))
+		)))
 		ORDER BY c.account_id,c.external_id LIMIT max(0,1024-(SELECT count(*) FROM remote_sync_jobs WHERE state IN ('queued','running')))`, func(rows *sql.Rows) error {
 		b := playlists.Binding{RemoteRef: playlists.RemoteRef{InstanceID: instance}, Platform: platform, ConfigRevision: revision}
 		if err := rows.Scan(&b.AccountID, &b.ExternalID); err != nil {
@@ -92,7 +95,7 @@ func (s *Store) PreparePlaylistCatalog(ctx context.Context, owner, instance, pla
 		}
 		bindings = append(bindings, b)
 		return nil
-	}, owner, instance, owner, instance, platform, account, account, account, account)
+	}, owner, instance, owner, instance, platform, account, account, account)
 	if err != nil {
 		return err
 	}

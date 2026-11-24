@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -33,6 +34,9 @@ func (c *testClient) Account(context.Context, online.AccountRequest) (online.Acc
 	return online.AccountResult{View: online.AccountView{State: "signedOut"}}, nil
 }
 func (*testClient) Metadata(_ context.Context, id string) (online.Track, error) {
+	if id == "oversized" {
+		return online.Track{ExternalID: id, Title: strings.Repeat("x", pluginproto.MaxMessageBytes)}, nil
+	}
 	if id == "failure" {
 		delay := 3
 		return online.Track{}, fmt.Errorf("adapter: %w", &fault.Error{Code: "RATE_LIMITED", Message: "Slow down", RetryAfter: &delay})
@@ -143,6 +147,13 @@ func TestWorkerNegotiatesAndEnforcesCapabilitySubset(t *testing.T) {
 		var rpc *pluginproto.RPCError
 		if !errors.As(err, &rpc) || rpc.Data.Code != "RATE_LIMITED" || rpc.Data.RetryAfterMs == nil || *rpc.Data.RetryAfterMs != 3000 {
 			t.Fatalf("typed SDK failure lost code or retry delay: %v", err)
+		}
+	})
+	t.Run("oversized result does not report transient throttling", func(t *testing.T) {
+		err := host.Call(ctx, "provider.online.metadata", pluginproto.OnlineReference{Context: scope, ExternalID: "oversized"}, nil)
+		var rpc *pluginproto.RPCError
+		if !errors.As(err, &rpc) || rpc.Data.Code != "UNSUPPORTED" || rpc.Data.Retryable {
+			t.Fatalf("oversized response must not be retried: %v", err)
 		}
 	})
 	t.Run("second handshake rejected", func(t *testing.T) {

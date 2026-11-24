@@ -285,8 +285,11 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 	}
 	result = pluginproto.OnlineResult[any]{Context: scope, Value: value}
 	encoded, err := json.Marshal(result)
-	if err != nil || len(encoded) > pluginproto.MaxMessageBytes-4096 {
-		return nil, pluginproto.Failure("RATE_LIMITED", "Online metadata exceeds the control message limit")
+	if err != nil {
+		return nil, pluginproto.Failure("PROTOCOL_MISMATCH", "Invalid online response")
+	}
+	if len(encoded) > pluginproto.MaxMessageBytes-4096 {
+		return nil, pluginproto.Failure("UNSUPPORTED", "Online metadata exceeds the control message limit")
 	}
 	return result, nil
 }

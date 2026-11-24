@@ -23,7 +23,7 @@ func (r *playlistRemote) Authorize(_ context.Context, owner string, ref playlist
 	if owner != "owner" || ref.InstanceID != r.binding.InstanceID {
 		return playlists.Binding{}, domain.Fail("NOT_FOUND", "Online instance not found")
 	}
-	if ref.AccountID != "" {
+	if ref.AccountID != r.binding.AccountID {
 		return playlists.Binding{}, domain.Fail("UNSUPPORTED", "Account access is unavailable")
 	}
 	b := r.binding

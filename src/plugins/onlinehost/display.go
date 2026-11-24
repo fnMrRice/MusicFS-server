@@ -37,12 +37,16 @@ func (s *Service) MetadataBatch(ctx context.Context, owner, id string, ids []str
 		}
 	}
 	return call(ctx, s, owner, id, func(ctx context.Context, r Runtime) (online.TrackBatch, error) {
-		provider, ok := r.Provider.(DisplayProvider)
-		if !ok {
-			return online.TrackBatch{}, domain.Fail("UNSUPPORTED", "Provider does not support batched display metadata")
-		}
-		return provider.MetadataBatch(ctx, ids)
+		return readMetadataBatch(ctx, r, ids)
 	})
+}
+
+func readMetadataBatch(ctx context.Context, r Runtime, ids []string) (online.TrackBatch, error) {
+	provider, ok := r.Provider.(DisplayProvider)
+	if !ok {
+		return online.TrackBatch{}, domain.Fail("UNSUPPORTED", "Provider does not support batched display metadata")
+	}
+	return provider.MetadataBatch(ctx, ids)
 }
 func (s *Service) PlaylistTracks(ctx context.Context, owner, id string, request online.PlaylistTracksRequest) (online.PlaylistTracksPage, error) {
 	if !externalID.MatchString(request.ExternalID) || request.Limit < 1 || request.Limit > online.MaxPageItems || len(request.Cursor) > 1024 {
@@ -59,18 +63,10 @@ func (s *Service) PlaylistTracks(ctx context.Context, owner, id string, request 
 
 // MetadataBatchForAccount refuses records imported under a different login.
 func (s *Service) MetadataBatchForAccount(ctx context.Context, owner, id, account string, ids []string) (online.TrackBatch, error) {
-	return call(ctx, s, owner, id, func(ctx context.Context, r Runtime) (online.TrackBatch, error) {
-		view, err := platformSession(ctx, r)
-		if err != nil {
-			return online.TrackBatch{}, err
-		}
+	return callWithAccount(ctx, s, owner, id, func(ctx context.Context, r Runtime, view online.AccountView) (online.TrackBatch, error) {
 		if (account == "" && r.descriptor.Authentication != "anonymous") || view.AccountID != account {
 			return online.TrackBatch{}, domain.Fail("ACCESS_DENIED", "Remote source belongs to a different platform account")
 		}
-		provider, ok := r.Provider.(DisplayProvider)
-		if !ok {
-			return online.TrackBatch{}, domain.Fail("UNSUPPORTED", "Provider does not support display metadata")
-		}
-		return provider.MetadataBatch(ctx, ids)
+		return readMetadataBatch(ctx, r, ids)
 	})
 }

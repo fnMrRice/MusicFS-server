@@ -42,7 +42,7 @@ func (s *Service) worker(ctx context.Context, prepare bool) {
 func (s *Service) execute(parent context.Context, job SyncJob) {
 	started := time.Now()
 	// 单批读取仍有独立超时；完整歌单可能需要数百次受平台限速的批量请求。
-	ctx, cancel := context.WithTimeout(parent, 30*time.Minute)
+	ctx, cancel := context.WithTimeout(parent, remoteSyncTimeout)
 	s.mu.Lock()
 	s.running[job.ID] = cancel
 	s.mu.Unlock()
@@ -56,24 +56,34 @@ func (s *Service) execute(parent context.Context, job SyncJob) {
 		if remote, ok := s.remote.(interface {
 			Acquire(context.Context, string, Binding) (context.Context, func(), error)
 		}); ok {
-			var release func()
-			ctx, release, err = remote.Acquire(ctx, job.Owner, job.Binding)
+			type lease struct {
+				ctx     context.Context
+				release func()
+			}
+			var acquired lease
+			acquired, err = RetryRemoteRead(ctx, func(ctx context.Context) (lease, error) {
+				leased, release, err := remote.Acquire(ctx, job.Owner, job.Binding)
+				return lease{leased, release}, err
+			})
 			if err == nil {
-				defer release()
+				ctx = acquired.ctx
+				defer acquired.release()
 			}
 		}
-	}
-	var binding Binding
-	if err == nil {
-		binding, err = s.authorize(ctx, job.Owner, job.Binding.RemoteRef)
-	}
-	if err == nil && binding != job.Binding {
-		err = domain.Fail("RESOURCE_CHANGED", "Remote instance configuration changed while queued")
 	}
 	var observation Observation
 	if err == nil {
 		slog.DebugContext(ctx, "Remote playlist observation started", "jobId", job.ID)
-		observation, err = s.remote.ObservePlaylist(ctx, job.Owner, binding)
+		observation, err = RetryRemoteRead(ctx, func(ctx context.Context) (Observation, error) {
+			binding, err := s.authorize(ctx, job.Owner, job.Binding.RemoteRef)
+			if err != nil {
+				return Observation{}, err
+			}
+			if binding != job.Binding {
+				return Observation{}, domain.Fail("RESOURCE_CHANGED", "Remote instance configuration changed while queued")
+			}
+			return s.remote.ObservePlaylist(ctx, job.Owner, binding)
+		})
 	}
 	if err == nil {
 		err = ctx.Err()
@@ -92,6 +102,10 @@ func (s *Service) execute(parent context.Context, job SyncJob) {
 		finish, stop := context.WithTimeout(context.Background(), 5*time.Second)
 		defer stop()
 		failure := &domain.Error{Code: FailureCode(err), Message: "Remote playlist synchronization failed; previous snapshot retained"}
+		var limited *domain.Error
+		if failure.Code == "RATE_LIMITED" && errors.As(err, &limited) {
+			failure.RetryAfter = limited.RetryAfter
+		}
 		if finishErr := s.repo.FailRemoteSync(finish, job, failure); finishErr != nil {
 			current, readErr := s.repo.RemoteSyncJob(finish, job.Owner, job.ID)
 			if readErr != nil || current.State == "running" {

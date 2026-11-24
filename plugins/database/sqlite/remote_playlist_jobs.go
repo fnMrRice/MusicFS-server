@@ -92,8 +92,13 @@ func (s *Store) FailRemoteSync(ctx context.Context, ticket playlists.SyncJob, fa
 	if err != nil {
 		return err
 	}
-	// Upstream error messages can contain URLs or private transport detail.
-	failure = &domain.Error{Code: playlists.FailureCode(failure), Message: "Remote playlist synchronization failed; previous snapshot retained"}
+	// 上游消息可能含有私有传输细节，只保留公开错误码和限流等待秒数。
+	safe := &domain.Error{Code: playlists.FailureCode(failure), Message: "Remote playlist synchronization failed; previous snapshot retained"}
+	if safe.Code == "RATE_LIMITED" && failure.RetryAfter != nil && *failure.RetryAfter > 0 {
+		seconds := *failure.RetryAfter
+		safe.RetryAfter = &seconds
+	}
+	failure = safe
 	j.State = "failed"
 	j.Error = failure
 	p.Stale = true

@@ -10,6 +10,28 @@ import (
 
 type playlistRemote struct{ host *Service }
 
+// 一次观察及其所有批次绑定同一个实例配置和已验证的登录代次。
+type playlistReadScope struct {
+	host     *Service
+	owner    string
+	binding  playlists.Binding
+	revision string
+}
+
+func readPlaylistPart[T any](ctx context.Context, scope *playlistReadScope, read func(context.Context, Runtime) (T, error)) (T, error) {
+	b := scope.binding
+	return playlists.RetryRemoteRead(ctx, func(ctx context.Context) (T, error) {
+		return callWithAccount(ctx, scope.host, scope.owner, b.InstanceID, func(ctx context.Context, r Runtime, view online.AccountView) (T, error) {
+			if b.Platform != r.Platform || b.ConfigRevision != r.ConfigRevision || b.AccountID != view.AccountID || scope.revision != "" && scope.revision != view.Revision {
+				var empty T
+				return empty, domain.Fail("RESOURCE_CHANGED", "Playlist account or instance changed during synchronization")
+			}
+			scope.revision = view.Revision
+			return read(ctx, r)
+		})
+	})
+}
+
 // PlaylistRemote reuses the scoped online workers; callers cannot supply URLs,
 // platform credentials, transport settings, or a configuration revision.
 func (s *Service) PlaylistRemote() playlists.Remote { return &playlistRemote{s} }
@@ -77,7 +99,10 @@ func (p *playlistRemote) ObservePlaylist(ctx context.Context, owner string, bind
 	if current != binding {
 		return playlists.Observation{}, domain.Fail("RESOURCE_CHANGED", "Remote playlist instance configuration changed")
 	}
-	observation, err := p.host.ObservePlaylist(ctx, owner, binding.InstanceID, binding.ExternalID)
+	scope := &playlistReadScope{host: p.host, owner: owner, binding: binding}
+	observation, err := readPlaylistPart(ctx, scope, func(ctx context.Context, r Runtime) (online.PlaylistObservation, error) {
+		return r.Provider.ObservePlaylist(ctx, binding.ExternalID)
+	})
 	if err != nil {
 		return playlists.Observation{}, err
 	}
@@ -95,7 +120,9 @@ func (p *playlistRemote) ObservePlaylist(ctx context.Context, owner string, bind
 	}
 	for start := 0; start < len(ids); start += online.MaxPageItems {
 		requested := ids[start:min(start+online.MaxPageItems, len(ids))]
-		batch, err := p.host.MetadataBatchForAccount(ctx, owner, binding.InstanceID, binding.AccountID, requested)
+		batch, err := readPlaylistPart(ctx, scope, func(ctx context.Context, r Runtime) (online.TrackBatch, error) {
+			return readMetadataBatch(ctx, r, requested)
+		})
 		if err != nil {
 			return playlists.Observation{}, err
 		}

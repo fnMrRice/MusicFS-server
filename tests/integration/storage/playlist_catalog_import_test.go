@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
@@ -107,6 +108,76 @@ func TestPlaylistCatalogLinksMergeMembersOnceWithoutEcho(t *testing.T) {
 					}
 				}
 			}
+		})
+	}
+}
+
+func TestPlaylistCatalogRecoversRateLimitedFavoritesAfterCooldown(t *testing.T) {
+	for name, delay := range map[string]int{"historical": 0, "provider_cooldown": 600} {
+		t.Run(name, func(t *testing.T) {
+			s, ctx, b := evidenceStore(t), t.Context(), remoteBinding()
+			b.AccountID = "account"
+			link, err := s.LinkPlaylist(ctx, "owner", b, personal.Favorites)
+			if err != nil {
+				t.Fatal(err)
+			}
+			failed, err := s.ClaimRemoteSync(ctx)
+			if err != nil || failed.ID != link.JobID {
+				t.Fatal("missing initial sync", err)
+			}
+			failure := &domain.Error{Code: "RATE_LIMITED", Message: "Too many requests"}
+			if delay > 0 {
+				failure.RetryAfter = &delay
+			}
+			if err := s.FailRemoteSync(ctx, failed, failure); err != nil {
+				t.Fatal(err)
+			}
+			prepare := func(account string) {
+				t.Helper()
+				if err := s.PreparePlaylistCatalog(ctx, "owner", b.InstanceID, b.Platform, b.ConfigRevision, account); err != nil {
+					t.Fatal(err)
+				}
+			}
+			age := func(duration time.Duration) {
+				t.Helper()
+				_, err := s.DB.ExecContext(ctx, `UPDATE remote_sync_jobs SET document=json_set(document,'$.Job.updatedAt',?) WHERE id=?`, time.Now().UTC().Add(-duration).Format(time.RFC3339Nano), failed.ID)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			noJob := func() {
+				t.Helper()
+				if _, err := s.ClaimRemoteSync(ctx); !errors.Is(err, sql.ErrNoRows) {
+					t.Fatalf("unexpected recovery job: %v", err)
+				}
+			}
+			if delay > 0 {
+				age(2 * time.Minute)
+			}
+			prepare("")
+			noJob()
+			age(time.Hour)
+			prepare("other-account")
+			noJob()
+			prepare("")
+			prepare(b.AccountID)
+			next, err := s.ClaimRemoteSync(ctx)
+			if err != nil || next.ID == failed.ID || next.PlaylistID != failed.PlaylistID {
+				t.Fatal("missing retry for the existing link", err)
+			}
+			if _, err := s.FinishRemoteSync(ctx, next, remoteObservation(1000, "first", "second")); err != nil {
+				t.Fatal(err)
+			}
+			p, err := s.Playlist(ctx, "owner", personal.Favorites)
+			if err != nil {
+				t.Fatal(err)
+			}
+			snapshot, err := s.PlaylistSnapshot(ctx, "owner", personal.Favorites, p.SnapshotRevision)
+			if err != nil || len(snapshot.Entries) != 2 {
+				t.Fatalf("favorites not restored: %+v %v", snapshot, err)
+			}
+			prepare("")
+			noJob()
 		})
 	}
 }

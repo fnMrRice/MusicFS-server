@@ -59,9 +59,16 @@ func importPlaylistTracks(ctx context.Context, tx *sql.Tx, owner string, b playl
 		return err
 	}
 	if local == personal.Favorites {
-		return importFavoriteTracks(ctx, tx, owner, trackIDs)
+		err = importFavoriteTracks(ctx, tx, owner, trackIDs)
+	} else {
+		err = importPersonalTracks(ctx, tx, owner, local, trackIDs)
 	}
-	return importPersonalTracks(ctx, tx, owner, local, trackIDs)
+	// 这里仅合并本地收藏或歌单关系，容量上限需要用户调整集合，等待平台冷却无法解除。
+	var capacity *domain.Error
+	if errors.As(err, &capacity) && capacity.Code == "RATE_LIMITED" && capacity.RetryAfter == nil {
+		return domain.Fail("UNSUPPORTED", capacity.Message)
+	}
+	return err
 }
 
 func importPlaylistSource(ctx context.Context, tx *sql.Tx, owner, provider string, item online.TrackLookup) (string, error) {
