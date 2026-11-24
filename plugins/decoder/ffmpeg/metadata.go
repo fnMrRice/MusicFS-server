@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -16,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/internal/neteasetag"
 	"github.com/fnMrRice/MusicFS-server/sdk/audiotypes"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginlog"
 )
@@ -58,7 +60,15 @@ func ProbeMetadata(ctx context.Context, ffprobePath string, input io.ReadSeeker,
 	server := &http.Server{Handler: mux, ReadHeaderTimeout: 2 * time.Second, IdleTimeout: 2 * time.Second, MaxHeaderBytes: 8192, BaseContext: func(net.Listener) context.Context { return ctx }}
 	go server.Serve(listener)
 	defer server.Close()
-	out, err := toolOutput(ctx, ffprobePath, "-v", "error", "-protocol_whitelist", "http,tcp", "-format_whitelist", inputFormats, "-select_streams", "a:0", "-show_entries", "program_version=version:stream=codec_name,bit_rate,duration,sample_rate,channels,channel_layout:format=format_name,duration,bit_rate:format_tags=title,artist,album,genre,date,year", "-show_program_version", "-of", "json", "http://"+listener.Addr().String()+path)
+	const entries = "program_version=version:stream=codec_name,bit_rate,duration,sample_rate,channels,channel_layout:format=format_name,duration,bit_rate:format_tags=title,artist,album,genre,date,year"
+	probe := func(fields string) (string, error) {
+		return toolOutput(ctx, ffprobePath, "-v", "error", "-protocol_whitelist", "http,tcp", "-format_whitelist", inputFormats, "-select_streams", "a:0", "-show_entries", fields, "-show_program_version", "-of", "json", "http://"+listener.Addr().String()+path)
+	}
+	out, err := probe(entries + ",comment")
+	if errors.Is(err, errProbeOutputLimit) {
+		// 过大的任意文件注释不能影响原有的音频信息探测。
+		out, err = probe(entries)
+	}
 	if err != nil {
 		return result, fmt.Errorf("UNSUPPORTED: audio metadata unavailable: %w", err)
 	}
@@ -113,6 +123,12 @@ func ProbeMetadata(ctx context.Context, ffprobePath string, input io.ReadSeeker,
 		result.BitrateBps = &value
 	}
 	for key, value := range wire.Format.Tags {
+		if strings.EqualFold(key, "comment") && strings.HasPrefix(value, neteasetag.Prefix) {
+			if fields, err := neteasetag.Parse([]byte(value)); err == nil {
+				result.AddNetEaseID(neteasetag.SongID(fields))
+			}
+			continue
+		}
 		if len(value) > 4096 {
 			continue
 		}

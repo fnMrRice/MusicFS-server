@@ -21,8 +21,12 @@ func (s *Store) PublishOnlineTrack(ctx context.Context, owner, provider string, 
 		return library.Track{}, err
 	}
 	defer tx.Rollback()
-	track, err := publishOnlineTrack(ctx, tx, owner, provider, metadata, "available")
+	var additions []catalogAddition
+	track, err := publishOnlineTrack(ctx, tx, owner, provider, metadata, "available", &additions)
 	if err != nil {
+		return library.Track{}, err
+	}
+	if err = attachNewCatalogSources(ctx, tx, owner, provider, additions); err != nil {
 		return library.Track{}, err
 	}
 	if _, err = tx.ExecContext(ctx, "UPDATE library_revision SET revision=revision+1"); err != nil {
@@ -34,7 +38,7 @@ func (s *Store) PublishOnlineTrack(ctx context.Context, owner, provider string, 
 	return track, tx.Commit()
 }
 
-func publishOnlineTrack(ctx context.Context, tx *sql.Tx, owner, provider string, metadata online.Track, availability string) (library.Track, error) {
+func publishOnlineTrack(ctx context.Context, tx *sql.Tx, owner, provider string, metadata online.Track, availability string, additions *[]catalogAddition) (library.Track, error) {
 	var empty library.Track
 	if owner == "" || provider == "" || metadata.ExternalID == "" || metadata.Title == "" {
 		return empty, domain.Fail("INVALID_ARGUMENT", "Invalid online track publication")
@@ -44,7 +48,8 @@ func publishOnlineTrack(ctx context.Context, tx *sql.Tx, owner, provider string,
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return empty, err
 	}
-	if id == "" {
+	created := id == ""
+	if created {
 		id = domain.NewID()
 		asset = domain.NewID()
 	}
@@ -68,6 +73,9 @@ func publishOnlineTrack(ctx context.Context, tx *sql.Tx, owner, provider string,
 	_, err = tx.ExecContext(ctx, "INSERT INTO tracks(id,owner,provider,external_id,root_id,path,version,asset_id,mime,size,document) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET document=excluded.document", id, owner, provider, metadata.ExternalID, "online-audio", "", online.Unversioned, asset, "", 0, raw)
 	if err != nil {
 		return empty, err
+	}
+	if created && availability == "available" {
+		*additions = append(*additions, catalogAddition{id, catalogIdentity(metadata)})
 	}
 	return track, nil
 }

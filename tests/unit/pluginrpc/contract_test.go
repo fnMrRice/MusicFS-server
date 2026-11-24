@@ -18,7 +18,7 @@ func TestPersistenceContractFingerprints(t *testing.T) {
 		contract reflect.Type
 		want     string
 	}{
-		{"backend", reflect.TypeFor[storage.Backend](), "125c249b2b035a795760172b3a54df5c616cc666c304ecfa6857e5725fe87cca"},
+		{"backend", reflect.TypeFor[storage.Backend](), "e7f61f529f1250a2d25870f9dd61a2377bf5e71af5b83eccc2fc28dbe569c9b1"},
 		{"maintenance", reflect.TypeFor[storage.Maintenance](), "c2b65a92a0386d7990000f825babaf527dfb541184711fca13d26cc5298fa013"},
 		{"plugin-state", reflect.TypeFor[plugindb.Backend](), "3585f631ae09e5d4694d439d5d2a72e5d8d2f30cf9b64ac2003dd674eb12c401"},
 	} {

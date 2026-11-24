@@ -3,6 +3,7 @@ package library
 import (
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/audiotypes"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 )
@@ -43,7 +44,10 @@ func EvidenceForObservation(o Observation) ([]identification.Evidence, error) {
 	if o.ProbeStatus != "" && o.ProbeStatus != "notAttempted" && o.ProbeStatus != "succeeded" && o.ProbeStatus != "failed" {
 		return nil, identification.Invalid()
 	}
-	if len(o.Evidence) > 0 && o.ProbeStatus != "succeeded" {
+	if (len(o.Evidence) > 0 || o.NetEaseID != "" || o.NetEaseIDConflict) && o.ProbeStatus != "succeeded" {
+		return nil, identification.Invalid()
+	}
+	if o.NetEaseID != "" && (o.NetEaseIDConflict || !audiotypes.ValidNetEaseID(o.NetEaseID)) {
 		return nil, identification.Invalid()
 	}
 	input := o.Observation

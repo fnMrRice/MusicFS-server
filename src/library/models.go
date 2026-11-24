@@ -74,6 +74,8 @@ type Page struct {
 }
 type Observation struct {
 	pluginproto.Observation
+	NetEaseID           string `json:"neteaseId,omitempty"`
+	NetEaseIDConflict   bool   `json:"neteaseIdConflict,omitempty"`
 	Container           *string
 	Title               *string
 	Artists             []string

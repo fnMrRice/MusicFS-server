@@ -43,6 +43,14 @@ func scanAsset(ctx context.Context, tx *sql.Tx, owner, track, previous string, o
 	if err != nil {
 		return a, err
 	}
+	if o.NetEaseID != "" || o.NetEaseIDConflict {
+		// 同一版本的文件带有两个不同编号时保留冲突，后续的空探测不能将它降级成普通文字匹配。
+		_, err = tx.ExecContext(ctx, `INSERT INTO music_netease_asset_ids(asset_id,netease_id) VALUES(?,nullif(?,''))
+			ON CONFLICT(asset_id) DO UPDATE SET netease_id=NULL WHERE music_netease_asset_ids.netease_id IS NOT excluded.netease_id`, a.ID, o.NetEaseID)
+		if err != nil {
+			return a, err
+		}
+	}
 	if err := reconcileScanEvidence(ctx, tx, owner, a.ID, inputs, o.ProbeStatus == "succeeded"); err != nil {
 		return a, err
 	}

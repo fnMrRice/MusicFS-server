@@ -52,6 +52,8 @@ func metadataProbe(probe audioruntime.Probe, decoder audioruntime.Decoder) libra
 				return result, err
 			}
 			result.Container, result.Title, result.Artists = m.Container, m.Title, m.Artists
+			m.AddNetEaseID(metadata.NetEaseID)
+			result.NetEaseID, result.NetEaseIDConflict = m.NetEaseID, m.NetEaseIDConflict
 			result.Album, result.Genre, result.Year, result.SampleRateHz = m.Album, m.Genre, m.Year, m.SampleRateHz
 			result.Codec, result.DurationMs, result.BitrateBps = m.Codec, m.DurationMs, m.BitrateBps
 			result.MIME = m.MIME
@@ -65,6 +67,8 @@ func metadataProbe(probe audioruntime.Probe, decoder audioruntime.Decoder) libra
 			}
 		} else if !wrapped {
 			return result, fmt.Errorf("UNSUPPORTED: metadata probe unavailable")
+		} else {
+			result.NetEaseID = metadata.NetEaseID
 		}
 		if wrapped {
 			container := match.Format

@@ -23,6 +23,7 @@ var ErrCleanup = errors.New("TEMPORARY_FAILURE: decoder output cleanup failed")
 
 // Metadata 是解码层之间传递的通用元数据，不携带具体插件的类型。
 type Metadata struct {
+	NetEaseID  string
 	Title      string
 	Album      string
 	Artists    []string

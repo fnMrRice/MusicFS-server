@@ -87,9 +87,12 @@ func TestRandomAccessAndSectionReader(t *testing.T) {
 
 func TestConcurrentReadAndMetadataCopy(t *testing.T) {
 	payload := payloadFor("mp3", 14001)
-	metadata := map[string]any{"musicName": "中文标题", "album": "测试专辑", "artist": [][]any{{"艺术家", 42}}, "duration": "6543", "bitrate": 128000, "format": "flac"}
+	metadata := map[string]any{"musicId": int64(9007199254740993), "musicName": "中文标题", "album": "测试专辑", "artist": [][]any{{"艺术家", 42}}, "duration": "6543", "bitrate": 128000, "format": "flac"}
 	r := reader(t, fixture(t, payload, metadata))
 	m := r.Metadata()
+	if m.NetEaseID != "9007199254740993" {
+		t.Fatalf("metadata lost the exact song ID: %q", m.NetEaseID)
+	}
 	if m.Format != "mp3" || m.MIME != "audio/mpeg" || m.Title != "中文标题" || m.Album != "测试专辑" || len(m.Artists) != 1 || m.Artists[0] != "艺术家" || m.DurationMs == nil || *m.DurationMs != 6543 || m.BitrateBps == nil || *m.BitrateBps != 128000 {
 		t.Fatalf("metadata mismatch: %+v", m)
 	}

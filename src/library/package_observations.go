@@ -124,6 +124,7 @@ func probePackageEntry(ctx context.Context, r Runtime, owner, task string, item 
 	}
 	if probeErr == nil {
 		result.ProbeStatus = "succeeded"
+		result.NetEaseID, result.NetEaseIDConflict = meta.NetEaseID, meta.NetEaseIDConflict
 		result.Codec, result.Container = meta.Codec, meta.Container
 		result.DurationMs, result.BitrateBps = meta.DurationMs, meta.BitrateBps
 		result.Title, result.Artists = meta.Title, meta.Artists

@@ -1,15 +1,14 @@
 package ncmdecoder
 
 import (
-	"bytes"
-	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"strconv"
-	"unicode/utf8"
+
+	"github.com/fnMrRice/MusicFS-server/plugins/decoder/internal/neteasetag"
 )
 
 type Metadata struct {
+	NetEaseID  string   `json:"neteaseId,omitempty"`
 	Format     string   `json:"format"`
 	MIME       string   `json:"mime"`
 	Title      string   `json:"title,omitempty"`
@@ -41,33 +40,11 @@ func decodeMetadata(encrypted []byte) (Metadata, error) {
 	for i := range encrypted {
 		encrypted[i] ^= 0x63
 	}
-	prefix := []byte("163 key(Don't modify):")
-	if !bytes.HasPrefix(encrypted, prefix) {
-		return result, fmt.Errorf("UNSUPPORTED: invalid NCM metadata prefix")
-	}
-	encoded := encrypted[len(prefix):]
-	decoded := make([]byte, base64.StdEncoding.DecodedLen(len(encoded)))
-	n, err := base64.StdEncoding.Strict().Decode(decoded, encoded)
-	if err != nil {
-		return result, fmt.Errorf("UNSUPPORTED: invalid NCM metadata encoding")
-	}
-	plain, err := decryptBlocks(decoded[:n], metadataWrappingKey)
-	clear(decoded)
+	fields, err := neteasetag.Parse(encrypted)
 	if err != nil {
 		return result, err
 	}
-	defer clear(plain)
-	if !bytes.HasPrefix(plain, []byte("music:")) {
-		return result, fmt.Errorf("UNSUPPORTED: invalid NCM metadata envelope")
-	}
-	body := plain[6:]
-	if !utf8.Valid(body) {
-		return result, fmt.Errorf("UNSUPPORTED: invalid NCM metadata text")
-	}
-	var fields map[string]json.RawMessage
-	if json.Unmarshal(body, &fields) != nil || fields == nil {
-		return result, fmt.Errorf("UNSUPPORTED: invalid NCM metadata JSON")
-	}
+	result.NetEaseID = neteasetag.SongID(fields)
 	result.Title = optionalText(fields["musicName"])
 	result.Album = optionalText(fields["album"])
 	result.DurationMs = optionalPositive(fields["duration"])

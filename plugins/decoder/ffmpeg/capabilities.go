@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -62,6 +63,9 @@ func executableHash(path string) (string, error) {
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
+
+var errProbeOutputLimit = errors.New("UNSUPPORTED: tool capability output exceeds limit")
+
 func toolOutput(ctx context.Context, path string, args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -74,7 +78,7 @@ func toolOutput(ctx context.Context, path string, args ...string) (string, error
 		return "", fmt.Errorf("UNSUPPORTED: tool probe failed (%v): %s", err, redactToolOutput(string(out.b)))
 	}
 	if len(out.b) >= out.max {
-		return "", fmt.Errorf("UNSUPPORTED: tool capability output exceeds limit")
+		return "", errProbeOutputLimit
 	}
 	return string(out.b), nil
 }

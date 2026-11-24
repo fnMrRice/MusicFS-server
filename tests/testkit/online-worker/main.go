@@ -79,6 +79,9 @@ func (f *fixture) RoundTrip(r *http.Request) (*http.Response, error) {
 		body = `{"code":200,"songs":[{"id":42,"name":"Track","artists":[],"album":{},"duration":123}],"more":false,"total":1}`
 	case "/api/v3/song/detail":
 		body = `{"code":200,"songs":[{"id":42,"name":"Synthetic","ar":[],"al":{"name":"Album"},"dt":120000}]}`
+		if len(os.Args) == 2 && os.Args[1] == "catalog-match" {
+			body = catalogMatchSongs(r.URL.Query().Get("c"))
+		}
 	case "/api/song/enhance/player/url/v1":
 		body = `{"code":200,"data":[{"id":42,"code":200,"type":"mp3","level":"exhigh","size":128,"url":"https://m8.music.126.net/fixture.mp3"}]}`
 	case "/api/personalized/playlist":
@@ -95,6 +98,9 @@ func (f *fixture) RoundTrip(r *http.Request) (*http.Response, error) {
 		body = `{"code":200,"more":false,"playlist":[{"id":91,"name":"Account playlist","trackCount":3}]}`
 	case "/api/v6/playlist/detail":
 		body = `{"code":200,"playlist":{"id":91,"name":"Synthetic","privacy":0,"trackCount":3,"trackIds":[{"id":42},{"id":42},{"id":43}]}}`
+		if len(os.Args) == 2 && os.Args[1] == "catalog-match" {
+			body = `{"code":200,"playlist":{"id":91,"name":"Favorites","userId":12345,"privacy":0,"trackCount":2,"trackIds":[{"id":42},{"id":43}]}}`
+		}
 	case "/soso/fcgi-bin/client_search_cp":
 		status, body = 500, ""
 	}
