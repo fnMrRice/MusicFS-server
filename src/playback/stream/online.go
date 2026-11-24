@@ -1,15 +1,45 @@
 package stream
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
 )
 
 func serveOnline(w http.ResponseWriter, r *http.Request, stream *playback.Stream, output *deliveryWriter) error {
+	if stream.OpenOnlineRange != nil {
+		if err := ValidateRangeHeader(r.Header.Get("Range")); err != nil {
+			return err
+		}
+		w.Header().Set("ETag", stream.ETag)
+		// 只用已知长度和验证器处理没有正文的探测；无需为 304、412 或 416 下载音频。
+		empty := func() io.ReadSeeker { return io.NewSectionReader(bytes.NewReader(nil), 0, stream.Size) }
+		var audio io.ReadSeeker = empty()
+		if r.Method != http.MethodHead {
+			if r.Header.Get("Range") != "" || r.Header.Get("If-None-Match") != "" || r.Header.Get("If-Match") != "" {
+				probe := *r
+				probe.Method = http.MethodHead
+				result := rangeProbe{header: w.Header().Clone()}
+				http.ServeContent(&result, &probe, "audio", time.Time{}, empty())
+				if result.status != http.StatusOK && result.status != http.StatusPartialContent {
+					http.ServeContent(w, r, "audio", time.Time{}, empty())
+					return output.err
+				}
+			}
+			var err error
+			audio, err = stream.OpenOnlineRange()
+			if err != nil {
+				return err
+			}
+		}
+		http.ServeContent(w, r, "audio", time.Time{}, audio)
+		return output.err
+	}
 	w.Header().Set("Accept-Ranges", "none")
 	if r.Method == http.MethodHead {
 		w.WriteHeader(http.StatusOK)
@@ -51,3 +81,14 @@ func serveOnline(w http.ResponseWriter, r *http.Request, stream *playback.Stream
 		}
 	}
 }
+
+type rangeProbe struct {
+	header http.Header
+	status int
+}
+
+func (p *rangeProbe) Header() http.Header {
+	return p.header
+}
+func (p *rangeProbe) WriteHeader(code int)           { p.status = code }
+func (p *rangeProbe) Write(data []byte) (int, error) { return len(data), nil }

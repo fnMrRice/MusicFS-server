@@ -1,6 +1,7 @@
 package onlinecache
 
 import (
+	"context"
 	"io"
 	"os"
 	"sync"
@@ -47,7 +48,27 @@ func (r *growingReader) Write(p []byte) (int, error) {
 func (r *growingReader) Read(p []byte) (int, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	n, err := r.readAvailable(context.Background(), p, r.offset, 0)
+	r.offset += int64(n)
+	return n, err
+}
+
+// 等待指定偏移时只取消当前读者。末字节必须等下载完成长度校验再交付。
+func (r *growingReader) readAvailable(ctx context.Context, p []byte, offset, size int64) (int, error) {
+	var stop func() bool
+	defer func() {
+		if stop != nil {
+			stop()
+		}
+	}()
 	for {
+		if err := ctx.Err(); err != nil {
+			return 0, err
+		}
+		available := r.available
+		if size > 0 && !r.finished {
+			available = min(available, size-1)
+		}
 		switch {
 		case r.closed:
 			return 0, io.ErrClosedPipe
@@ -55,13 +76,14 @@ func (r *growingReader) Read(p []byte) (int, error) {
 			return 0, r.err
 		case len(p) == 0:
 			return 0, nil
-		case r.file != nil && r.offset < r.available:
-			n, err := r.file.ReadAt(p[:min(int64(len(p)), r.available-r.offset)], r.offset)
-			r.offset += int64(n)
-			return n, err
+		case r.file != nil && offset < available:
+			return r.file.ReadAt(p[:min(int64(len(p)), available-offset)], offset)
 		case r.finished:
 			return 0, io.EOF
 		default:
+			if stop == nil && ctx.Done() != nil {
+				stop = context.AfterFunc(ctx, func() { r.mu.Lock(); r.ready.Broadcast(); r.mu.Unlock() })
+			}
 			r.ready.Wait()
 		}
 	}

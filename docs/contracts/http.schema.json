@@ -1183,7 +1183,7 @@
         "deliveryMode": {"enum": ["proxy", "processed"]}, "outputProfile": {"$ref": "#/$defs/OutputProfile"},
         "streamUrl": {"type": "string", "pattern": "^/api/v1/playback/sessions/[^/?#]+/attempts/[^/?#]+/stream$"},
         "expiresAt": {"$ref": "#/$defs/Timestamp"}, "seekMode": {"enum": ["byteRange", "timeRestart", "none"]},
-        "seekableRange": {"anyOf": [{"type": "null"}, {"type": "object", "required": ["startMs", "endMs"], "properties": {"startMs": {"type": "integer", "minimum": 0}, "endMs": {"type": "integer", "minimum": 0}}}]},
+        "seekableRange": {"anyOf": [{"type": "null"}, {"type": "object", "required": ["startMs", "endMs"], "properties": {"startMs": {"type": "integer", "minimum": 0}, "endMs": {"type": "integer", "minimum": 0}, "growing": {"type": "boolean"}}}]},
         "positionOriginMs": {"type": "integer", "minimum": 0},
         "effectiveProcessing": {"type": "array", "description": "按实际执行顺序描述解密、会话增益和配置的 DSP 节点。", "items": {"type": "object", "required": ["type"], "properties": {"type": {"type": "string", "minLength": 1}, "gainDb": {"type": "number"}, "version": {"type": "string"}, "execution": {"enum": ["server"]}, "parameters": {"type": "object", "maxProperties": 64, "additionalProperties": {"type": "number"}}}}},
         "resumeDecision": {"enum": ["continue", "restartRequired", "unavailable"]}

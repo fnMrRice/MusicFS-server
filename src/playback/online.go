@@ -43,6 +43,19 @@ func (s *Service) prepareOnline(ctx context.Context, owner string, t library.Tra
 		return nil, err
 	}
 	input.audio = audio
+	duration := audio.DurationMs
+	if duration == nil {
+		duration = t.DurationMs
+	}
+	if s.downloads != nil && duration != nil && *duration > 0 {
+		size := audio.SizeBytes
+		if size <= 0 && input.preferences.LimitBytes > 0 {
+			size = s.downloads.CachedSize(input.scope, audio)
+		}
+		if size > 0 {
+			input.ranges = &onlineRepresentation{size: size, duration: *duration, ready: make(chan struct{})}
+		}
+	}
 	return &preparedInput{service: s, track: t, lease: lease, online: true, network: input, dspExecution: r.Preferences.DSPExecution}, nil
 }
 
@@ -52,7 +65,12 @@ func (p *preparedInput) describeOnline(id string, expiry time.Time, transport st
 	if audio.BitrateBps != nil {
 		profile.BitrateBps = int(*audio.BitrateBps)
 	}
-	return Description{SessionID: id, SourceTrackID: p.track.ID, AssetID: p.track.AssetID, DeliveryMode: "proxy", OutputProfile: profile, ExpiresAt: expiry, SeekMode: "none", DSPExecution: p.dspExecution, EffectiveProcessing: []Processing{}, ResumeDecision: "continue"}
+	d := Description{SessionID: id, SourceTrackID: p.track.ID, AssetID: p.track.AssetID, DeliveryMode: "proxy", OutputProfile: profile, ExpiresAt: expiry, SeekMode: "none", DSPExecution: p.dspExecution, EffectiveProcessing: []Processing{}, ResumeDecision: "continue"}
+	if ranges := p.network.ranges; ranges != nil {
+		d.SeekMode = "byteRange"
+		d.SeekableRange = &Range{EndMs: ranges.duration, Growing: true}
+	}
+	return d
 }
 
 // onlineStream 在已有会话鉴权和实例租约之下按需打开一个顺序响应。
@@ -66,6 +84,12 @@ func (s *Service) onlineStream(ctx context.Context, a *session, id, attempt stri
 	a.active++
 	stream := &Stream{Description: a.description, Context: streamCtx, Online: true, Cancel: func() { unlink(); cancel() }}
 	stream.release = func() { s.mu.Lock(); a.active--; s.mu.Unlock() }
+	if ranges := a.network.ranges; ranges != nil {
+		stream.Size = ranges.size
+		stream.ETag = `"` + a.description.RepresentationID + `"`
+		stream.OpenOnlineRange = func() (io.ReadSeeker, error) { return ranges.open(streamCtx, s, a) }
+		return stream, nil
+	}
 	stream.openOnline = func() (io.ReadCloser, error) {
 		s.mu.Lock()
 		if a.onlineOpened || a.description.AttemptID != attempt || a.ctx.Err() != nil {

@@ -32,8 +32,9 @@ import (
 
 type networkFixture struct {
 	provider.UnimplementedClient
-	url   string
-	opens atomic.Int32
+	url    string
+	opens  atomic.Int32
+	length atomic.Int64
 }
 
 func (*networkFixture) Descriptor() pluginproto.OnlineDescriptor {
@@ -47,7 +48,11 @@ func (p *networkFixture) Metadata(_ context.Context, id string) (online.Track, e
 	return t, nil
 }
 func (p *networkFixture) DescribeAudio(ctx context.Context, id string) (pluginproto.OnlineAudio, error) {
-	return pluginproto.OnlineAudio{ExternalID: id, Quality: provider.PlaybackQuality(ctx), Version: "fixture-v1", MIME: "audio/wav", Codec: "pcm_s16le", Container: "wav", SizeBytes: -1}, nil
+	size := p.length.Load()
+	if size == 0 {
+		size = -1
+	}
+	return pluginproto.OnlineAudio{ExternalID: id, Quality: provider.PlaybackQuality(ctx), Version: "fixture-v1", MIME: "audio/wav", Codec: "pcm_s16le", Container: "wav", SizeBytes: size}, nil
 }
 func (p *networkFixture) OpenAudio(ctx context.Context, id string) (pluginproto.OnlineAudio, io.ReadCloser, error) {
 	p.opens.Add(1)

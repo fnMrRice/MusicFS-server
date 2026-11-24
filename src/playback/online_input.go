@@ -16,6 +16,7 @@ import (
 
 type networkInput struct {
 	audio          pluginproto.OnlineAudio
+	ranges         *onlineRepresentation
 	scope          onlinecache.Scope
 	preferences    onlinecache.Preferences
 	accountChanged <-chan struct{}
@@ -108,6 +109,9 @@ func (s *Service) networkReader(ctx context.Context, a *session) (io.ReadCloser,
 		return s.library.OpenOnlineAudio(ctx, a.track)
 	}
 	if s.downloads != nil {
+		if n.ranges != nil {
+			return s.downloads.OpenSeekable(ctx, n.scope, audio, n.preferences, n.ranges.size, open)
+		}
 		return s.downloads.Open(ctx, n.scope, audio, n.preferences, open)
 	}
 	actual, body, err := open(ctx)

@@ -45,6 +45,7 @@ type OutputProfile struct {
 type Range struct {
 	StartMs int64 `json:"startMs"`
 	EndMs   int64 `json:"endMs"`
+	Growing bool  `json:"growing,omitempty"`
 }
 type Processing struct {
 	Type       string             `json:"type"`

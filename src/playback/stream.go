@@ -15,20 +15,21 @@ import (
 )
 
 type Stream struct {
-	Description  Description
-	File         *os.File
-	ETag         string
-	Size         int64
-	Context      context.Context
-	Cancel       context.CancelFunc
-	release      func()
-	once         sync.Once
-	processor    audioruntime.Processor
-	gain         float64
-	decodeOutput string
-	process      func(io.Writer) error
-	Online       bool
-	openOnline   func() (io.ReadCloser, error)
+	Description     Description
+	File            *os.File
+	ETag            string
+	Size            int64
+	Context         context.Context
+	Cancel          context.CancelFunc
+	release         func()
+	once            sync.Once
+	processor       audioruntime.Processor
+	gain            float64
+	decodeOutput    string
+	process         func(io.Writer) error
+	Online          bool
+	OpenOnlineRange func() (io.ReadSeeker, error)
+	openOnline      func() (io.ReadCloser, error)
 }
 
 func (s *Stream) Close() {

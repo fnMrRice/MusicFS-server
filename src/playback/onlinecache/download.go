@@ -18,7 +18,7 @@ type OpenUpstream func(context.Context) (pluginproto.OnlineAudio, io.ReadCloser,
 
 // Open 合并同一表示的并行下载。等待者可独立取消；失败的下载不会发布，后续请求可重试。
 func (m *Manager) Open(ctx context.Context, scope Scope, expected pluginproto.OnlineAudio, p Preferences, open OpenUpstream) (io.ReadCloser, error) {
-	h, err := m.open(ctx, scope, expected, p, open, nil)
+	h, err := m.open(ctx, scope, expected, p, open, nil, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +30,7 @@ func (m *Manager) Download(ctx context.Context, scope Scope, expected pluginprot
 	if limit <= 0 {
 		return Version{}, RetentionDisabled()
 	}
-	h, err := m.open(ctx, scope, expected, Preferences{LimitBytes: limit}, open, check)
+	h, err := m.open(ctx, scope, expected, Preferences{LimitBytes: limit}, open, check, 0)
 	if err != nil {
 		return Version{}, err
 	}
@@ -49,7 +49,7 @@ func (m *Manager) Download(ctx context.Context, scope Scope, expected pluginprot
 	return h.version, nil
 }
 
-func (m *Manager) open(ctx context.Context, scope Scope, expected pluginproto.OnlineAudio, p Preferences, open OpenUpstream, check func() error) (*readHandle, error) {
+func (m *Manager) open(ctx context.Context, scope Scope, expected pluginproto.OnlineAudio, p Preferences, open OpenUpstream, check func() error, rangeSize int64) (*readHandle, error) {
 	key := Key(scope, expected)
 	var request *downloadRequest
 	var finish func()
@@ -101,6 +101,15 @@ func (m *Manager) open(ctx context.Context, scope Scope, expected pluginproto.On
 	if actual.SizeBytes <= 0 {
 		actual.SizeBytes = expected.SizeBytes
 	}
+	if rangeSize > 0 {
+		if actual.SizeBytes > 0 && rangeSize != actual.SizeBytes {
+			body.Close()
+			cancel()
+			finish()
+			return nil, domain.Fail("RESOURCE_CHANGED", "Online audio length changed")
+		}
+		actual.SizeBytes = rangeSize
+	}
 	downloadKey := key
 	// 某些 CDN 仅在打开媒体时提供强 ETag，此时只取响应头即可复用旧文件。
 	if expected.Version == "" && actual.Version != "" && p.LimitBytes > 0 {
@@ -115,7 +124,7 @@ func (m *Manager) open(ctx context.Context, scope Scope, expected pluginproto.On
 			return cached, cacheErr
 		}
 	}
-	if p.LimitBytes == 0 && p.Stream {
+	if p.LimitBytes == 0 && p.Stream && rangeSize == 0 {
 		finish()
 		return &readHandle{ReadCloser: body, release: cancel}, nil
 	}
@@ -125,7 +134,9 @@ func (m *Manager) open(ctx context.Context, scope Scope, expected pluginproto.On
 		return m.download(run, scope, downloadKey, actual, request, body, nil)
 	}
 	reader := newGrowingReader()
+	done := make(chan struct{})
 	go func() {
+		defer close(done)
 		defer finish()
 		defer cancel()
 		stop := context.AfterFunc(run, func() { reader.abort(run.Err()) })
@@ -133,7 +144,7 @@ func (m *Manager) open(ctx context.Context, scope Scope, expected pluginproto.On
 		h, err := m.download(run, scope, downloadKey, actual, request, body, reader)
 		reader.complete(h, err)
 	}()
-	return &readHandle{ReadCloser: reader, release: cancel}, nil
+	return &readHandle{ReadCloser: reader, release: func() { cancel(); <-done }}, nil
 }
 
 func (m *Manager) download(ctx context.Context, scope Scope, key string, a pluginproto.OnlineAudio, request *downloadRequest, body io.ReadCloser, live *growingReader) (*readHandle, error) {
