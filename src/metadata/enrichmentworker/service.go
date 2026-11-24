@@ -39,7 +39,7 @@ type runningTask struct {
 }
 type Service struct {
 	// OnRefreshChanged 在启动前设置，逐曲元数据结果落盘后通知刷新任务。
-	OnRefreshChanged func(owner string)
+	OnRefreshChanged func(owner, scanID string)
 
 	runtimeMu sync.RWMutex
 	repo      enrichment.Repository

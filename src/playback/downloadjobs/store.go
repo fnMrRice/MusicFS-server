@@ -65,6 +65,7 @@ func (s *Service) record(e *entry, items []Item) error {
 		return err
 	}
 	e.apply(items, at)
+	s.notify(e, false)
 	return nil
 }
 func (s *Service) restore() error {

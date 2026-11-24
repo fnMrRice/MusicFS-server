@@ -17,7 +17,7 @@ type Names func(string, string, []string) (string, []Root)
 
 type Service struct {
 	// OnChanged 在注册服务前设置，通知持久化的取消请求及其收尾结果。
-	OnChanged func(owner string)
+	OnChanged func(owner, taskID string)
 
 	repo     Repository
 	scans    ScanInterrupter
@@ -55,7 +55,7 @@ func (s *Service) Cancel(ctx context.Context, owner, id string) (Task, error) {
 		return task, err
 	}
 	if task.CancelRequested && s.OnChanged != nil {
-		s.OnChanged(task.OwnerID)
+		s.OnChanged(task.OwnerID, task.ID)
 	}
 	if task.Status == "cancelling" {
 		s.mu.Lock()
@@ -91,7 +91,7 @@ func (s *Service) release(task Task) {
 			cancel()
 			if err == nil {
 				if s.OnChanged != nil {
-					s.OnChanged(task.OwnerID)
+					s.OnChanged(task.OwnerID, task.ID)
 				}
 				return
 			}

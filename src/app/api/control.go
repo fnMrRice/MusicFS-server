@@ -25,6 +25,7 @@ type controlHub struct {
 	connections map[*controlConnection]string
 	plugins     *plugincontrol.Manager
 	lifecycle   *lifecycle.Manager
+	tasks       tasksAPI
 }
 
 type controlConnection struct {
@@ -41,6 +42,9 @@ type controlConnection struct {
 	mu        sync.Mutex
 	pending   map[string]bool
 	activity  map[string]struct{} // 由 controlHub.mu 保护。
+	downloads downloadChanges     // 由 controlHub.mu 保护。
+	taskView  *taskSubscription   // 由 controlHub.mu 保护。
+	taskWake  chan struct{}
 }
 
 // CloseControl 取消控制命令并主动关闭被 HTTP 服务接管的长连接。
@@ -74,7 +78,8 @@ func (s *Server) openControl(w http.ResponseWriter, r *http.Request, session aut
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 	c := &controlConnection{server: s, request: r, session: session, ctx: ctx, cancel: cancel,
-		out: make(chan any, 32), jobs: make(chan controlRequest, 8), leaseJobs: make(chan controlRequest, 8), pending: map[string]bool{}, activity: map[string]struct{}{}}
+		out: make(chan any, 32), jobs: make(chan controlRequest, 8), leaseJobs: make(chan controlRequest, 8),
+		pending: map[string]bool{}, activity: map[string]struct{}{}, taskWake: make(chan struct{}, 1)}
 	s.control.mu.Lock()
 	count := 0
 	for _, id := range s.control.connections {
@@ -123,6 +128,7 @@ func (s *Server) openControl(w http.ResponseWriter, r *http.Request, session aut
 	workers.Go(func() { c.commandLoop(c.jobs) })
 	workers.Go(func() { c.commandLoop(c.leaseJobs) })
 	workers.Go(c.eventLoop)
+	workers.Go(c.taskSnapshotLoop)
 	c.readLoop()
 	c.cancel()
 	_ = conn.CloseNow()

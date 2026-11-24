@@ -8,6 +8,19 @@
     "ClientMessage": {"oneOf": [{"$ref": "#/$defs/Auth"}, {"$ref": "#/$defs/Ping"}, {"$ref": "#/$defs/Request"}]},
     "ServerMessage": {"oneOf": [{"$ref": "#/$defs/Ready"}, {"$ref": "#/$defs/Pong"}, {"$ref": "#/$defs/Response"}, {"$ref": "#/$defs/Event"}]},
     "RequestID": {"type": "string", "pattern": "^[A-Za-z0-9_-]{8,128}$"},
+    "TaskSubscription": {
+      "type": "object", "additionalProperties": false, "required": ["subscriptionId", "scope"],
+      "properties": {"subscriptionId": {"$ref": "#/$defs/RequestID"}, "scope": {"enum": ["mine", "all"]}}
+    },
+    "TaskSnapshot": {
+      "type": "object", "additionalProperties": false, "required": ["subscriptionId", "page", "changed", "reset"],
+      "properties": {
+        "subscriptionId": {"$ref": "#/$defs/RequestID"}, "page": {"$ref": "./http.schema.json#/$defs/TaskPage", "properties": {"items": {"maxItems": 50}}},
+        "changed": {"type": "array", "maxItems": 200, "items": {"$ref": "./http.schema.json#/$defs/Task"}},
+        "reset": {"type": "boolean"}
+      },
+      "if": {"properties": {"reset": {"const": true}}}, "then": {"properties": {"changed": {"maxItems": 0}}}
+    },
     "Auth": {
       "type": "object", "additionalProperties": false, "required": ["type", "csrfToken"],
       "properties": {"type": {"const": "auth"}, "csrfToken": {"type": "string", "minLength": 16, "maxLength": 128}}
@@ -31,6 +44,7 @@
         "idempotencyKey": {"type": "string", "maxLength": 128}, "body": {"type": "object"}
       },
       "oneOf": [
+        {"required": ["body"], "not": {"required": ["idempotencyKey"]}, "properties": {"method": {"const": "POST"}, "path": {"const": "/tasks/subscription"}, "body": {"$ref": "#/$defs/TaskSubscription"}}},
         {"properties": {"method": {"const": "GET"}, "path": {"const": "/lifecycle"}}},
         {"required": ["body", "idempotencyKey"], "properties": {"method": {"const": "POST"}, "path": {"const": "/lifecycle/leases"}, "body": {"$ref": "./http.schema.json#/$defs/LifecycleAcquireRequest"}}},
         {"required": ["body"], "properties": {"method": {"const": "POST"}, "path": {"pattern": "^/lifecycle/leases/[A-Za-z0-9_-]{1,128}/renew$"}, "body": {"$ref": "./http.schema.json#/$defs/LifecycleRenewRequest"}}},
@@ -55,11 +69,19 @@
       "type": "object", "additionalProperties": false, "required": ["type", "event", "data"],
       "properties": {"type": {"const": "event"}, "event": {"type": "string"}, "data": {}},
       "oneOf": [
+        {"properties": {"event": {"const": "tasks.snapshot"}, "data": {"$ref": "#/$defs/TaskSnapshot"}}},
         {"properties": {"event": {"const": "capabilities.changed"}, "data": {"$ref": "./http.schema.json#/$defs/CapabilitiesChangedEvent"}}},
         {"properties": {"event": {"const": "activity.changed"}, "data": {
           "type": "object", "additionalProperties": false, "required": ["resources"],
           "properties": {"resources": {"type": "array", "minItems": 1, "uniqueItems": true,
-            "items": {"enum": ["scans", "tasks", "pluginJobs", "playlistSync"]}}}
+            "items": {"enum": ["scans", "pluginJobs", "playlistSync"]}}}
+        }}},
+        {"properties": {"event": {"const": "downloads.progress"}, "data": {
+          "type": "object", "additionalProperties": false, "required": ["jobs", "invalidated"],
+          "properties": {
+            "jobs": {"type": "array", "items": {"$ref": "./http.schema.json#/$defs/OnlineDownloadSummary"}},
+            "invalidated": {"type": "array", "uniqueItems": true, "items": {"$ref": "./http.schema.json#/$defs/ID"}}
+          }
         }}},
         {"properties": {"event": {"const": "lifecycle.changed"}, "data": {"$ref": "./http.schema.json#/$defs/LifecycleStatus"}}}
       ]

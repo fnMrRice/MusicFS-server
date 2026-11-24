@@ -74,7 +74,7 @@ func TestScanScriptWaitsAcrossIdleConnectionAndReconnect(t *testing.T) {
 			return
 		}
 		if connected.Add(1) == 1 {
-			if !send(`{"type":"event","event":"activity.changed","data":{"resources":["tasks"]}}`) {
+			if !send(`{"type":"event","event":"activity.changed","data":{"resources":["pluginJobs"]}}`) {
 				return
 			}
 			// 两次心跳之间没有扫描变化，客户端必须保活且不能反复读取任务。

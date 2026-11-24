@@ -10,6 +10,7 @@ import (
 )
 
 func (s *Server) RegisterOnlineDownloadJobs(service *downloadjobs.Service) {
+	service.OnChange(s.notifyDownload)
 	const maxBody = 2 << 20
 	s.registerBounded("POST /api/v1/online-instances/{id}/download-jobs", true, true, s.options.ControlTimeout, maxBody, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		if _, err := onlineQuery(r); err != nil {

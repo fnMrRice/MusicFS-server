@@ -29,7 +29,7 @@ func (s *Service) automationWorker(ctx context.Context, repo enrichment.Automati
 		}
 		if err == nil && !waiting {
 			if w.Reason == "refreshMetadata" && s.OnRefreshChanged != nil {
-				s.OnRefreshChanged(w.Owner)
+				s.OnRefreshChanged(w.Owner, w.ScanJobID)
 			}
 			continue
 		}

@@ -14,7 +14,7 @@ import (
 
 type Service struct {
 	// OnChanged 在启动调度前设置，任务状态提交后通知当前用户。
-	OnChanged func(owner string, refreshMetadata bool)
+	OnChanged func(owner, jobID string, refreshMetadata bool)
 
 	repo     Repository
 	handlers map[string]Handler
@@ -65,7 +65,7 @@ func (s *Service) UpdateProgress(ctx context.Context, job Job, observed int) err
 }
 func (s *Service) changed(job Job) {
 	if s.OnChanged != nil {
-		s.OnChanged(job.Owner, job.Plan.RefreshMetadata)
+		s.OnChanged(job.Owner, job.ID, job.Plan.RefreshMetadata)
 	}
 }
 func (s *Service) ScanStatus(ctx context.Context, user, provider string) (ScanStatus, error) {

@@ -36,7 +36,7 @@ Server 在每次心跳和命令时重新核验登录会话；登录过期或被�
 {"type":"request","id":"status-01","method":"GET","path":"/lifecycle"}
 ```
 
-`path` 从 `/playback/sessions` 或 `/lifecycle` 开始，不包含 `/api/v1` 前缀、主机、查询串、片段或百分号编码。`body` 满足对应业务请求的完整 Schema；`body` 和 `idempotencyKey` 仅在对应操作需要时提供。
+`path` 使用下表中的路径，不包含 `/api/v1` 前缀、主机、查询串、片段或百分号编码。`body` 满足对应业务请求的完整 Schema；`body` 和 `idempotencyKey` 仅在对应操作需要时提供。
 
 | method / path | 语义 |
 | --- | --- |
@@ -49,6 +49,7 @@ Server 在每次心跳和命令时重新核验登录会话；登录过期或被�
 | `POST /lifecycle/leases` | 创建本机客户端租约 |
 | `POST /lifecycle/leases/{id}/renew` | 显式续租 |
 | `POST /lifecycle/leases/{id}/release` | 显式释放租约 |
+| `POST /tasks/subscription` | 为本连接订阅目录刷新任务队列，新的订阅替换原范围 |
 
 Server 返回 `{type:"response",id,status,body?}`，`id` 对应原请求，`status` 和 `body` 复用对应 HTTP 状态及 JSON 正文；无正文的成功响应可省略 `body`。错误正文沿用 `code/message/requestId/retryAfter`。播放请求仍检查当前用户、会话、资产与 `attemptId`；同一播放会话的 seek/recover 串行执行，迟到结果不得覆盖较新的尝试。
 
@@ -67,13 +68,12 @@ Server 返回 `{type:"response",id,status,body?}`，`id` 对应原请求，`stat
 `activity.changed` 通知客户端按需重新读取已打开的视图。服务端按连接合并一秒内的变化，一项资源在同一条消息中只出现一次。例如：
 
 ```json
-{"type":"event","event":"activity.changed","data":{"resources":["scans","tasks"]}}
+{"type":"event","event":"activity.changed","data":{"resources":["scans","pluginJobs"]}}
 ```
 
 | 资源 | 通知范围 |
 | --- | --- |
 | `scans` | 本人的来源扫描状态、进度及其元数据刷新结果 |
-| `tasks` | 目录刷新队列，含扫描、逐曲元数据处理和取消收尾。管理员也可收到其他用户的队列变化提示 |
 | `pluginJobs` | 本人的插件设置页后台任务进度 |
 | `playlistSync` | 本人的远程歌单同步任务状态 |
 
@@ -82,6 +82,19 @@ Server 返回 `{type:"response",id,status,body?}`，`id` 对应原请求，`stat
 实际 loopback 连接还接收 `lifecycle.changed`，`data` 为当前 `LifecycleStatus`，含实例、启动模式、状态、活动租约数与停机原因。首连发送当前快照，此后每秒采样变化；不列出其他会话的租约详情。停机通知尽力发送，不保证在连接关闭前送达；最终状态以连接状态和重新发现后的权威状态为准。
 
 原 `/events` SSE 入口由本通道替代，不维护两套通知传输。状态通知用于促使客户端更新视图，权威业务状态和授权检查仍由对应服务负责。
+
+## 任务队列订阅
+
+每次收到 `ready` 或切换查询范围时，客户端发送以下请求并使用新的 `subscriptionId`。普通用户可选择 `mine`，管理员也可选择 `all`。服务端先返回 204，再推送首个 `tasks.snapshot`。
+
+```json
+{"type":"request","id":"request-one","method":"POST","path":"/tasks/subscription","body":{"subscriptionId":"subscription-one","scope":"mine"}}
+{"type":"event","event":"tasks.snapshot","data":{"subscriptionId":"subscription-one","page":{"items":[],"activeCount":0,"nextCursor":null},"changed":[],"reset":true}}
+```
+
+`page` 直接提供当前范围的首屏（最多 50 条）、下一页游标及全部活动任务数。任务提交、进度和终态变化均触发推送；空闲时不会读取任务列表。每个连接最多每秒生成一次快照，详情在发送前按订阅范围读取。界面使用 `page` 更新列表和徽标，并用 `changed` 按编号更新已加载历史页中发生变化的记录。新任务进入首屏时，保留被挤出首屏且已显示的历史行。
+
+用户加载更多时用 `GET /tasks` 游标分页。`reset: true` 表示须重新核对已加载的历史页，首屏可直接采用快照。初次订阅、重连、积累超过 200 个不同任务变更或增量过大时发送重置快照。历史页读取期间到达的推送仍按顺序应用。客户端按 `subscriptionId` 丢弃旧范围的迟到数据。断开连接即释放订阅；任务读取失败时连接关闭，重连后可得到最新快照。
 
 ## 本地租约
 
@@ -96,3 +109,9 @@ Server 返回 `{type:"response",id,status,body?}`，`id` 对应原请求，`stat
 同一连接分别维护播放控制和生命周期命令两条队列，各最多等待 8 条，由独立工作协程处理。每条队列内部顺序执行；慢播放创建或恢复不会阻塞续租，客户端必须按响应 id 关联结果，不能假定跨队列响应按发送顺序返回。状态通知独立产生，响应与通知共用最多 32 条的出站队列；队列饱和时关闭连接，重连后重新读取权威状态。
 
 首帧鉴权限 5 秒，写入限 5 秒。业务请求从服务端读取并受理消息时起共限 15 秒，包含排队和执行；排队期间已过期的命令不进入业务处理，不为出队后的执行重置期限。客户端应及时读取响应与通知，不能无限积压。业务请求超时或连接中断不保证操作未发生；未确认结果前不得盲用旧 attemptId 执行下一次修改。
+
+## 在线歌单下载进度
+
+控制连接按任务合并一秒内的下载变化，向任务所属用户的已鉴权连接发送 `downloads.progress`。`data.jobs` 包含各任务的最新 `OnlineDownloadSummary`，可直接显示状态、总曲目数、成功数与失败数。`data.invalidated` 列出已过期或调度器发生存储故障的任务 ID，客户端按需补读获得具体结果。
+
+首次打开和重连后，客户端使用 `GET /online-download-jobs/{jobId}?view=summary` 补齐已关注的任务。逐曲结果较大，仅在展开明细时读取。控制通道不传输逐曲结果。

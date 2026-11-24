@@ -34,6 +34,20 @@ type Service struct {
 	pending    []*entry
 	items      int
 	fault      error
+	onChange   func(owner string, job Summary, invalidated bool)
+}
+
+// OnChange 在任务提交、进度落盘或结果失效时发出通知。回调只应记录变化，不应回读任务。
+func (s *Service) OnChange(fn func(owner string, job Summary, invalidated bool)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.onChange = fn
+}
+
+func (s *Service) notify(e *entry, invalidated bool) {
+	if s.onChange != nil {
+		s.onChange(e.Operation.Owner, e.Summary, invalidated)
+	}
 }
 
 func Open(ctx context.Context, dir string, source Source, cache Cache) (*Service, error) {
@@ -108,6 +122,7 @@ func (s *Service) Submit(ctx context.Context, owner, instance, key string, reque
 	s.operations[op] = e
 	s.items += e.Total
 	s.pending = append(s.pending, e)
+	s.notify(e, false)
 	select {
 	case s.wake <- struct{}{}:
 	default:
@@ -158,6 +173,7 @@ func (s *Service) expire() {
 		delete(s.jobs, id)
 		delete(s.operations, e.Operation)
 		s.items -= e.Total
+		s.notify(e, true)
 	}
 }
 
@@ -172,7 +188,10 @@ func (s *Service) run() {
 			e = s.pending[0]
 			s.pending[0] = nil
 			s.pending = s.pending[1:]
-			e.State = "running"
+			if e.State != "running" {
+				e.State = "running"
+				s.notify(e, false)
+			}
 		}
 		s.mu.Unlock()
 		if e == nil {
@@ -188,6 +207,11 @@ func (s *Service) run() {
 		if err := s.execute(e); err != nil {
 			s.mu.Lock()
 			s.fault = err
+			for _, job := range s.jobs {
+				if job.next() < job.Total {
+					s.notify(job, true)
+				}
+			}
 			s.mu.Unlock()
 			slog.Error("Online download checkpoint failed", "jobId", e.ID, "error", err)
 			return

@@ -82,6 +82,10 @@ func (c *controlConnection) readLoop() {
 				_ = c.conn.Close(websocket.StatusPolicyViolation, "Duplicate pending request ID")
 				return
 			}
+			if request.Path == "/tasks/subscription" {
+				c.configureTaskSubscription(request)
+				continue
+			}
 			queue := c.jobs
 			if strings.HasPrefix(request.Path, "/lifecycle") {
 				// 生命周期独立排队，播放准备耗时不能饿死租约续租。

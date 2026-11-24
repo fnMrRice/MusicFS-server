@@ -18,6 +18,7 @@ type tasksAPI interface {
 }
 
 func (s *Server) RegisterTasks(service tasksAPI) {
+	s.control.tasks = service
 	s.Handle("GET /api/v1/tasks", true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		owner, err := taskScope(r, session, true)
 		if err != nil {
@@ -36,7 +37,7 @@ func (s *Server) RegisterTasks(service tasksAPI) {
 			return err
 		}
 		for i := range page.Items {
-			taskErrorID(&page.Items[i], r)
+			taskErrorID(&page.Items[i], RequestID(r))
 		}
 		return WriteJSON(w, http.StatusOK, page)
 	})
@@ -49,7 +50,7 @@ func (s *Server) RegisterTasks(service tasksAPI) {
 		if err != nil {
 			return err
 		}
-		taskErrorID(&task, r)
+		taskErrorID(&task, RequestID(r))
 		return WriteJSON(w, http.StatusOK, task)
 	})
 	s.Handle("POST /api/v1/tasks/{id}/cancel", true, true, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
@@ -64,7 +65,7 @@ func (s *Server) RegisterTasks(service tasksAPI) {
 		if err != nil {
 			return err
 		}
-		taskErrorID(&task, r)
+		taskErrorID(&task, RequestID(r))
 		return WriteJSON(w, http.StatusOK, task)
 	})
 }
@@ -82,7 +83,11 @@ func taskScope(r *http.Request, session auth.Session, list bool) (string, error)
 	if len(query.Get("cursor")) > 256 {
 		return "", domain.Fail("INVALID_ARGUMENT", "Invalid task cursor")
 	}
-	switch query.Get("scope") {
+	return taskOwner(query.Get("scope"), session)
+}
+
+func taskOwner(scope string, session auth.Session) (string, error) {
+	switch scope {
 	case "", "mine":
 		return session.User.ID, nil
 	case "all":
@@ -95,10 +100,10 @@ func taskScope(r *http.Request, session auth.Session, list bool) (string, error)
 	}
 }
 
-func taskErrorID(task *tasks.Task, r *http.Request) {
+func taskErrorID(task *tasks.Task, requestID string) {
 	if task.Error != nil {
 		detail := *task.Error
-		detail.RequestID = RequestID(r)
+		detail.RequestID = requestID
 		task.Error = &detail
 	}
 }

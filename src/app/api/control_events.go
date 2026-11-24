@@ -50,7 +50,7 @@ func (c *controlConnection) eventLoop() {
 			c.send(controlEvent{Type: "event", Event: "capabilities.changed", Data: event})
 		case <-tick.C:
 			publishLifecycle()
-			if !c.publishActivity() {
+			if !c.publishActivity() || !c.publishDownloads() {
 				c.cancel()
 				return
 			}
