@@ -32,10 +32,10 @@ func (p membershipFields) tier() string {
 }
 
 func (c *Client) membershipTier(ctx context.Context, id string, profile membershipFields) string {
-	if len(profile.VIPType) > 0 && string(profile.VIPType) != "null" {
-		return profile.tier()
+	if tier := profile.tier(); tier != "" {
+		return tier
 	}
-	// 登录接口省略该字段时，在本次校验的时间预算内读取同一账号的官方公开资料。
+	// 登录接口缺少可识别的标志时，在本次校验的时间预算内读取同一账号的官方公开资料。
 	// 为主请求预留完成时间，资料查询失败时仍保留已验证的账号身份。
 	budget := 3 * time.Second
 	if deadline, ok := ctx.Deadline(); ok {
