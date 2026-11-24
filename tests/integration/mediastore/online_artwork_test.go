@@ -183,37 +183,59 @@ func TestOnlineArtworkAcceptsNetEaseJPEGContentType(t *testing.T) {
 	if err := f.store.BindMusicSourcePlugins(ctx, map[string]string{"net": pluginproto.OnlinePluginID(online.Netease)}); err != nil {
 		t.Fatal(err)
 	}
-	var fixture bytes.Buffer
-	if err := jpeg.Encode(&fixture, image.NewRGBA(image.Rect(0, 0, 13, 21)), nil); err != nil {
+	imageData := image.NewRGBA(image.Rect(0, 0, 13, 21))
+	var jpg, pngFile bytes.Buffer
+	if err := jpeg.Encode(&jpg, imageData, nil); err != nil {
 		t.Fatal(err)
 	}
-	data := fixture.Bytes()
-	if path := os.Getenv("MUSICFS_TEST_NETEASE_JPEG"); path != "" {
-		var err error
-		data, err = os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-	raw := "https://p1.music.126.net/album/cover.jpg"
-	track, err := f.store.PublishOnlineTrack(ctx, "admin", "net", online.Track{ExternalID: "27965255", Title: "18 Years", Artists: []string{}, CoverURL: &raw})
-	if err != nil {
+	if err := png.Encode(&pngFile, imageData); err != nil {
 		t.Fatal(err)
 	}
-	s := onlineartwork.New(artTracks{f}, &artProvider{}, f.service, artTransport(func(_ *http.Request) (*http.Response, error) {
-		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"image/jpg"}}, Body: io.NopCloser(bytes.NewReader(data))}, nil
-	}))
-	object, body, err := s.Open(ctx, "admin", track.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer body.Close()
-	actual, err := io.ReadAll(body)
-	if err != nil || !bytes.Equal(actual, data) || object.MIME != "image/jpeg" || object.Width < 1 || object.Height < 1 {
-		t.Fatalf("NetEase JPEG response was not validated and cached: %v", err)
-	}
-	current, err := f.store.FindTrack(ctx, "admin", track.ID)
-	if err != nil || current.CoverObjectID == nil || *current.CoverObjectID != object.ID {
-		t.Fatal("JPEG not selected for the imported source", err)
+	for _, tc := range []struct {
+		id, name, env, expected string
+		data                    []byte
+	}{
+		{"27965255", "jpeg alias", "MUSICFS_TEST_NETEASE_JPEG", "image/jpeg", jpg.Bytes()},
+		{"1212320", "png declared as jpeg", "MUSICFS_TEST_NETEASE_MISLABELED_PNG", "image/png", pngFile.Bytes()},
+		{"1212321", "corrupt png declared as jpeg", "", "", pngFile.Bytes()[:len(pngFile.Bytes())/2]},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			data := tc.data
+			if path := os.Getenv(tc.env); tc.env != "" && path != "" {
+				var err error
+				data, err = os.ReadFile(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			raw := "https://p1.music.126.net/album/cover.jpg"
+			track, err := f.store.PublishOnlineTrack(ctx, "admin", "net", online.Track{ExternalID: tc.id, Title: "CDN fixture", Artists: []string{}, CoverURL: &raw})
+			if err != nil {
+				t.Fatal(err)
+			}
+			s := onlineartwork.New(artTracks{f}, &artProvider{}, f.service, artTransport(func(_ *http.Request) (*http.Response, error) {
+				return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"image/jpg; charset=UTF-8"}}, Body: io.NopCloser(bytes.NewReader(data))}, nil
+			}))
+			object, body, err := s.Open(ctx, "admin", track.ID)
+			if tc.expected == "" {
+				var failure *domain.Error
+				if !errors.As(err, &failure) || failure.Code != "UNSUPPORTED" {
+					t.Fatalf("invalid image accepted: %v", err)
+				}
+			} else {
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer body.Close()
+				actual, err := io.ReadAll(body)
+				if err != nil || !bytes.Equal(actual, data) || object.MIME != tc.expected || object.Width < 1 || object.Height < 1 {
+					t.Fatalf("wrong artwork representation: MIME=%q, error=%v", object.MIME, err)
+				}
+			}
+			current, err := f.store.FindTrack(ctx, "admin", track.ID)
+			if err != nil || tc.expected == "" && current.CoverObjectID != nil || tc.expected != "" && (current.CoverObjectID == nil || *current.CoverObjectID != object.ID) {
+				t.Fatal("incorrect selected cover", err)
+			}
+		})
 	}
 }

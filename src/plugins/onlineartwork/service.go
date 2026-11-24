@@ -4,7 +4,6 @@ package onlineartwork
 import (
 	"context"
 	"io"
-	"mime"
 	"net/http"
 	"sync"
 	"time"
@@ -129,12 +128,8 @@ func (s *Service) objectID(ctx context.Context, owner string, t library.Track) (
 		return "", domain.Fail("SOURCE_UNAVAILABLE", "Artwork is unavailable")
 	}
 	meta := mediastore.ContentMetadata{Target: selection.Target, Field: "artwork", Origin: mediastore.Origin{Kind: "import", InstanceID: t.ProviderID, CandidateID: t.ExternalID}}
-	declared := resp.Header.Get("Content-Type")
-	// 网易云 CDN 对部分 JPEG 声明 image/jpg，媒体库仍会检测文件头并完整解码图片。
-	if mediaType, _, parseErr := mime.ParseMediaType(declared); parseErr == nil && mediaType == "image/jpg" {
-		declared = "image/jpeg"
-	}
-	object, err := s.media.UploadBackground(ctx, owner, meta, declared, domain.NewID(), resp.Body)
+	// 网易云部分 .jpg 地址实际提供 PNG。媒体库按完整解码结果确定格式，并限制字节数和像素数。
+	object, err := s.media.UploadBackground(ctx, owner, meta, "", domain.NewID(), resp.Body)
 	if err != nil {
 		return "", err
 	}
