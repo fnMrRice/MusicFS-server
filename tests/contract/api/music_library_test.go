@@ -44,6 +44,9 @@ func TestMusicLibraryMetadataWithoutSource(t *testing.T) {
 	var track, replay music.Track
 	call("POST", "tracks", in, "create-track-one", 201, &track)
 	call("POST", "tracks", in, "create-track-one", 201, &replay)
+	if len(track.AlbumIDs) != 1 || track.AlbumIDs[0] != a.ID {
+		t.Fatal("missing album membership", track.AlbumIDs)
+	}
 	if track.ID != replay.ID || track.SelectedSource != nil || len(track.Sources) != 0 || len(track.Artists) != 1 || len(track.Albums) != 1 || track.Rating == nil || *track.Rating != 4 {
 		t.Fatalf("unexpected track: %+v", track)
 	}

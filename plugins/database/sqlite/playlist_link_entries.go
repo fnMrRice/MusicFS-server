@@ -47,7 +47,7 @@ func queuePlaylistSources(ctx context.Context, tx *sql.Tx, owner, playlistID str
 		}
 	}
 	// 自动选源沿用曲库的人工默认、可用性和音质顺序，批量读取涉及的曲目。
-	if err := loadMusicRelations(ctx, tx, owner, tracks, false); err != nil {
+	if err := loadMusicRelations(ctx, tx, owner, tracks, false, albumContext{}); err != nil {
 		return err
 	}
 	for _, t := range tracks {

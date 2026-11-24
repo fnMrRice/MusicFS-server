@@ -98,7 +98,7 @@ func (s *Store) PersonalCollection(ctx context.Context, owner, kind, cursor stri
 	if err != nil {
 		return page, err
 	}
-	if err = loadMusicRelations(ctx, tx, owner, tracks, false); err != nil {
+	if err = loadMusicRelations(ctx, tx, owner, tracks, false, albumContext{}); err != nil {
 		return page, err
 	}
 	for i, pos := range trackPositions {

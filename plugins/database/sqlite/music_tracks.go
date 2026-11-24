@@ -29,7 +29,7 @@ const musicTrackColumns = "m.id,m.title,m.localized_titles,m.cover_path,m.genre,
 type musicScanner interface{ Scan(...any) error }
 
 func scanMusicTrack(row musicScanner, extra ...any) (music.Track, error) {
-	t := music.Track{Artists: []music.Artist{}, Albums: []music.Album{}, Sources: []music.Source{}}
+	t := music.Track{Artists: []music.Artist{}, Albums: []music.Album{}, AlbumIDs: []string{}, Sources: []music.Source{}}
 	var titles []byte
 	fields := []any{&t.ID, &t.Title, &titles, &t.CoverPath, &t.Genre, &t.Year, &t.Rating, &t.Revision, &t.CreatedAt, &t.UpdatedAt}
 	if err := row.Scan(append(fields, extra...)...); err != nil {
@@ -135,13 +135,17 @@ func (s *Store) MusicTracks(ctx context.Context, owner string, q music.Query) (m
 		next := base64.RawURLEncoding.EncodeToString([]byte(page.Items[q.Limit-1].ID)) + "." + scope
 		page.NextAfter = &next
 	}
-	if err = loadMusicRelations(ctx, tx, owner, page.Items, true); err != nil {
+	if err = loadMusicRelations(ctx, tx, owner, page.Items, true, albumContext{q.AlbumID, q.ProviderID}); err != nil {
 		return page, err
 	}
 	return page, tx.Commit()
 }
 
 func readMusicTrack(ctx context.Context, tx *sql.Tx, owner, id string) (music.Track, error) {
+	return readMusicTrackInScope(ctx, tx, owner, id, albumContext{})
+}
+
+func readMusicTrackInScope(ctx context.Context, tx *sql.Tx, owner, id string, scope albumContext) (music.Track, error) {
 	t, err := scanMusicTrack(tx.QueryRowContext(ctx, "SELECT "+musicTrackColumns+" FROM music_tracks m WHERE m.owner=? AND m.id=?", owner, id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return t, domain.Fail("NOT_FOUND", "Music track not found")
@@ -150,7 +154,7 @@ func readMusicTrack(ctx context.Context, tx *sql.Tx, owner, id string) (music.Tr
 		return t, err
 	}
 	items := []music.Track{t}
-	err = loadMusicRelations(ctx, tx, owner, items, false)
+	err = loadMusicRelations(ctx, tx, owner, items, false, scope)
 	return items[0], err
 }
 
@@ -188,15 +192,15 @@ func (s *Store) MusicTrackForSource(ctx context.Context, owner, source string) (
 		return music.Track{}, err
 	}
 	defer tx.Rollback()
-	var id string
-	err = tx.QueryRowContext(ctx, "SELECT track_id FROM music_sources WHERE owner=? AND id=?", owner, source).Scan(&id)
+	var id, provider string
+	err = tx.QueryRowContext(ctx, "SELECT track_id,provider_instance_id FROM music_sources WHERE owner=? AND id=?", owner, source).Scan(&id, &provider)
 	if errors.Is(err, sql.ErrNoRows) {
 		return music.Track{}, domain.Fail("NOT_FOUND", "Music source not found")
 	}
 	if err != nil {
 		return music.Track{}, err
 	}
-	track, err := readMusicTrack(ctx, tx, owner, id)
+	track, err := readMusicTrackInScope(ctx, tx, owner, id, albumContext{providerID: provider})
 	if err != nil {
 		return track, err
 	}

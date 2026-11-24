@@ -82,14 +82,14 @@ func (s *Store) MergeMusicAlbumTracks(ctx context.Context, owner, albumID string
 		if err := rememberAlbumMergeSlots(ctx, tx, id, target.ID, in); err != nil {
 			return music.Track{}, err
 		}
-		// 将受影响的其它专辑也纳入修订范围，它们的成员会在同一事务改指主曲目。
+		// 按完整成员关系更新修订，包括曲目行折叠显示的来源标签。
 		albumIDs := map[string]bool{id: true}
-		for _, a := range target.Albums {
-			albumIDs[a.ID] = true
+		for _, a := range target.AlbumIDs {
+			albumIDs[a] = true
 		}
 		for _, donor := range donors {
-			for _, a := range donor.Albums {
-				albumIDs[a.ID] = true
+			for _, a := range donor.AlbumIDs {
+				albumIDs[a] = true
 			}
 			if in.Metadata == nil {
 				if err := mergeTrackTitles(&target, donor); err != nil {
@@ -127,7 +127,7 @@ func (s *Store) MergeMusicAlbumTracks(ctx context.Context, owner, albumID string
 				return music.Track{}, err
 			}
 		}
-		return readMusicTrack(ctx, tx, owner, target.ID)
+		return readMusicTrackInScope(ctx, tx, owner, target.ID, albumContext{albumID: id})
 	})
 }
 

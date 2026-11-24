@@ -69,6 +69,7 @@ type Track struct {
 	Revision       int64          `json:"revision"`
 	Artists        []Artist       `json:"artists"`
 	Albums         []Album        `json:"albums"`
+	AlbumIDs       []string       `json:"albumIds"`
 	Sources        []Source       `json:"sources"`
 	SelectedSource *library.Track `json:"selectedSource"`
 	CreatedAt      string         `json:"createdAt"`

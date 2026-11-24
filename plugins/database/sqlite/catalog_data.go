@@ -246,30 +246,42 @@ func populateCatalogMusicRelations(ctx context.Context, tx *sql.Tx, owner string
 	}
 	raw, _ := json.Marshal(ids)
 	bytes := 0
-	return musicRows(ctx, tx, `WITH selected AS (
+	tagProviders := map[string]string{}
+	err := musicRows(ctx, tx, `WITH selected AS (
  SELECT id,owner,track_id FROM music_sources WHERE owner=? AND id IN (SELECT value FROM json_each(?))
 ), relations AS (
- SELECT s.id AS source_id,'artist' AS kind,a.id,a.name,x.position FROM selected s
+ SELECT s.id AS source_id,'artist' AS kind,a.id,a.name,x.position,'' AS tag_provider FROM selected s
  JOIN music_track_artists x ON x.track_id=s.track_id JOIN music_artists a ON a.owner=s.owner AND a.id=x.artist_id
  UNION ALL
- SELECT s.id,'album',a.id,a.name,0 FROM selected s
+ SELECT s.id,'album',a.id,a.name,0,`+passiveAlbumProvider+` FROM selected s
  JOIN music_album_tracks x ON x.track_id=s.track_id JOIN music_albums a ON a.owner=s.owner AND a.id=x.album_id
  WHERE `+ordinaryMusicAlbumMetadata+`
-) SELECT source_id,kind,id,name FROM relations ORDER BY source_id,kind,position,name COLLATE NOCASE,id`, func(rows *sql.Rows) error {
-		var sourceID, kind, id, name string
-		if err := rows.Scan(&sourceID, &kind, &id, &name); err != nil {
+) SELECT source_id,kind,id,name,tag_provider FROM relations ORDER BY source_id,kind,position,name COLLATE NOCASE,id`, func(rows *sql.Rows) error {
+		var sourceID, kind, id, name, tagProvider string
+		if err := rows.Scan(&sourceID, &kind, &id, &name, &tagProvider); err != nil {
 			return err
 		}
-		bytes += 64 + len(id) + len(name)
+		bytes += 64 + len(id) + len(name) + len(tagProvider)
 		if bytes > catalog.MaxSnapshotBytes {
 			return domain.Fail("RATE_LIMITED", "Catalog track relations exceed their resource budget")
 		}
 		track := bySource[sourceID]
 		if kind == "album" {
 			track.Albums = append(track.Albums, catalog.MusicAlbumRef{ID: id, Name: name})
+			tagProviders[id] = tagProvider
 		} else {
 			track.CatalogArtists = append(track.CatalogArtists, catalog.MusicArtistRef{ID: id, Name: name})
 		}
 		return nil
 	}, owner, string(raw))
+	if err != nil {
+		return err
+	}
+	for i := range tracks {
+		track := &tracks[i]
+		track.Albums = displayAlbums(track.Albums, albumContext{providerID: track.ProviderID}, func(a catalog.MusicAlbumRef) albumCredit {
+			return albumCredit{a.ID, a.Name, tagProviders[a.ID]}
+		})
+	}
+	return nil
 }

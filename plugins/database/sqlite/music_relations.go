@@ -41,7 +41,7 @@ func albumFields(a *music.Album) []any {
 	return []any{&a.ID, &a.Name, &a.ExternalID, &a.IsExternal, &a.CoverPath, &a.Publisher, &a.ReleaseDate, albumLinksColumn{&a.SourceLinks}, &a.OriginalName, &a.Revision}
 }
 
-func loadMusicRelations(ctx context.Context, tx *sql.Tx, owner string, items []music.Track, ordinary bool) error {
+func loadMusicRelations(ctx context.Context, tx *sql.Tx, owner string, items []music.Track, ordinary bool, scope albumContext) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -69,14 +69,17 @@ func loadMusicRelations(ctx context.Context, tx *sql.Tx, owner string, items []m
 	if ordinary {
 		albumFilter = " AND " + ordinaryMusicAlbumMetadata
 	}
-	err = musicRows(ctx, tx, `SELECT x.track_id,`+albumColumns+` FROM music_album_tracks x JOIN music_albums a ON a.id=x.album_id
+	tagProviders := map[string]string{}
+	err = musicRows(ctx, tx, `SELECT x.track_id,`+passiveAlbumProvider+`,`+albumColumns+` FROM music_album_tracks x JOIN music_albums a ON a.id=x.album_id
  WHERE a.owner=? AND x.track_id IN(SELECT value FROM json_each(?))`+albumFilter+` ORDER BY x.track_id,a.name COLLATE NOCASE,a.id`, func(r *sql.Rows) error {
-		var id string
+		var id, tagProvider string
 		var a music.Album
-		if err := r.Scan(append([]any{&id}, albumFields(&a)...)...); err != nil {
+		if err := r.Scan(append([]any{&id, &tagProvider}, albumFields(&a)...)...); err != nil {
 			return err
 		}
 		byID[id].Albums = append(byID[id].Albums, a)
+		byID[id].AlbumIDs = append(byID[id].AlbumIDs, a.ID)
+		tagProviders[a.ID] = tagProvider
 		return nil
 	}, owner, string(raw))
 	if err != nil {
@@ -84,6 +87,10 @@ func loadMusicRelations(ctx context.Context, tx *sql.Tx, owner string, items []m
 	}
 	albumCovers := []*music.Album{}
 	for i := range items {
+		track := &items[i]
+		track.Albums = displayAlbums(track.Albums, scope, func(a music.Album) albumCredit {
+			return albumCredit{a.ID, a.Name, tagProviders[a.ID]}
+		})
 		for j := range items[i].Albums {
 			albumCovers = append(albumCovers, &items[i].Albums[j])
 		}

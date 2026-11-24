@@ -56,7 +56,7 @@ definitions = {
     "MusicSource": obj(source),
     "MusicTrack": obj({
         "trackId": id_schema, **track_fields, **created_updated, "revision": positive,
-        "artists": array(ref("MusicArtist")), "albums": array(ref("MusicAlbum")),
+        "artists": array(ref("MusicArtist")), "albums": array(ref("MusicAlbum")), "albumIds": array(id_schema, uniqueItems=True),
         "sources": array(ref("MusicSource")), "selectedSource": nullable(ref("SourceTrack")),
     }),
     "CreateMusicTrack": input_object(track_input, ["title"]),
