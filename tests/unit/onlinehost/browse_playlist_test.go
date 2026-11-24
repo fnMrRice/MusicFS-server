@@ -14,12 +14,14 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/onlinehost"
 )
 
 type playlistDetailProvider struct {
 	observedPlaylist
 	account                   string
+	extraMember               string
 	observeCalls, metaCalls   atomic.Int32
 	fail                      bool
 	started, resume, sessions chan struct{}
@@ -54,8 +56,58 @@ func (p *playlistDetailProvider) ObservePlaylist(ctx context.Context, id string)
 	count := int64(3)
 	playlist := online.Playlist{ExternalID: id, Title: fmt.Sprintf("%s-%d", p.account, n), TrackCount: &count, SourceURL: "https://music.163.com/playlist?id=" + id}
 	entries := []online.PlaylistEntry{{Position: 0, ExternalTrackID: "41"}, {Position: 1, ExternalTrackID: "42"}, {Position: 2, ExternalTrackID: "41"}}
+	if p.extraMember != "" {
+		entries = append(entries, online.PlaylistEntry{Position: len(entries), ExternalTrackID: p.extraMember})
+		count++
+	}
 	return online.PlaylistObservation{Playlist: playlist, Entries: entries, Complete: true, Consistency: online.Unversioned,
 		MetadataDigest: online.PlaylistDigest(playlist, entries), ObservedAt: time.Now().UTC()}, nil
+}
+
+func (p *playlistDetailProvider) Playlists(context.Context, online.PlaylistsRequest) (online.PlaylistsPage, error) {
+	count := int64(3)
+	if p.extraMember != "" {
+		count++
+	}
+	return online.PlaylistsPage{Consistency: online.Unversioned, ObservedAt: time.Now().UTC(),
+		Items: []online.Playlist{{ExternalID: "91", Title: "Favorites", TrackCount: &count}}}, nil
+}
+
+func TestManualSyncReadsNewPlaylistMembersAndRefreshesBrowsePages(t *testing.T) {
+	ctx := t.Context()
+	provider := &playlistDetailProvider{account: "123"}
+	host := detailHost(t, t.TempDir(), provider)
+	directory := func(want int64) {
+		t.Helper()
+		page, err := host.BrowsePlaylists(ctx, "owner", "net", online.PlaylistsRequest{Limit: 10}, false)
+		if err != nil || len(page.Items) != 1 || page.Items[0].TrackCount == nil || *page.Items[0].TrackCount != want {
+			t.Fatalf("unexpected playlist count: %+v, %v", page, err)
+		}
+	}
+	directory(3)
+	request := online.PlaylistTracksRequest{ExternalID: "91", Limit: 2}
+	page, err := host.BrowsePlaylistTracks(ctx, "owner", "net", request)
+	if err != nil || page.NextCursor == nil {
+		t.Fatalf("missing page of initial tracks: %+v, %v", page, err)
+	}
+	provider.extraMember = "43"
+	r := host.PlaylistRemote()
+	b, err := r.Authorize(ctx, "owner", playlists.RemoteRef{InstanceID: "net", AccountID: "123", ExternalID: "91"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	o, err := r.ObservePlaylist(ctx, "owner", b)
+	if err != nil || len(o.Entries) != 4 || len(o.Tracks) != 3 || o.Tracks[2].ExternalID != "43" {
+		t.Fatalf("sync missed new member: %+v, %v", o, err)
+	}
+	directory(4)
+	request.Cursor = *page.NextCursor
+	_, err = host.BrowsePlaylistTracks(ctx, "owner", "net", request)
+	requireDirectoryError(t, err, "CURSOR_EXPIRED")
+	page, err = host.BrowsePlaylistTracks(ctx, "owner", "net", online.PlaylistTracksRequest{ExternalID: "91", Limit: 10})
+	if err != nil || len(page.Items) != 4 || page.Items[3].ExternalID != "43" {
+		t.Fatalf("preview still uses the old song list: %+v, %v", page, err)
+	}
 }
 
 func (p *playlistDetailProvider) MetadataBatch(_ context.Context, ids []string) (online.TrackBatch, error) {

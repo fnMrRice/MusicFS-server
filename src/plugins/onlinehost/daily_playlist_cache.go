@@ -20,6 +20,25 @@ type dailyPlaylistCache struct {
 	active map[string]chan struct{}
 }
 
+func playlistCacheName(owner, instance, key string) string {
+	return online.Digest([]string{owner, instance, key}) + ".json"
+}
+
+// 与正在进行的浏览共用锁，防止旧请求在同步完成后重新写回旧的成员列表。
+func (c *dailyPlaylistCache) invalidate(ctx context.Context, owner, instance, key string) error {
+	name := playlistCacheName(owner, instance, key)
+	unlock, err := c.lock(ctx, name)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	err = os.Remove(filepath.Join(c.dir, name))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	return err
+}
+
 func WithPlaylistCache(dir string) func(*Service) {
 	return func(s *Service) {
 		s.playlistCache = &dailyPlaylistCache{dir: dir, active: make(map[string]chan struct{})}
@@ -93,7 +112,7 @@ func dailyPlaylistValue[T any](ctx context.Context, s *Service, owner, id, key s
 func cachedPlaylistValue[T any](ctx context.Context, s *Service, owner, id string, scope playlistScope, key, version string, refresh bool, fetch func(context.Context) (T, error)) (T, error) {
 	var empty T
 	c := s.playlistCache
-	name := online.Digest([]string{owner, id, key}) + ".json"
+	name := playlistCacheName(owner, id, key)
 	unlock, err := c.lock(ctx, name)
 	if err != nil {
 		return empty, err

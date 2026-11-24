@@ -11,11 +11,12 @@ import (
 
 type PlaylistLink struct {
 	RemoteRef
-	Platform      string `json:"platform"`
-	PlaylistID    string `json:"playlistId"`
-	JobID         string `json:"jobId,omitempty"`
-	PendingCount  int    `json:"pendingCount"`
-	LastErrorCode string `json:"lastErrorCode,omitempty"`
+	Platform         string `json:"platform"`
+	PlaylistID       string `json:"playlistId"`
+	RemotePlaylistID string `json:"remotePlaylistId,omitempty"`
+	JobID            string `json:"jobId,omitempty"`
+	PendingCount     int    `json:"pendingCount"`
+	LastErrorCode    string `json:"lastErrorCode,omitempty"`
 }
 
 type LinkAddition struct {

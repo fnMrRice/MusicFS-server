@@ -43,16 +43,36 @@ func TestPlaylistCatalogLinksMergeMembersOnceWithoutEcho(t *testing.T) {
 				target = playlistCreate(t, store, "owner", "Local", existing).ID
 			}
 			var revision int64
-			for i := range 2 {
-				link, err := store.LinkPlaylist(ctx, "owner", b, target)
-				if err != nil || link.JobID == "" {
-					t.Fatalf("missing sync job: %+v %v", link, err)
+			link, err := store.LinkPlaylist(ctx, "owner", b, target)
+			if err != nil || link.RemotePlaylistID == "" || link.JobID == "" {
+				t.Fatalf("missing linked playlist or sync job: %+v %v", link, err)
+			}
+			for i := range 3 {
+				expectedJob := link.JobID
+				if i > 0 {
+					listed, err := store.PlaylistLinks(ctx, "owner")
+					if err != nil || len(listed) != 1 || listed[0].RemotePlaylistID != link.RemotePlaylistID {
+						t.Fatalf("failed to resolve link: %+v %v", listed, err)
+					}
+					remote, err := store.RemotePlaylist(ctx, "owner", listed[0].RemotePlaylistID)
+					if err != nil {
+						t.Fatal(err)
+					}
+					sync, _, err := store.QueueRemoteSync(ctx, "owner", remote.ID, remote.BindingRevision, b, domain.NewID())
+					if err != nil {
+						t.Fatal(err)
+					}
+					expectedJob = sync.ID
 				}
 				job, err := store.ClaimRemoteSync(ctx)
-				if err != nil || job.ID != link.JobID {
+				if err != nil || job.ID != expectedJob {
 					t.Fatalf("wrong job: %+v %v", job, err)
 				}
-				o := remoteObservation(1000+int64(i), "b", "b", "a")
+				ids, wantMembers := []string{"b", "b", "a"}, 3
+				if i == 2 {
+					ids, wantMembers = append(ids, "new"), 4
+				}
+				o := remoteObservation(1000+int64(i), ids...)
 				missing := "NOT_FOUND"
 				o.Tracks[1].Track = nil
 				o.Tracks[1].ErrorCode = &missing
@@ -64,10 +84,10 @@ func TestPlaylistCatalogLinksMergeMembersOnceWithoutEcho(t *testing.T) {
 					t.Fatalf("playlist not published: %+v %v", p, err)
 				}
 				snap, err := store.PlaylistSnapshot(ctx, "owner", target, p.SnapshotRevision)
-				if err != nil || len(snap.Entries) != 3 {
+				if err != nil || len(snap.Entries) != wantMembers {
 					t.Fatalf("unexpected members: %+v %v", snap, err)
 				}
-				foundMetadata, foundMissing := false, false
+				foundMetadata, foundMissing, foundNew := false, false, false
 				for _, entry := range snap.Entries {
 					if entry.Source.TrackID == nil {
 						continue
@@ -82,11 +102,14 @@ func TestPlaylistCatalogLinksMergeMembersOnceWithoutEcho(t *testing.T) {
 					if track.Title == "a" && track.Sources[0].SourceID == "a" {
 						foundMissing = true
 					}
+					if track.Title == "Track new" && track.Sources[0].SourceID == "new" {
+						foundNew = true
+					}
 				}
-				if !foundMetadata || !foundMissing {
+				if !foundMetadata || !foundMissing || (i == 2) != foundNew {
 					t.Fatalf("metadata or unavailable member missing: %+v", snap)
 				}
-				if i > 0 && p.SnapshotRevision != revision {
+				if i == 1 && p.SnapshotRevision != revision {
 					t.Fatal("second sync changed identical playlist")
 				}
 				revision = p.SnapshotRevision

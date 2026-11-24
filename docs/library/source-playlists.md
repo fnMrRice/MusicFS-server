@@ -29,6 +29,10 @@
 
 服务端的 `GET /playlist-links` 查询已有的关联。`PUT` 和 `DELETE /online-instances/{id}/playlists/{externalId}/link` 分别用于关联和解除关联。向本地歌单添加在线浏览页面中的歌曲前，通过 `POST /online-instances/{id}/playlist-track-sources` 登记来源。请求和响应结构见 [OpenAPI](../contracts/openapi.yaml)。这些路径均以 `/api/v1` 为前缀。
 
+网易云歌单有更新时，可从「我的收藏」、关联的本地歌单详情或歌单管理中的关联项点击「立即同步」。服务端重新向平台读取歌单成员，分批获取曲目资料，读取完整后一起写入曲库和本地目标。重复同步会复用已有成员，手动加入本地的曲目也会保留。页面显示同步进度和结果；如果平台限流或读取失败，仍可使用现有列表，稍后可以再试。
+
+关联信息中的 `remotePlaylistId` 指向用于同步的远程歌单。Web 读取其当前绑定修订，调用 `POST /remote-playlists/{id}/sync-jobs`，并通过返回的任务编号跟踪完成状态。「刷新歌单」用于重新读取在线浏览结果。
+
 ## 当前范围与依据
 
 - 网易云插件新增本人创建/收藏歌单的账号列表，固定请求 `/api/user/playlist`，`uid` 取自插件内已校验账号。参数依据 [api-enhanced 固定版本的 user_playlist.js](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced/blob/2db6684453297ee86dec0492842f2320b08182d9/module/user_playlist.js)，请求复用当前已接入的账号 EAPI 通道。分页顺序来自上游，不声明稳定快照；总量上限 10000，超限明确报错，不伪装完整列表。

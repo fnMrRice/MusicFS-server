@@ -2,6 +2,7 @@ package onlinehost
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
@@ -135,6 +136,14 @@ func (p *playlistRemote) ObservePlaylist(ctx context.Context, owner string, bind
 			}
 		}
 		result.Tracks = append(result.Tracks, batch.Items...)
+	}
+	// 同步直接从平台读成员。让下一次浏览也更新曲目数、分页面和歌单详情。
+	if cache := p.host.playlistCache; cache != nil && binding.Platform == online.Netease {
+		for _, key := range []string{"playlist:" + binding.ExternalID, "account-playlists"} {
+			if err := cache.invalidate(ctx, owner, binding.InstanceID, key); err != nil && ctx.Err() == nil {
+				slog.WarnContext(ctx, "Could not invalidate playlist browse cache", "instanceId", binding.InstanceID, "error", err)
+			}
+		}
 	}
 	return result, nil
 }
