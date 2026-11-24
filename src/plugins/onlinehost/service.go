@@ -49,6 +49,7 @@ type Service struct {
 	mu                   sync.RWMutex
 	runtimes             []Runtime
 	slots                chan struct{}
+	accountSlots         chan struct{}
 }
 
 func New(runtimes []Runtime, options ...func(*Service)) (*Service, error) {
@@ -68,7 +69,7 @@ func New(runtimes []Runtime, options ...func(*Service)) (*Service, error) {
 		}
 		runtimes[i] = r
 	}
-	s := &Service{runtimes: runtimes, slots: make(chan struct{}, 4), audioAccounts: map[string]chan struct{}{}}
+	s := &Service{runtimes: runtimes, slots: make(chan struct{}, 4), accountSlots: make(chan struct{}, 4), audioAccounts: map[string]chan struct{}{}}
 	for _, configure := range options {
 		configure(s)
 	}
@@ -142,7 +143,7 @@ func ready(r Runtime) bool {
 	return true
 }
 
-func callControl[T any](ctx context.Context, s *Service, owner, id string, f func(context.Context, Runtime) (T, error)) (T, error) {
+func callControl[T any](ctx context.Context, s *Service, owner, id string, slots chan struct{}, f func(context.Context, Runtime) (T, error)) (T, error) {
 	var empty T
 	ctx, r, release, err := s.AcquireRuntime(ctx, owner, id)
 	if err != nil {
@@ -150,8 +151,8 @@ func callControl[T any](ctx context.Context, s *Service, owner, id string, f fun
 	}
 	defer release()
 	select {
-	case s.slots <- struct{}{}:
-		defer func() { <-s.slots }()
+	case slots <- struct{}{}:
+		defer func() { <-slots }()
 	default:
 		seconds := 1
 		return empty, &domain.Error{Code: "RATE_LIMITED", Message: "Online request capacity is exhausted", RetryAfter: &seconds}

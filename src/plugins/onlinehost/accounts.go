@@ -20,7 +20,7 @@ func (s *Service) OnPlaylistAccountReady(f func(context.Context, Runtime, string
 }
 
 func (s *Service) AccountOptions(ctx context.Context, owner, id string) (AccountOptions, error) {
-	return callControl(ctx, s, owner, id, func(ctx context.Context, r Runtime) (AccountOptions, error) {
+	return callControl(ctx, s, owner, id, s.accountSlots, func(ctx context.Context, r Runtime) (AccountOptions, error) {
 		if r.descriptor.Login == nil {
 			return AccountOptions{Method: "none", Configured: false, Validation: "notSupported"}, nil
 		}
@@ -38,7 +38,7 @@ func (s *Service) AccountOptions(ctx context.Context, owner, id string) (Account
 	})
 }
 func (s *Service) Account(ctx context.Context, owner, id string, request online.AccountRequest) (online.AccountView, error) {
-	return callControl(ctx, s, owner, id, func(ctx context.Context, r Runtime) (online.AccountView, error) {
+	return callControl(ctx, s, owner, id, s.accountSlots, func(ctx context.Context, r Runtime) (online.AccountView, error) {
 		if request.Action != "state" {
 			s.endAudioAccount(id)
 			defer s.endAudioAccount(id)

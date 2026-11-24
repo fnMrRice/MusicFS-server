@@ -35,7 +35,7 @@ func call[T any](ctx context.Context, s *Service, owner, id string, f func(conte
 }
 
 func callWithAccount[T any](ctx context.Context, s *Service, owner, id string, f func(context.Context, Runtime, online.AccountView) (T, error)) (T, error) {
-	return callControl(ctx, s, owner, id, func(ctx context.Context, r Runtime) (T, error) {
+	return callControl(ctx, s, owner, id, s.slots, func(ctx context.Context, r Runtime) (T, error) {
 		var empty T
 		before, err := platformSession(ctx, r)
 		if err != nil {

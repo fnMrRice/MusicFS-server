@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	onlineplugins "github.com/fnMrRice/MusicFS-server/plugins/source/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/onlinehost"
@@ -23,7 +24,7 @@ func (b *blocked) Search(ctx context.Context, _ online.SearchRequest) (online.Se
 }
 
 func TestOnlineOwnerCapacityAndCancellation(t *testing.T) {
-	p := &blocked{entered: make(chan struct{}, 4)}
+	p := &describedProvider{blocked: &blocked{entered: make(chan struct{}, 4)}, descriptor: onlineplugins.Describe(online.Netease)}
 	s, err := onlinehost.New([]onlinehost.Runtime{{Owner: "owner", InstanceID: "public", Name: "Public", Platform: online.Netease, ConfigRevision: "revision", Enabled: true, Provider: p}})
 	if err != nil {
 		t.Fatal(err)
@@ -46,6 +47,14 @@ func TestOnlineOwnerCapacityAndCancellation(t *testing.T) {
 	var detail *domain.Error
 	if !errors.As(err, &detail) || detail.Code != "RATE_LIMITED" || detail.RetryAfter == nil || *detail.RetryAfter != 1 {
 		t.Fatal("online capacity was not bounded", err)
+	}
+	state, err := s.Account(ctx, "owner", "public", online.AccountRequest{Action: "state"})
+	if err != nil || state.AccountID != "12345" {
+		t.Fatalf("metadata saturation blocked account state: %+v %v", state, err)
+	}
+	options, err := s.AccountOptions(ctx, "owner", "public")
+	if err != nil || !options.Configured || options.Method != "qr" {
+		t.Fatalf("metadata saturation blocked login options: %+v %v", options, err)
 	}
 	if _, err := s.Runtime(ctx, "other", "public", ""); !errors.As(err, &detail) || detail.Code != "NOT_FOUND" {
 		t.Fatal("owner bypass", err)
@@ -80,4 +89,12 @@ func TestOnlineTypedNilAndPrivateDescriptors(t *testing.T) {
 
 func (p *blocked) PlatformSession(context.Context) (online.AccountView, error) {
 	return online.AccountView{State: "signedIn", AccountID: "12345", Revision: "fixture-generation"}, nil
+}
+
+func (p *blocked) PlatformAccount(ctx context.Context, _ online.AccountRequest) (online.AccountView, error) {
+	return p.PlatformSession(ctx)
+}
+
+func (p *blocked) PlatformAccountOptions(context.Context) (online.AccountOptions, error) {
+	return online.AccountOptions{Method: "qr", Configured: true, Validation: "liveAccountPending"}, nil
 }
