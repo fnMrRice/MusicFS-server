@@ -3,6 +3,7 @@ package playback
 import (
 	"context"
 	"io"
+	"reflect"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
@@ -100,7 +101,7 @@ func (s *Service) networkReader(ctx context.Context, a *session) (io.ReadCloser,
 	if err != nil {
 		return nil, err
 	}
-	if audio.Validate() != nil || onlinecache.Key(n.scope, audio) != onlinecache.Key(n.scope, n.audio) {
+	if audio.Validate() != nil || !reflect.DeepEqual(audio, n.audio) {
 		return nil, domain.Fail("RESOURCE_CHANGED", "Online audio representation changed")
 	}
 	open := func(ctx context.Context) (pluginproto.OnlineAudio, io.ReadCloser, error) {

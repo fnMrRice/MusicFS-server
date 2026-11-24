@@ -32,7 +32,7 @@ func TestNeteasePlaybackQualityThroughWorker(t *testing.T) {
 					if q.Get("ids") != "[42]" || q.Get("level") != option.Value || (q.Get("immerseType") == "aac") != (option.Value == "sky") || !strings.Contains(r.Header.Get("Cookie"), "MUSIC_U=") {
 						t.Errorf("unexpected NetEase player request")
 					}
-					return audioJSON(fmt.Sprintf(`{"code":200,"data":[{"id":42,"code":200,"level":"standard","md5":"%s","type":"mp3","size":5,"br":128000,"url":"http://m8.music.126.net/example/song?token=test"}]}`, neteaseMediaMD5)), nil
+					return audioJSON(fmt.Sprintf(`{"code":200,"data":[{"id":42,"code":200,"level":"standard","md5":"%s","type":"mp3","size":5,"br":128000,"sr":48000,"url":"http://m8.music.126.net/example/song?token=test"}]}`, neteaseMediaMD5)), nil
 				}
 				if r.URL.Host != "m8.music.126.net" || r.URL.Scheme != "https" || r.Header.Get("Cookie") != "" {
 					t.Errorf("unexpected media request")
@@ -47,14 +47,14 @@ func TestNeteasePlaybackQualityThroughWorker(t *testing.T) {
 			if err := peer.Call(context.Background(), "provider.online.audioDescribe", request, &metadata); err != nil {
 				t.Fatal(err)
 			}
-			if metadata.Value.Quality != "standard" || metadata.Value.Version != neteaseMediaMD5 || metadata.Value.MIME != "audio/mpeg" {
+			if metadata.Value.Quality != "standard" || metadata.Value.Version != neteaseMediaMD5 || metadata.Value.MIME != "audio/mpeg" || metadata.Value.SampleRateHz != 48000 {
 				t.Fatalf("wrong delivered rendition: %+v", metadata.Value)
 			}
 			var opened pluginproto.OnlineResult[pluginproto.OnlineAudioOpened]
 			if err := peer.Call(context.Background(), "provider.online.audioOpen", request, &opened); err != nil {
 				t.Fatal(err)
 			}
-			if opened.Value.Audio.Quality != "standard" || opened.Value.Audio.Version != neteaseMediaMD5 {
+			if opened.Value.Audio.Quality != "standard" || opened.Value.Audio.Version != neteaseMediaMD5 || opened.Value.Audio.SampleRateHz != 48000 {
 				t.Fatalf("wrong streamed rendition: %+v", opened.Value)
 			}
 			var chunk pluginproto.OnlineResult[pluginproto.OnlineAudioChunk]

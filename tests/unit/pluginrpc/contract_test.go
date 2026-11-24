@@ -11,14 +11,14 @@ import (
 )
 
 func TestPersistenceContractFingerprints(t *testing.T) {
-	// 主库存储接口引用在线曲目元数据，其中包含可选的来源封面。
+	// 主库曲目和队列条目携带在线封面入口，原始平台地址只在服务端传递。
 	// 其余接口继续保留源码目录迁移前的指纹，目录调整不应改变协议身份。
 	for _, test := range []struct {
 		name     string
 		contract reflect.Type
 		want     string
 	}{
-		{"backend", reflect.TypeFor[storage.Backend](), "e7f61f529f1250a2d25870f9dd61a2377bf5e71af5b83eccc2fc28dbe569c9b1"},
+		{"backend", reflect.TypeFor[storage.Backend](), "3ee7e3accf50a3b6be034fcaa35c4394d065029fc428dd01444cbca575391dcf"},
 		{"maintenance", reflect.TypeFor[storage.Maintenance](), "c2b65a92a0386d7990000f825babaf527dfb541184711fca13d26cc5298fa013"},
 		{"plugin-state", reflect.TypeFor[plugindb.Backend](), "3585f631ae09e5d4694d439d5d2a72e5d8d2f30cf9b64ac2003dd674eb12c401"},
 	} {

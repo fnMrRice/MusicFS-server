@@ -80,7 +80,10 @@ func populateTrackCovers(ctx context.Context, query trackCoverQuery, owner strin
 	if err != nil {
 		return err
 	}
-	return populateRecordingTrackCovers(ctx, query, owner, tracks)
+	if err = populateRecordingTrackCovers(ctx, query, owner, tracks); err != nil {
+		return err
+	}
+	return populateOnlineCoverPaths(ctx, query, owner, byID, tracks)
 }
 
 func populatePageTrackCovers(ctx context.Context, query trackCoverQuery, owner string, page *library.Page) error {

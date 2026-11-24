@@ -12,7 +12,7 @@ import (
 func TestOnlineAudioWireContractsPreserveUnknownSizeAndBoundedChunks(t *testing.T) {
 	scope := pluginproto.Context{InstanceID: bilibiliContractInstance, UserID: "owner", TaskID: strings.Repeat("a", 48), TimeoutMs: 10000}
 	stream := strings.Repeat("b", 48)
-	audio := pluginproto.OnlineAudio{ExternalID: "audio:10", MIME: "audio/mp4", Codec: "aac", Container: "m4a", Quality: "lossless", Version: "media-1"}
+	audio := pluginproto.OnlineAudio{ExternalID: "audio:10", MIME: "audio/mp4", Codec: "aac", Container: "m4a", Quality: "lossless", Version: "media-1", SampleRateHz: 48000}
 	for _, size := range []int64{-1, 0, 4096, pluginproto.MaxOnlineAudioBytes} {
 		audio.SizeBytes = size
 		if err := audio.Validate(); err != nil {
@@ -39,6 +39,8 @@ func TestOnlineAudioWireContractsPreserveUnknownSizeAndBoundedChunks(t *testing.
 	for _, mutate := range []func(map[string]any){
 		func(v map[string]any) { v["sizeBytes"] = -2 },
 		func(v map[string]any) { v["sizeBytes"] = pluginproto.MaxOnlineAudioBytes + 1 },
+		func(v map[string]any) { v["sampleRateHz"] = 0 },
+		func(v map[string]any) { v["sampleRateHz"] = 1048576 },
 		func(v map[string]any) { v["mime"] = "video/mp4" },
 		func(v map[string]any) { v["codec"] = "mp3" },
 		func(v map[string]any) { v["version"] = "https://audio.example.invalid/signed" },

@@ -28,15 +28,16 @@ type SelectionRepository interface {
 
 // SelectionTrack 只包含本地播放队列需要的引用与展示信息。
 type SelectionTrack struct {
-	ID            string   `json:"sourceTrackId"`
-	ProviderID    string   `json:"providerInstanceId"`
-	DisplayName   string   `json:"displayName"`
-	Title         *string  `json:"title"`
-	Artists       []string `json:"artists"`
-	DurationMs    *int64   `json:"durationMs"`
-	Availability  string   `json:"availability"`
-	AssetID       string   `json:"assetId"`
-	CoverObjectID *string  `json:"coverObjectId,omitempty"`
+	ID              string   `json:"sourceTrackId"`
+	ProviderID      string   `json:"providerInstanceId"`
+	DisplayName     string   `json:"displayName"`
+	Title           *string  `json:"title"`
+	Artists         []string `json:"artists"`
+	DurationMs      *int64   `json:"durationMs"`
+	Availability    string   `json:"availability"`
+	AssetID         string   `json:"assetId"`
+	CoverObjectID   *string  `json:"coverObjectId,omitempty"`
+	OnlineCoverPath string   `json:"onlineCoverPath,omitempty"`
 }
 
 type TrackSelectionResult struct {

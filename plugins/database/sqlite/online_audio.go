@@ -14,6 +14,12 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 )
 
+// 只有库内文档保存平台原图地址。旧文档没有该字段时由首次展示补取元数据。
+type storedTrack struct {
+	library.Track
+	CoverURL *string `json:"_providerCoverUrl,omitempty"`
+}
+
 // PublishOnlineTrack 仅保存元数据；未观察音频时不填写大小、哈希或字节版本证据。
 func (s *Store) PublishOnlineTrack(ctx context.Context, owner, provider string, metadata online.Track) (library.Track, error) {
 	tx, err := s.DB.BeginTx(ctx, nil)
@@ -66,7 +72,11 @@ func publishOnlineTrack(ctx context.Context, tx *sql.Tx, owner, provider string,
 	if album := strings.TrimSpace(metadata.Album); album != "" {
 		track.Album = &album
 	}
-	raw, err = json.Marshal(track)
+	var cover string
+	if metadata.CoverURL != nil {
+		cover = library.NetEaseArtworkURL(*metadata.CoverURL)
+	}
+	raw, err = json.Marshal(storedTrack{Track: track, CoverURL: &cover})
 	if err != nil {
 		return empty, err
 	}

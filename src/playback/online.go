@@ -47,7 +47,12 @@ func (s *Service) prepareOnline(ctx context.Context, owner string, t library.Tra
 }
 
 func (p *preparedInput) describeOnline(id string, expiry time.Time, transport string) Description {
-	return Description{SessionID: id, SourceTrackID: p.track.ID, AssetID: p.track.AssetID, DeliveryMode: "proxy", OutputProfile: OutputProfile{MIME: p.track.MIME, Codec: p.track.Codec, Container: p.track.Container, Transport: transport}, ExpiresAt: expiry, SeekMode: "none", DSPExecution: p.dspExecution, EffectiveProcessing: []Processing{}, ResumeDecision: "continue"}
+	audio := p.network.audio
+	profile := OutputProfile{MIME: audio.MIME, Codec: &audio.Codec, Container: &audio.Container, Transport: transport, SampleRate: audio.SampleRateHz}
+	if audio.BitrateBps != nil {
+		profile.BitrateBps = int(*audio.BitrateBps)
+	}
+	return Description{SessionID: id, SourceTrackID: p.track.ID, AssetID: p.track.AssetID, DeliveryMode: "proxy", OutputProfile: profile, ExpiresAt: expiry, SeekMode: "none", DSPExecution: p.dspExecution, EffectiveProcessing: []Processing{}, ResumeDecision: "continue"}
 }
 
 // onlineStream 在已有会话鉴权和实例租约之下按需打开一个顺序响应。

@@ -117,7 +117,7 @@ func (s *Store) FindTrack(ctx context.Context, user, id string) (library.Track, 
 	var raw []byte
 	var external, root, path, version, mime, owner string
 	var size int64
-	err = tx.QueryRowContext(ctx, "SELECT document,owner,external_id,root_id,path,version,mime,size FROM tracks WHERE id=? AND owner=?", id, user).Scan(&raw, &owner, &external, &root, &path, &version, &mime, &size)
+	err = tx.QueryRowContext(ctx, "SELECT document,owner,external_id,root_id,path,version,mime,size,coalesce(json_extract(document,'$._providerCoverUrl'),'') FROM tracks WHERE id=? AND owner=?", id, user).Scan(&raw, &owner, &external, &root, &path, &version, &mime, &size, &t.ProviderCoverURL)
 	if errors.Is(err, sql.ErrNoRows) {
 		return t, domain.Fail("NOT_FOUND", "Track not found")
 	}

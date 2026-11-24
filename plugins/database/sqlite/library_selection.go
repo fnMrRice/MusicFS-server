@@ -22,12 +22,23 @@ func (s *Store) ResolveTrackSelection(ctx context.Context, owner string, selecti
 	if err != nil {
 		return result, err
 	}
+	// 仅为实际加入队列的曲目读取当前封面，包含默认播放文件之外的录音成员。
+	for start := 0; start < len(items); start += 100 {
+		end := min(start+100, len(items))
+		covers := make([]*library.Track, end-start)
+		for i := range covers {
+			covers[i] = &items[start+i]
+		}
+		if err = populateTrackCovers(ctx, tx, owner, covers...); err != nil {
+			return result, err
+		}
+	}
 	// 裁剪必须早于存储 RPC 编码，完整版本与资产证据仅保留在当前事务中。
 	result.Items = make([]library.SelectionTrack, 0, len(items))
 	for _, track := range items {
 		result.Items = append(result.Items, library.SelectionTrack{ID: track.ID, ProviderID: track.ProviderID,
 			DisplayName: track.DisplayName, Title: track.Title, Artists: track.Artists, DurationMs: track.DurationMs,
-			Availability: track.Availability, AssetID: track.AssetID, CoverObjectID: track.CoverObjectID})
+			Availability: track.Availability, AssetID: track.AssetID, CoverObjectID: track.CoverObjectID, OnlineCoverPath: track.OnlineCoverPath})
 	}
 	result.Total = len(result.Items)
 	return result, tx.Commit()

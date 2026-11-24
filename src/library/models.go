@@ -19,6 +19,7 @@ type Track struct {
 	Artists             []string              `json:"artists"`
 	Album               *string               `json:"album"`
 	CoverObjectID       *string               `json:"coverObjectId"`
+	OnlineCoverPath     string                `json:"onlineCoverPath,omitempty"`
 	Genre               *string               `json:"genre"`
 	Year                *int64                `json:"year"`
 	SampleRateHz        *int64                `json:"sampleRateHz"`
@@ -39,6 +40,7 @@ type Track struct {
 	Version             string                `json:"-"`
 	MIME                string                `json:"-"`
 	Size                int64                 `json:"-"`
+	ProviderCoverURL    string                `json:"-"`
 }
 type Provider struct {
 	SourceType    string                      `json:"sourceType,omitempty"`

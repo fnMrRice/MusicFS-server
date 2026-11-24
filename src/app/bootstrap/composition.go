@@ -27,6 +27,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/sourcedisplay"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/hashworker"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/onlineartwork"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
 	"github.com/fnMrRice/MusicFS-server/src/playback/downloadjobs"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/codecsettings"
@@ -216,6 +217,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	handler.RegisterSourceDisplay(sourcedisplay.New(store, online))
 	handler.RegisterPluginManagement(pluginManager)
 	handler.RegisterOnline(online)
+	handler.RegisterOnlineArtwork(onlineartwork.New(lib, online, content, nil))
 	handler.RegisterPlaylistTrackSources(online, store)
 	handler.RegisterRecommendations(recommendations)
 	handler.RegisterRemotePlaylists(remotePlaylists)

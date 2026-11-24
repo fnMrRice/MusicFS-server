@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
-	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 )
 
@@ -97,7 +96,7 @@ func publishAssetView(ctx context.Context, tx *sql.Tx, owner string, a identific
 	if err != nil {
 		return err
 	}
-	var track library.Track
+	var track storedTrack
 	if err := json.Unmarshal(raw, &track); err != nil {
 		return err
 	}
