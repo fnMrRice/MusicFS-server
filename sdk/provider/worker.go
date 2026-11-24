@@ -110,7 +110,8 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 			return nil, pluginproto.Failure("INVALID_ARGUMENT", "Invalid audio stream request")
 		}
 		scope = r.Context
-		priority = method == "provider.online.audioClose"
+		// 每个实例最多打开两条音频流，每条流串行读取。后台查询占满时仍须允许读取和关闭已有流。
+		priority = true
 		run = func(ctx context.Context) (any, error) {
 			return w.readAudio(ctx, r, method == "provider.online.audioClose")
 		}
