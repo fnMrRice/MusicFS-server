@@ -18,14 +18,15 @@ import (
 
 type ContentService struct {
 	ContentRepository
-	journal Repository
-	files   *Files
-	gate    chan struct{}
-	derived *DerivedService
+	journal    Repository
+	files      *Files
+	gate       chan struct{}
+	background chan struct{}
+	derived    *DerivedService
 }
 
 func NewContent(repo ContentRepository, journal Repository, files *Files, thumbnail contenttransform.Thumbnailer) *ContentService {
-	s := &ContentService{ContentRepository: repo, journal: journal, files: files, gate: make(chan struct{}, 2)}
+	s := &ContentService{ContentRepository: repo, journal: journal, files: files, gate: make(chan struct{}, 2), background: make(chan struct{}, 1)}
 	if derived, ok := repo.(DerivedRepository); ok {
 		media, err := New(journal, files)
 		if err == nil {
@@ -67,7 +68,18 @@ func (m ContentMetadata) Validate() error {
 // Upload stores a preview object; only SelectContent changes the chosen content.
 // The service derives format, MIME, size and digest from bounded actual bytes.
 func (s *ContentService) Upload(ctx context.Context, owner string, metadata ContentMetadata, declaredMIME, key string, input io.Reader) (ContentObject, error) {
-	return s.upload(ctx, owner, metadata, declaredMIME, key, input, func(publish func() error) error { return publish() })
+	return s.upload(ctx, owner, metadata, declaredMIME, key, input, func(publish func() error) error { return publish() }, false)
+}
+
+// UploadBackground 让后台封面等待共享容量，并为交互上传留出一个名额。
+func (s *ContentService) UploadBackground(ctx context.Context, owner string, metadata ContentMetadata, declaredMIME, key string, input io.Reader) (ContentObject, error) {
+	select {
+	case s.background <- struct{}{}:
+		defer func() { <-s.background }()
+	case <-ctx.Done():
+		return ContentObject{}, ctx.Err()
+	}
+	return s.upload(ctx, owner, metadata, declaredMIME, key, input, func(publish func() error) error { return publish() }, true)
 }
 
 // UploadGuarded keeps a scraper's source-version protection through reference
@@ -76,16 +88,23 @@ func (s *ContentService) UploadGuarded(ctx context.Context, owner string, metada
 	if guard == nil {
 		return ContentObject{}, domain.Fail("INVALID_ARGUMENT", "Content publication requires a source guard")
 	}
-	return s.upload(ctx, owner, metadata, declaredMIME, key, input, guard)
+	return s.upload(ctx, owner, metadata, declaredMIME, key, input, guard, false)
 }
 
-func (s *ContentService) upload(ctx context.Context, owner string, metadata ContentMetadata, declaredMIME, key string, input io.Reader, guard Guard) (ContentObject, error) {
+func (s *ContentService) upload(ctx context.Context, owner string, metadata ContentMetadata, declaredMIME, key string, input io.Reader, guard Guard, wait bool) (ContentObject, error) {
 	select {
 	case s.gate <- struct{}{}:
-		defer func() { <-s.gate }()
 	default:
-		return ContentObject{}, domain.Fail("RATE_LIMITED", "Media upload is busy")
+		if !wait {
+			return ContentObject{}, domain.Fail("RATE_LIMITED", "Media upload is busy")
+		}
+		select {
+		case s.gate <- struct{}{}:
+		case <-ctx.Done():
+			return ContentObject{}, ctx.Err()
+		}
 	}
+	defer func() { <-s.gate }()
 	limit := int64(content.MaxLyricsBytes)
 	if metadata.Field == "artwork" {
 		limit = content.MaxArtworkBytes

@@ -34,9 +34,13 @@ func (r artTracks) Track(ctx context.Context, owner, id string) (library.Track, 
 type artProvider struct {
 	mu      sync.Mutex
 	batches [][]string
+	offline atomic.Bool
 }
 
-func (*artProvider) Runtime(context.Context, string, string, string) (onlinehost.Runtime, error) {
+func (p *artProvider) Runtime(context.Context, string, string, string) (onlinehost.Runtime, error) {
+	if p.offline.Load() {
+		return onlinehost.Runtime{}, domain.Fail("SOURCE_OFFLINE", "Test instance disabled")
+	}
 	return onlinehost.Runtime{Platform: online.Netease}, nil
 }
 func (p *artProvider) MetadataBatch(_ context.Context, _, _ string, ids []string) (online.TrackBatch, error) {
@@ -113,6 +117,7 @@ func TestOnlineArtworkRecoversOldSourcesBatchesAndProtectsManualCover(t *testing
 	if err != nil || first.CoverObjectID == nil || first.OnlineCoverPath != "" {
 		t.Fatal("downloaded cover did not become a normal media object", err)
 	}
+	provider.offline.Store(true)
 	if _, r, err := service.Open(ctx, "admin", first.ID); err != nil {
 		t.Fatal(err)
 	} else {

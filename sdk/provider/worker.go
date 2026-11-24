@@ -15,14 +15,15 @@ import (
 )
 
 type worker struct {
-	ctx     context.Context
-	audioMu sync.Mutex
-	audio   map[string]*audioStream
-	mu      sync.Mutex
-	plugin  Plugin
-	hello   pluginproto.OnlineHello
-	client  Client
-	slots   chan struct{}
+	ctx          context.Context
+	audioMu      sync.Mutex
+	audio        map[string]*audioStream
+	mu           sync.Mutex
+	plugin       Plugin
+	hello        pluginproto.OnlineHello
+	client       Client
+	slots        chan struct{}
+	accountSlots chan struct{}
 }
 
 // Run serves one plugin instance until its context or protocol channel closes.
@@ -31,7 +32,7 @@ func Run(ctx context.Context, plugin Plugin, input io.ReadCloser, output io.Writ
 	if err := plugin.Validate(); err != nil {
 		return err
 	}
-	w := &worker{ctx: ctx, audio: make(map[string]*audioStream), plugin: plugin, slots: make(chan struct{}, 2)}
+	w := &worker{ctx: ctx, audio: make(map[string]*audioStream), plugin: plugin, slots: make(chan struct{}, 2), accountSlots: make(chan struct{}, 1)}
 	defer w.closeAudio()
 	peer := pluginproto.NewPeer(ctx, input, output, "w-", w.handle)
 	peer.Wait()
@@ -62,6 +63,7 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 	}
 	ctx = pluginlog.Context(ctx, w.plugin.Descriptor.Plugin.ID, hello.InstanceID)
 	priority := false
+	accountControl := false
 	required := methodCapability(method)
 	var scope pluginproto.Context
 	var run func(context.Context) (any, error)
@@ -119,8 +121,10 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 		}
 		scope = r.Context
 		priority = r.Request.Action == "signalCancel" || r.Request.Action == "logout"
+		accountControl = !priority
 		run = func(ctx context.Context) (any, error) { return client.Account(ctx, r.Request) }
 	case "provider.online.describe", "provider.online.accountOptions":
+		accountControl = method == "provider.online.accountOptions"
 		var r pluginproto.OnlineScope
 		if err = pluginproto.DecodeOnline(raw, &r); err != nil {
 			return nil, err
@@ -248,7 +252,17 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 	if err = hello.ValidateScope(scope); err != nil {
 		return nil, err
 	}
-	if !priority {
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(scope.TimeoutMs)*time.Millisecond)
+	defer cancel()
+	// 账号操作（含恢复凭据校验）不争用后台元数据槽。普通账号操作串行，退出仍可立即撤销授权。
+	if accountControl {
+		select {
+		case w.accountSlots <- struct{}{}:
+			defer func() { <-w.accountSlots }()
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	} else if !priority {
 		select {
 		case w.slots <- struct{}{}:
 			defer func() { <-w.slots }()
@@ -256,8 +270,6 @@ func (w *worker) handle(ctx context.Context, method string, raw json.RawMessage)
 			return nil, pluginproto.Failure("RATE_LIMITED", "Online worker is busy")
 		}
 	}
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(scope.TimeoutMs)*time.Millisecond)
-	defer cancel()
 	if required != "" && !w.plugin.supports(required) {
 		if w.plugin.Descriptor.Authentication == "anonymous" {
 			return nil, pluginproto.Failure("UNSUPPORTED", "Online capability is not enabled by this plugin")

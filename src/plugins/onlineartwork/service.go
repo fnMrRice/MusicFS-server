@@ -33,81 +33,55 @@ type Service struct {
 	batch    coverBatches
 	mu       sync.Mutex
 	requests map[[2]string]*pendingArtwork
+	changed  chan struct{}
 	gate     chan struct{}
 }
 
 func New(tracks Tracks, provider Metadata, media *mediastore.ContentService, transport http.RoundTripper) *Service {
-	s := &Service{tracks: tracks, online: provider, media: media, gate: make(chan struct{}, 6), requests: map[[2]string]*pendingArtwork{}}
+	s := &Service{tracks: tracks, online: provider, media: media, gate: make(chan struct{}, 6), requests: map[[2]string]*pendingArtwork{}, changed: make(chan struct{})}
 	s.client = http.Client{Transport: transport, Timeout: 10 * time.Second, CheckRedirect: func(req *http.Request, via []*http.Request) error {
 		if len(via) > 4 || library.NetEaseArtworkURL(req.URL.String()) == "" {
 			return domain.Fail("UNSUPPORTED", "Invalid artwork redirect")
 		}
 		return nil
 	}}
-	s.batch = coverBatches{provider: provider, pending: make(map[scope]*coverBatch)}
+	s.batch = coverBatches{provider: provider, pending: make(map[scope][]*coverQuery), slots: make(chan struct{}, 2)}
 	return s
 }
 
-type pendingArtwork struct {
-	done chan struct{}
-	id   string
-	err  error
-}
-
-// Open 交付经媒体库校验的本地图像。并发浏览同一首歌只下载一次。
+// Open 优先交付当前用户曲目已选定的本地媒体，远端实例只参与缺失封面的获取。
 func (s *Service) Open(ctx context.Context, owner, id string) (mediastore.ContentObject, io.ReadCloser, error) {
 	var empty mediastore.ContentObject
-	key := [2]string{owner, id}
-	s.mu.Lock()
-	pending := s.requests[key]
-	if pending == nil {
-		if len(s.requests) >= 2*online.MaxPageItems {
-			s.mu.Unlock()
-			return empty, nil, domain.Fail("RATE_LIMITED", "Online artwork queue is full")
-		}
-		pending = &pendingArtwork{done: make(chan struct{})}
-		s.requests[key] = pending
-		go func() {
-			work, cancel := context.WithTimeout(context.WithoutCancel(ctx), 25*time.Second)
-			defer cancel()
-			pending.id, pending.err = s.objectID(work, owner, id)
-			s.mu.Lock()
-			delete(s.requests, key)
-			close(pending.done)
-			s.mu.Unlock()
-		}()
+	t, err := s.tracks.Track(ctx, owner, id)
+	if err != nil {
+		return empty, nil, err
 	}
-	s.mu.Unlock()
-	select {
-	case <-ctx.Done():
-		return empty, nil, ctx.Err()
-	case <-pending.done:
-		if pending.err != nil {
-			return empty, nil, pending.err
-		}
-		return s.media.Open(ctx, owner, pending.id)
+	if t.RootID != "online-audio" || t.Path != "" {
+		return empty, nil, missing()
 	}
+	if t.CoverObjectID != nil {
+		return s.media.Open(ctx, owner, *t.CoverObjectID)
+	}
+	if t.Availability != "available" {
+		return empty, nil, missing()
+	}
+	object, err := s.waitArtwork(ctx, owner, t)
+	if err != nil {
+		return empty, nil, err
+	}
+	return s.media.Open(ctx, owner, object)
 }
 
 func missing() error { return domain.Fail("NOT_FOUND", "No online artwork is available") }
 
-func (s *Service) objectID(ctx context.Context, owner, id string) (string, error) {
-	t, err := s.tracks.Track(ctx, owner, id)
-	if err != nil {
-		return "", err
-	}
-	if t.RootID != "online-audio" || t.Availability != "available" {
-		return "", missing()
-	}
+func (s *Service) objectID(ctx context.Context, owner string, t library.Track) (string, error) {
+	id := t.ID
 	r, err := s.online.Runtime(ctx, owner, t.ProviderID, "")
 	if err != nil {
 		return "", err
 	}
 	if r.Platform != online.Netease {
 		return "", missing()
-	}
-	if t.CoverObjectID != nil {
-		return *t.CoverObjectID, nil
 	}
 	raw := t.ProviderCoverURL
 	if raw == "" {
@@ -160,7 +134,7 @@ func (s *Service) objectID(ctx context.Context, owner, id string) (string, error
 	if mediaType, _, parseErr := mime.ParseMediaType(declared); parseErr == nil && mediaType == "image/jpg" {
 		declared = "image/jpeg"
 	}
-	object, err := s.media.Upload(ctx, owner, meta, declared, domain.NewID(), resp.Body)
+	object, err := s.media.UploadBackground(ctx, owner, meta, declared, domain.NewID(), resp.Body)
 	if err != nil {
 		return "", err
 	}

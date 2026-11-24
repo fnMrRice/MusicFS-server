@@ -19,10 +19,12 @@ import (
 
 type testClient struct {
 	provider.UnimplementedClient
-	searchCalls  atomic.Int32
-	accountCalls atomic.Int32
-	accountView  atomic.Pointer[online.AccountView]
-	closed       atomic.Bool
+	searchCalls     atomic.Int32
+	accountCalls    atomic.Int32
+	accountView     atomic.Pointer[online.AccountView]
+	closed          atomic.Bool
+	metadataStarted chan struct{}
+	metadataRelease chan struct{}
 }
 
 func (c *testClient) Close() { c.closed.Store(true) }
@@ -33,7 +35,15 @@ func (c *testClient) Account(context.Context, online.AccountRequest) (online.Acc
 	}
 	return online.AccountResult{View: online.AccountView{State: "signedOut"}}, nil
 }
-func (*testClient) Metadata(_ context.Context, id string) (online.Track, error) {
+func (c *testClient) Metadata(ctx context.Context, id string) (online.Track, error) {
+	if c.metadataStarted != nil && (id == "51" || id == "52") {
+		c.metadataStarted <- struct{}{}
+		select {
+		case <-c.metadataRelease:
+		case <-ctx.Done():
+			return online.Track{}, ctx.Err()
+		}
+	}
 	if id == "oversized" {
 		return online.Track{ExternalID: id, Title: strings.Repeat("x", pluginproto.MaxMessageBytes)}, nil
 	}
@@ -65,7 +75,7 @@ func TestWorkerNegotiatesAndEnforcesCapabilitySubset(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	t.Cleanup(cancel)
 	left, right := net.Pipe()
-	client := &testClient{}
+	client := &testClient{metadataStarted: make(chan struct{}, 2), metadataRelease: make(chan struct{})}
 	client.accountView.Store(&online.AccountView{State: "signedIn", AccountID: "fixture-account", Revision: "fixture-revision"})
 	finished := make(chan error, 1)
 	go func() { finished <- provider.Run(ctx, fixturePlugin(client), right, right) }()
@@ -111,6 +121,41 @@ func TestWorkerNegotiatesAndEnforcesCapabilitySubset(t *testing.T) {
 	if err := host.Call(ctx, "provider.online.account", pluginproto.OnlineAccount{Context: scope, Request: online.AccountRequest{Action: "state"}}, &account); err != nil || account.Value.View.State != "signedIn" {
 		t.Fatalf("account control message was blocked by the business capability gate: %v", err)
 	}
+	t.Run("account reads are isolated from occupied metadata slots", func(t *testing.T) {
+		done := make(chan error, 2)
+		for _, id := range []string{"51", "52"} {
+			go func() {
+				done <- host.Call(ctx, "provider.online.metadata", pluginproto.OnlineReference{Context: scope, ExternalID: id}, nil)
+			}()
+		}
+		defer func() {
+			close(client.metadataRelease)
+			for range 2 {
+				if err := <-done; err != nil {
+					t.Error("admitted metadata read failed", err)
+				}
+			}
+		}()
+		for range 2 {
+			select {
+			case <-client.metadataStarted:
+			case <-ctx.Done():
+				t.Fatal("metadata did not occupy both slots")
+			}
+		}
+		if err := host.Call(ctx, "provider.online.metadata", pluginproto.OnlineReference{Context: scope, ExternalID: "53"}, nil); pluginproto.ErrorCode(err) != "RATE_LIMITED" {
+			t.Fatal("upstream concurrency was not enforced", err)
+		}
+		if err := host.Call(ctx, "provider.online.account", pluginproto.OnlineAccount{Context: scope, Request: online.AccountRequest{Action: "state"}}, &account); err != nil || account.Value.View.State != "signedIn" {
+			t.Fatal("local account read was blocked by metadata", err)
+		}
+		if err := host.Call(ctx, "provider.online.account", pluginproto.OnlineAccount{Context: scope, Request: online.AccountRequest{Action: "check"}}, &account); err != nil {
+			t.Fatal("account verification was blocked by metadata", err)
+		}
+		if err := host.Call(ctx, "provider.online.accountOptions", pluginproto.OnlineScope{Context: scope}, nil); err != nil {
+			t.Fatal("account options were blocked by metadata", err)
+		}
+	})
 	t.Run("disabled search never reaches adapter", func(t *testing.T) {
 		err := host.Call(ctx, "provider.online.search", pluginproto.OnlineSearch{Context: scope, Kind: "tracks", Query: "fixture", Limit: 1}, nil)
 		if pluginproto.ErrorCode(err) != "UNSUPPORTED" || client.searchCalls.Load() != 0 {
