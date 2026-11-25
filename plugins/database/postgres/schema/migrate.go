@@ -9,7 +9,7 @@ import (
 	"io/fs"
 )
 
-const Version = 2
+const Version = 3
 
 //go:embed *.sql
 var migrations embed.FS

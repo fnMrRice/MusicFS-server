@@ -1239,3 +1239,7 @@ CREATE TABLE online_downloads (
  document TEXT NOT NULL CHECK(json_valid(document))
 );
 CREATE INDEX online_downloads_source ON online_downloads(owner,source_id);
+-- migration: 048_playlist_catalog_sync.sql
+-- 空任务编号表示尚未为此歌单或关联安排曲库入库，启动时由已配置的实例领取。
+ALTER TABLE remote_playlists ADD COLUMN catalog_job_id TEXT REFERENCES remote_sync_jobs(id);
+ALTER TABLE playlist_links ADD COLUMN catalog_job_id TEXT REFERENCES remote_sync_jobs(id);
