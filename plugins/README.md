@@ -6,7 +6,7 @@
 | --- | --- |
 | 音乐来源 | [本地文件](source/localfiles/) · [网易云音乐、QQ 音乐、Apple Music 和 Bilibili](source/online/README.md) |
 | 歌词与资料 | [本地歌词与封面](scraper/local/README.md) · [在线资料插件](scraper/online/) · [来源与公开 API](../docs/plugins/provider-api-sources.md) |
-| 作品类型 | [音乐、CD 专辑、ASMR、电台](content/) |
+| 作品类型 | [CD 专辑、ASMR、电台](content/) |
 | 编解码与 DSP | [FFmpeg](decoder/ffmpeg/) · [NCM](decoder/ncm/) · [增益、均衡器、压缩器、混响及声道转换](dsp/) |
 | 音频分析与匹配 | [Chromaprint 指纹](analysis/chromaprint/) · [标准候选评分](matching/standard/) |
 | 媒体处理 | [FLAC 标签重写](tags/flac/) · [PNG/JPEG 缩略图](transform/thumbnail/) |

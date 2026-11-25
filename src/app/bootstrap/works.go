@@ -6,7 +6,6 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/plugins/content/asmr"
 	"github.com/fnMrRice/MusicFS-server/plugins/content/cdalbum"
-	"github.com/fnMrRice/MusicFS-server/plugins/content/music"
 	"github.com/fnMrRice/MusicFS-server/plugins/content/radio"
 	"github.com/fnMrRice/MusicFS-server/sdk/contenttype"
 	"github.com/fnMrRice/MusicFS-server/sdk/instanceid"
@@ -22,7 +21,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/storage"
 )
 
-// configureWorks 在装配层注册作品库插件与普通音乐的资料声明。
+// configureWorks 在装配层注册作品库插件。
 func configureWorks(ctx context.Context, cfg config.Config, handler *api.Server, repository storage.Backend, sources *library.Service) (func(), error) {
 	registry, err := contenttypes.New(builtinplugins.ContentTypes()...)
 	if err != nil {
@@ -64,7 +63,7 @@ func configureWorks(ctx context.Context, cfg config.Config, handler *api.Server,
 	handler.RegisterWorks(works.New(repository, registry))
 	handler.RegisterWorkPackages(workpackages.New(repository, repository, sources, map[string]contenttype.PackageOrganizer{
 		cdalbum.TypeID: cdalbum.PackageOrganizer(), asmr.TypeID: asmr.PackageOrganizer(),
-		radio.TypeID: radio.PackageOrganizer(), music.TypeID: music.PackageOrganizer(),
+		radio.TypeID: radio.PackageOrganizer(),
 	}))
 	return closeHistory, nil
 }

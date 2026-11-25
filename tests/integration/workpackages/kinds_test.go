@@ -11,7 +11,7 @@ import (
 
 func TestPackageKindFilteringUsesOwnerScopedIntersectionWithoutDuplicateWorks(t *testing.T) {
 	store, voice, _ := fixture(t)
-	music, err := store.CreateWork(t.Context(), "alice", works.CreateRequest{ContentType: "music", Title: "Rip album", Tags: []string{"archive"}, Credits: []works.Credit{{Role: "artist", Name: "Band"}}}, domain.NewID())
+	disc, err := store.CreateWork(t.Context(), "alice", works.CreateRequest{ContentType: "cd_album", Title: "Rip album", Tags: []string{"archive"}, Credits: []works.Credit{{Role: "artist", Name: "Band"}}}, domain.NewID())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,9 +27,9 @@ func TestPackageKindFilteringUsesOwnerScopedIntersectionWithoutDuplicateWorks(t 
 		input.Observations = nil
 		publish(t, store, owner, input)
 	}
-	add("alice", music.ID, "album-cd1", "cd_dump")
-	add("alice", music.ID, "album-cd2", "cd_dump")
-	add("alice", music.ID, "album-digital", "directory")
+	add("alice", disc.ID, "album-cd1", "cd_dump")
+	add("alice", disc.ID, "album-cd2", "cd_dump")
+	add("alice", disc.ID, "album-digital", "directory")
 	add("alice", voice.ID, "voice-cd", "cd_dump")
 	add("alice", digital.ID, "digital", "directory")
 	add("bob", private.ID, "album-cd1", "cd_dump")
@@ -38,12 +38,12 @@ func TestPackageKindFilteringUsesOwnerScopedIntersectionWithoutDuplicateWorks(t 
 		query works.Query
 		want  []string
 	}{
-		{"all-content-types", works.Query{PackageKind: "cd_dump"}, []string{music.ID, voice.ID}},
-		{"music-intersection", works.Query{PackageKind: "cd_dump", ContentType: "music"}, []string{music.ID}},
+		{"all-content-types", works.Query{PackageKind: "cd_dump"}, []string{disc.ID, voice.ID}},
+		{"cd-album-intersection", works.Query{PackageKind: "cd_dump", ContentType: "cd_album"}, []string{disc.ID}},
 		{"asmr-intersection", works.Query{PackageKind: "cd_dump", ContentType: "asmr"}, []string{voice.ID}},
-		{"metadata-intersection", works.Query{PackageKind: "cd_dump", Tag: "archive", Q: "rip", Credit: "Band"}, []string{music.ID}},
+		{"metadata-intersection", works.Query{PackageKind: "cd_dump", Tag: "archive", Q: "rip", Credit: "Band"}, []string{disc.ID}},
 		{"disjoint", works.Query{PackageKind: "cd_dump", ContentType: "asmr", Tag: "archive"}, []string{}},
-		{"directory", works.Query{PackageKind: "directory"}, []string{music.ID, digital.ID}},
+		{"directory", works.Query{PackageKind: "directory"}, []string{disc.ID, digital.ID}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			test.query.Limit = 100
@@ -61,7 +61,7 @@ func TestPackageKindFilteringUsesOwnerScopedIntersectionWithoutDuplicateWorks(t 
 			}
 		})
 	}
-	want := []string{music.ID, voice.ID}
+	want := []string{disc.ID, voice.ID}
 	sort.Strings(want)
 	after := ""
 	for _, id := range want {

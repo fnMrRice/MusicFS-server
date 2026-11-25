@@ -9,17 +9,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fnMrRice/MusicFS-server/plugins/content/asmr"
-	"github.com/fnMrRice/MusicFS-server/plugins/content/music"
 	"github.com/fnMrRice/MusicFS-server/src/library/contenttypes"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/builtinplugins"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 
 func TestWorksHTTPRegistrationEditingPrivacyAndQueries(t *testing.T) {
 	server, store, _ := libraryHTTP(t)
 	cookie, session := login(t, server)
-	registry, err := contenttypes.New(music.Descriptor(), asmr.Descriptor())
+	registry, err := contenttypes.New(builtinplugins.ContentTypes()...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,9 +129,11 @@ func TestWorksHTTPRegistrationEditingPrivacyAndQueries(t *testing.T) {
 		t.Fatal("undeclared role accepted")
 	}
 	create.Credits = []works.Credit{}
-	create.ContentType = "unknown_type"
-	if w = request("POST", "/works", create, "unknown-work-type", nil); w.Code != 415 {
-		t.Fatal("unregistered type accepted")
+	for _, id := range []string{"unknown_type", "music"} {
+		create.ContentType = id
+		if w = request("POST", "/works", create, "unsupported-"+id, nil); w.Code != 415 {
+			t.Fatalf("unregistered content type %s returned %d", id, w.Code)
+		}
 	}
 	for _, body := range []any{map[string]any{"contentType": "asmr", "title": "missing fields"},
 		map[string]any{"contentType": "asmr", "title": "x", "description": "", "credits": nil, "externalIds": []any{}, "tags": []string{}}} {

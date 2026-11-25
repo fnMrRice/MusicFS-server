@@ -3,7 +3,6 @@ package builtinplugins
 import (
 	"github.com/fnMrRice/MusicFS-server/plugins/content/asmr"
 	"github.com/fnMrRice/MusicFS-server/plugins/content/cdalbum"
-	"github.com/fnMrRice/MusicFS-server/plugins/content/music"
 	"github.com/fnMrRice/MusicFS-server/plugins/content/radio"
 	"github.com/fnMrRice/MusicFS-server/sdk/contenttype"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
@@ -13,7 +12,7 @@ import (
 
 // ContentTypes 按作品库注册顺序返回本次构建装配的内容类型。
 func ContentTypes() []contenttype.Descriptor {
-	return []contenttype.Descriptor{cdalbum.Descriptor(), asmr.Descriptor(), radio.Descriptor(), music.Descriptor()}
+	return []contenttype.Descriptor{cdalbum.Descriptor(), asmr.Descriptor(), radio.Descriptor()}
 }
 
 func init() {

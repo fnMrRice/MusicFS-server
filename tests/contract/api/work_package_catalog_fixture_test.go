@@ -17,7 +17,6 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/plugins/content/asmr"
 	"github.com/fnMrRice/MusicFS-server/plugins/content/cdalbum"
-	"github.com/fnMrRice/MusicFS-server/plugins/content/music"
 	"github.com/fnMrRice/MusicFS-server/plugins/content/radio"
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ffmpeg"
@@ -33,6 +32,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
+	"github.com/fnMrRice/MusicFS-server/src/plugins/builtinplugins"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/pluginhost"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/sourceaccess"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
@@ -103,7 +103,7 @@ func newPackageCatalogHTTP(t *testing.T) *packageCatalogFixture {
 	}
 	t.Cleanup(queue.Close)
 	service := workpackages.New(store, store, lib, map[string]contenttype.PackageOrganizer{
-		"asmr": asmr.PackageOrganizer(), "cd_album": cdalbum.PackageOrganizer(), "music": music.PackageOrganizer(), "radio": radio.PackageOrganizer(),
+		"asmr": asmr.PackageOrganizer(), "cd_album": cdalbum.PackageOrganizer(), "radio": radio.PackageOrganizer(),
 	})
 	server := api.New(api.Options{Auth: auth.New(store, testToken, []string{origin}, time.Hour), InstanceID: "package-catalog-test", SecureCookie: true,
 		Logger: slog.New(slog.NewTextHandler(io.Discard, nil))})
@@ -111,7 +111,7 @@ func newPackageCatalogHTTP(t *testing.T) *packageCatalogFixture {
 	server.RegisterCatalog(catalog.New(store))
 	server.RegisterAlbums(albums.New(store, nil, lib))
 	server.RegisterWorkPackages(service)
-	registry, err := contenttypes.New(music.Descriptor(), cdalbum.Descriptor(), asmr.Descriptor(), radio.Descriptor())
+	registry, err := contenttypes.New(builtinplugins.ContentTypes()...)
 	if err != nil {
 		t.Fatal(err)
 	}

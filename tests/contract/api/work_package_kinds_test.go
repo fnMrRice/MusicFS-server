@@ -11,11 +11,11 @@ import (
 )
 
 func TestWorkPackageKindIsRequiredAndCDCopiesKeepContentType(t *testing.T) {
-	for _, contentType := range []string{"asmr", "music"} {
+	for _, contentType := range []string{"asmr", "cd_album"} {
 		t.Run(contentType, func(t *testing.T) {
 			f := newPackageHTTP(t)
-			if contentType == "music" {
-				work, err := f.store.CreateWork(t.Context(), "admin", works.CreateRequest{ContentType: "music", Title: "手动抓轨专辑"}, "cd-work-create")
+			if contentType == "cd_album" {
+				work, err := f.store.CreateWork(t.Context(), "admin", works.CreateRequest{ContentType: contentType, Title: "手动抓轨专辑"}, "cd-work-create")
 				if err != nil {
 					t.Fatal(err)
 				}

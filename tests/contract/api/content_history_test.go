@@ -37,8 +37,11 @@ func TestPlaybackReceiptRoutesOnlyToOwningHistory(t *testing.T) {
 	for _, track := range scanned.Items {
 		sources[*track.Title] = track.ID
 	}
-	for _, item := range []struct{ name, id string }{{"cd-only", "cd_album"}, {"asmr-only", "asmr"}, {"radio-only", "radio"}, {"music-only", "music"}} {
-		p := f.importCopy(t, item.name, item.id, "directory")
+	for _, item := range []struct{ name, id string }{{"cd-only", "cd_album"}, {"asmr-only", "asmr"}, {"radio-only", "radio"}, {"music-only", ""}} {
+		var workID string
+		if item.id != "" {
+			workID = f.importCopy(t, item.name, item.id, "directory").WorkID
+		}
 		// 目录扫描的来源也可以按位置认领，即使导入副本使用另一个来源编号。
 		id := sources[item.name]
 		var session playback.Description
@@ -49,12 +52,12 @@ func TestPlaybackReceiptRoutesOnlyToOwningHistory(t *testing.T) {
 		for range 2 {
 			f.call(t, "POST", "/me/recently-played", body, "", 200, "PersonalCollectionEntry", nil)
 		}
-		if item.id != "music" {
+		if item.id != "" {
 			var history struct {
 				Items []contenttype.HistoryEntry `json:"items"`
 			}
 			f.call(t, "GET", "/me/content-history/"+item.id, nil, "", 200, "ContentHistory", &history)
-			if len(history.Items) != 1 || history.Items[0].WorkID != p.WorkID || history.Items[0].SourceTrackID != id {
+			if len(history.Items) != 1 || history.Items[0].WorkID != workID || history.Items[0].SourceTrackID != id {
 				t.Fatalf("unexpected history for %s: %+v", item.id, history.Items)
 			}
 		}

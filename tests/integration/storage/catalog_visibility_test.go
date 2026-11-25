@@ -34,6 +34,7 @@ func TestOrdinaryMusicCatalogExcludesPackageCategoriesFacetsAndAlbums(t *testing
 	}
 	oldGenres := categorySearch(t, service, catalog.Query{CategoryKind: "genre"})
 	whisper := categoryFind(t, oldGenres, "", "Whisper", false)
+	// 直接写入旧版 music 作品包，验证其中的音轨仍可从普通曲库浏览。
 	visibilityPackage(t, s, "admin", "local", "music", "directory", keep)
 	visibilityPackage(t, s, "admin", "local", "asmr", "directory", asmr)
 	visibilityPackage(t, s, "admin", "local", "cd_album", "cd_dump", cd)

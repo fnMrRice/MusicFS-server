@@ -49,9 +49,15 @@ func TestBuiltinServerStartsSourcesWithoutAnyPluginExecutable(t *testing.T) {
 			}
 		}
 	}
-	for _, id := range []string{"musicfs.plugin.analysis.chromaprint", "musicfs.plugin.tags.flac", "musicfs.plugin.matching.standard", "musicfs.plugin.transform.thumbnail"} {
+	if seen["musicfs.plugin.content.music"] {
+		t.Fatal("plugin management listed the retired music content type")
+	}
+	for _, id := range []string{
+		"musicfs.plugin.analysis.chromaprint", "musicfs.plugin.tags.flac", "musicfs.plugin.matching.standard", "musicfs.plugin.transform.thumbnail",
+		"musicfs.plugin.content.cd_album", "musicfs.plugin.content.asmr", "musicfs.plugin.content.radio",
+	} {
 		if !seen[id] {
-			t.Fatal("missing builtin algorithm", id)
+			t.Fatal("missing builtin plugin", id)
 		}
 	}
 }

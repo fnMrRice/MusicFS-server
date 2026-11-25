@@ -43,17 +43,11 @@ func TestWorkPackagesHTTPSeparateLibrariesAndToggleCDAlbumTracks(t *testing.T) {
 	packages := []workpackages.Package{
 		f.importCopy(t, "asmr-only", "asmr", "directory"),
 		f.importCopy(t, "cd-only", "cd_album", "cd_dump"),
-		f.importCopy(t, "music-only", "music", "directory"),
 		f.importCopy(t, "radio-only", "radio", "directory"),
 	}
 	musicIDs := map[string]bool{tracks["music-only"].ID: true}
-	for _, node := range packages[2].Nodes {
-		if node.Kind == "audio" {
-			musicIDs[node.SourceTrackID] = true
-		}
-	}
 	f.assertMusicBrowsing(t, musicIDs, albumIDs["music-only"])
-	for i, typ := range []string{"asmr", "cd_album", "music", "radio"} {
+	for i, typ := range []string{"asmr", "cd_album", "radio"} {
 		var page struct {
 			Items []works.Work `json:"items"`
 		}

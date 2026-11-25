@@ -12,7 +12,8 @@ func TestWorkQueryIntersectionsLiteralSearchAndKeysetPagination(t *testing.T) {
 	store, _ := workStore(t)
 	first := createWork(t, store, "alice", sampleRequest())
 	secondRequest := sampleRequest()
-	secondRequest.ContentType, secondRequest.Title = "music", "雨夜"
+	secondRequest.ContentType, secondRequest.Title = "cd_album", "雨夜"
+	secondRequest.Credits = []works.Credit{{Role: "artist", Name: "小雨"}}
 	secondRequest.ExternalIDs = nil
 	second := createWork(t, store, "alice", secondRequest)
 	third := createWork(t, store, "alice", works.CreateRequest{ContentType: "asmr", Title: "100%_静寂", Tags: []string{"雨声集"}, Credits: []works.Credit{{Role: "voice", Name: "小雨儿"}}})
@@ -32,7 +33,7 @@ func TestWorkQueryIntersectionsLiteralSearchAndKeysetPagination(t *testing.T) {
 		{"tag-exact", works.Query{Tag: "雨声"}, []string{first.ID, second.ID}},
 		{"credit-exact", works.Query{Credit: "小雨"}, []string{first.ID, second.ID}},
 		{"intersection", works.Query{ContentType: "asmr", Q: "rj123", Tag: "雨声", Credit: "小雨"}, []string{first.ID}},
-		{"disjoint", works.Query{ContentType: "music", Q: "rj123"}, []string{}},
+		{"disjoint", works.Query{ContentType: "cd_album", Q: "rj123"}, []string{}},
 		{"literal-wildcards", works.Query{Q: "%_"}, []string{third.ID}},
 		{"sql-text", works.Query{Q: "' OR 1=1 --"}, []string{}},
 	} {

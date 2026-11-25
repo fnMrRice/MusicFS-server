@@ -14,7 +14,7 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/content/asmr"
-	"github.com/fnMrRice/MusicFS-server/plugins/content/music"
+	"github.com/fnMrRice/MusicFS-server/plugins/content/cdalbum"
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/sdk/contenttype"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
@@ -78,11 +78,11 @@ func newPackageHTTP(t *testing.T) *packageHTTPFixture {
 	}
 	t.Cleanup(func() { store.Close() })
 	lib := library.New(store, jobs.New(store), []library.Runtime{{ID: packageProvider, Owner: "admin", Name: "本地音声", Worker: worker, ConfigRevision: "1", ImportDefaults: pluginproto.ImportOptions{Recursive: true}, RootNames: map[string]string{"music": "作品目录"}}}, nil)
-	service := workpackages.New(store, store, lib, map[string]contenttype.PackageOrganizer{"asmr": asmr.PackageOrganizer(), "music": music.PackageOrganizer()})
+	service := workpackages.New(store, store, lib, map[string]contenttype.PackageOrganizer{"asmr": asmr.PackageOrganizer(), "cd_album": cdalbum.PackageOrganizer()})
 	server, _ := testServer()
 	server.RegisterLibrary(lib)
 	server.RegisterWorkPackages(service)
-	registry, err := contenttypes.New(music.Descriptor(), asmr.Descriptor())
+	registry, err := contenttypes.New(cdalbum.Descriptor(), asmr.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
