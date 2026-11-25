@@ -60,29 +60,33 @@ func CanonicalExclusions(patterns []string) ([]string, error) {
 // Excludes expects already validated rules and a canonical relative path. It
 // uses bounded dynamic programming, never recursive wildcard backtracking.
 func Excludes(patterns []string, relativePath string) bool {
+	if len(patterns) == 0 {
+		return false
+	}
 	parts := strings.Split(relativePath, "/")
+	matched := make([]bool, len(parts)+1)
 	for _, pattern := range patterns {
-		matched := make([]bool, len(parts)+1)
+		clear(matched)
 		matched[0] = true
-		for _, segment := range strings.Split(pattern, "/") {
-			next := make([]bool, len(parts)+1)
+		for segment := range strings.SplitSeq(pattern, "/") {
 			if segment == "**" {
-				next[0] = matched[0]
+				// ** 可以不消耗路径段，也可以继续向右匹配任意多个段。
 				for i := 1; i <= len(parts); i++ {
-					next[i] = matched[i] || next[i-1]
+					matched[i] = matched[i] || matched[i-1]
 				}
 			} else {
-				for i, part := range parts {
-					ok, _ := path.Match(segment, part)
-					next[i+1] = matched[i] && ok
+				// 普通段只消耗一段；从后往前写，保留上一轮的前缀状态。
+				for i := len(parts); i > 0; i-- {
+					matched[i] = matched[i-1]
+					if matched[i] {
+						matched[i], _ = path.Match(segment, parts[i-1])
+					}
 				}
+				matched[0] = false
 			}
-			matched = next
 		}
-		for _, yes := range matched {
-			if yes {
-				return true
-			}
+		if slices.Contains(matched, true) {
+			return true
 		}
 	}
 	return false
