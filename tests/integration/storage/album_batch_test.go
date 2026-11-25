@@ -32,6 +32,10 @@ func (batchAlbumCatalog) Descriptor() scraper.Descriptor {
 func (batchAlbumCatalog) Search(_ context.Context, field string, q scraper.Query) ([]scraper.Item, error) {
 	if field == "albumDetails" {
 		switch q.Album {
+		case "Batch valid":
+			if q.Artist != "Singer" {
+				return nil, nil
+			}
 		case "Batch unavailable":
 			return nil, domain.Fail("SOURCE_OFFLINE", "Album catalog is offline")
 		case "Batch unmatched":

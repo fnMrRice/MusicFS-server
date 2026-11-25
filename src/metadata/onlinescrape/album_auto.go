@@ -20,7 +20,7 @@ type AutoAlbumCandidate struct {
 }
 
 // 排名只读取在线查询缓存；仅交给浏览器的候选需要占用预览令牌。
-func (s *Service) rankAlbums(ctx context.Context, owner string, album music.AlbumScrapeTarget) ([]albumMatch, error) {
+func (s *Service) rankAlbums(ctx context.Context, owner string, album music.AlbumScrapeTarget, artist string) ([]albumMatch, error) {
 	var plugins []string
 	switch album.SourcePluginID {
 	case "musicfs.plugin.source.netease":
@@ -35,36 +35,26 @@ func (s *Service) rankAlbums(ctx context.Context, owner string, album music.Albu
 		plugins = settings.LocalPluginOrder
 	}
 
-	title, artist := albumLabel(album.Name), albumLabel(album.Artist)
 	var ranked []albumMatch
 	var firstFailure error
 	best := 0
 	for i, plugin := range plugins {
-		// 在控制请求的总时限内为后续平台预留搜索时间。
+		// 每个平台的两种关键词共享原来的时限，后续平台和最终的曲目核验都留有时间。
 		budget := 15 * time.Second
 		if deadline, ok := ctx.Deadline(); ok {
-			budget = min(budget, time.Until(deadline)/time.Duration(len(plugins)-i))
+			budget = min(budget, time.Until(deadline)/time.Duration(len(plugins)-i+1))
 		}
 		search, cancel := context.WithTimeout(ctx, budget)
-		page, err := s.lookup(search, owner, plugin, "albumDetails", scraper.Query{Album: album.Name}, false)
+		matches, err := s.findAlbumEditions(search, owner, plugin, album.Name, artist)
 		cancel()
-		if err != nil {
-			if ctx.Err() != nil {
-				return nil, ctx.Err()
-			}
-			if firstFailure == nil {
-				firstFailure = err
-			}
-			continue
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
 		}
-		seen := map[string]bool{}
-		for _, item := range page.items {
-			match := rankAlbum(title, artist, item.Item)
-			if match.similarity == 0 || seen[item.ID] {
-				continue
-			}
-			seen[item.ID] = true
-			match.item, match.plugin, match.priority = item, plugin, i
+		if firstFailure == nil {
+			firstFailure = err
+		}
+		for _, match := range matches {
+			match.priority = i
 			ranked = append(ranked, match)
 			if match.exact == 1 && (artist == "" || match.artist == 1) {
 				best++
@@ -77,11 +67,18 @@ func (s *Service) rankAlbums(ctx context.Context, owner string, album music.Albu
 	if len(ranked) == 0 && firstFailure != nil {
 		return nil, firstFailure
 	}
-	slices.SortStableFunc(ranked, func(a, b albumMatch) int {
-		return cmp.Or(cmp.Compare(b.exact, a.exact), cmp.Compare(b.similarity, a.similarity),
-			cmp.Compare(b.artist, a.artist), cmp.Compare(a.priority, b.priority))
-	})
-	return ranked[:min(len(ranked), maxAutoAlbumCandidates)], nil
+	slices.SortStableFunc(ranked, compareAlbumMatch)
+	shortlist := ranked[:min(len(ranked), maxAutoAlbumCandidates)]
+	// 合辑的专辑署名可能与曲目歌手毫无交集。为仅靠专辑名找到的同名发行版留一席。
+	if len(ranked) > len(shortlist) && !slices.ContainsFunc(shortlist, func(m albumMatch) bool { return m.titleOnly }) {
+		for _, match := range ranked[len(shortlist):] {
+			if match.titleOnly && match.exact == 1 {
+				shortlist[len(shortlist)-1] = match
+				break
+			}
+		}
+	}
+	return shortlist, nil
 }
 
 type albumMatch struct {
@@ -90,6 +87,90 @@ type albumMatch struct {
 	exact, artist int
 	priority      int
 	similarity    float64
+	titleOnly     bool
+}
+
+// 同一真实来源的首位署名优先；同一曲名的多个音源只计一次。并列时维持原始证据的顺序。
+func representativeAlbumArtist(evidence []music.AlbumTrackEvidence) string {
+	seen := make(map[[2]string]bool)
+	counts := make(map[string]int)
+	var first []string
+	for _, track := range evidence {
+		title := albumLabel(track.Title)
+		if title == "" || len(track.ArtistNames) == 0 {
+			continue
+		}
+		var artist string
+		for member := range music.ArtistCreditMembers(track.ArtistNames[0]) {
+			artist = member
+			break
+		}
+		if !validQuery(scraper.Query{Artist: artist}) {
+			continue
+		}
+		name := albumLabel(artist)
+		key := [2]string{name, title}
+		if seen[key] {
+			continue
+		}
+		if counts[name] == 0 {
+			first = append(first, artist)
+		}
+		counts[name]++
+		seen[key] = true
+	}
+	var artist string
+	for _, name := range first {
+		if counts[albumLabel(name)] > counts[albumLabel(artist)] {
+			artist = name
+		}
+	}
+	return artist
+}
+
+func (s *Service) findAlbumEditions(ctx context.Context, owner, plugin, name, artist string) ([]albumMatch, error) {
+	queries := []scraper.Query{{Album: name}}
+	if artist != "" {
+		queries = append([]scraper.Query{{Album: name, Artist: artist}}, queries...)
+	}
+	title, credit := albumLabel(name), albumLabel(artist)
+	var matches []albumMatch
+	seen := make(map[string]int)
+	var firstFailure error
+	deadline, _ := ctx.Deadline()
+	for i, q := range queries {
+		search, cancel := context.WithTimeout(ctx, time.Until(deadline)/time.Duration(len(queries)-i))
+		page, err := s.lookup(search, owner, plugin, "albumDetails", q, false)
+		cancel()
+		if err != nil {
+			if firstFailure == nil {
+				firstFailure = err
+			}
+			continue
+		}
+		for _, item := range page.items {
+			match := rankAlbum(title, credit, item.Item)
+			if match.similarity == 0 {
+				continue
+			}
+			match.item, match.plugin, match.titleOnly = item, plugin, q.Artist == ""
+			if index, ok := seen[item.ID]; ok {
+				if compareAlbumMatch(match, matches[index]) < 0 {
+					match.titleOnly = matches[index].titleOnly
+					matches[index] = match
+				}
+				continue
+			}
+			seen[item.ID] = len(matches)
+			matches = append(matches, match)
+		}
+	}
+	return matches, firstFailure
+}
+
+func compareAlbumMatch(a, b albumMatch) int {
+	return cmp.Or(cmp.Compare(b.exact, a.exact), cmp.Compare(b.similarity, a.similarity),
+		cmp.Compare(b.artist, a.artist), cmp.Compare(a.priority, b.priority))
 }
 
 func albumLabel(name string) string {
@@ -110,8 +191,16 @@ func rankAlbum(title, artist string, item scraper.Item) albumMatch {
 	for _, alias := range item.LocalizedTitles {
 		check(alias.Title)
 	}
-	if artist != "" && (albumLabel(item.Artist) == artist || slices.ContainsFunc(item.LocalizedArtistNames, func(alias scraper.LocalizedTitle) bool {
-		return albumLabel(alias.Title) == artist
+	hasArtist := func(credit string) bool {
+		for member := range music.ArtistCreditMembers(credit) {
+			if albumLabel(member) == artist {
+				return true
+			}
+		}
+		return false
+	}
+	if artist != "" && (hasArtist(item.Artist) || slices.ContainsFunc(item.LocalizedArtistNames, func(alias scraper.LocalizedTitle) bool {
+		return hasArtist(alias.Title)
 	})) {
 		match.artist = 1
 	}

@@ -21,7 +21,7 @@ func (s *Service) prepareAlbumVerification(ctx context.Context, repo music.Repos
 	if err != nil || len(evidence) == 0 {
 		return albumVerification{}, err
 	}
-	ranked, err := s.rankAlbums(ctx, owner, target)
+	ranked, err := s.rankAlbums(ctx, owner, target, representativeAlbumArtist(evidence))
 	return albumVerification{evidence: evidence, ranked: ranked}, err
 }
 

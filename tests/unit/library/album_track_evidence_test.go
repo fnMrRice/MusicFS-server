@@ -1,11 +1,19 @@
 package library_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/scraper"
 	"github.com/fnMrRice/MusicFS-server/src/library/music"
 )
+
+func TestAlbumTrackEvidencePreservesOrderedArtistSearchTerms(t *testing.T) {
+	credit := "ＡＣ／ＤＣ＆Queen FT.Soda纯白"
+	if got := slices.Collect(music.ArtistCreditMembers(credit)); !slices.Equal(got, []string{"AC/DC", "Queen", "Soda纯白"}) {
+		t.Fatalf("artist search terms: %v", got)
+	}
+}
 
 func TestAlbumTrackEvidenceMatchesOneOriginalRow(t *testing.T) {
 	original := []music.AlbumTrackEvidence{

@@ -1,6 +1,7 @@
 package music
 
 import (
+	"iter"
 	"maps"
 	"regexp"
 	"strings"
@@ -35,32 +36,37 @@ func matchNames(primary string, aliases []scraper.LocalizedTitle) []string {
 
 // 第一组保留 R&B、AC/DC 等短缩写及首尾符号。其余匹配才是分隔符。
 // 带点的 feat./ft. 保留左词界，避免把 Left.Field 等完整艺人名切开。
-var creditSeparators = regexp.MustCompile(`(\b[a-z0-9]{1,2}([&+/][a-z0-9]{1,2})+\b|^[&+/]+|[&+/]+$|[&+/]{2,})|\b(feat|ft)\.| (feat|featuring|ft) |[&+/×、;,]`)
+var creditSeparators = regexp.MustCompile(`(?i)(\b[a-z0-9]{1,2}([&+/][a-z0-9]{1,2})+\b|^[&+/]+|[&+/]+$|[&+/]{2,})|\b(feat|ft)\.| (feat|featuring|ft) |[&+/×、;,]`)
 
-// 资料平台与来源标签都可能把多人写在同一项。保留整条署名，只用明确的分隔符识别成员。
-func trackCredits(credits []string) map[string]bool {
-	names := make(map[string]bool)
-	for _, credit := range credits {
-		credit = NormalizeMatchName(credit)
-		if credit == "" {
-			continue
-		}
-		names[credit] = true
-		addMember := func(member string) {
-			if name := strings.TrimSpace(member); name != "" {
-				names[name] = true
-			}
-		}
+// ArtistCreditMembers 按署名顺序返回成员，保留艺人名的大小写供平台检索。
+func ArtistCreditMembers(credit string) iter.Seq[string] {
+	credit = strings.Join(strings.Fields(norm.NFKC.String(credit)), " ")
+	return func(yield func(string) bool) {
 		start := 0
 		for _, marker := range creditSeparators.FindAllStringSubmatchIndex(credit, -1) {
 			if marker[2] >= 0 {
 				continue
 			}
-			addMember(credit[start:marker[0]])
+			if name := strings.TrimSpace(credit[start:marker[0]]); name != "" && !yield(name) {
+				return
+			}
 			start = marker[1]
 		}
-		if start != 0 {
-			addMember(credit[start:])
+		if name := strings.TrimSpace(credit[start:]); name != "" {
+			yield(name)
+		}
+	}
+}
+
+// 资料平台与来源标签都可能把多人写在同一项。核验时也保留未经拆分的整条署名。
+func trackCredits(credits []string) map[string]bool {
+	names := make(map[string]bool)
+	for _, credit := range credits {
+		if full := NormalizeMatchName(credit); full != "" {
+			names[full] = true
+		}
+		for member := range ArtistCreditMembers(credit) {
+			names[strings.ToLower(member)] = true
 		}
 	}
 	return names
