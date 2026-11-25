@@ -180,7 +180,7 @@
     "/health/ready": {"get": {"operationId": "healthReady", "security": [], "responses": {"200": {"$ref": "#/components/responses/Health"}, "503": {"$ref": "#/components/responses/Health"}}}},
     "/auth/session": {
       "post": {"operationId": "login", "security": [{"bootstrapBearer": []}], "description": "必须有允许的 Origin；首次凭据交换不要求 CSRF。成功设置 HttpOnly、SameSite=Strict Cookie；HTTPS 加 Secure。", "responses": {"200": {"$ref": "#/components/responses/Session"}, "default": {"$ref": "#/components/responses/Error"}}},
-      "get": {"operationId": "currentSession", "responses": {"200": {"$ref": "#/components/responses/Session"}, "default": {"$ref": "#/components/responses/Error"}}},
+      "get": {"operationId": "currentSession", "description": "刷新当前登录会话并返回新的空闲截止时间 expiresAt，响应设置同一会话的 Cookie。客户端持续播放期间可在截止时间前调用此接口。", "responses": {"200": {"$ref": "#/components/responses/Session"}, "default": {"$ref": "#/components/responses/Error"}}},
       "delete": {"operationId": "logout", "parameters": [{"$ref": "#/components/parameters/CSRF"}], "responses": {"204": {"description": "当前会话已撤销"}, "default": {"$ref": "#/components/responses/Error"}}}
     },
     "/provider-instances": {"get": {"operationId": "listProviders", "description": "返回插件提供的 sourceType、导入配置声明、已合成的实例默认值与授权根编号/显示名。已握手 sourceType 为 local 或 network；从未完成握手时省略，不能据此播放。宿主按插件握手声明选择读取方式，不依据平台名称；部署配置不能覆盖。无路径、凭据或真实根身份。", "responses": {"200": {"$ref": "#/components/responses/Providers", "description": "当前用户可见的来源资料"}, "default": {"$ref": "#/components/responses/Error"}}}},
@@ -274,6 +274,10 @@
     "/playback/sessions/{id}": {
       "parameters": [{"$ref": "#/components/parameters/ID"}],
       "delete": {"operationId": "stopPlayback", "parameters": [{"$ref": "#/components/parameters/CSRF"}], "responses": {"204": {"description": "本人会话已停止；重复停止成功"}, "default": {"$ref": "#/components/responses/Error"}}}
+    },
+    "/playback/sessions/{id}/keepalive": {
+      "parameters": [{"$ref": "#/components/parameters/ID"}],
+      "post": {"operationId": "keepPlaybackAlive", "x-idempotency": "natural", "description": "正在播放时通过 HTTP 续期登录 Cookie 与该登录会话的播放资源，保留当前尝试及音频流。返回下一次续期的截止时间。", "parameters": [{"$ref": "#/components/parameters/CSRF"}], "responses": {"200": {"description": "续期后的有效期", "content": {"application/json": {"schema": {"type": "object", "required": ["expiresAt"], "properties": {"expiresAt": {"type": "string", "format": "date-time"}}}}}}, "default": {"$ref": "#/components/responses/Error"}}}
     },
     "/playback/sessions/{id}/seek": {
       "parameters": [{"$ref": "#/components/parameters/ID"}],

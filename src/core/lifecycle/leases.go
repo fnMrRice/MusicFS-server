@@ -83,10 +83,10 @@ func (m *Manager) Renew(p Principal, id string, r RenewRequest) (Lease, error) {
 		return Lease{}, domain.Fail("CONFLICT", "Lifecycle renewal sequence changed")
 	}
 	lease.lease.Sequence = r.Sequence
-	if lease.principal.ExpiresAt.Before(p.ExpiresAt) {
-		p.ExpiresAt = lease.principal.ExpiresAt
+	if p.ExpiresAt.After(lease.principal.ExpiresAt) {
+		lease.principal.ExpiresAt = p.ExpiresAt
 	}
-	lease.deadline = leaseExpiry(now, p, m.options.LeaseTTL)
+	lease.deadline = leaseExpiry(now, lease.principal, m.options.LeaseTTL)
 	lease.lease.ExpiresAt = lease.deadline.UTC()
 	return lease.lease, nil
 }

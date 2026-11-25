@@ -19,6 +19,17 @@ func (r repository) FindAuth(_ context.Context, id string) (auth.Session, error)
 	return s, nil
 }
 func (r repository) DeleteAuth(_ context.Context, id string) error { delete(r, id); return nil }
+func (r repository) UpdateAuthExpiry(_ context.Context, id string, expiry time.Time) (time.Time, error) {
+	s, ok := r[id]
+	if !ok || !s.ExpiresAt.After(time.Now()) {
+		return time.Time{}, nil
+	}
+	if expiry.After(s.ExpiresAt) {
+		s.ExpiresAt = expiry
+		r[id] = s
+	}
+	return s.ExpiresAt, nil
+}
 func TestSessionAndCSRF(t *testing.T) {
 	ctx := context.Background()
 	repo := repository{}

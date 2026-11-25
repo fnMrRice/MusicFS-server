@@ -14,8 +14,22 @@ func (s *Store) PlaybackReset(ctx context.Context) error {
 	return err
 }
 func (s *Store) PlaybackSave(ctx context.Context, id, auth, user string, description []byte, state string, expiry time.Time) error {
-	_, err := s.DB.ExecContext(ctx, "INSERT INTO playback_sessions VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET description=excluded.description,state=excluded.state", id, auth, user, description, state, expiry.UTC().Format(time.RFC3339Nano))
-	return err
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	until := expiry.UTC().Format(time.RFC3339Nano)
+	if _, err = tx.ExecContext(ctx, "INSERT INTO playback_sessions VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET description=excluded.description,state=excluded.state,expires_at=excluded.expires_at", id, auth, user, description, state, until); err != nil {
+		return err
+	}
+	if state == "active" {
+		// 去重记录与播放会话一起续期，恢复播放时仍只记一次历史。
+		if _, err = tx.ExecContext(ctx, "UPDATE personal_playback_receipts SET expires_at=? WHERE owner=? AND playback_session_id=?", until, user, id); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 func (s *Store) PlaybackOwner(ctx context.Context, id string) (string, error) {
 	var owner string

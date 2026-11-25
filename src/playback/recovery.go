@@ -199,6 +199,7 @@ func (s *Service) beginRecovery(ctx context.Context, who auth.Session, id string
 		attempt := r.AttemptID
 		if result.Playback != nil {
 			attempt = result.Playback.AttemptID
+			result.Playback.ExpiresAt = a.description.ExpiresAt
 		}
 		if a.description.AttemptID != attempt {
 			return nil, nil, domain.Fail("CONFLICT", "Recovery result was superseded")

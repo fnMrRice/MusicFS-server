@@ -49,6 +49,19 @@ func (m *memoryAuth) DeleteAuth(_ context.Context, id string) error {
 	delete(m.sessions, id)
 	return nil
 }
+func (m *memoryAuth) UpdateAuthExpiry(_ context.Context, id string, expiry time.Time) (time.Time, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	session, ok := m.sessions[id]
+	if !ok || !session.ExpiresAt.After(time.Now()) {
+		return time.Time{}, nil
+	}
+	if expiry.After(session.ExpiresAt) {
+		session.ExpiresAt = expiry
+		m.sessions[id] = session
+	}
+	return session.ExpiresAt, nil
+}
 
 func testServer() (*api.Server, *bytes.Buffer) {
 	logs := &bytes.Buffer{}
@@ -113,7 +126,7 @@ func TestAuthHTTPFlowAndCSRF(t *testing.T) {
 	r.Header.Set("X-CSRF-Token", session.CSRFToken)
 	w = httptest.NewRecorder()
 	server.ServeHTTP(w, r)
-	if w.Code != 204 || w.Result().Cookies()[0].MaxAge != -1 {
+	if w.Code != 204 || len(w.Result().Cookies()) != 1 || w.Result().Cookies()[0].MaxAge != -1 {
 		t.Fatal("logout did not revoke cookie")
 	}
 	w = httptest.NewRecorder()

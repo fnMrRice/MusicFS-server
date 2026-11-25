@@ -130,6 +130,7 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 			s.mu.Unlock()
 			return Description{}, domain.Fail("CONFLICT", "Playback result was superseded")
 		}
+		d.ExpiresAt = current.description.ExpiresAt
 		s.mu.Unlock()
 		return d, nil
 	}
@@ -182,10 +183,7 @@ func (s *Service) Create(ctx context.Context, who auth.Session, r CreateRequest,
 	if a.online {
 		a.network.watch(a.ctx, a.cancel)
 	}
-	expiry := time.Now().UTC().Add(30 * time.Minute)
-	if who.ExpiresAt.Before(expiry) {
-		expiry = who.ExpiresAt
-	}
+	expiry := playbackExpiry(fresh.ExpiresAt)
 	d := prepared.describe(id, a.gain, expiry, capabilities.transport())
 	a.description = d
 	s.nextAttempt(a, 0)

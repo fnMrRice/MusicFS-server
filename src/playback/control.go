@@ -54,6 +54,7 @@ func (s *Service) Control(ctx context.Context, who auth.Session, id, operation s
 		if err == nil && d.AttemptID != a.description.AttemptID {
 			return Description{}, domain.Fail("CONFLICT", "Playback result was superseded")
 		}
+		d.ExpiresAt = a.description.ExpiresAt
 		return d, err
 	}
 	if a.description.AttemptID != r.AttemptID {

@@ -32,14 +32,10 @@ func (s *Server) RegisterLifecycle(manager *lifecycle.Manager) {
 		}
 		return WriteJSON(w, http.StatusOK, manager.Status())
 	})
-	// The manager owns its atomic ready/draining check. Release must remain
-	// idempotent during draining, so these routes check CSRF explicitly.
+	// 生命周期管理器负责原子检查停机状态，释放租约在停机时仍需保持幂等。
 	register := func(pattern string, h Handler) {
 		s.Handle(pattern, true, false, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 			if err := lifecycleLoopback(r); err != nil {
-				return err
-			}
-			if err := s.options.Auth.CheckMutation(session, r.Header.Get("Origin"), r.Header.Get("X-CSRF-Token")); err != nil {
 				return err
 			}
 			return h(w, r, session)

@@ -129,6 +129,16 @@ func remoteFixture(t *testing.T, local *sqlite.Store, options storage.Options) s
 
 func TestRealPersistenceWorker(t *testing.T) {
 	options := storageWorker(t)
+	t.Run("renew-auth", func(t *testing.T) {
+		options := options
+		options.DataRoot = t.TempDir()
+		store, err := storage.Open(t.Context(), "plugin", options)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer store.Close()
+		checkSessionRenewal(t, store)
+	})
 	t.Run("large-atomic-publish-and-internal-fields", func(t *testing.T) {
 		options := options
 		options.DataRoot = t.TempDir()

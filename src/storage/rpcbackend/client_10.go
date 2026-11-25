@@ -9,9 +9,15 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
+	"github.com/fnMrRice/MusicFS-server/src/playback/onlinecache"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 	"github.com/fnMrRice/MusicFS-server/src/tasks"
 )
+
+func (c *Client) UpdateOnlineDownload(a0 context.Context, a1 onlinecache.Record) (err error) {
+	err = c.Invoke(a0, "UpdateOnlineDownload", []any{a1}, []any{})
+	return err
+}
 
 func (c *Client) UpdateOperation(a0 context.Context, a1 string, a2 tasks.Progress, a3 tasks.Result) (err error) {
 	err = c.Invoke(a0, "UpdateOperation", []any{a1, a2, a3}, []any{})

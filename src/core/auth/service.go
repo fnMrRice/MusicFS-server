@@ -24,6 +24,7 @@ type Session struct {
 type Repository interface {
 	SaveAuth(context.Context, Session) error
 	FindAuth(context.Context, string) (Session, error)
+	UpdateAuthExpiry(ctx context.Context, id string, expiry time.Time) (time.Time, error)
 	DeleteAuth(context.Context, string) error
 }
 type attempt struct {
@@ -92,10 +93,31 @@ func (s *Service) Authenticate(ctx context.Context, cookie string) (Session, err
 	if len(cookie) != 48 {
 		return Session{}, domain.Fail("AUTH_REQUIRED", "Login is required")
 	}
-	session, err := s.repo.FindAuth(ctx, Digest(cookie))
-	if err != nil || time.Now().After(session.ExpiresAt) {
+	return s.active(ctx, Digest(cookie))
+}
+func (s *Service) active(ctx context.Context, id string) (Session, error) {
+	session, err := s.repo.FindAuth(ctx, id)
+	if err != nil || !session.ExpiresAt.After(time.Now()) {
 		return Session{}, domain.Fail("AUTH_REQUIRED", "Session expired or revoked")
 	}
+	return session, nil
+}
+
+// Renew 在请求通过认证及 CSRF 校验后延长空闲期限。同一秒的请求共享截止时间。
+func (s *Service) Renew(ctx context.Context, session Session) (Session, error) {
+	deadline := time.Now().UTC().Truncate(time.Second).Add(s.ttl)
+	if !deadline.After(session.ExpiresAt) {
+		// 同批请求无需重复写库，仍须确认鉴权后没有发生注销。
+		return s.active(ctx, session.ID)
+	}
+	expiry, err := s.repo.UpdateAuthExpiry(ctx, session.ID, deadline)
+	if err != nil {
+		return Session{}, err
+	}
+	if expiry.IsZero() {
+		return Session{}, domain.Fail("AUTH_REQUIRED", "Session expired or revoked")
+	}
+	session.ExpiresAt = expiry
 	return session, nil
 }
 func (s *Service) CheckMutation(session Session, origin, csrf string) error {

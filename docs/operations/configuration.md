@@ -37,7 +37,7 @@
 | `maxSessions` | 默认8，范围1—128 |
 | `maxProcessing` | 默认2，范围1—8 |
 | `maxCacheBytes` | 默认1073741824，至少1048576，最大为有符号64位整数 |
-| `sessionTtlSeconds` | 默认3600，范围60—86400 |
+| `sessionTtlSeconds` | 登录会话的空闲超时秒数，默认 3600，范围 60–86400。已认证的 HTTP 请求延长会话并刷新 Cookie，WebSocket 心跳只校验会话。 |
 | `hashing.auto` | 默认false；是否自动排队完整原文件 SHA-512，关闭不影响手动任务 |
 | `hashing.maxConcurrent` | 默认1，范围1—4；后台哈希任务并发上限 |
 | `hashing.bytesPerSecond` | 默认4194304（4 MiB/s），范围65536—1073741824；所有哈希任务共享的读取预算，不是每任务额度 |

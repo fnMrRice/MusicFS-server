@@ -15,6 +15,8 @@ import (
 
 var controlRoute = regexp.MustCompile(`^(POST /playback/sessions|DELETE /playback/sessions/[A-Za-z0-9_-]{1,128}|POST /playback/sessions/[A-Za-z0-9_-]{1,128}/(seek|recover|recover-source)|GET /lifecycle|POST /lifecycle/leases|POST /lifecycle/leases/[A-Za-z0-9_-]{1,128}/(renew|release))$`)
 
+type controlDispatchKey struct{}
+
 func (c *controlConnection) failure(id string, err error) controlResponse {
 	w := newControlResult()
 	r := c.request.WithContext(context.WithValue(c.ctx, requestIDKey{}, id))
@@ -37,7 +39,7 @@ func (c *controlConnection) dispatch(message controlRequest) (result controlResp
 	if err := ctx.Err(); err != nil {
 		return c.failure(message.ID, err)
 	}
-	r := c.request.Clone(ctx)
+	r := c.request.Clone(context.WithValue(ctx, controlDispatchKey{}, true))
 	r.Method = message.Method
 	r.URL = &url.URL{Path: "/api/v1" + message.Path}
 	r.RequestURI = r.URL.Path

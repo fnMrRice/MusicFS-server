@@ -51,6 +51,19 @@ func (s *httpAuth) DeleteAuth(_ context.Context, id string) error {
 	delete(s.sessions, id)
 	return nil
 }
+func (s *httpAuth) UpdateAuthExpiry(_ context.Context, id string, expiry time.Time) (time.Time, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	v, ok := s.sessions[id]
+	if !ok || !v.ExpiresAt.After(time.Now()) {
+		return time.Time{}, nil
+	}
+	if expiry.After(v.ExpiresAt) {
+		v.ExpiresAt = expiry
+		s.sessions[id] = v
+	}
+	return v.ExpiresAt, nil
+}
 
 func managementHTTP(t *testing.T, manager *plugincontrol.Manager) (*api.Server, map[string]*http.Cookie) {
 	t.Helper()

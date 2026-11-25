@@ -176,6 +176,25 @@ func TestLifecycleRevocationFencesCapturedAuthenticationAndExpiry(t *testing.T) 
 	active(t, m, 1)
 }
 
+func TestLifecycleRenewalUsesCurrentAuthenticationDeadline(t *testing.T) {
+	m, c := manager(t, lifecycle.ClientManaged)
+	p := principal(c, "session-renewed")
+	p.ExpiresAt = c.Now().Add(5 * time.Second)
+	lease := acquire(t, m, p, "client-one")
+	c.Add(time.Second)
+	p.ExpiresAt = c.Now().Add(10 * time.Second)
+	renewed, err := m.Renew(p, lease.ID, lifecycle.RenewRequest{InstanceID: "instance-one", Sequence: 1})
+	if err != nil || !renewed.ExpiresAt.Equal(p.ExpiresAt) {
+		t.Fatal("lease did not follow the refreshed authentication deadline", err)
+	}
+	c.Add(5 * time.Second)
+	active(t, m, 1)
+	c.Add(5 * time.Second)
+	if m.Status().State != "draining" {
+		t.Fatal("lease survived the refreshed authentication deadline")
+	}
+}
+
 func TestLifecycleBoundedAcquisitionAndDefensiveStatus(t *testing.T) {
 	m, c := manager(t, lifecycle.ClientManaged)
 	p := principal(c, "session-a")

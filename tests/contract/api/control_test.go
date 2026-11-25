@@ -261,7 +261,7 @@ func TestControlHeartbeatRunsDuringCommandAndShutdownCancels(t *testing.T) {
 	readControl(t, conn, "pong")
 	renewed := controlCall(t, conn, "keepalive-renew", "POST", "/lifecycle/leases/"+lease.ID+"/renew", map[string]any{"instanceId": "test-instance", "sequence": 1}, "")
 	var current lifecycle.Lease
-	if renewed.Status != 200 || json.Unmarshal(renewed.Body, &current) != nil || !current.ExpiresAt.After(lease.ExpiresAt) {
+	if renewed.Status != 200 || json.Unmarshal(renewed.Body, &current) != nil || current.Sequence != 1 || current.ExpiresAt.Before(lease.ExpiresAt) {
 		t.Fatal("playback command blocked lifecycle renewal", renewed)
 	}
 	s.CloseControl()

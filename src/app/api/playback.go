@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/auth"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
@@ -13,6 +14,15 @@ import (
 func (s *Server) RegisterPlayback(service *playback.Service) {
 	s.registerTimeline(service)
 	s.registerDownloadDirectory(service)
+	s.Handle("POST /api/v1/playback/sessions/{id}/keepalive", true, true, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
+		expiry, err := service.KeepAlive(r.Context(), a, r.PathValue("id"))
+		if err != nil {
+			return err
+		}
+		return WriteJSON(w, http.StatusOK, struct {
+			ExpiresAt time.Time `json:"expiresAt"`
+		}{expiry})
+	})
 	s.Handle("GET /api/v1/playback/sessions/{id}/attempts/{attempt}/output-profile", true, false, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
 		profile, err := service.AttemptOutputProfile(r.Context(), a, r.PathValue("id"), r.PathValue("attempt"))
 		if err != nil {

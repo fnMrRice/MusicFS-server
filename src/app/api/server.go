@@ -83,19 +83,7 @@ func (s *Server) registerBounded(pattern string, authenticated, mutation bool, t
 		var session auth.Session
 		var err error
 		if authenticated {
-			if s.options.Auth == nil {
-				err = domain.Fail("TEMPORARY_FAILURE", "Authentication service is unavailable")
-			} else if cookie, cookieErr := r.Cookie(CookieName); cookieErr != nil {
-				err = domain.Fail("AUTH_REQUIRED", "Login is required")
-			} else {
-				session, err = s.options.Auth.Authenticate(r.Context(), cookie.Value)
-			}
-		}
-		if err == nil && mutation {
-			err = s.options.Auth.CheckMutation(session, r.Header.Get("Origin"), r.Header.Get("X-CSRF-Token"))
-		}
-		if err == nil && mutation && s.options.Ready != nil && !s.options.Ready() {
-			err = domain.Fail("TEMPORARY_FAILURE", "Server is draining")
+			session, err = s.requestSession(w, r, mutation)
 		}
 		if err == nil {
 			err = handler(w, r, session)

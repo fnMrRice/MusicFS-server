@@ -43,13 +43,45 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request, _ auth.Session) e
 	if err != nil {
 		return err
 	}
-	http.SetCookie(w, s.cookie(cookieValue, session.ExpiresAt, int(time.Until(session.ExpiresAt).Seconds())))
+	s.setSessionCookie(w, cookieValue, session.ExpiresAt)
 	s.options.Logger.InfoContext(r.Context(), "User signed in", "requestId", RequestID(r), "userId", session.User.ID)
 	return WriteJSON(w, http.StatusOK, session)
 }
 
 func (s *Server) currentSession(w http.ResponseWriter, _ *http.Request, session auth.Session) error {
 	return WriteJSON(w, http.StatusOK, session)
+}
+
+func (s *Server) requestSession(w http.ResponseWriter, r *http.Request, mutation bool) (auth.Session, error) {
+	if s.options.Auth == nil {
+		return auth.Session{}, domain.Fail("TEMPORARY_FAILURE", "Authentication service is unavailable")
+	}
+	cookie, err := r.Cookie(CookieName)
+	if err != nil {
+		return auth.Session{}, domain.Fail("AUTH_REQUIRED", "Login is required")
+	}
+	session, err := s.options.Auth.Authenticate(r.Context(), cookie.Value)
+	if err != nil {
+		return auth.Session{}, err
+	}
+	if mutation || r.Method != http.MethodGet && r.Method != http.MethodHead {
+		if err := s.options.Auth.CheckMutation(session, r.Header.Get("Origin"), r.Header.Get("X-CSRF-Token")); err != nil {
+			return auth.Session{}, err
+		}
+	}
+	if mutation && s.options.Ready != nil && !s.options.Ready() {
+		return auth.Session{}, domain.Fail("TEMPORARY_FAILURE", "Server is draining")
+	}
+	// 登出由处理函数删除 Cookie，控制连接仅验证会话，不作为用户活动续期。
+	if r.Pattern == "DELETE /api/v1/auth/session" || r.Pattern == "GET /api/v1/control" || r.Context().Value(controlDispatchKey{}) != nil {
+		return session, nil
+	}
+	session, err = s.options.Auth.Renew(r.Context(), session)
+	if err != nil {
+		return auth.Session{}, err
+	}
+	s.setSessionCookie(w, cookie.Value, session.ExpiresAt)
+	return session, nil
 }
 
 func (s *Server) logout(w http.ResponseWriter, r *http.Request, session auth.Session) error {
@@ -65,4 +97,9 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request, session auth.Ses
 func (s *Server) cookie(value string, expiry time.Time, maxAge int) *http.Cookie {
 	return &http.Cookie{Name: CookieName, Value: value, Path: "/api/v1", Expires: expiry, MaxAge: maxAge,
 		HttpOnly: true, Secure: s.options.SecureCookie, SameSite: http.SameSiteStrictMode}
+}
+
+func (s *Server) setSessionCookie(w http.ResponseWriter, value string, expiry time.Time) {
+	maxAge := int((time.Until(expiry) + time.Second - 1) / time.Second)
+	http.SetCookie(w, s.cookie(value, expiry, max(1, maxAge)))
 }

@@ -37,6 +37,7 @@ func TestPostgresExclusiveStoreAndRestart(t *testing.T) {
 		return s
 	}
 	s := open()
+	checkSessionRenewal(t, s)
 	other := storage.Options{DataRoot: t.TempDir(), Values: values}
 	if duplicate, err := storage.Open(t.Context(), "postgres", other); err == nil {
 		duplicate.Close()

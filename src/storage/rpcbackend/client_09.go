@@ -11,9 +11,9 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/sourcedisplay"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
-	"github.com/fnMrRice/MusicFS-server/src/playback/onlinecache"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
+	"time"
 )
 
 func (c *Client) SelectContent(a0 context.Context, a1 string, a2 mediastore.SelectRequest, a3 string) (r0 mediastore.Selection, err error) {
@@ -131,7 +131,7 @@ func (c *Client) UnlockCover(a0 context.Context, a1 string, a2 albums.UnlockCove
 	return r0, err
 }
 
-func (c *Client) UpdateOnlineDownload(a0 context.Context, a1 onlinecache.Record) (err error) {
-	err = c.Invoke(a0, "UpdateOnlineDownload", []any{a1}, []any{})
-	return err
+func (c *Client) UpdateAuthExpiry(a0 context.Context, a1 string, a2 time.Time) (r0 time.Time, err error) {
+	err = c.Invoke(a0, "UpdateAuthExpiry", []any{a1, a2}, []any{&r0})
+	return r0, err
 }
