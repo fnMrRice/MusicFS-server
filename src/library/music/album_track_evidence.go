@@ -2,6 +2,7 @@ package music
 
 import (
 	"maps"
+	"regexp"
 	"strings"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/scraper"
@@ -32,8 +33,9 @@ func matchNames(primary string, aliases []scraper.LocalizedTitle) []string {
 	return names
 }
 
-var creditSeparators = strings.NewReplacer(" & ", "/", "×", "/", "、", "/", ";", "/", ",", "/",
-	" feat. ", "/", " feat ", "/", " featuring ", "/", " ft. ", "/")
+// 第一组保留 R&B、AC/DC 等短缩写及首尾符号。其余匹配才是分隔符。
+// 带点的 feat./ft. 保留左词界，避免把 Left.Field 等完整艺人名切开。
+var creditSeparators = regexp.MustCompile(`(\b[a-z0-9]{1,2}([&+/][a-z0-9]{1,2})+\b|^[&+/]+|[&+/]+$|[&+/]{2,})|\b(feat|ft)\.| (feat|featuring|ft) |[&+/×、;,]`)
 
 // 资料平台与来源标签都可能把多人写在同一项。保留整条署名，只用明确的分隔符识别成员。
 func trackCredits(credits []string) map[string]bool {
@@ -44,10 +46,21 @@ func trackCredits(credits []string) map[string]bool {
 			continue
 		}
 		names[credit] = true
-		for member := range strings.SplitSeq(creditSeparators.Replace(credit), "/") {
+		addMember := func(member string) {
 			if name := strings.TrimSpace(member); name != "" {
 				names[name] = true
 			}
+		}
+		start := 0
+		for _, marker := range creditSeparators.FindAllStringSubmatchIndex(credit, -1) {
+			if marker[2] >= 0 {
+				continue
+			}
+			addMember(credit[start:marker[0]])
+			start = marker[1]
+		}
+		if start != 0 {
+			addMember(credit[start:])
 		}
 	}
 	return names
