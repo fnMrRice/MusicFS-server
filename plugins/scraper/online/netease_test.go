@@ -1,6 +1,7 @@
 package online
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -119,5 +120,44 @@ func TestNetEaseArtistImageAndAliases(t *testing.T) {
 			len(items[0].LocalizedArtistNames) != 1 || items[0].LocalizedArtistNames[0].Title != "Alias" {
 			t.Errorf("unexpected artist %#v: %v", items, err)
 		}
+	}
+}
+
+func TestNetEaseInstrumentalNotice(t *testing.T) {
+	const credit = `{"t":0,"c":[{"tx":"作曲: "},{"tx":"兰音Reine","or":"orpheus\://nm/artist/home?id=46424022"}]}\`
+	for _, tc := range []struct {
+		name, lyrics string
+		wantLyrics   bool
+	}{
+		{"plain notice", " 纯音乐，请欣赏 ", false},
+		{"timed notice and credits", "\ufeff[ti:夜雨]\r\n[ar:兰音Reine][offset:0]\r\n[00:00.00] 作曲 : 兰音Reine\r\n" + credit + "\r\n [00:10][99:00.000] 纯音乐，请欣赏 \r\n[99:59]", false},
+		{"structured notice", `{"t":1000,"c":[{"tx":"\u7eaf音乐"},{"tx":"，请欣赏"}]}`, false},
+		{"invalid structured line", `{"t":1000,"c":[{"tx":"纯音乐，请欣赏"},{}]}`, true},
+		{"notice followed by a verse", "[00:00.00]纯音乐，请欣赏\n[00:10]第一句歌词", true},
+		{"structured verse before notice", "{\"t\":0,\"c\":[{\"tx\":\"第一句歌词\"}]}\n[99:00]纯音乐，请欣赏", true},
+		{"longer text", "纯音乐，请欣赏这首歌", true},
+		{"notice only in metadata", "[ti:纯音乐，请欣赏]\n" + credit, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			plugin := NetEase(lookupTestClient(t, "music.163.com", func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/api/search/get":
+					fmt.Fprint(w, `{"code":200,"result":{"songs":[{"id":12,"name":"Song"}]}}`)
+				case "/api/v3/song/detail":
+					fmt.Fprint(w, `{"code":200,"songs":[{"id":12,"name":"Song"}]}`)
+				case "/api/song/lyric":
+					_ = json.NewEncoder(w).Encode(map[string]any{"code": 200, "lrc": map[string]string{"lyric": tc.lyrics}})
+				default:
+					t.Errorf("unexpected endpoint %s", r.URL)
+					http.NotFound(w, r)
+				}
+			}))
+			for _, query := range []scraper.Query{{Title: "Song"}, {ExternalID: "12"}} {
+				items, err := plugin.Search(t.Context(), "lyrics", query)
+				if err != nil || !tc.wantLyrics && len(items) != 0 || tc.wantLyrics && (len(items) != 1 || items[0].Lyrics != tc.lyrics) {
+					t.Errorf("unexpected lyrics for query %#v: %#v, %v", query, items, err)
+				}
+			}
+		})
 	}
 }

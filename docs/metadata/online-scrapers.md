@@ -40,7 +40,7 @@ Bangumi 的音乐章节可以把艺人署名写在曲名里。插件会将能够
 | DLsite | 作品详情、封面 | 用 RJ 作品编号精确查询，使用商店页面自身的 JSON 接口。字段和访问能力可能随商店变更。 |
 | AcoustID | 录音识别 | 提供整曲 Chromaprint 指纹与时长（秒），返回候选 MusicBrainz 录音编号。部署时在 Server 进程设置环境变量 `MUSICFS_ACOUSTID_API_KEY`，重启后启用。免费服务适用非商业使用。[接口与注册](https://acoustid.org/webservice) |
 
-网易云音乐和 QQ 音乐从各自的公开目录读取资料，无需启用对应的音乐源或登录平台账号。QQ 音乐按歌曲 MID 查询歌词，上游提供时间标记时返回 LRC 格式。
+网易云音乐和 QQ 音乐从各自的公开目录读取资料，无需启用对应的音乐源或登录平台账号。网易云歌词正文只有「纯音乐，请欣赏」时，插件跳过该候选。如果该来源没有其他匹配歌词，自动搜索会继续尝试下一来源。QQ 音乐按歌曲 MID 查询歌词，上游提供时间标记时返回 LRC 格式。
 
 歌词自动搜索默认依次尝试本地、网易云音乐、QQ 音乐。账号可以增加 LRCLIB、移除来源或调整顺序。`GET /scrapers/lyrics-auto-settings` 返回当前修订和 `pluginOrder`，保存时通过同一路径的 PUT 提交 `expectedRevision` 和完整顺序。空数组关闭自动查找。`POST /scrapers/lyrics-auto-search` 只返回首个命中来源的候选。指定 `localOnly` 和 `sourceTrackId` 可单独查询该曲目的本地歌词，即使自动顺序中已移除本地，也可使用此方式查询。本地候选仅可选回对应的曲目和文件版本。
 
