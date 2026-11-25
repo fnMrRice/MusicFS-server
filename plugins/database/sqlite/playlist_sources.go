@@ -3,13 +3,18 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
+	"maps"
+	"slices"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 )
 
-func playlistSourceVisible(ctx context.Context, tx *sql.Tx, owner string, source playlists.SourceRef) error {
+type playlistSourceIDs map[string]map[string]bool
+
+func (ids playlistSourceIDs) add(source playlists.SourceRef) error {
 	if err := source.Validate(); err != nil {
 		return err
 	}
@@ -20,9 +25,32 @@ func playlistSourceVisible(ctx context.Context, tx *sql.Tx, owner string, source
 	if source.RemoteSourceID != nil {
 		table, id = "remote_sources", source.RemoteSourceID
 	}
-	var found string
-	err := tx.QueryRowContext(ctx, "SELECT id FROM "+table+" WHERE owner=? AND id=?", owner, *id).Scan(&found)
-	return remoteNotFound(err)
+	if ids[table] == nil {
+		ids[table] = make(map[string]bool)
+	}
+	ids[table][*id] = true
+	return nil
+}
+
+// 每种来源只查询一次。按请求的标识查主键，避免扫描用户的整个曲库。
+func (ids playlistSourceIDs) checkVisible(ctx context.Context, tx *sql.Tx, owner string) error {
+	for table, group := range ids {
+		raw, err := json.Marshal(slices.Collect(maps.Keys(group)))
+		if err != nil {
+			return err
+		}
+		var missing bool
+		err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM json_each(?) AS requested
+			WHERE NOT EXISTS(SELECT 1 FROM `+table+` AS source WHERE source.id=requested.value AND source.owner=?))`,
+			string(raw), owner).Scan(&missing)
+		if err != nil {
+			return err
+		}
+		if missing {
+			return remoteNotFound(sql.ErrNoRows)
+		}
+	}
+	return nil
 }
 
 func playlistSourceGroup(ctx context.Context, tx *sql.Tx, owner string, source playlists.SourceRef) (*string, []playlists.SourceRef, error) {
@@ -30,8 +58,9 @@ func playlistSourceGroup(ctx context.Context, tx *sql.Tx, owner string, source p
 		return nil, nil, err
 	}
 	if source.TrackID != nil {
-		if err := playlistSourceVisible(ctx, tx, owner, source); err != nil {
-			return nil, nil, err
+		var found int
+		if err := tx.QueryRowContext(ctx, "SELECT 1 FROM music_tracks WHERE owner=? AND id=?", owner, *source.TrackID).Scan(&found); err != nil {
+			return nil, nil, remoteNotFound(err)
 		}
 		if source.ForcedSourceID == nil {
 			return nil, []playlists.SourceRef{source}, nil

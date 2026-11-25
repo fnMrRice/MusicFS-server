@@ -14,10 +14,11 @@ import (
 )
 
 func authorizePlaylistSnapshot(ctx context.Context, tx *sql.Tx, owner string, snapshot playlists.AggregateSnapshot) error {
-	if _, err := readPersonalPlaylist(ctx, tx, owner, snapshot.PlaylistID); err != nil {
-		return err
+	var found int
+	if err := tx.QueryRowContext(ctx, "SELECT 1 FROM personal_playlists WHERE owner=? AND id=?", owner, snapshot.PlaylistID).Scan(&found); err != nil {
+		return remoteNotFound(err)
 	}
-	seen := map[string]bool{}
+	sources := playlistSourceIDs{}
 	count := 0
 	for _, entry := range snapshot.Entries {
 		for _, p := range entry.Provenance {
@@ -25,16 +26,12 @@ func authorizePlaylistSnapshot(ctx context.Context, tx *sql.Tx, owner string, sn
 			if count > playlists.MaxContributions {
 				return domain.Fail("RATE_LIMITED", "Playlist snapshot exceeds its limit")
 			}
-			if seen[p.Source.Key()] {
-				continue
-			}
-			seen[p.Source.Key()] = true
-			if err := playlistSourceVisible(ctx, tx, owner, p.Source); err != nil {
+			if err := sources.add(p.Source); err != nil {
 				return err
 			}
 		}
 	}
-	return nil
+	return sources.checkVisible(ctx, tx, owner)
 }
 
 type playlistStaleState struct {

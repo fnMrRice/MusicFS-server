@@ -105,11 +105,12 @@ func validatePlaylistGraph(ctx context.Context, tx *sql.Tx, owner, id string) er
 	return err
 }
 func validatePlaylistBindings(ctx context.Context, tx *sql.Tx, owner string, bindings []playlists.PlaylistBinding) error {
+	sources := playlistSourceIDs{}
 	for _, b := range bindings {
 		switch b.Kind {
 		case "local":
 			for _, e := range b.Entries {
-				if err := playlistSourceVisible(ctx, tx, owner, e.Source); err != nil {
+				if err := sources.add(e.Source); err != nil {
 					return err
 				}
 			}
@@ -123,7 +124,7 @@ func validatePlaylistBindings(ctx context.Context, tx *sql.Tx, owner string, bin
 			}
 		}
 	}
-	return nil
+	return sources.checkVisible(ctx, tx, owner)
 }
 func (s *Store) CreatePlaylist(ctx context.Context, owner string, r playlists.CreatePlaylistRequest, key string) (playlists.Playlist, error) {
 	var result playlists.Playlist
