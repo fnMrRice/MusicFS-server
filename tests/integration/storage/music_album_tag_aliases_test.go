@@ -56,13 +56,17 @@ func TestMusicAlbumTagAliasesPreservedOnSchemaUpgrade(t *testing.T) {
 }
 
 func TestMusicAlbumTagAliasesSurviveRescan(t *testing.T) {
+	testAlbumBackends(t, checkAlbumTagAliases)
+}
+
+func testAlbumBackends(t *testing.T, check func(*testing.T, storage.Backend, *sql.DB)) {
 	t.Run("sqlite", func(t *testing.T) {
 		s, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "aliases.sqlite"))
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer s.Close()
-		checkAlbumTagAliases(t, s, s.DB)
+		check(t, s, s.DB)
 	})
 	t.Run("postgres", func(t *testing.T) {
 		options := testkit.PostgresOptions(t)
@@ -71,7 +75,7 @@ func TestMusicAlbumTagAliasesSurviveRescan(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer s.Close()
-		checkAlbumTagAliases(t, s, testkit.PostgresDatabase(t, options))
+		check(t, s, testkit.PostgresDatabase(t, options))
 	})
 }
 

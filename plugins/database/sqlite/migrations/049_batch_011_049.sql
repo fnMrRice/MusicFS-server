@@ -1243,3 +1243,9 @@ CREATE INDEX online_downloads_source ON online_downloads(owner,source_id);
 -- 空任务编号表示尚未为此歌单或关联安排曲库入库，启动时由已配置的实例领取。
 ALTER TABLE remote_playlists ADD COLUMN catalog_job_id TEXT REFERENCES remote_sync_jobs(id);
 ALTER TABLE playlist_links ADD COLUMN catalog_job_id TEXT REFERENCES remote_sync_jobs(id);
+-- migration: 049_netease_asset_ids.sql
+-- 只保存扫描时从当前文件读取的网易云曲目编号。NULL 表示同一资产的标签矛盾，新版本资产重新取证。
+CREATE TABLE music_netease_asset_ids (
+    asset_id TEXT PRIMARY KEY REFERENCES source_assets(id) ON DELETE CASCADE,
+    netease_id TEXT CHECK (netease_id IS NULL OR length(netease_id)>0)
+);
