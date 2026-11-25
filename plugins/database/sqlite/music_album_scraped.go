@@ -138,7 +138,7 @@ func (s *Store) saveMusicAlbumScraped(ctx context.Context, owner, id string, rev
 				if len(field.Item.Tracks) == 0 {
 					return 0, domain.Fail("INVALID_ARGUMENT", "Album track list must not be empty")
 				}
-				if err = syncMusicAlbumScrapedTracks(ctx, tx, owner, albumID, field); err != nil {
+				if err = syncMusicAlbumScrapedTracks(ctx, tx, owner, albumID, field, autoProvider == nil); err != nil {
 					return 0, err
 				}
 			}

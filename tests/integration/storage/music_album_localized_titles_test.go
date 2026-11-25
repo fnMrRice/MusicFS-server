@@ -81,6 +81,12 @@ func TestScrapedAlbumReconcilesLocalizedTitlesWithoutGuessingLanguage(t *testing
 	if len(updated) != 2 || updated[0].Title != "本地新增" || len(updated[0].Sources) != 1 || updated[1].ID != m.ID {
 		t.Fatalf("rescrape retained a disposable placeholder: %+v", updated)
 	}
+	later.ObservedVersion = "v2"
+	reloaded := visibilityScan(t, s, "admin", "local", base, later)[1]
+	real, err := s.MusicTrackForSource(ctx, "admin", reloaded.ID)
+	if err != nil || real.ID != updated[0].ID || !slices.Equal(real.AlbumIDs, []string{album}) {
+		t.Fatalf("rescanned source lost its matched album: %+v, %v", real, err)
+	}
 }
 
 func TestScrapedAlbumRejectsAmbiguousDurationAndCredits(t *testing.T) {

@@ -17,6 +17,8 @@ type scrapedAlbumMember struct {
 	credits               [][]string
 	sourced, disposable   bool
 	shortestMS, longestMS int64
+	pending               []pendingAlbumSource
+	revision              int64
 }
 
 type scrapedAlbumRef struct{ slot, track, external string }
@@ -129,8 +131,7 @@ func (m *scrapedAlbumMember) evidence(t albumScrapeTrack) int {
 	if !hasTrackCredits {
 		artists = sameScrapedCredits(m.credits, t.input.ArtistNames)
 	}
-	duration := t.track.Duration * 1000
-	near := duration > 0 && m.shortestMS > 0 && math.Abs(float64(m.shortestMS)-duration) <= 1000 && math.Abs(float64(m.longestMS)-duration) <= 1000
+	near := nearScrapedDuration(t.track.Duration, m.shortestMS, m.longestMS)
 	if equalName {
 		// 同名曲优先按艺人和时长区分；两个已知且不同的署名不算同一首。
 		if !artists && len(m.credits) > 0 && hasTrackCredits {
@@ -152,6 +153,11 @@ func (m *scrapedAlbumMember) evidence(t albumScrapeTrack) int {
 		return 2
 	}
 	return 0
+}
+
+func nearScrapedDuration(seconds float64, shortest, longest int64) bool {
+	duration := seconds * 1000
+	return duration > 0 && shortest > 0 && math.Abs(float64(shortest)-duration) <= 1000 && math.Abs(float64(longest)-duration) <= 1000
 }
 
 type bestAlbumMatch struct {
@@ -198,7 +204,17 @@ func chooseAlbumMembers(tracks []albumScrapeTrack, members map[string]*scrapedAl
 			if used[id] {
 				continue
 			}
-			score := m.evidence(t)
+			var score int
+			if len(m.pending) > 0 {
+				prior := members[t.prior]
+				if prior == nil || !prior.disposable || !slices.ContainsFunc(m.pending, func(s pendingAlbumSource) bool { return s.slot == t.slot }) {
+					continue
+				}
+				// 跨出暂存卡时只接受双向唯一的完整署名和时长，不用同名来打破并列。
+				score = 2
+			} else {
+				score = m.evidence(t)
+			}
 			if score == 0 {
 				continue
 			}

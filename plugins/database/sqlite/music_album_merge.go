@@ -118,7 +118,7 @@ func (s *Store) MergeMusicAlbumMetadata(ctx context.Context, owner, id string, r
 					}
 				}
 			case "tracks":
-				if err = syncMusicAlbumScrapedTracks(ctx, tx, owner, albumID, tracks); err != nil {
+				if err = syncMusicAlbumScrapedTracks(ctx, tx, owner, albumID, tracks, true); err != nil {
 					return 0, err
 				}
 				tracks.CandidateToken = ""

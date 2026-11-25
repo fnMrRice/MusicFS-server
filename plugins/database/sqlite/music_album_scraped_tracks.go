@@ -145,7 +145,7 @@ func createScrapedAlbumTrack(ctx context.Context, tx *sql.Tx, owner string, in m
 }
 
 // 保留本地曲名和所有来源，只用确认的曲目替换无人使用的自动占位。
-func syncMusicAlbumScrapedTracks(ctx context.Context, tx *sql.Tx, owner, album string, field works.ScrapedField) error {
+func syncMusicAlbumScrapedTracks(ctx context.Context, tx *sql.Tx, owner, album string, field works.ScrapedField, manual bool) error {
 	members, err := albumMatchingMembers(ctx, tx, owner, album)
 	if err != nil {
 		return err
@@ -154,12 +154,18 @@ func syncMusicAlbumScrapedTracks(ctx context.Context, tx *sql.Tx, owner, album s
 	if err != nil {
 		return err
 	}
+	if manual && slices.ContainsFunc(tracks, func(t albumScrapeTrack) bool { return members[t.prior] != nil && members[t.prior].disposable }) {
+		if err := addPendingAlbumMembers(ctx, tx, owner, album, tracks, members); err != nil {
+			return err
+		}
+	}
 	chosen := chooseAlbumMembers(tracks, members)
 	if _, err := tx.ExecContext(ctx, "DELETE FROM music_album_scraped_track_refs WHERE album_id=?", album); err != nil {
 		return err
 	}
 	used := map[string]bool{}
 	positions := map[string]int{}
+	changedPending := map[string]bool{}
 	for i, id := range chosen {
 		if id != "" {
 			if _, ok := positions[id]; !ok || tracks[i].override.preferred {
@@ -180,6 +186,11 @@ func syncMusicAlbumScrapedTracks(ctx context.Context, tx *sql.Tx, owner, album s
 		used[id] = true
 		if err = updateScrapedAlbumMember(ctx, tx, owner, member, t); err != nil {
 			return err
+		}
+		if len(member.pending) > 0 {
+			if err = bindPendingAlbumSources(ctx, tx, album, member, t, changedPending); err != nil {
+				return err
+			}
 		}
 		if pos, ok := positions[id]; ok && pos != i {
 			continue
