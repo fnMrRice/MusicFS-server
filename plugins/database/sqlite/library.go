@@ -58,6 +58,14 @@ func (s *Store) Publish(ctx context.Context, supplied jobs.Job, publication libr
 	if err != nil {
 		return err
 	}
+	// 一次扫描复用同一份写入计划，避免为每个文件重新编译专辑归属触发器。
+	writeTrack, err := tx.PrepareContext(ctx, `INSERT INTO tracks(id,owner,provider,external_id,root_id,path,version,asset_id,mime,size,document)
+ VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET external_id=excluded.external_id,root_id=excluded.root_id,
+ path=excluded.path,version=excluded.version,asset_id=excluded.asset_id,mime=excluded.mime,size=excluded.size,document=excluded.document`)
+	if err != nil {
+		return err
+	}
+	defer writeTrack.Close()
 	for _, o := range observations {
 		previous := old[bindings[o.ExternalID]]
 		id, asset := previous.ID, previous.AssetID
@@ -77,7 +85,7 @@ func (s *Store) Publish(ctx context.Context, supplied jobs.Job, publication libr
 		t.AlbumRelease = o.AlbumRelease
 		t.Album, t.Genre, t.Year, t.SampleRateHz = o.Album, o.Genre, o.Year, o.SampleRateHz
 		raw, _ := json.Marshal(t)
-		_, err = tx.ExecContext(ctx, "INSERT INTO tracks(id,owner,provider,external_id,root_id,path,version,asset_id,mime,size,document) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET external_id=excluded.external_id,root_id=excluded.root_id,path=excluded.path,version=excluded.version,asset_id=excluded.asset_id,mime=excluded.mime,size=excluded.size,document=excluded.document", id, j.Owner, j.ProviderInstanceID, o.ExternalID, o.RootID, o.RelativePath, o.ObservedVersion, asset, o.MIME, o.SizeBytes, raw)
+		_, err = writeTrack.ExecContext(ctx, id, j.Owner, j.ProviderInstanceID, o.ExternalID, o.RootID, o.RelativePath, o.ObservedVersion, asset, o.MIME, o.SizeBytes, raw)
 		if err != nil {
 			return err
 		}
@@ -86,6 +94,11 @@ func (s *Store) Publish(ctx context.Context, supplied jobs.Job, publication libr
 			return err
 		}
 	}
+	writeMissing, err := tx.PrepareContext(ctx, "UPDATE tracks SET document=? WHERE id=?")
+	if err != nil {
+		return err
+	}
+	defer writeMissing.Close()
 	for id, t := range old {
 		if !seen[id] && scopes[t.RootID].Contains(t.RootID, t.Path) {
 			t.Availability = "missing"
@@ -98,7 +111,7 @@ func (s *Store) Publish(ctx context.Context, supplied jobs.Job, publication libr
 			}
 			t.Asset, t.BitrateBps = &a, a.BitrateBps
 			raw, _ := json.Marshal(t)
-			if _, err = tx.ExecContext(ctx, "UPDATE tracks SET document=? WHERE id=?", raw, id); err != nil {
+			if _, err = writeMissing.ExecContext(ctx, raw, id); err != nil {
 				return err
 			}
 		}

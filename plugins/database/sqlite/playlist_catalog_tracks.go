@@ -14,6 +14,12 @@ import (
 )
 
 func importPlaylistTracks(ctx context.Context, tx *sql.Tx, owner string, b playlists.Binding, o playlists.Observation) error {
+	// 同一歌单的所有曲目共用写入语句，完整的来源与专辑触发器只需编译一次。
+	writeTrack, err := tx.PrepareContext(ctx, upsertOnlineTrack)
+	if err != nil {
+		return err
+	}
+	defer writeTrack.Close()
 	metadata := make(map[string]online.TrackLookup, len(o.Tracks))
 	for _, item := range o.Tracks {
 		if _, exists := metadata[item.ExternalID]; exists {
@@ -33,7 +39,7 @@ func importPlaylistTracks(ctx context.Context, tx *sql.Tx, owner string, b playl
 		if !ok {
 			return domain.Fail("PROTOCOL_MISMATCH", "Playlist member metadata is missing")
 		}
-		source, err := importPlaylistSource(ctx, tx, owner, b.InstanceID, item, &additions)
+		source, err := importPlaylistSource(ctx, tx, writeTrack, owner, b.InstanceID, item, &additions)
 		if err != nil {
 			return err
 		}
@@ -51,7 +57,7 @@ func importPlaylistTracks(ctx context.Context, tx *sql.Tx, owner string, b playl
 		return err
 	}
 	var local string
-	err := tx.QueryRowContext(ctx, `SELECT playlist_id FROM playlist_links WHERE owner=? AND instance_id=? AND account_id=? AND external_id=?`, owner, b.InstanceID, b.AccountID, b.ExternalID).Scan(&local)
+	err = tx.QueryRowContext(ctx, `SELECT playlist_id FROM playlist_links WHERE owner=? AND instance_id=? AND account_id=? AND external_id=?`, owner, b.InstanceID, b.AccountID, b.ExternalID).Scan(&local)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
@@ -79,7 +85,7 @@ func importPlaylistTracks(ctx context.Context, tx *sql.Tx, owner string, b playl
 	return err
 }
 
-func importPlaylistSource(ctx context.Context, tx *sql.Tx, owner, provider string, item online.TrackLookup, additions *[]catalogAddition) (string, error) {
+func importPlaylistSource(ctx context.Context, tx *sql.Tx, writeTrack *sql.Stmt, owner, provider string, item online.TrackLookup, additions *[]catalogAddition) (string, error) {
 	metadata, availability := item.Track, "available"
 	if metadata == nil {
 		if item.ErrorCode == nil || *item.ErrorCode != "NOT_FOUND" {
@@ -95,7 +101,7 @@ func importPlaylistSource(ctx context.Context, tx *sql.Tx, owner, provider strin
 	} else if item.ErrorCode != nil || metadata.ExternalID != item.ExternalID || metadata.Title == "" {
 		return "", domain.Fail("PROTOCOL_MISMATCH", "Invalid playlist member metadata")
 	}
-	source, err := publishOnlineTrack(ctx, tx, owner, provider, *metadata, availability, additions)
+	source, err := publishOnlineTrack(ctx, tx, writeTrack, owner, provider, *metadata, availability, additions)
 	return source.ID, err
 }
 

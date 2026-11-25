@@ -23,6 +23,9 @@ type storedTrack struct {
 	CoverURL *string `json:"_providerCoverUrl,omitempty"`
 }
 
+const upsertOnlineTrack = `INSERT INTO tracks(id,owner,provider,external_id,root_id,path,version,asset_id,mime,size,document)
+ VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET document=excluded.document`
+
 // PublishOnlineTrack 仅保存元数据；未观察音频时不填写大小、哈希或字节版本证据。
 func (s *Store) PublishOnlineTrack(ctx context.Context, owner, provider string, metadata online.Track) (library.Track, error) {
 	tx, err := s.DB.BeginTx(ctx, nil)
@@ -30,8 +33,13 @@ func (s *Store) PublishOnlineTrack(ctx context.Context, owner, provider string, 
 		return library.Track{}, err
 	}
 	defer tx.Rollback()
+	writeTrack, err := tx.PrepareContext(ctx, upsertOnlineTrack)
+	if err != nil {
+		return library.Track{}, err
+	}
+	defer writeTrack.Close()
 	var additions []catalogAddition
-	track, err := publishOnlineTrack(ctx, tx, owner, provider, metadata, "available", &additions)
+	track, err := publishOnlineTrack(ctx, tx, writeTrack, owner, provider, metadata, "available", &additions)
 	if err != nil {
 		return library.Track{}, err
 	}
@@ -47,7 +55,7 @@ func (s *Store) PublishOnlineTrack(ctx context.Context, owner, provider string, 
 	return track, tx.Commit()
 }
 
-func publishOnlineTrack(ctx context.Context, tx *sql.Tx, owner, provider string, metadata online.Track, availability string, additions *[]catalogAddition) (library.Track, error) {
+func publishOnlineTrack(ctx context.Context, tx *sql.Tx, writeTrack *sql.Stmt, owner, provider string, metadata online.Track, availability string, additions *[]catalogAddition) (library.Track, error) {
 	var empty library.Track
 	if owner == "" || provider == "" || metadata.ExternalID == "" || metadata.Title == "" {
 		return empty, domain.Fail("INVALID_ARGUMENT", "Invalid online track publication")
@@ -88,7 +96,7 @@ func publishOnlineTrack(ctx context.Context, tx *sql.Tx, owner, provider string,
 	if err != nil {
 		return empty, err
 	}
-	_, err = tx.ExecContext(ctx, "INSERT INTO tracks(id,owner,provider,external_id,root_id,path,version,asset_id,mime,size,document) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET document=excluded.document", id, owner, provider, metadata.ExternalID, "online-audio", "", online.Unversioned, asset, "", 0, raw)
+	_, err = writeTrack.ExecContext(ctx, id, owner, provider, metadata.ExternalID, "online-audio", "", online.Unversioned, asset, "", 0, raw)
 	if err != nil {
 		return empty, err
 	}
