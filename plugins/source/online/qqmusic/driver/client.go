@@ -28,6 +28,7 @@ type artist struct {
 	Name string `json:"name"`
 }
 type album struct {
+	MID  string `json:"mid"`
 	Name string `json:"name"`
 }
 

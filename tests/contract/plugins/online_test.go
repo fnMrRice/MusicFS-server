@@ -67,7 +67,7 @@ func TestOnlineWireContractActualDTOs(t *testing.T) {
 		t.Fatal(err)
 	}
 	c, err := onlineplugins.New(online.Netease, online.Scope{UserID: "owner", InstanceID: "1463118e-e2d1-564a-ab70-05a357c1b9bf"}, onlineplugins.Options{Transport: testkit.OnlineAccountTransport(onlineResponse(func(*http.Request) (*http.Response, error) {
-		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"code":200,"result":{"songs":[{"id":42,"name":"Synthetic","artists":[],"album":{},"duration":1}],"songCount":1,"hasMore":false}}`))}, nil
+		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"code":200,"result":{"songs":[{"id":42,"name":"Synthetic","artists":[{"name":"Artist"}],"album":{"id":91,"name":"Album"},"duration":1}],"songCount":1,"hasMore":false}}`))}, nil
 	}))})
 	if err != nil {
 		t.Fatal(err)
@@ -78,7 +78,17 @@ func TestOnlineWireContractActualDTOs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if r := page.Tracks[0].AlbumRelease; r == nil || r.Namespace != online.Netease || r.ID != "91" {
+		t.Fatalf("Missing native search metadata: %+v", r)
+	}
 	onlineContract(t, "SearchPage", page)
+	raw, err := json.Marshal(page.Tracks[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := testkit.ContractSchema(t, "http", "OnlineTrack").Validate(testkit.DecodeJSON(t, raw)); err != nil {
+		t.Fatal(err)
+	}
 	onlineContract(t, "", map[string]any{"jsonrpc": "2.0", "id": "h-3", "result": pluginproto.OnlineResult[online.SearchPage]{Context: scope, Value: page}})
 	for _, code := range []string{"AUTH_REQUIRED", "PLATFORM_AUTH_REQUIRED", "TEMPORARY_FAILURE", "UNSUPPORTED"} {
 		onlineContract(t, "", map[string]any{"jsonrpc": "2.0", "id": "h-4", "error": pluginproto.Failure(code, "Synthetic result")})

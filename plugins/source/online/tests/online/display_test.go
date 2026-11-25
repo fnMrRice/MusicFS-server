@@ -57,12 +57,15 @@ func TestTrackBatchPreservesDuplicatesAndMissingWithoutNPlusOne(t *testing.T) {
 		if r.URL.Query().Get("c") != `[{"id":42},{"id":43}]` {
 			t.Fatal("batch not deduplicated", r.URL)
 		}
-		return response(`{"code":200,"songs":[{"id":42,"name":"Track","ar":[],"al":{},"dt":123}]}`).RoundTrip(r)
+		return response(`{"code":200,"songs":[{"id":42,"name":"Track","ar":[{"name":"Singer"}],"al":{"name":"Album","id":9007199254740995},"dt":123}]}`).RoundTrip(r)
 	}))
 	ids := []string{"42", "43", "42"}
 	batch, err := c.MetadataBatch(context.Background(), ids)
 	if err != nil || calls.Load() != 1 || len(batch.Items) != 3 || batch.Items[0].Track == nil || batch.Items[2].Track == nil || batch.Items[1].ErrorCode == nil || *batch.Items[1].ErrorCode != "NOT_FOUND" {
 		t.Fatal(batch, err)
+	}
+	if r := batch.Items[0].Track.AlbumRelease; r == nil || r.Namespace != "netease" || r.ID != "9007199254740995" {
+		t.Fatalf("invalid batch album release: %+v", r)
 	}
 	if err = online.ValidateTrackBatch(online.Netease, batch, ids); err != nil {
 		t.Fatal(err)

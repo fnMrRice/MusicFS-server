@@ -16,6 +16,35 @@ func fixtureTrack() online.Track {
 	return track
 }
 
+func TestNativeReleaseRequiresBoundPlatformAndTrack(t *testing.T) {
+	track := fixtureTrack()
+	track.Album = "Album"
+	track.AlbumRelease = track.NativeAlbumRelease(online.Netease, "9007199254740995")
+	track.MetadataDigest = online.TrackDigest(track)
+	if track.AlbumRelease == nil || online.ValidateTrack(fixturePolicy().BindPlatform(online.Netease), track) != nil {
+		t.Fatal("Verified native release rejected")
+	}
+	if online.ValidateTrack(fixturePolicy().BindPlatform(online.QQMusic), track) == nil {
+		t.Fatal("An unrelated plugin supplied a native release")
+	}
+	for _, change := range []func(*online.Track){
+		func(t *online.Track) { t.AlbumRelease.ID = "1e5" },
+		func(t *online.Track) { t.AlbumRelease.Namespace = online.QQMusic },
+		func(t *online.Track) { t.Artists = []string{} },
+		func(t *online.Track) { t.Album = "" },
+		func(t *online.Track) { t.ExternalID = "43" },
+	} {
+		bad := track
+		r := *track.AlbumRelease
+		bad.AlbumRelease = &r
+		change(&bad)
+		bad.MetadataDigest = online.TrackDigest(bad)
+		if online.ValidateTrack(fixturePolicy().BindPlatform(online.Netease), bad) == nil {
+			t.Fatalf("Invalid release accepted: %+v", bad)
+		}
+	}
+}
+
 func TestMetadataValidationRetainsTrustBoundary(t *testing.T) {
 	if err := online.ValidateTrack(fixturePolicy(), fixtureTrack()); err != nil {
 		t.Fatal(err)

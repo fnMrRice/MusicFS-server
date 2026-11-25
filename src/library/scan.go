@@ -141,6 +141,7 @@ func (s *Service) scanRoot(ctx context.Context, j jobs.Job, r Runtime, rootID st
 				}
 				if e == nil {
 					item.ProbeStatus = "succeeded"
+					item.AlbumRelease = meta.AlbumRelease
 					item.NetEaseID, item.NetEaseIDConflict = meta.NetEaseID, meta.NetEaseIDConflict
 					item.Codec = meta.Codec
 					item.Container = meta.Container

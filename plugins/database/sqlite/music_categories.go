@@ -9,7 +9,13 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/music"
 )
 
-const ordinaryMusicAlbumMetadata = `(a.origin<>'cd' OR EXISTS(SELECT 1 FROM works w WHERE w.id=a.id AND w.owner=a.owner AND w.show_in_track_list=1))`
+// 原生发行分流后，纯刮削留下的曲序不能单独撑起一张旧标签卡。人工资料和独立成员全部保留。
+const ordinaryMusicAlbumMetadata = `(a.origin<>'cd' OR EXISTS(SELECT 1 FROM works w WHERE w.id=a.id AND w.owner=a.owner AND w.show_in_track_list=1))
+ AND (a.native_displaced=0 OR a.metadata_locked=1
+ OR EXISTS(SELECT 1 FROM music_album_source_refs r WHERE r.album_id=a.id)
+ OR EXISTS(SELECT 1 FROM music_album_source_tag_overrides o WHERE o.owner=a.owner AND o.album_id=a.id)
+ OR EXISTS(SELECT 1 FROM music_manual_album_tracks m WHERE m.album_id=a.id AND NOT EXISTS(
+  SELECT 1 FROM music_album_scraped_track_refs f WHERE f.album_id=m.album_id AND f.track_id=m.track_id)))`
 
 const musicCategoryScope = musicVisible + `, scope AS (
  SELECT v.id FROM visible_music_tracks v WHERE (?='' OR EXISTS (
@@ -78,7 +84,8 @@ func (s *Store) MusicAlbums(ctx context.Context, owner string, q music.Query) (m
  LEFT JOIN music_album_tracks x ON x.album_id=a.id LEFT JOIN scope ON scope.id=x.track_id
  WHERE a.owner=? AND a.id>? AND instr(lower(a.name),lower(?))>0 AND `+ordinaryMusicAlbumMetadata+`
  AND (?=0 OR NOT EXISTS(SELECT 1 FROM music_album_scraped_fields f WHERE f.album_id=a.id))
- GROUP BY a.id HAVING COUNT(scope.id)>0 OR (?='' AND a.origin='manual' AND COUNT(x.track_id)=0)
+ GROUP BY a.id HAVING COUNT(scope.id)>0 OR (?='' AND COUNT(x.track_id)=0
+ AND (a.origin='manual' OR (a.native_displaced=1 AND a.metadata_locked=1)))
  ORDER BY a.id LIMIT ?`, func(r *sql.Rows) error {
 		var a music.AlbumItem
 		if e := r.Scan(append(albumFields(&a.Album), &a.TrackCount)...); e != nil {

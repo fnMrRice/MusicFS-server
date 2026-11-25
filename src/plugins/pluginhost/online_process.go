@@ -185,6 +185,7 @@ func StartOnline(parent context.Context, config OnlineConfig) (worker *OnlineWor
 	if err = pluginproto.ValidateOnlineDescriptor(ready.Manifest, w.descriptor, config.Platform); err != nil {
 		return nil, domain.Fail("PROTOCOL_MISMATCH", "Online plugin descriptor does not match the handshake")
 	}
+	w.descriptor.Resources = w.descriptor.Resources.BindPlatform(config.Platform)
 	w.version = ready.Manifest.PluginVersion
 	if err = w.initializeAccount(startup); err != nil {
 		return nil, err

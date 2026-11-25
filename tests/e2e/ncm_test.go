@@ -31,7 +31,7 @@ func TestNCMServerRoundTripAndDisabledPlugin(t *testing.T) {
 		t.Fatal(err)
 	}
 	const cacheBudget = 2 << 20
-	encrypted, err := testkit.BuildNCMWithOptions(payload, map[string]any{"musicName": "中文解密曲目", "format": "flac", "duration": 1}, testkit.NCMOptions{Cover: []byte{1, 2, 3, 4}, CoverPadding: cacheBudget})
+	encrypted, err := testkit.BuildNCMWithOptions(payload, map[string]any{"musicId": "42", "albumId": "9007199254740995", "musicName": "中文解密曲目", "artist": [][]any{{"Artist", 7}}, "album": "Album Disc 2", "format": "flac", "duration": 1}, testkit.NCMOptions{Cover: []byte{1, 2, 3, 4}, CoverPadding: cacheBudget})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,6 +94,9 @@ func TestNCMServerRoundTripAndDisabledPlugin(t *testing.T) {
 					t.Fatal(err)
 				}
 				track := tracks["中文 source.ncm"]
+				if r := track.AlbumRelease; r == nil || r.Namespace != "netease" || r.ID != "9007199254740995" {
+					t.Fatalf("Missing release after NCM scan: %+v", r)
+				}
 				if track.Container == nil || *track.Container != "ncm" || track.Codec == nil || *track.Codec != "mp3" || track.DurationMs != nil || track.Title == nil || *track.Title != "中文解密曲目" {
 					t.Fatalf("unverified envelope metadata leaked into format/duration: %+v", track)
 				}

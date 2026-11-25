@@ -2,11 +2,13 @@ package driver
 
 import (
 	"context"
-	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"html"
+
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
 )
 
 type qqSong struct {
+	AlbumMID string   `json:"albummid"`
 	MID      string   `json:"songmid"`
 	Name     string   `json:"songname"`
 	Singer   []artist `json:"singer"`
@@ -55,7 +57,7 @@ func (c *Client) Search(ctx context.Context, request online.SearchRequest, offse
 	}
 	tracks := make([]online.Track, 0, len(result.Body.Song.List))
 	for _, source := range result.Body.Song.List {
-		song := qqSong{MID: source.MID, Name: source.Name, Singer: source.Singer, Album: source.Album.Name, Interval: source.Interval}
+		song := qqSong{MID: source.MID, Name: source.Name, Singer: source.Singer, Album: source.Album.Name, AlbumMID: source.Album.MID, Interval: source.Interval}
 		track, err := song.track()
 		if err != nil {
 			return nil, false, err
@@ -95,6 +97,7 @@ func (s qqSong) track() (online.Track, error) {
 		value := *s.Interval * 1000
 		t.DurationMs = &value
 	}
+	t.AlbumRelease = t.NativeAlbumRelease(online.QQMusic, s.AlbumMID)
 	t.MetadataDigest = online.TrackDigest(t)
 	return t, nil
 }

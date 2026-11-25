@@ -5,10 +5,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 	"time"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/audiotypes"
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
+	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
@@ -50,7 +53,8 @@ func publishOnlineTrack(ctx context.Context, tx *sql.Tx, owner, provider string,
 		return empty, domain.Fail("INVALID_ARGUMENT", "Invalid online track publication")
 	}
 	var id, asset string
-	err := tx.QueryRowContext(ctx, "SELECT id,asset_id FROM tracks WHERE owner=? AND provider=? AND external_id=?", owner, provider, metadata.ExternalID).Scan(&id, &asset)
+	var previousRaw []byte
+	err := tx.QueryRowContext(ctx, "SELECT id,asset_id,document FROM tracks WHERE owner=? AND provider=? AND external_id=?", owner, provider, metadata.ExternalID).Scan(&id, &asset, &previousRaw)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return empty, err
 	}
@@ -72,6 +76,10 @@ func publishOnlineTrack(ctx context.Context, tx *sql.Tx, owner, provider string,
 	if album := strings.TrimSpace(metadata.Album); album != "" {
 		track.Album = &album
 	}
+	track.AlbumRelease, err = storedNativeAlbumRelease(ctx, tx, provider, metadata, previousRaw)
+	if err != nil {
+		return empty, err
+	}
 	var cover string
 	if metadata.CoverURL != nil {
 		cover = library.NetEaseArtworkURL(*metadata.CoverURL)
@@ -88,4 +96,42 @@ func publishOnlineTrack(ctx context.Context, tx *sql.Tx, owner, provider string,
 		*additions = append(*additions, catalogAddition{id, catalogIdentity(metadata)})
 	}
 	return track, nil
+}
+
+// storedNativeAlbumRelease 对照已注册平台、歌曲身份与库内该音源的原始曲目标签。
+func storedNativeAlbumRelease(ctx context.Context, tx *sql.Tx, provider string, metadata online.Track, previousRaw []byte) (*audiotypes.AlbumRelease, error) {
+	r := metadata.AlbumRelease
+	if r == nil {
+		return nil, nil
+	}
+	if metadata.NativeAlbumRelease(r.Namespace, r.ID) == nil {
+		return nil, domain.Fail("PROTOCOL_MISMATCH", "Invalid native release metadata")
+	}
+	var registered bool
+	err := tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM music_source_providers WHERE provider_instance_id=? AND plugin_id=?)", provider, pluginproto.OnlinePluginID(r.Namespace)).Scan(&registered)
+	if err != nil || !registered {
+		return nil, err
+	}
+	if previousRaw == nil {
+		return r, nil
+	}
+	var previous library.Track
+	if err := json.Unmarshal(previousRaw, &previous); err != nil {
+		return nil, err
+	}
+	if previous.Title == nil {
+		return nil, nil
+	}
+	if previous.Availability == "missing" && len(previous.Artists) == 0 && *previous.Title == metadata.ExternalID {
+		return r, nil
+	}
+	if audiotypes.SameTrackCredit(*previous.Title, previous.Artists, metadata.Title, metadata.Artists) {
+		return r, nil
+	}
+	// 旧音源文档按斜杠展开了 AC/DC 等完整署名，只有完整展开名单一致时才接受。
+	if audiotypes.NormalizeMatchName(*previous.Title) == audiotypes.NormalizeMatchName(metadata.Title) &&
+		slices.Equal(previous.Artists, library.NormalizeArtists(metadata.Artists)) {
+		return r, nil
+	}
+	return nil, nil
 }

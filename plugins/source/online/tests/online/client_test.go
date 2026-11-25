@@ -111,11 +111,14 @@ func TestSearchQQMappingAndPartialPage(t *testing.T) {
 		if json.NewDecoder(r.Body).Decode(&payload) != nil || r.URL.Host != "u.y.qq.com" || payload.Request.Method != "DoSearchForQQMusicDesktop" || payload.Comm["authst"] != "fixture-private-token" || payload.Comm["ct"] != "19" || payload.Request.Param["page_num"] != float64(1) {
 			t.Fatal("invalid authenticated QQ desktop request")
 		}
-		return response(`{"code":0,"req_0":{"code":0,"data":{"code":0,"body":{"song":{"list":[{"mid":"Ab12","name":"Title &amp; Artist","singer":[{"name":"A"}],"album":{"name":"Album"},"interval":123}]}},"meta":{"curpage":1,"sum":3}}}}`).RoundTrip(r)
+		return response(`{"code":0,"req_0":{"code":0,"data":{"code":0,"body":{"song":{"list":[{"mid":"Ab12","name":"Title &amp; Artist","singer":[{"name":"A"}],"album":{"name":"Album","mid":"A091bc"},"interval":123}]}},"meta":{"curpage":1,"sum":3}}}}`).RoundTrip(r)
 	}))
 	page, err := c.Search(context.Background(), online.SearchRequest{Query: "test", Limit: 2})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if r := page.Tracks[0].AlbumRelease; r == nil || r.Namespace != "qqmusic" || r.ID != "A091bc" {
+		t.Fatalf("invalid native QQ release: %+v", r)
 	}
 	if page.Tracks[0].Title != "Title & Artist" || *page.Tracks[0].DurationMs != 123000 || page.Tracks[0].ExternalID != "Ab12" || !page.Truncated || page.NextCursor != nil {
 		t.Fatalf("bad QQ mapping: %+v", page)

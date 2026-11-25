@@ -10,6 +10,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/audiotypes"
 	"github.com/fnMrRice/MusicFS-server/sdk/fault"
 )
 
@@ -38,13 +39,14 @@ type Capability struct {
 }
 
 type Track struct {
-	ExternalID string   `json:"externalId"`
-	Title      string   `json:"title"`
-	Artists    []string `json:"artists"`
-	Album      string   `json:"album"`
-	DurationMs *int64   `json:"durationMs"`
-	SourceURL  string   `json:"sourceUrl"`
-	CoverURL   *string  `json:"coverUrl,omitempty"`
+	AlbumRelease *audiotypes.AlbumRelease `json:"albumRelease,omitempty"`
+	ExternalID   string                   `json:"externalId"`
+	Title        string                   `json:"title"`
+	Artists      []string                 `json:"artists"`
+	Album        string                   `json:"album"`
+	DurationMs   *int64                   `json:"durationMs"`
+	SourceURL    string                   `json:"sourceUrl"`
+	CoverURL     *string                  `json:"coverUrl,omitempty"`
 	// MetadataDigest is not an audio asset version or proof of byte identity.
 	MetadataDigest       string `json:"metadataDigest"`
 	PlaybackAvailability string `json:"playbackAvailability"`

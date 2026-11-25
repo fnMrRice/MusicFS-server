@@ -25,7 +25,7 @@ func (p *Processor) AudioDecoder() audioformat.Decoder {
 		return audioformat.Output{
 			Processing: []audioformat.Processing{{Type: "ncmDecrypt", Version: "1"}},
 			Input: audioformat.Input{Reader: decoded, Size: decoded.Size(), Format: metadata.Format, MIME: metadata.MIME, Metadata: audioformat.Metadata{
-				Title: metadata.Title, Album: metadata.Album, Artists: metadata.Artists, DurationMs: metadata.DurationMs, BitrateBps: metadata.BitrateBps, NetEaseID: metadata.NetEaseID,
+				Title: metadata.Title, Album: metadata.Album, Artists: metadata.Artists, DurationMs: metadata.DurationMs, BitrateBps: metadata.BitrateBps, NetEaseID: metadata.NetEaseID, AlbumRelease: metadata.AlbumRelease,
 			}},
 			NeedsDecoding: true, Close: decoded.Close, Attachments: attachments,
 		}, nil

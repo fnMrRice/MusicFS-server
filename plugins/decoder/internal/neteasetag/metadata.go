@@ -17,11 +17,55 @@ const Prefix = "163 key(Don't modify):"
 var metadataKey = [16]byte{0x23, 0x31, 0x34, 0x6c, 0x6a, 0x6b, 0x5f, 0x21, 0x5c, 0x5d, 0x26, 0x30, 0x55, 0x3c, 0x27, 0x28}
 
 func SongID(fields map[string]json.RawMessage) string {
+	return decimalID(fields["musicId"])
+}
+
+func decimalID(raw json.RawMessage) string {
 	var value json.Number
-	if json.Unmarshal(fields["musicId"], &value) != nil || !audiotypes.ValidNetEaseID(value.String()) {
+	if json.Unmarshal(raw, &value) != nil || !audiotypes.ValidNetEaseID(value.String()) {
 		return ""
 	}
 	return value.String()
+}
+
+// Release 要求发行与歌曲编号来自同一原始标签，并与本次读取到的曲名和艺人相符。
+func Release(fields map[string]json.RawMessage, title, album string, artists []string) *audiotypes.AlbumRelease {
+	if SongID(fields) == "" || !audiotypes.SameAlbumTrack(title, album, artists, Text(fields["musicName"]), Text(fields["album"]), Artists(fields)) {
+		return nil
+	}
+	id := decimalID(fields["albumId"])
+	if id == "" {
+		return nil
+	}
+	return &audiotypes.AlbumRelease{Namespace: "netease", ID: id}
+}
+
+func Text(raw json.RawMessage) string {
+	var text string
+	if json.Unmarshal(raw, &text) != nil || len(text) > 4096 {
+		return ""
+	}
+	return text
+}
+
+func Artists(fields map[string]json.RawMessage) []string {
+	var names []string
+	var artists []json.RawMessage
+	if json.Unmarshal(fields["artist"], &artists) == nil && len(artists) <= 256 {
+		for _, artist := range artists {
+			var pair []json.RawMessage
+			name := ""
+			if json.Unmarshal(artist, &pair) == nil && len(pair) > 0 {
+				name = Text(pair[0])
+			} else {
+				name = Text(artist)
+			}
+			if name != "" {
+				names = append(names, name)
+			}
+		}
+	}
+	return names
 }
 
 func Parse(data []byte) (map[string]json.RawMessage, error) {

@@ -127,6 +127,9 @@ func (s *Service) resolveTrack(ctx context.Context, owner, id, external string, 
 				return library.Track{}, err
 			}
 		}
+		if metadata.ExternalID != external {
+			return library.Track{}, domain.Fail("PROTOCOL_MISMATCH", "Online track identity mismatch")
+		}
 		return s.audioLibrary.RegisterOnlineTrack(ctx, owner, id, metadata)
 	})
 }

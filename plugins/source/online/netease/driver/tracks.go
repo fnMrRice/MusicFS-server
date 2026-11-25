@@ -15,6 +15,7 @@ type artist struct {
 	Name string `json:"name"`
 }
 type album struct {
+	ID     json.RawMessage `json:"id"`
 	Name   string          `json:"name"`
 	PicURL string          `json:"picUrl"`
 	PicStr string          `json:"pic_str"`
@@ -87,6 +88,10 @@ func (s neteaseSong) track(detail bool) (Track, error) {
 	t.Album, err = textValue(a.Name, 4096)
 	if err != nil {
 		return Track{}, err
+	}
+	var albumID json.Number
+	if json.Unmarshal(a.ID, &albumID) == nil {
+		t.AlbumRelease = t.NativeAlbumRelease(online.Netease, albumID.String())
 	}
 	t.CoverURL = a.cover()
 	if duration != nil && (*duration < 0 || *duration > 7*24*60*60*1000) {

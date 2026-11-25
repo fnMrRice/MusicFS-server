@@ -12,7 +12,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 )
 
-func scanAsset(ctx context.Context, tx *sql.Tx, owner, track, previous string, o library.Observation) (identification.Asset, error) {
+func scanAsset(ctx context.Context, tx *sql.Tx, owner, track, previous string, o *library.Observation) (identification.Asset, error) {
 	var a identification.Asset
 	var err error
 	if previous != "" {
@@ -39,15 +39,19 @@ func scanAsset(ctx context.Context, tx *sql.Tx, owner, track, previous string, o
 		}
 	}
 	a.Codec, a.Container, a.DurationMs = o.Codec, o.Container, o.DurationMs
-	inputs, err := library.EvidenceForObservation(o)
+	inputs, err := library.EvidenceForObservation(*o)
 	if err != nil {
 		return a, err
 	}
 	if o.NetEaseID != "" || o.NetEaseIDConflict {
 		// 同一版本的文件带有两个不同编号时保留冲突，后续的空探测不能将它降级成普通文字匹配。
-		_, err = tx.ExecContext(ctx, `INSERT INTO music_netease_asset_ids(asset_id,netease_id) VALUES(?,nullif(?,''))
-			ON CONFLICT(asset_id) DO UPDATE SET netease_id=NULL WHERE music_netease_asset_ids.netease_id IS DISTINCT FROM excluded.netease_id`, a.ID, o.NetEaseID)
-		if err != nil {
+		var stored sql.NullString
+		err = tx.QueryRowContext(ctx, `INSERT INTO music_netease_asset_ids(asset_id,netease_id) VALUES(?,nullif(?,''))
+			ON CONFLICT(asset_id) DO UPDATE SET netease_id=NULL WHERE music_netease_asset_ids.netease_id IS DISTINCT FROM excluded.netease_id
+			RETURNING netease_id`, a.ID, o.NetEaseID).Scan(&stored)
+		if err == nil && !stored.Valid {
+			o.AlbumRelease = nil
+		} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return a, err
 		}
 	}

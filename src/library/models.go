@@ -3,6 +3,7 @@ package library
 import (
 	"context"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/audiotypes"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
@@ -41,6 +42,9 @@ type Track struct {
 	MIME                string                `json:"-"`
 	Size                int64                 `json:"-"`
 	ProviderCoverURL    string                `json:"-"`
+
+	// 原始音源已核实的发行编号，供导入和后续重扫使用。
+	AlbumRelease *audiotypes.AlbumRelease `json:"albumRelease,omitempty"`
 }
 type Provider struct {
 	SourceType    string                      `json:"sourceType,omitempty"`
@@ -76,8 +80,9 @@ type Page struct {
 }
 type Observation struct {
 	pluginproto.Observation
-	NetEaseID           string `json:"neteaseId,omitempty"`
-	NetEaseIDConflict   bool   `json:"neteaseIdConflict,omitempty"`
+	AlbumRelease        *audiotypes.AlbumRelease `json:"albumRelease,omitempty"`
+	NetEaseID           string                   `json:"neteaseId,omitempty"`
+	NetEaseIDConflict   bool                     `json:"neteaseIdConflict,omitempty"`
 	Container           *string
 	Title               *string
 	Artists             []string

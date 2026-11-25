@@ -110,6 +110,15 @@ func (s *Store) saveMusicAlbumScraped(ctx context.Context, owner, id string, rev
 				return 0, domain.Fail("INVALID_ARGUMENT", "Album candidates must describe the same release and include its complete track list")
 			}
 			if field.Field == "albumTracks" && autoProvider != nil {
+				var differentEdition bool
+				if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM music_album_release_identities
+ WHERE owner=? AND album_id=? AND 'musicfs.scraper.' || namespace=? AND release_id<>?)`,
+					owner, albumID, field.PluginID, field.Item.ID).Scan(&differentEdition); err != nil {
+					return 0, err
+				}
+				if differentEdition {
+					return 0, domain.Fail("ALBUM_TRACK_MISMATCH", "Release ID differs from the source album")
+				}
 				evidence, err := readAlbumTrackEvidence(ctx, tx, owner, albumID, *autoProvider)
 				if err != nil {
 					return 0, err

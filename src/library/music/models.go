@@ -4,6 +4,7 @@ package music
 import (
 	"context"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/audiotypes"
 	"github.com/fnMrRice/MusicFS-server/sdk/scraper"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
@@ -102,6 +103,7 @@ type AlbumItem struct {
 // AlbumScrapeTarget 从可见的专辑成员取得真实音乐源和最常见的艺人署名。
 type AlbumScrapeTarget struct {
 	Name, Artist, SourcePluginID string
+	Release                      *audiotypes.AlbumRelease `json:"release,omitempty"`
 }
 
 type ArtistPage struct {

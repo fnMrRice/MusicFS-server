@@ -3,6 +3,7 @@ package storage_test
 import (
 	"database/sql"
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -70,11 +71,27 @@ func TestMusicAlbumSourceTagOverridesSurviveRescan(t *testing.T) {
 func TestPostgresSourceTagOverridePreinstalledUpgrade(t *testing.T) {
 	db := testkit.PostgresDatabase(t, testkit.PostgresOptions(t))
 	ctx := t.Context()
-	if err := schema.Migrate(ctx, db); err != nil {
-		t.Fatal(err)
+	// 按旧版本真实结构建库，随后预装 004，正式升级还必须能继续运行之后的非幂等迁移。
+	dir := filepath.Join(testkit.RepositoryRoot(), "plugins", "database", "postgres", "schema")
+	files := []string{filepath.Join(dir, "functions.sql")}
+	for version := 1; version <= 4; version++ {
+		steps, err := filepath.Glob(filepath.Join(dir, fmt.Sprintf("%03d_*.sql", version)))
+		if err != nil || len(steps) == 0 {
+			t.Fatalf("Missing PostgreSQL migration %d: %v", version, err)
+		}
+		files = append(files, steps...)
 	}
-	// 还原为已经预装 004、版本登记仍为 003 的状态。
-	if _, err := db.ExecContext(ctx, `DELETE FROM postgres_schema_migrations WHERE version>=4;
+	for _, file := range files {
+		statement, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = db.ExecContext(ctx, string(statement)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := db.ExecContext(ctx, `CREATE TABLE postgres_schema_migrations(version BIGINT PRIMARY KEY);
+		INSERT INTO postgres_schema_migrations VALUES(1),(2),(3);
 		INSERT INTO tracks(id,owner,provider,external_id,root_id,path,version,asset_id,mime,size,document)
 		VALUES('song','admin','library','ext','r','s','v','a','audio/flac',1,'{}');
 		INSERT INTO music_albums(id,owner,name) VALUES('album','admin','Selected');

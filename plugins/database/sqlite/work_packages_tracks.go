@@ -21,14 +21,14 @@ func publishPackageTrack(ctx context.Context, tx *sql.Tx, owner string, p workpa
 	if id == "" {
 		id = domain.NewID()
 	}
-	current, err := scanAsset(ctx, tx, owner, id, asset, o)
+	current, err := scanAsset(ctx, tx, owner, id, asset, &o)
 	if err != nil {
 		return library.Track{}, err
 	}
 	artists := library.NormalizeArtists(o.Artists)
 	t := library.Track{ID: id, ProviderID: p.ProviderID, DisplayName: o.DisplayName, Title: o.Title, Artists: artists, DurationMs: o.DurationMs,
 		Codec: o.Codec, Container: o.Container, BitrateBps: current.BitrateBps, Availability: "available", AssetID: current.ID, Asset: &current,
-		Album: o.Album, Genre: o.Genre, Year: o.Year, SampleRateHz: o.SampleRateHz}
+		Album: o.Album, AlbumRelease: o.AlbumRelease, Genre: o.Genre, Year: o.Year, SampleRateHz: o.SampleRateHz}
 	raw, err := json.Marshal(t)
 	if err != nil {
 		return library.Track{}, err

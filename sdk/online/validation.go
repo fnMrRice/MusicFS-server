@@ -3,6 +3,7 @@ package online
 import (
 	"strings"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/audiotypes"
 	"github.com/fnMrRice/MusicFS-server/sdk/fault"
 )
 
@@ -27,10 +28,32 @@ func ValidateTrack(policy ResourcePolicy, track Track) error {
 	if track.DurationMs != nil && (*track.DurationMs <= 0 || *track.DurationMs > 7*24*60*60*1000) {
 		return invalidResult()
 	}
+	if r := track.AlbumRelease; r != nil && (policy.nativePlatform != "" && r.Namespace != policy.nativePlatform || track.NativeAlbumRelease(r.Namespace, r.ID) == nil) {
+		return invalidResult()
+	}
 	if track.MetadataDigest != TrackDigest(track) {
 		return invalidResult()
 	}
 	return nil
+}
+
+// NativeAlbumRelease 将同一原生曲目资料里的发行编号绑定到对应平台、歌曲编号和署名。
+func (t Track) NativeAlbumRelease(namespace, id string) *audiotypes.AlbumRelease {
+	r := audiotypes.AlbumRelease{Namespace: namespace, ID: id}
+	if !r.Valid() || strings.TrimSpace(t.Album) == "" || strings.TrimSpace(t.Title) == "" || len(audiotypes.TrackCreditNames(t.Artists)) == 0 {
+		return nil
+	}
+	switch namespace {
+	case Netease:
+		if !audiotypes.ValidNetEaseID(t.ExternalID) || t.SourceURL != "https://music.163.com/song?id="+t.ExternalID {
+			return nil
+		}
+	case QQMusic:
+		if !audiotypes.ValidQQMusicMID(t.ExternalID) || t.SourceURL != "https://y.qq.com/n/ryqq/songDetail/"+t.ExternalID {
+			return nil
+		}
+	}
+	return &r
 }
 
 func ValidateSearch(policy ResourcePolicy, page SearchPage, limit int) error {

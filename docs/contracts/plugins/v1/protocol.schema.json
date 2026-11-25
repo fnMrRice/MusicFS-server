@@ -841,7 +841,10 @@
     },
     "NCMMetadata": {
       "type": "object", "additionalProperties": false, "required": ["format", "mime"],
+      "dependentRequired": {"albumRelease": ["neteaseId", "title", "album", "artists"]},
       "properties": {
+        "neteaseId": {"type": "string", "pattern": "^[1-9][0-9]{0,19}$"},
+        "albumRelease": {"type": "object", "additionalProperties": false, "required": ["namespace", "id"], "properties": {"namespace": {"const": "netease"}, "id": {"type": "string", "pattern": "^[1-9][0-9]{0,19}$"}}},
         "format": {"enum": ["mp3", "flac"]}, "mime": {"enum": ["audio/mpeg", "audio/flac"]},
         "title": {"type": "string", "maxLength": 4096}, "album": {"type": "string", "maxLength": 4096},
         "artists": {"type": "array", "maxItems": 256, "items": {"type": "string", "minLength": 1, "maxLength": 4096}},

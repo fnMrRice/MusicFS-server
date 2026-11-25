@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
+	"github.com/fnMrRice/MusicFS-server/sdk/audiotypes"
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/sdk/pluginproto"
 	"github.com/fnMrRice/MusicFS-server/src/library"
@@ -270,5 +271,46 @@ func TestNewNeteaseSourceRejectsConflictingFileEvidenceAcrossRecording(t *testin
 	unchanged, err := s.MusicTrack(ctx, "admin", *group.RecordingID)
 	if err != nil || len(unchanged.Sources) != 2 {
 		t.Fatal("conflicting file allowed an indirect recording match", err)
+	}
+}
+
+func TestOnlineAlbumReleaseRequiresRegisteredSourceAndOriginalTrack(t *testing.T) {
+	s := catalogStore(t)
+	m := catalogOnline("42", "Source track")
+	m.SourceURL = "https://music.163.com/song?id=42"
+	m.Artists = []string{"AC/DC"}
+	source := catalogPublish(t, s, m)
+	m.AlbumRelease = &audiotypes.AlbumRelease{Namespace: "netease", ID: "9007199254740995"}
+	updated := catalogPublish(t, s, m)
+	if updated.ID != source.ID || updated.AlbumRelease == nil || *updated.AlbumRelease != *m.AlbumRelease {
+		t.Fatalf("Release was not backfilled: %+v", updated.AlbumRelease)
+	}
+	other, err := s.PublishOnlineTrack(t.Context(), "admin", "different-plugin", m)
+	if err != nil || other.AlbumRelease != nil {
+		t.Fatalf("Release crossed plugin boundary: %+v, %v", other.AlbumRelease, err)
+	}
+	m.Artists = []string{"Another singer"}
+	if got := catalogPublish(t, s, m); got.AlbumRelease != nil {
+		t.Fatalf("Conflicting track credit accepted: %+v", got.AlbumRelease)
+	}
+}
+
+func TestLocalAlbumReleaseRequiresConsistentAssetSong(t *testing.T) {
+	s := catalogStore(t)
+	o := catalogLocal("local", "Original")
+	o.ProbeStatus, o.NetEaseID = "succeeded", "42"
+	o.AlbumRelease = &audiotypes.AlbumRelease{Namespace: "netease", ID: "92"}
+	if source := publishEvidenceTracks(t, s, o)[0]; source.AlbumRelease == nil {
+		t.Fatal("Missing initial album release")
+	}
+	o.NetEaseID = "43"
+	for range 2 {
+		if source := publishEvidenceTracks(t, s, o)[0]; source.AlbumRelease != nil {
+			t.Fatalf("Conflicting song identity set a release: %+v", source.AlbumRelease)
+		}
+	}
+	o.ObservedVersion = "v2"
+	if source := publishEvidenceTracks(t, s, o)[0]; source.AlbumRelease == nil {
+		t.Fatal("New asset inherited an unrelated conflict")
 	}
 }

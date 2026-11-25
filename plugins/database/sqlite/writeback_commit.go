@@ -89,7 +89,7 @@ func (s *Store) CommitWriteback(ctx context.Context, owner, id string, result wr
 	}
 	asset := *track.Asset
 	if result.Changed {
-		asset, err = scanAsset(ctx, tx, owner, track.ID, track.AssetID, o)
+		asset, err = scanAsset(ctx, tx, owner, track.ID, track.AssetID, &o)
 		if err != nil {
 			return empty, err
 		}
@@ -109,6 +109,7 @@ func (s *Store) CommitWriteback(ctx context.Context, owner, id string, result wr
 		if o.DisplayName != "" {
 			track.DisplayName = o.DisplayName
 		}
+		track.AlbumRelease = o.AlbumRelease
 		track.Codec, track.Container, track.DurationMs = o.Codec, o.Container, o.DurationMs
 		if o.ProbeStatus == "succeeded" {
 			track.Album, track.Genre, track.Year, track.SampleRateHz = o.Album, o.Genre, o.Year, o.SampleRateHz

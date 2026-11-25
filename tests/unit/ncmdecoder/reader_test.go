@@ -87,9 +87,13 @@ func TestRandomAccessAndSectionReader(t *testing.T) {
 
 func TestConcurrentReadAndMetadataCopy(t *testing.T) {
 	payload := payloadFor("mp3", 14001)
-	metadata := map[string]any{"musicId": int64(9007199254740993), "musicName": "中文标题", "album": "测试专辑", "artist": [][]any{{"艺术家", 42}}, "duration": "6543", "bitrate": 128000, "format": "flac"}
+	metadata := map[string]any{"musicId": int64(9007199254740993), "albumId": "9007199254740995", "musicName": "中文标题", "album": "测试专辑", "artist": [][]any{{"艺术家", 42}}, "duration": "6543", "bitrate": 128000, "format": "flac"}
 	r := reader(t, fixture(t, payload, metadata))
 	m := r.Metadata()
+	if m.AlbumRelease == nil || m.AlbumRelease.Namespace != "netease" || m.AlbumRelease.ID != "9007199254740995" {
+		t.Fatalf("invalid native release: %+v", m.AlbumRelease)
+	}
+	m.AlbumRelease.ID = "changed"
 	if m.NetEaseID != "9007199254740993" {
 		t.Fatalf("metadata lost the exact song ID: %q", m.NetEaseID)
 	}
@@ -112,7 +116,7 @@ func TestConcurrentReadAndMetadataCopy(t *testing.T) {
 					return
 				}
 				m := r.Metadata()
-				if m.Artists[0] != "艺术家" || *m.DurationMs != 6543 || *m.BitrateBps != 128000 {
+				if m.AlbumRelease.ID != "9007199254740995" || m.Artists[0] != "艺术家" || *m.DurationMs != 6543 || *m.BitrateBps != 128000 {
 					t.Error("metadata leaked mutation")
 					return
 				}

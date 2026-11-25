@@ -23,6 +23,8 @@ type Plan struct {
 }
 
 type Metadata struct {
+	AlbumRelease                                        *AlbumRelease
+	AlbumReleaseConflict                                bool
 	NetEaseID                                           string
 	NetEaseIDConflict                                   bool
 	Codec, Container                                    *string

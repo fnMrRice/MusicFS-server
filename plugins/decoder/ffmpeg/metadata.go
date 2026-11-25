@@ -133,10 +133,12 @@ func ProbeMetadata(ctx context.Context, ffprobePath string, input io.ReadSeeker,
 	if value, err := strconv.ParseInt(bitrate, 10, 64); err == nil && value > 0 {
 		result.BitrateBps = &value
 	}
+	var nativeTags []map[string]json.RawMessage
 	for key, value := range wire.Format.Tags {
 		if strings.EqualFold(key, "comment") && strings.HasPrefix(value, neteasetag.Prefix) {
 			if fields, err := neteasetag.Parse([]byte(value)); err == nil {
 				result.AddNetEaseID(neteasetag.SongID(fields))
+				nativeTags = append(nativeTags, fields)
 			}
 			continue
 		}
@@ -161,6 +163,11 @@ func ProbeMetadata(ctx context.Context, ffprobePath string, input io.ReadSeeker,
 				v := value
 				result.Genre = &v
 			}
+		}
+	}
+	if result.Title != nil && result.Album != nil && strings.TrimSpace(*result.Album) != "" && !result.NetEaseIDConflict {
+		for _, fields := range nativeTags {
+			result.AddAlbumRelease(neteasetag.Release(fields, *result.Title, *result.Album, result.Artists))
 		}
 	}
 	// Date wins over year deterministically; malformed tags remain unknown.

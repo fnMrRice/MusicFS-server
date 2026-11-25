@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/audioformat"
+	"github.com/fnMrRice/MusicFS-server/sdk/audiotypes"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
@@ -46,12 +48,16 @@ func metadataProbe(probe audioruntime.Probe, decoder audioruntime.Decoder) libra
 			input = io.NewSectionReader(decoded.Reader, 0, decoded.Size)
 			size = decoded.Size
 		}
+		var probedRelease audiotypes.Metadata
 		if probe != nil {
 			m, err := probe(ctx, input, size)
 			if err != nil {
 				return result, err
 			}
 			result.Container, result.Title, result.Artists = m.Container, m.Title, m.Artists
+			if audiotypes.ValidNetEaseID(m.NetEaseID) {
+				probedRelease = m
+			}
 			m.AddNetEaseID(metadata.NetEaseID)
 			result.NetEaseID, result.NetEaseIDConflict = m.NetEaseID, m.NetEaseIDConflict
 			result.Album, result.Genre, result.Year, result.SampleRateHz = m.Album, m.Genre, m.Year, m.SampleRateHz
@@ -89,6 +95,13 @@ func metadataProbe(probe audioruntime.Probe, decoder audioruntime.Decoder) libra
 				result.Album = &album
 			}
 			// 时长和码率必须来自实际音频探测，不能信任外层封装的自报值。
+		}
+		if result.Title != nil && result.Album != nil && strings.TrimSpace(*result.Album) != "" && !result.NetEaseIDConflict && audiotypes.ValidNetEaseID(result.NetEaseID) {
+			if metadata.AlbumRelease != nil && audiotypes.ValidNetEaseID(metadata.NetEaseID) &&
+				audiotypes.SameAlbumTrack(*result.Title, *result.Album, result.Artists, metadata.Title, metadata.Album, metadata.Artists) {
+				probedRelease.AddAlbumRelease(metadata.AlbumRelease)
+			}
+			result.AlbumRelease = probedRelease.AlbumRelease
 		}
 		return result, nil
 	}

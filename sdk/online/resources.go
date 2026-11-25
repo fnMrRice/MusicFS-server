@@ -15,12 +15,19 @@ type ReferenceRule struct {
 
 // ResourcePolicy 只约束展示资料。网络请求仍由插件及其受控传输完成。
 type ResourcePolicy struct {
+	nativePlatform        string
 	Tracks                []ReferenceRule `json:"tracks"`
 	Playlists             []ReferenceRule `json:"playlists"`
 	Albums                []ReferenceRule `json:"albums"`
 	Artists               []ReferenceRule `json:"artists"`
 	PlaylistEntryPatterns []string        `json:"playlistEntryPatterns"`
 	ImageHosts            []string        `json:"imageHosts"`
+}
+
+// BindPlatform 只由宿主使用。已握手的插件身份约束其可提供的原生发行命名空间。
+func (p ResourcePolicy) BindPlatform(platform string) ResourcePolicy {
+	p.nativePlatform = platform
+	return p
 }
 
 var externalIdentity = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9:_.-]{0,127}$`)

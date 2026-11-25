@@ -35,6 +35,25 @@ func (s *Service) rankAlbums(ctx context.Context, owner string, album music.Albu
 		plugins = settings.LocalPluginOrder
 	}
 
+	// 原始发行编号可直接定位到已启用的平台。同一首歌也可能被别的版本收录。
+	if album.Release != nil {
+		plugin := "musicfs.scraper." + album.Release.Namespace
+		if p := s.plugins[plugin]; slices.Contains(plugins, plugin) && p != nil && p.Descriptor().Available {
+			search, cancel := context.WithTimeout(ctx, albumTracksTimeout)
+			defer cancel()
+			page, err := s.lookup(search, owner, plugin, "albumDetails", scraper.Query{ExternalID: album.Release.ID}, false)
+			if err != nil {
+				return nil, err
+			}
+			for _, item := range page.items {
+				if item.ID == album.Release.ID {
+					return []albumMatch{{plugin: plugin, item: item}}, nil
+				}
+			}
+			return nil, nil
+		}
+	}
+
 	var ranked []albumMatch
 	var firstFailure error
 	best := 0

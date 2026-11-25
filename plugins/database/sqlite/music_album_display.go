@@ -12,6 +12,7 @@ const passiveAlbumProvider = `CASE WHEN a.origin='tag' AND a.metadata_locked=0 A
  AND NOT EXISTS(SELECT 1 FROM music_manual_album_tracks m WHERE m.album_id=a.id)
  AND NOT EXISTS(SELECT 1 FROM music_album_tag_aliases k WHERE k.album_id=a.id)
  AND NOT EXISTS(SELECT 1 FROM music_album_source_tag_overrides o WHERE o.owner=a.owner AND o.album_id=a.id)
+ AND NOT EXISTS(SELECT 1 FROM music_album_release_identities i WHERE i.owner=a.owner AND i.album_id=a.id)
  THEN coalesce(a.tag_provider,'') ELSE '' END`
 
 type albumContext struct {

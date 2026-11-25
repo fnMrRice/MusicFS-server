@@ -54,3 +54,35 @@ func TestCatalogMetadataActualProbeTagsRateAndUnknownValues(t *testing.T) {
 		t.Fatalf("unexpected MP3 metadata: %+v, %v", lossy, err)
 	}
 }
+
+func TestProbeNativeAlbumRequiresVisibleAlbumTrackCredit(t *testing.T) {
+	ffmpeg, ffprobe := audioTools(t)
+	// 合成原生标签含歌曲编号、发行编号、曲名 Track、署名 Artist 和专辑 Album。
+	const tag = "163 key(Don't modify):L64FU3W4YxX3ZFTmbZ+8/TOHd4SXCEvHq+p31uxStfXNwUaBs3EL2NfXhoJD93k0UsC2ygPUMB2Bmkd/04It8OLyX7/OVYWQQjsUQ/qEK5lqhtIE6KSra9D5LqEgmk1K/23SaxLka9Y4hs1DZGgTmAUoNGImfI84YaaLd0aOpZk="
+	for _, tc := range []struct {
+		title, artist, album string
+		match                bool
+	}{
+		{"Track", "Guest / Artist", "Ａlbum", true},
+		{"Track", "Artist", "Album Disc 2", false},
+		{"Track", "Artist", "Best Of", false},
+		{"Track", "Another Artist", "Album", false},
+		{"Track (Live)", "Artist", "Album", false},
+	} {
+		cmd := exec.Command(ffmpeg, "-v", "error", "-i", "pipe:0", "-c:a", "flac",
+			"-metadata", "title="+tc.title, "-metadata", "artist="+tc.artist, "-metadata", "album="+tc.album,
+			"-metadata", "comment="+tag, "-f", "flac", "pipe:1")
+		cmd.Stdin = bytes.NewReader(toneWave(1))
+		data, err := cmd.Output()
+		if err != nil {
+			t.Fatal(err)
+		}
+		m, err := audioffmpeg.ProbeMetadata(t.Context(), ffprobe, bytes.NewReader(data), int64(len(data)))
+		if err != nil || m.NetEaseID != "9007199254740993" {
+			t.Fatalf("Missing track identity for %v: %v, %v", tc, m, err)
+		}
+		if (m.AlbumRelease != nil) != tc.match || tc.match && (m.AlbumRelease.Namespace != "netease" || m.AlbumRelease.ID != "9007199254740995") {
+			t.Fatalf("Unexpected release for %v: %+v", tc, m.AlbumRelease)
+		}
+	}
+}

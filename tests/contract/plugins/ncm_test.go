@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/ncm"
+	"github.com/fnMrRice/MusicFS-server/sdk/audiotypes"
 	"github.com/fnMrRice/MusicFS-server/tests/testkit"
 )
 
@@ -14,7 +15,7 @@ func TestNCMWireContract(t *testing.T) {
 	request := func() map[string]any {
 		return map[string]any{"taskId": "task-1", "assetId": "asset-1", "nonce": nonce, "inputUrl": "http://127.0.0.1:32123/" + nonce + "/input", "size": 12345}
 	}
-	metadata := ncmdecoder.Metadata{Format: "mp3", MIME: "audio/mpeg", Title: "Synthetic"}
+	metadata := ncmdecoder.Metadata{Format: "mp3", MIME: "audio/mpeg", Title: "Synthetic", Artists: []string{"Artist"}, Album: "Album", NetEaseID: "42", AlbumRelease: &audiotypes.AlbumRelease{Namespace: "netease", ID: "99"}}
 	result := func() map[string]any {
 		return map[string]any{"taskId": "task-1", "assetId": "asset-1", "nonce": nonce, "outputUrl": "http://127.0.0.1:32124/" + nonce + "/output", "size": 12000, "metadata": metadata}
 	}

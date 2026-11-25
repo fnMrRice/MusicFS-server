@@ -1,6 +1,7 @@
 package library
 
 import (
+	"strings"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/audiotypes"
@@ -44,10 +45,13 @@ func EvidenceForObservation(o Observation) ([]identification.Evidence, error) {
 	if o.ProbeStatus != "" && o.ProbeStatus != "notAttempted" && o.ProbeStatus != "succeeded" && o.ProbeStatus != "failed" {
 		return nil, identification.Invalid()
 	}
-	if (len(o.Evidence) > 0 || o.NetEaseID != "" || o.NetEaseIDConflict) && o.ProbeStatus != "succeeded" {
+	if (len(o.Evidence) > 0 || o.AlbumRelease != nil || o.NetEaseID != "" || o.NetEaseIDConflict) && o.ProbeStatus != "succeeded" {
 		return nil, identification.Invalid()
 	}
 	if o.NetEaseID != "" && (o.NetEaseIDConflict || !audiotypes.ValidNetEaseID(o.NetEaseID)) {
+		return nil, identification.Invalid()
+	}
+	if r := o.AlbumRelease; r != nil && (!r.Valid() || r.Namespace != "netease" || o.NetEaseID == "" || o.Title == nil || strings.TrimSpace(*o.Title) == "" || o.Album == nil || strings.TrimSpace(*o.Album) == "" || len(NormalizeArtists(o.Artists)) == 0) {
 		return nil, identification.Invalid()
 	}
 	input := o.Observation

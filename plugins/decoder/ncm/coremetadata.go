@@ -5,31 +5,23 @@ import (
 	"strconv"
 
 	"github.com/fnMrRice/MusicFS-server/plugins/decoder/internal/neteasetag"
+	"github.com/fnMrRice/MusicFS-server/sdk/audiotypes"
 )
 
 type Metadata struct {
-	NetEaseID  string   `json:"neteaseId,omitempty"`
-	Format     string   `json:"format"`
-	MIME       string   `json:"mime"`
-	Title      string   `json:"title,omitempty"`
-	Album      string   `json:"album,omitempty"`
-	Artists    []string `json:"artists,omitempty"`
-	DurationMs *int64   `json:"durationMs,omitempty"`
-	BitrateBps *int64   `json:"bitrateBps,omitempty"`
+	AlbumRelease *audiotypes.AlbumRelease `json:"albumRelease,omitempty"`
+	NetEaseID    string                   `json:"neteaseId,omitempty"`
+	Format       string                   `json:"format"`
+	MIME         string                   `json:"mime"`
+	Title        string                   `json:"title,omitempty"`
+	Album        string                   `json:"album,omitempty"`
+	Artists      []string                 `json:"artists,omitempty"`
+	DurationMs   *int64                   `json:"durationMs,omitempty"`
+	BitrateBps   *int64                   `json:"bitrateBps,omitempty"`
 }
 
 func (r *Reader) Metadata() Metadata {
-	m := r.metadata
-	m.Artists = append([]string(nil), m.Artists...)
-	if m.DurationMs != nil {
-		v := *m.DurationMs
-		m.DurationMs = &v
-	}
-	if m.BitrateBps != nil {
-		v := *m.BitrateBps
-		m.BitrateBps = &v
-	}
-	return m
+	return cloneMetadata(r.metadata)
 }
 
 func decodeMetadata(encrypted []byte) (Metadata, error) {
@@ -45,34 +37,13 @@ func decodeMetadata(encrypted []byte) (Metadata, error) {
 		return result, err
 	}
 	result.NetEaseID = neteasetag.SongID(fields)
-	result.Title = optionalText(fields["musicName"])
-	result.Album = optionalText(fields["album"])
+	result.Title = neteasetag.Text(fields["musicName"])
+	result.Album = neteasetag.Text(fields["album"])
 	result.DurationMs = optionalPositive(fields["duration"])
 	result.BitrateBps = optionalPositive(fields["bitrate"])
-	var artists []json.RawMessage
-	if json.Unmarshal(fields["artist"], &artists) == nil && len(artists) <= 256 {
-		for _, artist := range artists {
-			var pair []json.RawMessage
-			name := ""
-			if json.Unmarshal(artist, &pair) == nil && len(pair) > 0 {
-				name = optionalText(pair[0])
-			} else {
-				name = optionalText(artist)
-			}
-			if name != "" {
-				result.Artists = append(result.Artists, name)
-			}
-		}
-	}
+	result.Artists = neteasetag.Artists(fields)
+	result.AlbumRelease = neteasetag.Release(fields, result.Title, result.Album, result.Artists)
 	return result, nil
-}
-
-func optionalText(raw json.RawMessage) string {
-	var text string
-	if json.Unmarshal(raw, &text) != nil || len(text) > 4096 {
-		return ""
-	}
-	return text
 }
 
 func optionalPositive(raw json.RawMessage) *int64 {

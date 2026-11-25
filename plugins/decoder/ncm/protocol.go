@@ -64,6 +64,10 @@ func decodeRequest(raw []byte, value any) error {
 }
 
 func cloneMetadata(m Metadata) Metadata {
+	if m.AlbumRelease != nil {
+		r := *m.AlbumRelease
+		m.AlbumRelease = &r
+	}
 	m.Artists = append([]string(nil), m.Artists...)
 	if m.DurationMs != nil {
 		v := *m.DurationMs
