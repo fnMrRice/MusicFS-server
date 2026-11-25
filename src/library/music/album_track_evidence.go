@@ -21,6 +21,16 @@ func NormalizeMatchName(name string) string {
 	return strings.ToLower(strings.Join(strings.Fields(norm.NFKC.String(name)), " "))
 }
 
+// 只统一曲末明确的版本标记外框，保留版本词、缩写及其句点。
+var dashedTrackVersion = regexp.MustCompile(` -((?:full|short|tv|live) (?:ver\.?|version))-$`)
+
+func trackTitleKey(normalized string) string {
+	if !strings.HasSuffix(normalized, "-") {
+		return normalized
+	}
+	return dashedTrackVersion.ReplaceAllString(normalized, " ($1)")
+}
+
 func matchNames(primary string, aliases []scraper.LocalizedTitle) []string {
 	names := make([]string, 0, len(aliases)+1)
 	if name := NormalizeMatchName(primary); name != "" {
@@ -76,7 +86,7 @@ func trackCredits(credits []string) map[string]bool {
 func MatchesAlbumTracks(evidence []AlbumTrackEvidence, tracks []scraper.Track) bool {
 	byTitle := make(map[string]map[string]bool)
 	for _, source := range evidence {
-		title := NormalizeMatchName(source.Title)
+		title := trackTitleKey(NormalizeMatchName(source.Title))
 		artists := trackCredits(source.ArtistNames)
 		if title == "" || len(artists) == 0 {
 			continue
@@ -90,7 +100,7 @@ func MatchesAlbumTracks(evidence []AlbumTrackEvidence, tracks []scraper.Track) b
 	for _, track := range tracks {
 		var credits map[string]bool
 		for _, title := range matchNames(track.Title, track.LocalizedTitles) {
-			artists := byTitle[title]
+			artists := byTitle[trackTitleKey(title)]
 			if len(artists) == 0 {
 				continue
 			}

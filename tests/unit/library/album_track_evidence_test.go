@@ -45,6 +45,35 @@ func TestAlbumTrackEvidenceMatchesOneOriginalRow(t *testing.T) {
 	}
 }
 
+func TestAlbumTrackEvidenceVersionSuffix(t *testing.T) {
+	const song = "キミと見た花 キミと見た空"
+	for _, tc := range []struct {
+		source, candidate string
+		want              bool
+	}{
+		{" -full ver.-", " (full ver.)", true},
+		{" （ＦＵＬＬ　ｖｅｒ．）", " -full ver.-", true},
+		{" -short version-", " (short version)", true},
+		{" -full ver.-", "", false},
+		{" -full ver.-", " (short ver.)", false},
+		{" -full ver.-", " (live ver.)", false},
+		{" -full ver.-", " (Live)", false},
+		{" -full ver.-", " (full ver)", false},
+		{" -Garnet Star-", " (Garnet Star)", false},
+		{" -full ver.- reprise", " (full ver.) reprise", false},
+		{" -full ver.", " (full ver.)", false},
+	} {
+		t.Run(tc.source+"/"+tc.candidate, func(t *testing.T) {
+			original := []music.AlbumTrackEvidence{{Title: song + tc.source, ArtistNames: []string{"東山奈央", "大地葉"}}}
+			track := scraper.Track{Title: "Localized song", Artist: "東山奈央 / 大地葉",
+				LocalizedTitles: []scraper.LocalizedTitle{{Language: "ja", Title: song + tc.candidate}}}
+			if music.MatchesAlbumTracks(original, []scraper.Track{track}) != tc.want {
+				t.Fatalf("unexpected version match between %q and %q", tc.source, tc.candidate)
+			}
+		})
+	}
+}
+
 func TestAlbumTrackEvidenceCreditSeparators(t *testing.T) {
 	for _, test := range []struct {
 		credit string
