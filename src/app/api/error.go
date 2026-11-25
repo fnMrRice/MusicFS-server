@@ -21,6 +21,8 @@ func classifyError(err error) (string, int) {
 			return failure.Code, http.StatusForbidden
 		case "PRECONDITION_FAILED":
 			return failure.Code, http.StatusPreconditionFailed
+		case "ALBUM_TRACK_MISMATCH":
+			return failure.Code, http.StatusUnprocessableEntity
 		case "NOT_FOUND":
 			return failure.Code, http.StatusNotFound
 		case "CONFLICT", "AUDIO_CACHE_DISABLED", "ALBUM_TRACK_SLOT_CONFLICT", "STALE_ATTEMPT", "RESOURCE_CHANGED", "SESSION_STOPPED", "RESTART_REQUIRED", "RECOVERY_EXHAUSTED":

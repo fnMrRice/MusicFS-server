@@ -10,10 +10,16 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/recommendations"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/identification"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writeback"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/writebackhost"
 )
+
+func (c *Client) QueueHash(a0 context.Context, a1 string, a2 identification.HashTarget, a3 string, a4 bool) (r0 identification.HashJob, r1 bool, err error) {
+	err = c.Invoke(a0, "QueueHash", []any{a1, a2, a3, a4}, []any{&r0, &r1})
+	return r0, r1, err
+}
 
 func (c *Client) QueueRemoteSync(a0 context.Context, a1 string, a2 string, a3 int64, a4 playlists.Binding, a5 string) (r0 playlists.SyncJob, r1 bool, err error) {
 	err = c.Invoke(a0, "QueueRemoteSync", []any{a1, a2, a3, a4, a5}, []any{&r0, &r1})
@@ -127,10 +133,5 @@ func (c *Client) RemotePlaylists(a0 context.Context, a1 string, a2 string, a3 in
 
 func (c *Client) RemoteSnapshot(a0 context.Context, a1 string, a2 string, a3 int64) (r0 playlists.Snapshot, err error) {
 	err = c.Invoke(a0, "RemoteSnapshot", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) RemoteSource(a0 context.Context, a1 string, a2 string) (r0 playlists.RemoteSource, err error) {
-	err = c.Invoke(a0, "RemoteSource", []any{a1, a2}, []any{&r0})
 	return r0, err
 }

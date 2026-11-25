@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -16,24 +17,15 @@ import (
 func (s *Server) RegisterOnlineAlbumScrapers(catalog *onlinescrape.Service, repo music.Repository) {
 	s.registerAlbumMetadataMerge(catalog, repo)
 	s.register("POST /api/v1/library/albums/{id}/auto-scrape", true, true, 90*time.Second, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
-		var input struct {
-			ProviderInstanceID *string `json:"providerInstanceId"`
-		}
+		var input autoAlbumScope
 		if err := DecodeJSON(w, r, &input); err != nil {
 			return err
 		}
-		var provider string
-		if input.ProviderInstanceID != nil {
-			provider = *input.ProviderInstanceID
-			if !instanceid.Valid(provider) {
-				return domain.Fail("INVALID_ARGUMENT", "Invalid provider instance identifier")
-			}
-		}
-		target, err := repo.MusicAlbumScrapeTarget(r.Context(), session.User.ID, r.PathValue("id"), provider)
+		provider, err := input.provider()
 		if err != nil {
 			return err
 		}
-		items, err := catalog.SearchAlbum(r.Context(), session.User.ID, target)
+		items, err := catalog.SearchVerifiedAlbum(r.Context(), repo, session.User.ID, r.PathValue("id"), provider)
 		if err != nil {
 			return err
 		}
@@ -63,34 +55,37 @@ func (s *Server) RegisterOnlineAlbumScrapers(catalog *onlinescrape.Service, repo
 		return WriteJSON(w, http.StatusOK, map[string]int64{"revision": revision})
 	})
 	s.Handle("PUT /api/v1/library/albums/{id}/scraped-fields", true, true, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
+		var input albumBundleInput
+		if err := DecodeJSON(w, r, &input); err != nil {
+			return err
+		}
+		fields, err := input.fields(catalog, session.User.ID)
+		if err != nil {
+			return err
+		}
+		revision, err := repo.SelectMusicAlbumScrapedFields(r.Context(), session.User.ID, r.PathValue("id"), *input.ExpectedRevision, fields, r.Header.Get("Idempotency-Key"))
+		if err != nil {
+			return err
+		}
+		return WriteJSON(w, http.StatusOK, map[string]int64{"revision": revision})
+	})
+	s.Handle("PUT /api/v1/library/albums/{id}/auto-scrape", true, true, func(w http.ResponseWriter, r *http.Request, session auth.Session) error {
 		var input struct {
-			ExpectedRevision *int64 `json:"expectedRevision"`
-			PluginID         string `json:"pluginId"`
-			Candidates       struct {
-				Details string `json:"albumDetails"`
-				Tracks  string `json:"albumTracks"`
-				Artwork string `json:"artwork"`
-			} `json:"candidates"`
+			albumBundleInput
+			autoAlbumScope
 		}
 		if err := DecodeJSON(w, r, &input); err != nil {
 			return err
 		}
-		if input.ExpectedRevision == nil || *input.ExpectedRevision < 1 || input.Candidates.Details == "" || input.Candidates.Tracks == "" {
-			return domain.Fail("INVALID_ARGUMENT", "Album revision, details and complete track list are required")
+		provider, err := input.provider()
+		if err != nil {
+			return err
 		}
-		fields := []works.ScrapedField{}
-		for _, candidate := range []struct{ field, token string }{{"albumDetails", input.Candidates.Details}, {"albumTracks", input.Candidates.Tracks}, {"artwork", input.Candidates.Artwork}} {
-			if candidate.token == "" {
-				continue
-			}
-			field, err := catalog.Candidate(session.User.ID, input.PluginID, candidate.field, candidate.token)
-			if err != nil {
-				field = works.ScrapedField{Field: candidate.field, PluginID: input.PluginID}
-			}
-			field.CandidateToken = candidate.token
-			fields = append(fields, field)
+		fields, err := input.fields(catalog, session.User.ID)
+		if err != nil {
+			return err
 		}
-		revision, err := repo.SelectMusicAlbumScrapedFields(r.Context(), session.User.ID, r.PathValue("id"), *input.ExpectedRevision, fields, r.Header.Get("Idempotency-Key"))
+		revision, err := repo.SelectAutoMusicAlbumScrapedFields(r.Context(), session.User.ID, r.PathValue("id"), provider, *input.ExpectedRevision, fields, r.Header.Get("Idempotency-Key"))
 		if err != nil {
 			return err
 		}
@@ -117,4 +112,46 @@ func (s *Server) RegisterOnlineAlbumScrapers(catalog *onlinescrape.Service, repo
 		}
 		return WriteJSON(w, http.StatusOK, map[string]int64{"revision": revision})
 	})
+}
+
+type autoAlbumScope struct {
+	ProviderInstanceID json.RawMessage `json:"providerInstanceId"`
+}
+
+func (input autoAlbumScope) provider() (string, error) {
+	var provider string
+	if input.ProviderInstanceID != nil && (json.Unmarshal(input.ProviderInstanceID, &provider) != nil || !instanceid.Valid(provider)) {
+		return "", domain.Fail("INVALID_ARGUMENT", "Invalid provider instance identifier")
+	}
+	return provider, nil
+}
+
+type albumBundleInput struct {
+	ExpectedRevision *int64 `json:"expectedRevision"`
+	PluginID         string `json:"pluginId"`
+	Candidates       struct {
+		Details string `json:"albumDetails"`
+		Tracks  string `json:"albumTracks"`
+		Artwork string `json:"artwork"`
+	} `json:"candidates"`
+}
+
+func (input albumBundleInput) fields(catalog *onlinescrape.Service, owner string) ([]works.ScrapedField, error) {
+	if input.ExpectedRevision == nil || *input.ExpectedRevision < 1 || input.Candidates.Details == "" || input.Candidates.Tracks == "" {
+		return nil, domain.Fail("INVALID_ARGUMENT", "Album revision, details and complete track list are required")
+	}
+	var fields []works.ScrapedField
+	for _, candidate := range []struct{ field, token string }{{"albumDetails", input.Candidates.Details}, {"albumTracks", input.Candidates.Tracks}, {"artwork", input.Candidates.Artwork}} {
+		if candidate.token == "" {
+			continue
+		}
+		field, err := catalog.Candidate(owner, input.PluginID, candidate.field, candidate.token)
+		if err != nil {
+			// 候选过期后，存储层仍可按原令牌重放已成功的请求。
+			field = works.ScrapedField{Field: candidate.field, PluginID: input.PluginID}
+		}
+		field.CandidateToken = candidate.token
+		fields = append(fields, field)
+	}
+	return fields, nil
 }

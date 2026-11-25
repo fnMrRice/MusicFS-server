@@ -8,7 +8,7 @@
 
 | 接口 | 范围和结果 |
 | --- | --- |
-| `POST /api/v1/tasks/album-scrape` | 可选 `providerInstanceId` 与 `q`。开始执行时分页收集本人符合条件的未刮削专辑，按当时的专辑修订保存第一份完整发行版。以 `completed / total` 显示进度，`updated / retained / notFound / failed` 分别统计成功、跳过、无匹配和失败的专辑。单张失败后继续处理其余专辑。 |
+| `POST /api/v1/tasks/album-scrape` | 可选 `providerInstanceId` 与 `q`。开始执行时分页收集本人符合条件的未刮削专辑，按当时的专辑修订保存首个通过曲名和艺人核对的完整发行版。候选须含至少一首曲名匹配、且至少一位署名艺人与本专辑同一首真实音源曲目相符的歌。以 `completed / total` 显示进度，`updated / retained / notFound / failed` 分别统计成功、跳过、无匹配和失败的专辑。单张失败后继续处理其余专辑。 |
 | `POST /api/v1/tasks/bulk-merge` | 使用与立即合并相同的 `BulkMergeRequest`，处理本人全部可见且可用来源。执行时校验提交的关联修订，冲突时任务失败。结果包含合并组数、来源数与跳过组数。 |
 
 等待中的批量操作可以取消。开始执行后，离开页面或关闭客户端均可继续处理。服务端重启后继续领取等待中的操作；已提交的合并从事务收据恢复结果，中断的操作标记为失败，已经保存的专辑资料保留。

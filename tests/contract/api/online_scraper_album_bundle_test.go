@@ -57,6 +57,11 @@ func TestOnlineScraperAlbumBundleRequiresCompleteTracksAndReplays(t *testing.T) 
 	input["candidates"] = map[string]string{"albumDetails": details, "albumTracks": tracks}
 	raw, _ := json.Marshal(input)
 	testkit.ValidateHTTP(t, "MusicAlbumScrapedBundleInput", raw)
+	// 空专辑的候选也能手工选用，自动发布则必须由真实音源佐证。
+	denied := call("PUT", "/library/albums/"+album.ID+"/auto-scrape", input, "no-track-evidence", 422)
+	if !strings.Contains(string(denied), `"code":"ALBUM_TRACK_MISMATCH"`) {
+		t.Fatalf("unexpected automatic selection error: %s", denied)
+	}
 	first := call("PUT", path, input, "select-whole-bundle", 200)
 	testkit.ValidateHTTP(t, "ScrapedMusicAlbumRevision", first)
 	call("PUT", path, input, "select-whole-bundle", 200)

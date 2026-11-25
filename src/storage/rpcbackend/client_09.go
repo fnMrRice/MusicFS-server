@@ -6,7 +6,6 @@ import (
 	"context"
 	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/albums"
-	"github.com/fnMrRice/MusicFS-server/src/library/jobs"
 	"github.com/fnMrRice/MusicFS-server/src/library/personal"
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/sourcedisplay"
@@ -15,8 +14,17 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/playback/onlinecache"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
-	"github.com/fnMrRice/MusicFS-server/src/tasks"
 )
+
+func (c *Client) SelectContent(a0 context.Context, a1 string, a2 mediastore.SelectRequest, a3 string) (r0 mediastore.Selection, err error) {
+	err = c.Invoke(a0, "SelectContent", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
+func (c *Client) SelectContentGuarded(a0 context.Context, a1 string, a2 mediastore.SelectRequest, a3 string, a4 mediastore.Guard) (r0 mediastore.Selection, err error) {
+	err = c.Invoke(a0, "SelectContentGuarded", []any{a1, a2, a3, a4}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) SelectCover(a0 context.Context, a1 string, a2 albums.SelectCoverRequest, a3 string, a4 mediastore.Guard) (r0 albums.CoverSelection, err error) {
 	err = c.Invoke(a0, "SelectCover", []any{a1, a2, a3, a4}, []any{&r0})
@@ -125,15 +133,5 @@ func (c *Client) UnlockCover(a0 context.Context, a1 string, a2 albums.UnlockCove
 
 func (c *Client) UpdateOnlineDownload(a0 context.Context, a1 onlinecache.Record) (err error) {
 	err = c.Invoke(a0, "UpdateOnlineDownload", []any{a1}, []any{})
-	return err
-}
-
-func (c *Client) UpdateOperation(a0 context.Context, a1 string, a2 tasks.Progress, a3 tasks.Result) (err error) {
-	err = c.Invoke(a0, "UpdateOperation", []any{a1, a2, a3}, []any{})
-	return err
-}
-
-func (c *Client) UpdateProgress(a0 context.Context, a1 jobs.Job, a2 int) (err error) {
-	err = c.Invoke(a0, "UpdateProgress", []any{a1, a2}, []any{})
 	return err
 }

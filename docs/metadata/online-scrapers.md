@@ -50,7 +50,7 @@ Bangumi 的音乐章节可以把艺人署名写在曲名里。插件会将能够
 
 `GET /library/albums?unscrapedOnly=true` 在分页前按当前账号筛出尚无已保存刮削字段的专辑，可叠加来源和名称筛选。仅搜索、预览或编辑平台链接不会改变这一状态。
 
-`POST /library/albums/{id}/auto-scrape` 使用专辑中的实际音源选择刮削平台。请求体可传入 `providerInstanceId` 指定当前查看的来源，或使用 `{}` 自动判断。服务端按专辑名称搜索，优先同名并返回最多三个带平台标识的候选。Web 依序读取同一发行版的 `albumTracks`，取第一份完整结果，通过已有的整张专辑选用接口发布。三个候选均无法提供完整资料时，专辑仍可再次刮削。
+`POST /library/albums/{id}/auto-scrape` 使用专辑中的实际音源选择刮削平台。请求体可传入 `providerInstanceId` 指定当前查看的来源，或使用 `{}` 自动判断。服务端按专辑名称排序候选，并读取最多三个发行版的曲目表。至少一首曲目的曲名和一位署名艺人同时匹配当前范围内的同一首真实音源曲目时，才返回该发行版的详情令牌 `candidateToken` 与曲目表令牌 `albumTracksToken`。无合适候选时返回空列表。Web 使用 `PUT /library/albums/{id}/auto-scrape` 提交配对令牌、原专辑修订、来源范围及幂等键；保存事务复核匹配，证据失效返回 HTTP 422 和 `ALBUM_TRACK_MISMATCH`。批量任务使用相同的保存条件。
 
 本地来源默认按 MusicBrainz、Apple Music（iTunes）、网易云音乐查找。网易云音乐或 QQ 音乐来源优先使用对应的平台。`GET /scrapers/album-auto-settings` 读取当前用户的 `revision` 和 `localPluginOrder`。`PUT` 同一路径时提交 `expectedRevision` 和按优先级排列的插件 ID，至少保留一个来源。
 

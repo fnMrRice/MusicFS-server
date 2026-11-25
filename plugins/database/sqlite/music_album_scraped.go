@@ -47,32 +47,52 @@ func (s *Store) SelectMusicAlbumScrapedField(ctx context.Context, owner, id stri
 	}
 	// 幂等身份仅包含原请求；候选过期后仍能重放成功回执。
 	input := struct{ PluginID, Token string }{field.PluginID, field.CandidateToken}
-	return s.saveMusicAlbumScraped(ctx, owner, id, revision, []works.ScrapedField{field}, key, "albums/scraped/"+field.Field, input)
+	return s.saveMusicAlbumScraped(ctx, owner, id, revision, []works.ScrapedField{field}, key, "albums/scraped/"+field.Field, input, nil)
 }
 
 // SelectMusicAlbumScrapedFields 一次发布同一发行版的资料和完整曲目表。
 func (s *Store) SelectMusicAlbumScrapedFields(ctx context.Context, owner, id string, revision int64, fields []works.ScrapedField, key string) (int64, error) {
+	return s.selectMusicAlbumBundle(ctx, owner, id, revision, fields, key, nil)
+}
+
+// 自动采用发行版时，将证据检查与实际写入放入同一事务。
+func (s *Store) SelectAutoMusicAlbumScrapedFields(ctx context.Context, owner, id, provider string, revision int64, fields []works.ScrapedField, key string) (int64, error) {
+	if provider != "" && !works.ValidID(provider) {
+		return 0, domain.Fail("INVALID_ARGUMENT", "Invalid provider identifier")
+	}
+	return s.selectMusicAlbumBundle(ctx, owner, id, revision, fields, key, &provider)
+}
+
+func (s *Store) selectMusicAlbumBundle(ctx context.Context, owner, id string, revision int64, fields []works.ScrapedField, key string, autoProvider *string) (int64, error) {
 	if !works.ValidID(id) || len(fields) < 2 || len(fields) > 3 {
 		return 0, domain.Fail("INVALID_ARGUMENT", "Album details and complete track list are required")
 	}
 	fields = slices.Clone(fields)
 	slices.SortFunc(fields, func(a, b works.ScrapedField) int { return strings.Compare(a.Field, b.Field) })
-	input := make([]struct{ Field, PluginID, Token string }, len(fields))
+	type fieldToken struct{ Field, PluginID, Token string }
+	input := make([]fieldToken, len(fields))
 	seen := map[string]bool{}
 	for i, field := range fields {
 		if !music.AlbumScrapedField(field.Field) || seen[field.Field] || !works.ValidID(field.PluginID) || !works.ValidID(field.CandidateToken) || field.PluginID != fields[0].PluginID {
 			return 0, domain.Fail("INVALID_ARGUMENT", "Invalid album scraped field bundle")
 		}
 		seen[field.Field] = true
-		input[i] = struct{ Field, PluginID, Token string }{field.Field, field.PluginID, field.CandidateToken}
+		input[i] = fieldToken{field.Field, field.PluginID, field.CandidateToken}
 	}
 	if !seen["albumDetails"] || !seen["albumTracks"] {
 		return 0, domain.Fail("INVALID_ARGUMENT", "Album details and complete track list are required")
 	}
-	return s.saveMusicAlbumScraped(ctx, owner, id, revision, fields, key, "albums/scraped", input)
+	if autoProvider != nil {
+		autoInput := struct {
+			Provider string
+			Fields   []fieldToken
+		}{*autoProvider, input}
+		return s.saveMusicAlbumScraped(ctx, owner, id, revision, fields, key, "albums/auto-scraped", autoInput, autoProvider)
+	}
+	return s.saveMusicAlbumScraped(ctx, owner, id, revision, fields, key, "albums/scraped", input, nil)
 }
 
-func (s *Store) saveMusicAlbumScraped(ctx context.Context, owner, id string, revision int64, fields []works.ScrapedField, key, kind string, input any) (int64, error) {
+func (s *Store) saveMusicAlbumScraped(ctx context.Context, owner, id string, revision int64, fields []works.ScrapedField, key, kind string, input any, autoProvider *string) (int64, error) {
 	return saveMusic(ctx, s, owner, kind, id, key, revision, input, func(tx *sql.Tx, albumID string) (int64, error) {
 		album, err := readMusicAlbum(ctx, tx, owner, albumID)
 		if err != nil {
@@ -85,8 +105,18 @@ func (s *Store) saveMusicAlbumScraped(ctx context.Context, owner, id string, rev
 			if field.Item.ID == "" {
 				return 0, domain.Fail("NOT_FOUND", "Scraper candidate expired or unavailable")
 			}
-			if len(fields) > 1 && (field.Item.ID != fields[0].Item.ID || field.Field == "albumTracks" && len(field.Item.Tracks) == 0) {
+			emptyManualList := autoProvider == nil && field.Field == "albumTracks" && len(field.Item.Tracks) == 0
+			if len(fields) > 1 && (field.Item.ID != fields[0].Item.ID || emptyManualList) {
 				return 0, domain.Fail("INVALID_ARGUMENT", "Album candidates must describe the same release and include its complete track list")
+			}
+			if field.Field == "albumTracks" && autoProvider != nil {
+				evidence, err := readAlbumTrackEvidence(ctx, tx, owner, albumID, *autoProvider)
+				if err != nil {
+					return 0, err
+				}
+				if !music.MatchesAlbumTracks(evidence, field.Item.Tracks) {
+					return 0, domain.Fail("ALBUM_TRACK_MISMATCH", "No source track in this album matches a release track title and artist")
+				}
 			}
 		}
 		for _, field := range fields {

@@ -143,11 +143,13 @@ type Repository interface {
 	MusicGenres(context.Context, string, Query) (GenrePage, error)
 	MusicAlbum(context.Context, string, string) (Album, error)
 	MusicAlbumScrapeTarget(context.Context, string, string, string) (AlbumScrapeTarget, error)
+	MusicAlbumTrackEvidence(context.Context, string, string, string) ([]AlbumTrackEvidence, error)
 	MusicAlbums(context.Context, string, Query) (AlbumPage, error)
 	SaveMusicAlbum(context.Context, string, string, int64, AlbumFields, string) (Album, error)
 	MusicAlbumScrapedFields(context.Context, string, string) ([]works.ScrapedField, error)
 	ClearMusicAlbumScrapedFields(context.Context, string, string, int64, string) (int64, error)
 	SelectMusicAlbumScrapedField(context.Context, string, string, int64, works.ScrapedField, string) (int64, error)
 	SelectMusicAlbumScrapedFields(context.Context, string, string, int64, []works.ScrapedField, string) (int64, error)
+	SelectAutoMusicAlbumScrapedFields(context.Context, string, string, string, int64, []works.ScrapedField, string) (int64, error)
 	MergeMusicAlbumMetadata(context.Context, string, string, int64, []works.ScrapedField, []string, string) (int64, error)
 }

@@ -9,30 +9,14 @@ import (
 
 	"github.com/fnMrRice/MusicFS-server/sdk/scraper"
 	"github.com/fnMrRice/MusicFS-server/src/library/music"
-	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
-	"golang.org/x/text/unicode/norm"
 )
 
 const maxAutoAlbumCandidates = 3
 
 type AutoAlbumCandidate struct {
 	Candidate
-	PluginID string `json:"pluginId"`
-}
-
-// SearchAlbum 按音乐源选择平台，用曲库的专辑名搜索，返回最多三个可继续读取的发行版。
-func (s *Service) SearchAlbum(ctx context.Context, owner string, album music.AlbumScrapeTarget) ([]AutoAlbumCandidate, error) {
-	ranked, err := s.rankAlbums(ctx, owner, album)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]AutoAlbumCandidate, len(ranked))
-	for i, match := range ranked {
-		page := searchPage{items: []searchItem{match.item}, size: match.item.size}
-		item := s.issue(owner, match.plugin, "albumDetails", page, mediastore.ContentTarget{})[0]
-		result[i] = AutoAlbumCandidate{Candidate: item, PluginID: match.plugin}
-	}
-	return result, nil
+	PluginID         string `json:"pluginId"`
+	AlbumTracksToken string `json:"albumTracksToken"`
 }
 
 // 排名只读取在线查询缓存；仅交给浏览器的候选需要占用预览令牌。
@@ -109,7 +93,7 @@ type albumMatch struct {
 }
 
 func albumLabel(name string) string {
-	return strings.ToLower(strings.Join(strings.Fields(norm.NFKC.String(name)), " "))
+	return music.NormalizeMatchName(name)
 }
 
 func rankAlbum(title, artist string, item scraper.Item) albumMatch {

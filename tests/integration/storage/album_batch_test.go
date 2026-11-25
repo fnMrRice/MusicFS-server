@@ -9,6 +9,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/plugins/database/sqlite"
 	"github.com/fnMrRice/MusicFS-server/sdk/scraper"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
+	"github.com/fnMrRice/MusicFS-server/src/library"
 	"github.com/fnMrRice/MusicFS-server/src/library/music"
 	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/onlinescrape"
@@ -36,13 +37,17 @@ func (batchAlbumCatalog) Search(_ context.Context, field string, q scraper.Query
 		case "Batch unmatched":
 			return nil, nil
 		}
-		return []scraper.Item{{ID: "incomplete", Title: q.Album}, {ID: "complete", Title: q.Album}}, nil
+		return []scraper.Item{{ID: "incomplete", Title: q.Album}, {ID: "wrong-artist", Title: q.Album}, {ID: "complete", Title: q.Album}}, nil
 	}
 	id := q.ExternalID
 	if id == "incomplete" {
 		id = "different-release"
 	}
-	return []scraper.Item{{ID: id, Title: "Edition", Tracks: []scraper.Track{{Number: 1, Title: "First track"}}}}, nil
+	artist := "Singer"
+	if id == "wrong-artist" {
+		artist = "Unrelated singer"
+	}
+	return []scraper.Item{{ID: id, Title: "Edition", Tracks: []scraper.Track{{Number: 1, Title: "First track", Artist: artist}}}}, nil
 }
 
 func TestAlbumBatchScopesFallsBackAndProtectsConcurrentEdits(t *testing.T) {
@@ -80,12 +85,28 @@ func TestAlbumBatchScopesFallsBackAndProtectsConcurrentEdits(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	success := create("admin", "Batch valid")
-	changed := create("admin", "Batch edited")
+	var observations []library.Observation
+	for _, name := range []string{"Batch valid", "Batch edited", "Batch unavailable", "Batch wrong title", "Batch unmatched"} {
+		obs := visibilityObservation(name, name+".wav", "Singer", name, "Jazz", "wav")
+		title := "First track"
+		if name == "Batch wrong title" {
+			title = "A different recording"
+		}
+		obs.Title = &title
+		observations = append(observations, obs)
+	}
+	albums := map[string]music.Album{}
+	for _, source := range visibilityScan(t, store, "admin", "local", observations...) {
+		track, err := store.MusicTrackForSource(ctx, "admin", source.ID)
+		if err != nil || len(track.Albums) != 1 {
+			t.Fatalf("source album: %+v, %v", track.Albums, err)
+		}
+		albums[track.Albums[0].Name] = track.Albums[0]
+	}
+	success, changed := albums["Batch valid"], albums["Batch edited"]
 	saved := create("admin", "Batch previously saved")
 	saveManual(saved)
-	create("admin", "Batch unavailable")
-	create("admin", "Batch unmatched")
+	empty := create("admin", "Batch empty")
 	outside := create("admin", "Other album")
 	private := create("other", "Batch valid")
 	var reports []onlinescrape.AlbumBatchProgress
@@ -97,8 +118,8 @@ func TestAlbumBatchScopesFallsBackAndProtectsConcurrentEdits(t *testing.T) {
 		return nil
 	})
 	var failure *domain.Error
-	want := onlinescrape.AlbumBatchProgress{Total: 4, Processed: 4, Saved: 1, Skipped: 1, NotFound: 1, Failed: 1}
-	if !errors.As(err, &failure) || failure.Code != "SOURCE_OFFLINE" || result != want || len(reports) != 5 || reports[4] != want {
+	want := onlinescrape.AlbumBatchProgress{Total: 6, Processed: 6, Saved: 1, Skipped: 1, NotFound: 3, Failed: 1}
+	if !errors.As(err, &failure) || failure.Code != "SOURCE_OFFLINE" || result != want || len(reports) != want.Total+1 || reports[len(reports)-1] != want {
 		t.Fatalf("batch result %+v, reports %+v, error %v", result, reports, err)
 	}
 	cancelled, cancel := context.WithCancel(ctx)
@@ -115,7 +136,8 @@ func TestAlbumBatchScopesFallsBackAndProtectsConcurrentEdits(t *testing.T) {
 		count                 int
 	}{
 		{"admin", success.ID, "complete", 2}, {"admin", changed.ID, "manual", 1}, {"admin", saved.ID, "manual", 1},
-		{"admin", outside.ID, "", 0}, {"other", private.ID, "", 0},
+		{"admin", outside.ID, "", 0}, {"other", private.ID, "", 0}, {"admin", empty.ID, "", 0},
+		{"admin", albums["Batch wrong title"].ID, "", 0},
 	} {
 		fields, err := store.MusicAlbumScrapedFields(ctx, check.owner, check.album)
 		if err != nil || len(fields) != check.count {

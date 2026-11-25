@@ -56,6 +56,11 @@ func (c *Client) MusicAlbumScrapedFields(a0 context.Context, a1 string, a2 strin
 	return r0, err
 }
 
+func (c *Client) MusicAlbumTrackEvidence(a0 context.Context, a1 string, a2 string, a3 string) (r0 []music.AlbumTrackEvidence, err error) {
+	err = c.Invoke(a0, "MusicAlbumTrackEvidence", []any{a1, a2, a3}, []any{&r0})
+	return r0, err
+}
+
 func (c *Client) MusicAlbums(a0 context.Context, a1 string, a2 music.Query) (r0 music.AlbumPage, err error) {
 	err = c.Invoke(a0, "MusicAlbums", []any{a1, a2}, []any{&r0})
 	return r0, err
@@ -128,10 +133,5 @@ func (c *Client) PendingPublications(a0 context.Context, a1 string, a2 int) (r0 
 
 func (c *Client) PersonalCollection(a0 context.Context, a1 string, a2 string, a3 string, a4 int) (r0 personal.Page, err error) {
 	err = c.Invoke(a0, "PersonalCollection", []any{a1, a2, a3, a4}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) PersonalProfile(a0 context.Context, a1 string) (r0 personal.Profile, err error) {
-	err = c.Invoke(a0, "PersonalProfile", []any{a1}, []any{&r0})
 	return r0, err
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/playlists"
 	"github.com/fnMrRice/MusicFS-server/src/library/recommendations"
 	"github.com/fnMrRice/MusicFS-server/src/library/workpackages"
+	"github.com/fnMrRice/MusicFS-server/src/library/works"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/enrichment"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/candidates"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
@@ -19,8 +20,12 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/playback/onlinecache"
 	"github.com/fnMrRice/MusicFS-server/src/playback/timeline"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/plugincontrol"
-	"github.com/fnMrRice/MusicFS-server/src/storage/mediastore"
 )
+
+func (c *Client) RemoteSource(a0 context.Context, a1 string, a2 string) (r0 playlists.RemoteSource, err error) {
+	err = c.Invoke(a0, "RemoteSource", []any{a1, a2}, []any{&r0})
+	return r0, err
+}
 
 func (c *Client) RemoteSyncJob(a0 context.Context, a1 string, a2 string) (r0 playlists.SyncJob, err error) {
 	err = c.Invoke(a0, "RemoteSyncJob", []any{a1, a2}, []any{&r0})
@@ -132,12 +137,7 @@ func (c *Client) SearchPlaylists(a0 context.Context, a1 string, a2 string, a3 st
 	return r0, err
 }
 
-func (c *Client) SelectContent(a0 context.Context, a1 string, a2 mediastore.SelectRequest, a3 string) (r0 mediastore.Selection, err error) {
-	err = c.Invoke(a0, "SelectContent", []any{a1, a2, a3}, []any{&r0})
-	return r0, err
-}
-
-func (c *Client) SelectContentGuarded(a0 context.Context, a1 string, a2 mediastore.SelectRequest, a3 string, a4 mediastore.Guard) (r0 mediastore.Selection, err error) {
-	err = c.Invoke(a0, "SelectContentGuarded", []any{a1, a2, a3, a4}, []any{&r0})
+func (c *Client) SelectAutoMusicAlbumScrapedFields(a0 context.Context, a1 string, a2 string, a3 string, a4 int64, a5 []works.ScrapedField, a6 string) (r0 int64, err error) {
+	err = c.Invoke(a0, "SelectAutoMusicAlbumScrapedFields", []any{a1, a2, a3, a4, a5, a6}, []any{&r0})
 	return r0, err
 }

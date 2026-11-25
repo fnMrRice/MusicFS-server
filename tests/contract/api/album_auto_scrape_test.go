@@ -27,10 +27,30 @@ func (p autoAlbumCatalog) Descriptor() scraper.Descriptor {
 }
 
 func (p autoAlbumCatalog) Search(_ context.Context, field string, q scraper.Query) ([]scraper.Item, error) {
+	if field == "albumTracks" && q.ExternalID != "" {
+		track := scraper.Track{Title: "WAN", Artist: "Singer / Guest"}
+		if q.ExternalID == "wrong-edition" {
+			track = scraper.Track{Title: "Tryggvason", Artist: "YUN"}
+		}
+		return []scraper.Item{{ID: q.ExternalID, Title: "Edition", Tracks: []scraper.Track{track}}}, nil
+	}
 	if field != "albumDetails" || q.Album != "月光紀行" {
 		return nil, errors.New("expected album name search")
 	}
 	return p.items, nil
+}
+
+type albumRankingFixture struct {
+	music.Repository
+	target music.AlbumScrapeTarget
+}
+
+func (f albumRankingFixture) MusicAlbumScrapeTarget(context.Context, string, string, string) (music.AlbumScrapeTarget, error) {
+	return f.target, nil
+}
+
+func (albumRankingFixture) MusicAlbumTrackEvidence(context.Context, string, string, string) ([]music.AlbumTrackEvidence, error) {
+	return []music.AlbumTrackEvidence{{Title: "WAN", ArtistNames: []string{"Singer"}}}, nil
 }
 
 func TestAlbumAutoScrapePrefersStrongerMatchesAcrossPlatforms(t *testing.T) {
@@ -58,7 +78,7 @@ func TestAlbumAutoScrapePrefersStrongerMatchesAcrossPlatforms(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			items, err := service.SearchAlbum(t.Context(), "admin", target)
+			items, err := service.SearchVerifiedAlbum(t.Context(), albumRankingFixture{target: target}, "admin", "album", "")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -86,7 +106,7 @@ func TestAlbumAutoScrapeRanksRealSources(t *testing.T) {
 			{ID: "artist", Title: "月光紀行", Artist: "Singer"},
 		}},
 		autoAlbumCatalog{"netease", []scraper.Item{{ID: "ne", Title: "月光紀行"}}},
-		autoAlbumCatalog{"qqmusic", []scraper.Item{{ID: "qq", Title: "月光紀行"}}},
+		autoAlbumCatalog{"qqmusic", []scraper.Item{{ID: "wrong-edition", Title: "月光紀行", Artist: "Singer"}, {ID: "qq", Title: "月光紀行"}}},
 	}, store)
 	if err != nil {
 		t.Fatal(err)
@@ -106,8 +126,9 @@ func TestAlbumAutoScrapeRanksRealSources(t *testing.T) {
 			t.Fatal(err)
 		}
 		name := "月光紀行"
+		title := "WAN"
 		item := library.Observation{Observation: pluginproto.Observation{ExternalID: "one", RootID: instance, RelativePath: "one.wav",
-			ObservedVersion: "v1", DisplayName: "one.wav", MIME: "audio/wav", SizeBytes: 30}, Artists: []string{"Singer"}, Album: &name}
+			ObservedVersion: "v1", DisplayName: "one.wav", MIME: "audio/wav", SizeBytes: 30}, Title: &title, Artists: []string{"Singer"}, Album: &name}
 		if err = store.Publish(ctx, job, testkit.ScanPublication(job, []library.Observation{item})); err != nil {
 			t.Fatal(err)
 		}
@@ -124,7 +145,7 @@ func TestAlbumAutoScrapeRanksRealSources(t *testing.T) {
 	local := makeAlbum(localInstance, "localfiles")
 	netease := makeAlbum("843558e1-a158-56ac-834a-baffd12bb5c5", "netease")
 	qq := makeAlbum(qqInstance, "qqmusic")
-	call := func(id, body string, status int, want ...string) {
+	call := func(id, body string, status int, want ...string) []onlinescrape.AutoAlbumCandidate {
 		t.Helper()
 		r := httptest.NewRequest("POST", "/api/v1/library/albums/"+id+"/auto-scrape", strings.NewReader(body))
 		r.AddCookie(cookie)
@@ -137,7 +158,7 @@ func TestAlbumAutoScrapeRanksRealSources(t *testing.T) {
 			t.Fatalf("auto scrape: %d %s", w.Code, w.Body.String())
 		}
 		if status != 200 {
-			return
+			return nil
 		}
 		testkit.ValidateHTTP(t, "AlbumAutoSearchInput", []byte(body))
 		testkit.ValidateHTTP(t, "RankedAlbumCandidates", w.Body.Bytes())
@@ -153,11 +174,16 @@ func TestAlbumAutoScrapeRanksRealSources(t *testing.T) {
 			if err != nil || selection.Item.ID != item.ID {
 				t.Fatal("ranked candidate cannot be selected", err)
 			}
+			trackList, err := service.Candidate("admin", item.PluginID, "albumTracks", item.AlbumTracksToken)
+			if err != nil || trackList.Item.ID != item.ID || len(trackList.Item.Tracks) == 0 {
+				t.Fatal("verified album lacks its paired track list", err)
+			}
 			got = append(got, item.ID)
 		}
 		if !slices.Equal(got, want) {
 			t.Fatalf("candidates %v, want %v", got, want)
 		}
+		return page.Items
 	}
 	call(local, "{}", 200, "artist", "mb", "alias")
 	call(netease, "{}", 200, "ne")
@@ -177,5 +203,26 @@ func TestAlbumAutoScrapeRanksRealSources(t *testing.T) {
 		t.Fatal(err)
 	}
 	call(local, "{}", 200, "ne", "mb", "live")
-	call(qq, "{}", 200, "qq")
+	verified := call(qq, "{}", 200, "qq")[0]
+	current, err := store.MusicAlbum(ctx, "admin", qq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := map[string]any{"expectedRevision": current.Revision, "pluginId": verified.PluginID, "providerInstanceId": qqInstance,
+		"candidates": map[string]string{"albumDetails": verified.Token, "albumTracks": verified.AlbumTracksToken}}
+	raw, _ := json.Marshal(input)
+	testkit.ValidateHTTP(t, "AutoAlbumSelectionInput", raw)
+	for range 2 {
+		r := httptest.NewRequest("PUT", "/api/v1/library/albums/"+qq+"/auto-scrape", strings.NewReader(string(raw)))
+		r.AddCookie(cookie)
+		r.Header.Set("Content-Type", "application/json")
+		r.Header.Set("Origin", origin)
+		r.Header.Set("X-CSRF-Token", session.CSRFToken)
+		r.Header.Set("Idempotency-Key", "auto-save-verified-edition")
+		w := httptest.NewRecorder()
+		server.ServeHTTP(w, r)
+		if w.Code != 200 {
+			t.Fatalf("verified selection: %d %s", w.Code, w.Body.String())
+		}
+	}
 }
