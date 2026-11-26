@@ -28,6 +28,7 @@ import (
 	"github.com/fnMrRice/MusicFS-server/src/library/sourcedisplay"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/identification/hashworker"
 	"github.com/fnMrRice/MusicFS-server/src/metadata/matching"
+	"github.com/fnMrRice/MusicFS-server/src/metadata/onlinescrape"
 	"github.com/fnMrRice/MusicFS-server/src/playback"
 	"github.com/fnMrRice/MusicFS-server/src/playback/downloadjobs"
 	"github.com/fnMrRice/MusicFS-server/src/plugins/codecsettings"
@@ -218,7 +219,8 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 	handler.RegisterSourceDisplay(sourcedisplay.New(store, online))
 	handler.RegisterPluginManagement(pluginManager)
 	handler.RegisterOnline(online)
-	handler.RegisterOnlineArtwork(onlineartwork.New(lib, online, content, nil))
+	onlineArt := onlineartwork.New(lib, online, content, nil)
+	handler.RegisterOnlineArtwork(onlineArt)
 	handler.RegisterPlaylistTrackSources(online, store)
 	handler.RegisterRecommendations(recommendations)
 	handler.RegisterRemotePlaylists(remotePlaylists)
@@ -234,6 +236,7 @@ func compose(ctx context.Context, c config.Config, log *slog.Logger, instance st
 		cleanup()
 		return nil, nil, err
 	}
+	handler.RegisterAlbumArtwork(onlinescrape.NewAlbumArtwork(filepath.Join(c.CacheRoot, "album-artwork"), scrapers, store, onlineArt.RemoteURL))
 	handler.RegisterAlbums(albums.New(store, content, lib))
 	closeHistory, err := configureWorks(ctx, c, handler, store, lib)
 	if err != nil {

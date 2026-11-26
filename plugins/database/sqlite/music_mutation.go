@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
@@ -90,6 +91,11 @@ func (s *Store) SaveMusicAlbum(ctx context.Context, owner, id string, revision i
 	if err != nil {
 		return music.Album{}, err
 	}
+	// 读接口返回的封面可能继承自曲目或刮削资料，原样提交表示保留底层字段。
+	keepCover := a.CoverPath != nil && strings.HasPrefix(*a.CoverPath, "/api/v1/library/albums/") && strings.HasSuffix(*a.CoverPath, "/artwork")
+	if keepCover && (id == "" || *a.CoverPath != "/api/v1/library/albums/"+id+"/artwork") {
+		return music.Album{}, domain.Fail("INVALID_ARGUMENT", "Cannot use another album's artwork reference")
+	}
 	return saveMusic(ctx, s, owner, "albums", id, key, revision, a, func(tx *sql.Tx, newID string) (music.Album, error) {
 		links, err := json.Marshal(a.SourceLinks)
 		if err != nil {
@@ -100,8 +106,8 @@ func (s *Store) SaveMusicAlbum(ctx context.Context, owner, id string, revision i
  VALUES(?,?,?,?,?,?,?,?,?,'manual',1,1)`, newID, owner, a.Name, a.ExternalID, a.IsExternal, a.CoverPath, a.Publisher, a.ReleaseDate, string(links))
 		} else {
 			var result sql.Result
-			result, err = tx.ExecContext(ctx, `UPDATE music_albums SET name=?,external_id=?,is_external=CASE WHEN origin='cd' THEN 1 ELSE ? END,cover_path=?,publisher=?,release_date=?,source_links=?,revision=revision+1,metadata_locked=1 WHERE owner=? AND id=? AND revision=?`,
-				a.Name, a.ExternalID, a.IsExternal, a.CoverPath, a.Publisher, a.ReleaseDate, string(links), owner, newID, revision)
+			result, err = tx.ExecContext(ctx, `UPDATE music_albums SET name=?,external_id=?,is_external=CASE WHEN origin='cd' THEN 1 ELSE ? END,cover_path=CASE WHEN ?=1 THEN cover_path ELSE ? END,publisher=?,release_date=?,source_links=?,revision=revision+1,metadata_locked=1 WHERE owner=? AND id=? AND revision=?`,
+				a.Name, a.ExternalID, a.IsExternal, keepCover, a.CoverPath, a.Publisher, a.ReleaseDate, string(links), owner, newID, revision)
 			if err == nil {
 				err = checkMusicUpdate(ctx, tx, result, owner, newID, "music_albums")
 			}

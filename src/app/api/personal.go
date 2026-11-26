@@ -73,6 +73,9 @@ func (s *Server) RegisterPersonal(service *personal.Service) {
 			if err != nil {
 				return err
 			}
+			for i := range p.Items {
+				p.Items[i].MusicTrack = publicTrack(p.Items[i].MusicTrack)
+			}
 			return WriteJSON(w, http.StatusOK, p)
 		})
 		for _, suffix := range []string{"", "/{id}"} {
@@ -106,6 +109,7 @@ func (s *Server) RegisterPersonal(service *personal.Service) {
 		if err != nil {
 			return err
 		}
+		entry.MusicTrack = publicTrack(entry.MusicTrack)
 		return WriteJSON(w, http.StatusOK, entry)
 	})
 	s.Handle("POST /api/v1/me/recently-played", true, true, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
@@ -123,6 +127,7 @@ func (s *Server) RegisterPersonal(service *personal.Service) {
 		if err != nil {
 			return err
 		}
+		entry.MusicTrack = publicTrack(entry.MusicTrack)
 		return WriteJSON(w, http.StatusOK, entry)
 	})
 }

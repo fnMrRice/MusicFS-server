@@ -32,36 +32,22 @@ func (s *Service) OpenMedia(ctx context.Context, owner string, selected works.Sc
 	if err != nil {
 		return nil, "", err
 	}
-	_, client, release, err := s.configured(selected.PluginID, record, client)
+	plugin, client, release, err := s.configured(selected.PluginID, record, client)
 	if err != nil {
 		return nil, "", err
 	}
-	if client == nil {
-		client = http.DefaultClient
+	var body io.ReadCloser
+	var mime string
+	if downloader, ok := plugin.(scraper.ArtworkDownloader); ok {
+		body, mime, err = downloader.OpenArtwork(ctx, selected.Item.ImageURL)
+	} else {
+		body, mime, err = scraper.OpenImage(ctx, selected.Item.ImageURL, hosts, client)
 	}
-	c := *client
-	c.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		if len(via) > 6 || !scraper.AllowsImageURL(req.URL.String(), hosts) {
-			return domain.Fail("UNSUPPORTED", "Unsupported artwork redirect")
-		}
-		return nil
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, selected.Item.ImageURL, nil)
 	if err != nil {
 		release()
 		return nil, "", err
 	}
-	resp, err := c.Do(req)
-	if err != nil {
-		release()
-		return nil, "", domain.Fail("SOURCE_UNAVAILABLE", "Artwork request failed")
-	}
-	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
-		release()
-		return nil, "", domain.Fail("SOURCE_UNAVAILABLE", "Artwork unavailable")
-	}
-	return &configuredMediaBody{ReadCloser: resp.Body, release: release}, resp.Header.Get("Content-Type"), nil
+	return &configuredMediaBody{ReadCloser: body, release: release}, mime, nil
 }
 
 type configuredMediaBody struct {

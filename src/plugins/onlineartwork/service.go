@@ -73,8 +73,19 @@ func (s *Service) Open(ctx context.Context, owner, id string) (mediastore.Conten
 
 func missing() error { return domain.Fail("NOT_FOUND", "No online artwork is available") }
 
-func (s *Service) objectID(ctx context.Context, owner string, t library.Track) (string, error) {
-	id := t.ID
+// RemoteURL 给专辑封面缓存提供已授权来源的官方地址。
+func (s *Service) RemoteURL(ctx context.Context, owner, id string, refresh bool) (string, error) {
+	t, err := s.tracks.Track(ctx, owner, id)
+	if err != nil {
+		return "", err
+	}
+	if t.RootID != "online-audio" || t.Path != "" || t.Availability != "available" {
+		return "", missing()
+	}
+	return s.remoteURL(ctx, owner, t, refresh)
+}
+
+func (s *Service) remoteURL(ctx context.Context, owner string, t library.Track, refresh bool) (string, error) {
 	r, err := s.online.Runtime(ctx, owner, t.ProviderID, "")
 	if err != nil {
 		return "", err
@@ -83,7 +94,7 @@ func (s *Service) objectID(ctx context.Context, owner string, t library.Track) (
 		return "", missing()
 	}
 	raw := t.ProviderCoverURL
-	if raw == "" {
+	if refresh || raw == "" {
 		raw, err = s.batch.lookup(ctx, scope{owner, t.ProviderID}, t.ExternalID)
 		if err != nil {
 			return "", err
@@ -92,6 +103,15 @@ func (s *Service) objectID(ctx context.Context, owner string, t library.Track) (
 	raw = library.NetEaseArtworkURL(raw)
 	if raw == "" {
 		return "", missing()
+	}
+	return raw, nil
+}
+
+func (s *Service) objectID(ctx context.Context, owner string, t library.Track) (string, error) {
+	id := t.ID
+	raw, err := s.remoteURL(ctx, owner, t, false)
+	if err != nil {
+		return "", err
 	}
 	select {
 	case s.gate <- struct{}{}:

@@ -133,8 +133,9 @@ func TestOnlineScraperMusicAlbumSelection(t *testing.T) {
 	if err = json.Unmarshal(call("GET", "/library/tracks", "", "", 200), &newPage); err != nil || newPage.LibraryRevision == oldPage.LibraryRevision {
 		t.Fatal("scraping did not advance library revision", err)
 	}
-	if _, err = store.SaveMusicAlbum(ctx, "admin", album.ID, 4, music.AlbumFields{Name: "Edited name"}, "edit-album-after-scrape"); err != nil {
-		t.Fatal(err)
+	call("PUT", "/library/albums/"+album.ID, `{"name":"Edited name","expectedRevision":4,"coverPath":"/api/v1/library/albums/`+album.ID+`/artwork"}`, "edit-album-after-scrape", 200)
+	if err = store.DB.QueryRowContext(ctx, "SELECT cover_path FROM music_albums WHERE id=?", album.ID).Scan(&storedCover); err != nil || storedCover != nil {
+		t.Fatalf("saving the public cover path materialized an inherited artwork: %v %v", storedCover, err)
 	}
 	saved := call("GET", fields, "", "", 200)
 	testkit.ValidateHTTP(t, "MusicAlbumScrapedFields", saved)

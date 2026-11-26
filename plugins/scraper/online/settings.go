@@ -1,6 +1,8 @@
 package online
 
 import (
+	"context"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -21,6 +23,10 @@ type configurablePlugin struct {
 
 func configuredPlugin(client *http.Client, factory func(*http.Client) scraper.Plugin) scraper.Plugin {
 	return configurablePlugin{Plugin: factory(client), client: client, factory: factory}
+}
+
+func (p configurablePlugin) OpenArtwork(ctx context.Context, raw string) (io.ReadCloser, string, error) {
+	return scraper.OpenImage(ctx, raw, p.Descriptor().ImageHosts, p.client)
 }
 
 func (configurablePlugin) SettingsSchema() pluginsettings.Schema {
@@ -110,7 +116,7 @@ func (p configurablePlugin) WithSettings(values map[string]any) (scraper.Plugin,
 		}
 		client.Transport = borrowedTransport{transport}
 	}
-	return p.factory(&client), &client, nil
+	return configuredPlugin(&client, p.factory), &client, nil
 }
 
 // 非标准传输器由装配方管理；一次任务结束不能关闭其他任务共享的连接池。

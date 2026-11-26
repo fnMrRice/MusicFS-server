@@ -38,7 +38,7 @@ func (s *Server) RegisterMusicLibrary(repo music.Repository) {
 		if err != nil {
 			return err
 		}
-		return WriteJSON(w, http.StatusOK, track)
+		return WriteJSON(w, http.StatusOK, publicTrack(track))
 	})
 	s.Handle("PUT /api/v1/library/artists/{id}/names", true, true, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
 		var in struct {
@@ -62,7 +62,7 @@ func (s *Server) RegisterMusicLibrary(repo music.Repository) {
 		if err != nil {
 			return err
 		}
-		return WriteJSON(w, http.StatusOK, track)
+		return WriteJSON(w, http.StatusOK, publicTrack(track))
 	})
 	s.Handle("POST /api/v1/library/tracks", true, true, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
 		var in music.TrackInput
@@ -73,7 +73,7 @@ func (s *Server) RegisterMusicLibrary(repo music.Repository) {
 		if err != nil {
 			return err
 		}
-		return WriteJSON(w, http.StatusCreated, t)
+		return WriteJSON(w, http.StatusCreated, publicTrack(t))
 	})
 	s.Handle("PUT /api/v1/library/tracks/{id}", true, true, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
 		var in struct {
@@ -87,7 +87,7 @@ func (s *Server) RegisterMusicLibrary(repo music.Repository) {
 		if err != nil {
 			return err
 		}
-		return WriteJSON(w, http.StatusOK, t)
+		return WriteJSON(w, http.StatusOK, publicTrack(t))
 	})
 	s.Handle("POST /api/v1/library/albums", true, true, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
 		var in music.AlbumFields
@@ -98,7 +98,7 @@ func (s *Server) RegisterMusicLibrary(repo music.Repository) {
 		if err != nil {
 			return err
 		}
-		return WriteJSON(w, http.StatusCreated, item)
+		return WriteJSON(w, http.StatusCreated, publicAlbum(item))
 	})
 	s.Handle("PUT /api/v1/library/albums/{id}", true, true, func(w http.ResponseWriter, r *http.Request, a auth.Session) error {
 		var in struct {
@@ -112,7 +112,7 @@ func (s *Server) RegisterMusicLibrary(repo music.Repository) {
 		if err != nil {
 			return err
 		}
-		return WriteJSON(w, http.StatusOK, item)
+		return WriteJSON(w, http.StatusOK, publicAlbum(item))
 	})
 }
 
@@ -149,7 +149,7 @@ func registerMusicList[T any](s *Server, kind string, load func(context.Context,
 		if err != nil {
 			return err
 		}
-		return WriteJSON(w, http.StatusOK, res)
+		return WriteJSON(w, http.StatusOK, publicMusicValue(res))
 	})
 }
 
@@ -162,6 +162,6 @@ func registerMusicDetail[T any](s *Server, kind string, load func(context.Contex
 		if err != nil {
 			return err
 		}
-		return WriteJSON(w, http.StatusOK, res)
+		return WriteJSON(w, http.StatusOK, publicMusicValue(res))
 	})
 }

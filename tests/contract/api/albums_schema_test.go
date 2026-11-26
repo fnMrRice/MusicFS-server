@@ -23,7 +23,7 @@ func TestAlbumOpenAPIOperations(t *testing.T) {
 			}
 		}
 	}
-	for _, operation := range []string{"createThumbnail", "listScrapeDocuments"} {
+	for _, operation := range []string{"createThumbnail", "listScrapeDocuments", "getMusicAlbumArtwork", "refreshMusicAlbumArtwork"} {
 		if !operations[operation] {
 			t.Errorf("missing operation %s", operation)
 		}
