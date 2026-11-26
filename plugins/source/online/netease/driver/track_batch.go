@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/url"
+	"strings"
 
 	domain "github.com/fnMrRice/MusicFS-server/sdk/fault"
 )
@@ -77,7 +78,14 @@ func (c *Client) PlaylistTracks(ctx context.Context, r PlaylistTracksRequest) (P
 	if r.Limit < 1 || r.Limit > MaxPageItems || len(r.Cursor) > 1024 {
 		return PlaylistTracksPage{}, domain.Fail("INVALID_ARGUMENT", "Invalid playlist page")
 	}
-	observation, err := c.ObservePlaylist(ctx, r.ExternalID)
+	var observation PlaylistObservation
+	var dailyTracks []Track
+	var err error
+	if strings.HasPrefix(r.ExternalID, dailyPrefix) {
+		observation, dailyTracks, err = c.observeDaily(ctx, r.ExternalID)
+	} else {
+		observation, err = c.ObservePlaylist(ctx, r.ExternalID)
+	}
 	if err != nil {
 		return PlaylistTracksPage{}, err
 	}
@@ -97,11 +105,16 @@ func (c *Client) PlaylistTracks(ctx context.Context, r PlaylistTracksRequest) (P
 	}
 	page := PlaylistTracksPage{Playlist: observation.Playlist, Items: []PlaylistTrack{}, MetadataDigest: observation.MetadataDigest, Complete: observation.Complete, Consistency: Unversioned, ObservedAt: observation.ObservedAt}
 	end := min(offset+r.Limit, len(observation.Entries))
-	ids := []string{}
-	for _, entry := range observation.Entries[offset:end] {
-		ids = append(ids, entry.ExternalTrackID)
-	}
-	if len(ids) > 0 {
+	if dailyTracks != nil {
+		for i := offset; i < end; i++ {
+			track := &dailyTracks[i]
+			page.Items = append(page.Items, PlaylistTrack{Position: i, TrackLookup: TrackLookup{ExternalID: track.ExternalID, Track: track}})
+		}
+	} else if offset < end {
+		ids := make([]string, 0, end-offset)
+		for _, entry := range observation.Entries[offset:end] {
+			ids = append(ids, entry.ExternalTrackID)
+		}
 		batch, err := c.MetadataBatch(ctx, ids)
 		if err != nil {
 			return PlaylistTracksPage{}, err

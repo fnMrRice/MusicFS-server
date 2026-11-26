@@ -46,6 +46,9 @@ func (s *Service) fetch(ctx context.Context, key cacheKey, r Runtime, e *entry, 
 			if err == nil {
 				err = online.ValidateRecommendations(descriptor.Resources, page, key.limit)
 			}
+			if err == nil && page.Personalized && r.AccountID == "" {
+				err = domain.Fail("PROTOCOL_MISMATCH", "Personalized recommendations require a validated account")
+			}
 		}
 		if err == nil && (page.ObservedAt.After(time.Now().Add(5*time.Second)) || !page.ExpiresAt.After(time.Now())) {
 			err = domain.Fail("TEMPORARY_FAILURE", "Recommendation observation is expired or invalid")
@@ -101,6 +104,7 @@ func (s *Service) fetch(ctx context.Context, key cacheKey, r Runtime, e *entry, 
 	expires := minTime(page.ExpiresAt, now.Add(s.config.TTL)).UTC()
 	result := sourceFor(r)
 	result.Items = page.Items
+	result.Personalized = page.Personalized
 	result.LastSuccessAt = &now
 	result.ExpiresAt = &expires
 	e.source = cloneSource(result)

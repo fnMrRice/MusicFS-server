@@ -49,8 +49,8 @@ QQ 和 Apple 对应 `musicfs.plugin.source.qqmusic`、`musicfs.plugin.source.app
 | GET `/online-instances/{id}/artists/{externalId}/albums` | limit默认20、1—50；可选cursor | `kind=albums`的页，保留上游专辑顺序，不固定远端快照 |
 | GET `/online-instances/{id}/artists/{externalId}/tracks` | limit默认20、1—50；可选cursor | `kind=tracks`的页，固定上游hot排序，不固定远端快照 |
 | POST `/online-instances/{id}/tracks/lookup` | `externalIds` 数组，1—50项；允许Origin和CSRF，无幂等键 | 保持输入顺序与重复，缺失逐项`NOT_FOUND`；只使用一次上游批量详情请求 |
-| GET `/online-instances/{id}/recommendations` | limit默认20、1—50 | 公共歌单推荐、观测时间和120秒有效期；`personalized=false,nextCursor=null` |
-| GET `/online-instances/{id}/daily-songs` | limit 默认 50，范围 1—50 | 当前已校验账号的每日推荐歌曲，按平台顺序返回 |
+| GET `/online-instances/{id}/recommendations` | limit默认20、1—50 | 推荐歌单、观测时间和120秒有效期。网易云在日推可用时返回账号的日推歌单及 `personalized=true`，当前无下一页 |
+| GET `/online-instances/{id}/daily-songs` | limit 默认 50，范围 1—50 | 供声明 `recommendations.tracks` 的实例返回当前账号的推荐曲目。网易云通过推荐歌单接口提供日推 |
 | GET `/online-instances/{id}/playlists/{externalId}` | 可访问的歌单编号，含网易云当前账号自建的私密歌单 | 条目、`complete/consistency/metadataDigest/observedAt` |
 | GET `/online-instances/{id}/playlists/{externalId}/tracks` | limit默认20、1—50；可选cursor | 按位置返回来源 ID、标题、歌手、时长及可选的逐曲封面 `items[].track.coverUrl`，缺失曲目保留占位 |
 | POST `/source-refs/lookup` | `sources` 是1—50项个人歌单`SourceRef`；允许Origin和CSRF，无幂等键 | 本地`SourceTrack`或远程来源及资料；顺序、重复和单项错误保留，不遍历整个曲库 |

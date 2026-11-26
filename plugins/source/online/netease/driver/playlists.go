@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	domain "github.com/fnMrRice/MusicFS-server/sdk/fault"
@@ -61,15 +62,8 @@ func (p neteasePlaylist) summary() (Playlist, error) {
 	return Playlist{ExternalID: p.ID.String(), Title: name, SourceURL: "https://music.163.com/playlist?id=" + p.ID.String(), TrackCount: p.TrackCount, CoverURL: cover, Creator: creator}, nil
 }
 
-// PublicRecommendations reads the single supported public page. The upstream
-// endpoint has no verified offset mechanism; there is deliberately no cursor.
-func (c *Client) PublicRecommendations(ctx context.Context, limit int) (RecommendationPage, error) {
-	if err := c.Require(ctx); err != nil {
-		return RecommendationPage{}, err
-	}
-	if limit < 1 || limit > MaxPageItems {
-		return RecommendationPage{}, domain.Fail("INVALID_ARGUMENT", "Recommendation limit must be between 1 and 50")
-	}
+// 公共歌单仅有一页，位置接在账号日推之后。
+func (c *Client) publicPlaylists(ctx context.Context, limit, start int) ([]Recommendation, error) {
 	var response struct {
 		Code   *int `json:"code"`
 		Result *[]struct {
@@ -78,34 +72,33 @@ func (c *Client) PublicRecommendations(ctx context.Context, limit int) (Recommen
 		} `json:"result"`
 	}
 	if err := c.WaitForMetadata(ctx); err != nil {
-		return RecommendationPage{}, err
+		return nil, err
 	}
 	if err := c.Get(ctx, "/api/personalized/playlist", url.Values{"limit": {strconv.Itoa(limit)}, "total": {"true"}, "n": {"1"}}, &response); err != nil {
-		return RecommendationPage{}, err
+		return nil, err
 	}
 	if response.Code == nil {
-		return RecommendationPage{}, upstreamInvalid()
+		return nil, upstreamInvalid()
 	}
 	if err := c.BusinessError(*response.Code, 200); err != nil {
-		return RecommendationPage{}, err
+		return nil, err
 	}
 	if response.Result == nil || len(*response.Result) > limit {
-		return RecommendationPage{}, upstreamInvalid()
+		return nil, upstreamInvalid()
 	}
-	now := time.Now().UTC()
-	page := RecommendationPage{Items: []Recommendation{}, ObservedAt: now, ExpiresAt: now.Add(2 * time.Minute)}
+	items := make([]Recommendation, 0, len(*response.Result))
 	for index, source := range *response.Result {
 		playlist, err := source.summary()
 		if err != nil {
-			return RecommendationPage{}, err
+			return nil, err
 		}
 		reason, err := textValue(source.Reason, 4096)
 		if err != nil {
-			return RecommendationPage{}, err
+			return nil, err
 		}
-		page.Items = append(page.Items, Recommendation{Playlist: playlist, Position: index, Reason: reason})
+		items = append(items, Recommendation{Playlist: playlist, Position: start + index, Reason: reason})
 	}
-	return page, nil
+	return items, nil
 }
 
 // ObservePlaylist never calls track-detail or audio endpoints for its entries.
@@ -113,6 +106,10 @@ func (c *Client) PublicRecommendations(ctx context.Context, limit int) (Recommen
 func (c *Client) ObservePlaylist(ctx context.Context, externalID string) (PlaylistObservation, error) {
 	if err := c.Require(ctx); err != nil {
 		return PlaylistObservation{}, err
+	}
+	if strings.HasPrefix(externalID, dailyPrefix) {
+		o, _, err := c.observeDaily(ctx, externalID)
+		return o, err
 	}
 	if !numericID.MatchString(externalID) {
 		return PlaylistObservation{}, domain.Fail("INVALID_ARGUMENT", "Playlist identifier is invalid")

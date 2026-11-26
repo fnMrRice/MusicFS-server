@@ -85,12 +85,15 @@ func (f *fixture) RoundTrip(r *http.Request) (*http.Response, error) {
 	case "/api/song/enhance/player/url/v1":
 		body = `{"code":200,"data":[{"id":42,"code":200,"type":"mp3","level":"exhigh","size":128,"url":"https://m8.music.126.net/fixture.mp3"}]}`
 	case "/api/personalized/playlist":
-		if len(os.Args) == 3 && os.Args[1] == "recommendation-rate-limit" && f.recommendationReads.Add(1) == 2 {
+		if len(os.Args) == 3 && os.Args[1] == "recommendation-rate-limit" && f.recommendationReads.Load() == 2 {
 			return &http.Response{StatusCode: http.StatusTooManyRequests, Header: http.Header{"Retry-After": {os.Args[2]}}, Body: http.NoBody}, nil
 		}
 		body = `{"code":200,"result":[{"id":91,"name":"Synthetic","copywriter":"Public","trackCount":3}]}`
 	case "/api/v3/discovery/recommend/songs":
-		body = `{"code":200,"data":{"dailySongs":[{"id":42,"name":"Daily song","ar":[],"al":{"name":"Album"},"dt":120000}]}}`
+		if len(os.Args) == 3 && os.Args[1] == "recommendation-rate-limit" && f.recommendationReads.Add(1) == 2 {
+			return &http.Response{StatusCode: http.StatusTooManyRequests, Header: http.Header{"Retry-After": {os.Args[2]}}, Body: http.NoBody}, nil
+		}
+		body = `{"code":200,"data":{"dailySongs":[{"id":42,"name":"Daily song","ar":[],"al":{"name":"Album","picUrl":"https://p2.music.126.net/daily.jpg"},"dt":120000}]}}`
 	case "/api/user/playlist":
 		if r.URL.Query().Get("uid") != "12345" {
 			return nil, fmt.Errorf("account playlist request used an unexpected account")

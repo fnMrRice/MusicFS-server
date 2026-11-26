@@ -104,8 +104,14 @@ func TestOnlineActualServerRequiresPlatformLoginAndDisabledRestart(t *testing.T)
 		}
 		time.Sleep(1050 * time.Millisecond)
 		recommendations := albumRequest[online.RecommendationPage](t, c, "GET", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/recommendations?limit=1", nil, "", 200, "OnlineRecommendationPage")
-		if recommendations.Personalized || recommendations.NextCursor != nil {
-			t.Fatal("recommendation personalization is not verified")
+		if !recommendations.Personalized || recommendations.NextCursor != nil || len(recommendations.Items) != 1 || recommendations.Items[0].Playlist.ExternalID != "daily-songs:12345" {
+			t.Fatal("account daily playlist missing from recommendations")
+		}
+		dailyPath := "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/playlists/" + recommendations.Items[0].Playlist.ExternalID + "/tracks?limit=1"
+		time.Sleep(1050 * time.Millisecond)
+		daily := albumRequest[online.PlaylistTracksPage](t, c, "GET", dailyPath, nil, "", 200, "OnlinePlaylistTracksPage")
+		if daily.Playlist.Writable || daily.Playlist.CoverURL == nil || len(daily.Items) != 1 || daily.Items[0].Track == nil || daily.Items[0].Track.ExternalID != "42" || daily.NextCursor != nil {
+			t.Fatalf("daily playlist read returned invalid metadata: %+v", daily)
 		}
 		time.Sleep(1050 * time.Millisecond)
 		observation := albumRequest[online.PlaylistObservation](t, c, "GET", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/playlists/91", nil, "", 200, "OnlineObservation")
@@ -128,6 +134,10 @@ func TestOnlineActualServerRequiresPlatformLoginAndDisabledRestart(t *testing.T)
 		code, raw, _ = c.request(t, "POST", "/api/v1/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/account", map[string]string{"action": "logout"}, "")
 		if code != 200 {
 			t.Fatalf("logout: %d %s", code, raw)
+		}
+		code, raw, _ = c.request(t, "GET", "/api/v1"+dailyPath, nil, "")
+		if code != 403 {
+			t.Fatalf("signed-out account could read daily playlist: %d %s", code, raw)
 		}
 		code, raw, _ = c.request(t, "GET", "/api/v1/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/search?q=sample", nil, "")
 		if code != 403 {

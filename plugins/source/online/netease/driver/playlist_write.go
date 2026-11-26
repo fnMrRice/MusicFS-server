@@ -4,12 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"net/url"
+	"strings"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/fault"
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
 )
 
 func (c *Client) AddPlaylistTrack(ctx context.Context, r online.PlaylistTrackAddition) error {
+	if strings.HasPrefix(r.ExternalID, dailyPrefix) {
+		if err := c.checkDailyID(r.ExternalID); err != nil {
+			return err
+		}
+		return fault.Fail("ACCESS_DENIED", "Daily recommendations are read-only")
+	}
 	if !numericID.MatchString(r.ExternalID) || !numericID.MatchString(r.TrackID) {
 		return fault.Fail("INVALID_ARGUMENT", "Invalid playlist or track identity")
 	}

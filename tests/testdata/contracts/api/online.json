@@ -94,11 +94,11 @@
     }
   },
   {
-    "name": "anonymous-not-personalized",
+    "name": "provider-account-personalized-playlists",
     "schema": "OnlineRecommendationPage",
-    "valid": false,
+    "valid": true,
     "value": {
-      "items": [],
+      "items": [{"position":0,"reason":"","playlist":{"externalId":"daily-songs:12345","title":"每日推荐歌曲","sourceUrl":"https://music.163.com/discover/recommend/taste?uid=12345","creator":null,"coverUrl":"https://p2.music.126.net/daily.jpg","trackCount":24}}],
       "personalized": true,
       "nextCursor": null,
       "observedAt": "2026-10-10T00:00:00Z",

@@ -105,7 +105,7 @@ func validatePlaylist(policy ResourcePolicy, p Playlist) error {
 }
 
 func ValidateRecommendations(policy ResourcePolicy, page RecommendationPage, limit int) error {
-	if limit < 1 || limit > MaxPageItems || page.Items == nil || len(page.Items) > limit || page.Personalized || page.NextCursor != nil || page.ObservedAt.IsZero() || page.ExpiresAt.Sub(page.ObservedAt).Seconds() != 120 {
+	if limit < 1 || limit > MaxPageItems || page.Items == nil || len(page.Items) > limit || page.NextCursor != nil || page.ObservedAt.IsZero() || page.ExpiresAt.Sub(page.ObservedAt).Seconds() != 120 {
 		return invalidResult()
 	}
 	for i, item := range page.Items {

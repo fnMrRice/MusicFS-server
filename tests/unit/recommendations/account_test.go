@@ -2,9 +2,11 @@ package recommendations_test
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"testing"
 
+	"github.com/fnMrRice/MusicFS-server/sdk/online"
 	"github.com/fnMrRice/MusicFS-server/src/core/domain"
 	"github.com/fnMrRice/MusicFS-server/src/library/recommendations"
 )
@@ -13,6 +15,31 @@ type accountProvider struct {
 	*provider
 	mu                sync.Mutex
 	account, revision string
+}
+
+func TestPersonalizedResultsAreScopedToTheActiveAccount(t *testing.T) {
+	p := &accountProvider{provider: &provider{fn: func(_ context.Context, _ int, call int32) (online.RecommendationPage, error) {
+		p := page(strconv.Itoa(int(call)), 1)
+		p.Personalized = true
+		return p, nil
+	}}}
+	s := service(t, recommendations.Config{}, runtimeFor("owner", "provider", p))
+	req := recommendations.Request{Limit: 1}
+	for index, account := range []string{"first", "second"} {
+		p.login(account, "revision-"+account)
+		for range 2 {
+			got := list(t, s, "owner", req).Sources[0]
+			want := strconv.Itoa(index+1) + "0"
+			if got.Error != nil || !got.Personalized || got.AccountID != account || len(got.Items) != 1 || got.Items[0].Playlist.ExternalID != want {
+				t.Fatalf("unexpected scoped recommendations: %+v", got)
+			}
+		}
+	}
+	p.login("", "")
+	got := list(t, s, "owner", req).Sources[0]
+	if got.Personalized || len(got.Items) != 0 || got.Error == nil || got.Error.Code != "PLATFORM_AUTH_REQUIRED" {
+		t.Fatalf("signed-out account retained personalized recommendations: %+v", got)
+	}
 }
 
 func (p *accountProvider) AccountScope(context.Context) (string, string, error) {

@@ -4,7 +4,9 @@
 
 ## 每日推荐歌曲
 
-声明 `recommendations.tracks` 的实例通过 `GET /api/v1/online-instances/{id}/daily-songs` 返回当前账号的每日推荐歌曲。`limit` 默认为 50，取值 1 至 50。`tracks` 保留平台顺序，`observedAt` 是读取时间。Web 在当前账号的推荐歌单中展示「每日推荐歌曲」卡片，打开卡片后才调用此接口。推荐歌单的历史页只展示当时保存的歌单。
+网易云插件把「每日推荐歌曲」放在当前账号推荐歌单的首位，占用一个 `limit` 名额，其余名额保留公共歌单的顺序。日推的 `externalId` 为 `daily-songs:{平台账号ID}`，曲数来自当日响应，封面取第一张可用的歌曲封面。含日推的推荐页标记 `personalized=true`。一路暂时失败时可展示另一路的结果，账号失效按来源鉴权错误处理。
+
+和其他推荐歌单一样，客户端通过 `/online-instances/{id}/playlists/{externalId}` 观察日推，通过其 `/tracks` 子路径分页读取曲目，也可用相同的来源引用显式导入。歌单只读且仅当前绑定账号可访问，平台更新后重新打开会读到新的曲序，旧游标会失效。历史推荐保存当时的卡片摘要，打开卡片仍读取当前歌单。其他声明 `recommendations.tracks` 的插件可继续通过 `GET /api/v1/online-instances/{id}/daily-songs` 提供独立曲目列表。
 
 网易云插件通过已校验的账号会话读取 `/api/v3/discovery/recommend/songs` 的 `data.dailySongs`。接口依据见 [api-enhanced 的 recommend_songs.js](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced/blob/2db6684453297ee86dec0492842f2320b08182d9/module/recommend_songs.js)。
 
@@ -39,6 +41,6 @@
 
 ## 当前边界
 
-网易云公共歌单推荐返回 `personalized=false`、`nextCursor=null`。曲目能否播放取决于来源的播放能力。
+网易云仅返回公共歌单时 `personalized=false`，包含日推时为 `true`，两种情况均返回 `nextCursor=null`。曲目能否播放取决于来源的播放能力。
 
 公开接口见 [OpenAPI](../contracts/openapi.yaml)及 [HTTP Schema](../contracts/http.schema.json)。

@@ -38,10 +38,10 @@ func TestPublicRecommendationTimestampsAreUTC(t *testing.T) {
 
 func TestInvalidProviderObservationsAreNotCachedAsSuccess(t *testing.T) {
 	cases := map[string]func(*online.RecommendationPage){
-		"personalized": func(p *online.RecommendationPage) { p.Personalized = true },
-		"pagination":   func(p *online.RecommendationPage) { cursor := "invented"; p.NextCursor = &cursor },
-		"source":       func(p *online.RecommendationPage) { p.Items[0].Playlist.SourceURL = "https://evil.example/playlist" },
-		"order":        func(p *online.RecommendationPage) { p.Items[0].Position = 2 },
+		"personalized without an account": func(p *online.RecommendationPage) { p.Personalized = true },
+		"pagination":                      func(p *online.RecommendationPage) { cursor := "invented"; p.NextCursor = &cursor },
+		"source":                          func(p *online.RecommendationPage) { p.Items[0].Playlist.SourceURL = "https://evil.example/playlist" },
+		"order":                           func(p *online.RecommendationPage) { p.Items[0].Position = 2 },
 		"expired": func(p *online.RecommendationPage) {
 			p.ObservedAt = time.Now().Add(-3 * time.Minute)
 			p.ExpiresAt = p.ObservedAt.Add(2 * time.Minute)

@@ -39,7 +39,7 @@
     "value": {"sources": []}
   },
   {
-    "name": "recommendations-not-personalized",
+    "name": "recommendations-personalized-require-account",
     "schema": "RecommendationSource",
     "valid": false,
     "value": {
@@ -53,6 +53,24 @@
       "stale": false,
       "lastSuccessAt": null,
       "expiresAt": null,
+      "error": null
+    }
+  },
+  {
+    "name": "recommendations-account-daily-playlist",
+    "schema": "RecommendationSource",
+    "valid": true,
+    "value": {
+      "instanceId": "7fe223d0-a3bd-5e87-87f8-305dc26d9041",
+      "name": "Net",
+      "platform": "netease",
+      "accountId": "12345",
+      "items": [{"position":0,"reason":"","playlist":{"externalId":"daily-songs:12345","title":"每日推荐歌曲","sourceUrl":"https://music.163.com/discover/recommend/taste?uid=12345","creator":null,"coverUrl":"https://p2.music.126.net/daily.jpg","trackCount":24}}],
+      "personalized": true,
+      "nextCursor": null,
+      "stale": false,
+      "lastSuccessAt": "2026-10-10T00:00:00Z",
+      "expiresAt": "2026-10-10T00:02:00Z",
       "error": null
     }
   },

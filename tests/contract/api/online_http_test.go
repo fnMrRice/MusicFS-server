@@ -47,7 +47,7 @@ func (onlineTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	case "/api/v3/discovery/recommend/songs":
 		songs := make([]string, online.MaxPageItems)
 		for i := range songs {
-			songs[i] = fmt.Sprintf(`{"id":%d,"name":"Daily track","ar":[],"al":{"name":"Album"},"dt":120000}`, i+1)
+			songs[i] = fmt.Sprintf(`{"id":%d,"name":"Daily track","ar":[],"al":{"name":"Album","picUrl":"https://p2.music.126.net/daily.jpg"},"dt":120000}`, i+1)
 		}
 		raw = `{"code":200,"data":{"dailySongs":[` + strings.Join(songs, ",") + `]}}`
 	case "/api/user/playlist":
@@ -73,7 +73,11 @@ func TestOnlineHTTPPrivateAuthenticatedMetadataAndErrors(t *testing.T) {
 		if item.platform == online.Netease {
 			testkit.RestoreOnlineFixture(t, provider, item.platform, item.owner, item.id)
 		}
-		runtimes = append(runtimes, onlinehost.Runtime{Owner: item.owner, InstanceID: item.id, Name: item.id, Platform: item.platform, ConfigRevision: "private-config", Enabled: true, Provider: provider})
+		var runtimeProvider onlinehost.Provider = provider
+		if item.id == "db019d81-1fbb-528c-a9f7-9c47006844a2" {
+			runtimeProvider = dailyTracksFixture{provider}
+		}
+		runtimes = append(runtimes, onlinehost.Runtime{Owner: item.owner, InstanceID: item.id, Name: item.id, Platform: item.platform, ConfigRevision: "private-config", Enabled: true, Provider: runtimeProvider})
 	}
 	runtimes = append(runtimes, onlinehost.Runtime{Owner: "admin", InstanceID: "9d986e6a-04fd-522e-b5b5-eb9f28ac4ce6", Name: "Disabled", Platform: online.Netease, ConfigRevision: "config"})
 	service, err := onlinehost.New(runtimes)
@@ -169,11 +173,25 @@ func TestOnlineHTTPPrivateAuthenticatedMetadataAndErrors(t *testing.T) {
 		{"/daily-songs?limit=2", "OnlineDailySongsPage", 2},
 	} {
 		time.Sleep(1050 * time.Millisecond)
-		w = request("GET", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041"+tc.path, "", true, nil)
+		instance := "7fe223d0-a3bd-5e87-87f8-305dc26d9041"
+		if tc.dailyTracks > 0 {
+			instance = "db019d81-1fbb-528c-a9f7-9c47006844a2"
+		}
+		w = request("GET", "/online-instances/"+instance+tc.path, "", true, nil)
 		if w.Code != 200 {
 			t.Fatalf("online read: %d %s", w.Code, w.Body.String())
 		}
 		testkit.ValidateHTTP(t, tc.schema, w.Body.Bytes())
+		if tc.schema == "OnlineRecommendationPage" {
+			var recs online.RecommendationPage
+			if err := json.Unmarshal(w.Body.Bytes(), &recs); err != nil || len(recs.Items) != 1 || !recs.Personalized {
+				t.Fatalf("missing account recommendation: %s", w.Body)
+			}
+			playlist := recs.Items[0].Playlist
+			if playlist.ExternalID != "daily-songs:12345" || playlist.Writable || playlist.TrackCount == nil || *playlist.TrackCount != online.MaxPageItems || playlist.CoverURL == nil || *playlist.CoverURL != "https://p2.music.126.net/daily.jpg" {
+				t.Fatalf("invalid daily playlist card: %+v", playlist)
+			}
+		}
 		if tc.schema == "OnlinePlaylistTracksPage" {
 			var page online.PlaylistTracksPage
 			if err := json.Unmarshal(w.Body.Bytes(), &page); err != nil || len(page.Items) != 1 || page.Items[0].Track == nil || page.Items[0].Track.CoverURL == nil || *page.Items[0].Track.CoverURL != "https://p2.music.126.net/song.jpg" {
@@ -200,6 +218,8 @@ func TestOnlineHTTPPrivateAuthenticatedMetadataAndErrors(t *testing.T) {
 		code               int
 	}{
 		{"GET", "/online-instances", "", false, nil, 401},
+		{"GET", "/online-instances/843558e1-a158-56ac-834a-baffd12bb5c5/playlists/daily-songs:12345/tracks", "", true, nil, 404},
+		{"GET", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/playlists/daily-songs:67890/tracks", "", true, nil, 404},
 		{"GET", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/daily-songs", "", false, nil, 401},
 		{"POST", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/tracks/42/resolve", "{}", true, nil, 415},
 		{"POST", "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/tracks/42/resolve", `{"url":"private"}`, true, nil, 400},
@@ -209,6 +229,30 @@ func TestOnlineHTTPPrivateAuthenticatedMetadataAndErrors(t *testing.T) {
 		if w := request(tc.method, tc.path, tc.body, tc.auth, tc.modify); w.Code != tc.code {
 			t.Fatalf("auth/resolve: %d %s", w.Code, w.Body.String())
 		}
+	}
+	const dailyPath = "/online-instances/7fe223d0-a3bd-5e87-87f8-305dc26d9041/playlists/daily-songs:12345/tracks?limit=2"
+	next := ""
+	for offset := 0; offset < 4; offset += 2 {
+		time.Sleep(1050 * time.Millisecond)
+		path := dailyPath
+		if next != "" {
+			path += "&cursor=" + url.QueryEscape(next)
+		}
+		w = request("GET", path, "", true, nil)
+		if w.Code != 200 {
+			t.Fatalf("daily playlist tracks: %d %s", w.Code, w.Body)
+		}
+		testkit.ValidateHTTP(t, "OnlinePlaylistTracksPage", w.Body.Bytes())
+		var page online.PlaylistTracksPage
+		if err := json.Unmarshal(w.Body.Bytes(), &page); err != nil || page.Playlist.ExternalID != "daily-songs:12345" || len(page.Items) != 2 || page.NextCursor == nil || *page.NextCursor == next {
+			t.Fatalf("invalid daily playlist page: %s", w.Body)
+		}
+		for i, item := range page.Items {
+			if item.Position != offset+i || item.Track == nil || item.Track.ExternalID != fmt.Sprint(offset+i+1) {
+				t.Fatalf("daily tracks lost ordering or metadata: %+v", item)
+			}
+		}
+		next = *page.NextCursor
 	}
 	tracks, err := store.ListTracks(context.Background(), "admin", "", "", 10)
 	if err != nil || len(tracks.Items) != 0 {

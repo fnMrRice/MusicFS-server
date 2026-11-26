@@ -48,8 +48,12 @@ func (s *Service) PublicRecommendations(ctx context.Context, owner, id string, l
 	if limit < 1 || limit > online.MaxPageItems {
 		return online.RecommendationPage{}, domain.Fail("INVALID_ARGUMENT", "Invalid recommendation limit")
 	}
-	return call(ctx, s, owner, id, func(ctx context.Context, r Runtime) (online.RecommendationPage, error) {
-		return r.Provider.PublicRecommendations(ctx, limit)
+	return callWithAccount(ctx, s, owner, id, func(ctx context.Context, r Runtime, account online.AccountView) (online.RecommendationPage, error) {
+		page, err := r.Provider.PublicRecommendations(ctx, limit)
+		if err == nil && page.Personalized && account.AccountID == "" {
+			return online.RecommendationPage{}, domain.Fail("PROTOCOL_MISMATCH", "Personalized recommendations require a validated account")
+		}
+		return page, err
 	})
 }
 

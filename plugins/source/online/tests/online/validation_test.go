@@ -71,7 +71,7 @@ func TestPublicPlaylistPreservesOccurrencesAndCompleteness(t *testing.T) {
 	}
 }
 
-func TestRecommendationsAreAnonymousOrderedAndHaveNoSyntheticPaging(t *testing.T) {
+func TestPublicPlaylistFallbackPreservesOrderAndHasNoSyntheticPaging(t *testing.T) {
 	c := scoped(t, online.Netease, response(`{"code":200,"hasTaste":false,"result":[{"id":91,"name":"Synthetic","copywriter":"Public selection","trackCount":2},{"id":92,"name":"Second","trackCount":0}]}`))
 	page, err := c.PublicRecommendations(context.Background(), 2)
 	if err != nil {

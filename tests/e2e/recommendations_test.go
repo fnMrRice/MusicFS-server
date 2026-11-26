@@ -44,7 +44,7 @@ func TestRecommendationsActualServerPartialFailuresCacheAndRestart(t *testing.T)
 			byID[source.InstanceID] = source
 		}
 		initial := byID["7fe223d0-a3bd-5e87-87f8-305dc26d9041"]
-		if initial.Error != nil || initial.Name != "Fixture listener" || len(initial.Items) != 1 || initial.LastSuccessAt == nil {
+		if initial.Error != nil || initial.Name != "Fixture listener" || len(initial.Items) != 1 || !initial.Personalized || initial.Items[0].Playlist.ExternalID != "daily-songs:12345" || initial.LastSuccessAt == nil {
 			t.Fatalf("account recommendations: %+v", initial)
 		}
 		for id, expected := range map[string]struct{ code, name string }{
@@ -76,7 +76,7 @@ func TestRecommendationsActualServerPartialFailuresCacheAndRestart(t *testing.T)
 			t.Fatal("recommendation recovery failed")
 		}
 		prior := albumRequest[recommendations.Response](t, c, "GET", "/recommendations?instanceId=7fe223d0-a3bd-5e87-87f8-305dc26d9041&limit=1&history=1", nil, "", 200, "Recommendations").Sources[0]
-		if prior.Error != nil || prior.LastSuccessAt == nil || !prior.LastSuccessAt.Equal(*cached.LastSuccessAt) {
+		if prior.Error != nil || !prior.Personalized || len(prior.Items) != 1 || prior.Items[0].Playlist.ExternalID != "daily-songs:12345" || prior.LastSuccessAt == nil || !prior.LastSuccessAt.Equal(*cached.LastSuccessAt) {
 			t.Fatal("recommendation history did not return the previous successful page")
 		}
 		stop()

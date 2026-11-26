@@ -64,7 +64,12 @@ func TestActualOnlineWorkerMappingScopeAndCleanup(t *testing.T) {
 	path := onlineBinary(t, "./tests/testkit/online-worker", "online-fixture")
 	cfg := onlineConfig(t, path, online.Netease)
 	w := onlineStart(t, cfg)
-	_, err := w.DailySongs(context.Background(), 1)
+	for _, capability := range w.Descriptor().Capabilities {
+		if capability.Name == "recommendations.tracks" && capability.Supported {
+			t.Fatal("daily recommendations were advertised as a separate feed")
+		}
+	}
+	_, err := w.PublicRecommendations(context.Background(), 1)
 	onlineExpect(t, err, "PLATFORM_AUTH_REQUIRED")
 	loginOnlineFixture(t, w)
 	page, err := w.Search(context.Background(), online.SearchRequest{Query: "fixture", Limit: 1})
@@ -78,13 +83,13 @@ func TestActualOnlineWorkerMappingScopeAndCleanup(t *testing.T) {
 	}
 	time.Sleep(1010 * time.Millisecond)
 	recs, err := w.PublicRecommendations(context.Background(), 1)
-	if err != nil || len(recs.Items) != 1 || recs.Personalized {
+	if err != nil || len(recs.Items) != 1 || !recs.Personalized || recs.Items[0].Playlist.ExternalID != "daily-songs:12345" {
 		t.Fatalf("recommendations: %+v %v", recs, err)
 	}
 	time.Sleep(1010 * time.Millisecond)
-	daily, err := w.DailySongs(context.Background(), 1)
-	if err != nil || len(daily.Tracks) != 1 || daily.Tracks[0].ExternalID != "42" || daily.ObservedAt.IsZero() {
-		t.Fatalf("daily songs: %+v %v", daily, err)
+	daily, err := w.PlaylistTracks(context.Background(), online.PlaylistTracksRequest{ExternalID: recs.Items[0].Playlist.ExternalID, Limit: 1})
+	if err != nil || len(daily.Items) != 1 || daily.Items[0].Track == nil || daily.Items[0].Track.ExternalID != "42" || daily.ObservedAt.IsZero() {
+		t.Fatalf("daily playlist tracks: %+v %v", daily, err)
 	}
 	time.Sleep(1010 * time.Millisecond)
 	playlist, err := w.ObservePlaylist(context.Background(), "91")
