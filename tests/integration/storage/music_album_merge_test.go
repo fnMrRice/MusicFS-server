@@ -48,6 +48,39 @@ func TestMusicAlbumSourceLinkSavesWithoutFetchingAndRejectsInvalidPairs(t *testi
 
 func albumTestString(value string) *string { return &value }
 
+func TestPartialAlbumMergeKeepsOriginalCoverPluginAndRelease(t *testing.T) {
+	s := visibilityStore(t)
+	ctx := t.Context()
+	a, err := s.SaveMusicAlbum(ctx, "admin", "", 0, music.AlbumFields{Name: "Album"}, "create-merge-cover")
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := albumBundleFields([]scraper.Track{{Title: "Before", Number: 1}})
+	old[0].Item.ImageURL = "https://example.com/old.png"
+	rev, err := s.SelectMusicAlbumScrapedFields(ctx, "admin", a.ID, a.Revision, old, "old-cover-bundle")
+	if err != nil {
+		t.Fatal(err)
+	}
+	next := albumBundleFields([]scraper.Track{{Title: "After", Number: 1}})
+	for i := range next {
+		next[i].PluginID = "other"
+		next[i].Item.ID = "other-release"
+	}
+	if _, err = s.MergeMusicAlbumMetadata(ctx, "admin", a.ID, rev, next, []string{"name", "tracks"}, "merge-without-cover"); err != nil {
+		t.Fatal(err)
+	}
+	fields, err := s.MusicAlbumScrapedFields(ctx, "admin", a.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range fields {
+		if f.Field == "artwork" && f.Item.ImageURL == old[0].Item.ImageURL && f.Item.ID == old[0].Item.ID && f.PluginID == old[0].PluginID {
+			return
+		}
+	}
+	t.Fatal("source of retained album cover was lost")
+}
+
 func TestMusicAlbumMetadataMergePreservesUnselectedFieldsAndSupportsPartialDates(t *testing.T) {
 	s := visibilityStore(t)
 	ctx := t.Context()

@@ -126,15 +126,21 @@ func (a *AlbumArtwork) field(ctx context.Context, owner string, album music.Albu
 		return field, err
 	}
 	field.Item.ImageURL = *album.CoverPath
-	for _, key := range []string{"artwork", "albumDetails"} {
+	for _, key := range []string{"artwork", "albumDetails", "albumTracks"} {
 		for _, candidate := range fields {
-			if candidate.Field == key && candidate.Item.ImageURL == field.Item.ImageURL {
-				field.PluginID = candidate.PluginID
-				if refresh && candidate.Item.ID != "" {
-					field.Item.ImageURL, err = a.latestURL(ctx, owner, candidate)
-				}
-				return field, err
+			if candidate.Field != key || candidate.Item.ImageURL != field.Item.ImageURL {
+				continue
 			}
+			// 分字段合并的详情可能保留另一插件的图片；由声明该主机的来源处理下载与更新。
+			plugin := a.catalog.plugins[candidate.PluginID]
+			if plugin == nil || !scraper.AllowsImageURL(field.Item.ImageURL, plugin.Descriptor().ImageHosts) {
+				continue
+			}
+			field.PluginID = candidate.PluginID
+			if refresh && candidate.Item.ID != "" {
+				field.Item.ImageURL, err = a.latestURL(ctx, owner, candidate)
+			}
+			return field, err
 		}
 	}
 	// 手工指定的封面也只交给明确声明了该图片主机的插件。
@@ -159,7 +165,7 @@ func (a *AlbumArtwork) latestURL(ctx context.Context, owner string, selected wor
 	}
 	item := selected.Item
 	query := scraper.Query{ExternalID: item.ID, SourceURL: item.SourceURL, Title: item.Title, Artist: item.Artist, Album: item.Album}
-	page, err := a.catalog.lookup(ctx, owner, selected.PluginID, field, query, field == "albumDetails")
+	page, err := a.catalog.lookup(ctx, owner, selected.PluginID, field, query, field == "albumDetails" || field == "albumTracks")
 	if err != nil {
 		return "", err
 	}

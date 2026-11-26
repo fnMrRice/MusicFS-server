@@ -23,7 +23,8 @@ import (
 
 type artworkAlbums struct {
 	music.Repository
-	ref string
+	ref    string
+	fields []works.ScrapedField
 }
 
 func (r *artworkAlbums) MusicAlbum(_ context.Context, owner, id string) (music.Album, error) {
@@ -34,6 +35,9 @@ func (r *artworkAlbums) MusicAlbum(_ context.Context, owner, id string) (music.A
 }
 
 func (r *artworkAlbums) MusicAlbumScrapedFields(context.Context, string, string) ([]works.ScrapedField, error) {
+	if r.fields != nil {
+		return r.fields, nil
+	}
 	return []works.ScrapedField{{Field: "albumDetails", PluginID: "musicfs.scraper.netease", Item: scraper.Item{ID: "22", ImageURL: r.ref}}}, nil
 }
 
@@ -46,7 +50,7 @@ type artworkCDN struct {
 func (p *artworkCDN) RoundTrip(r *http.Request) (*http.Response, error) {
 	if r.URL.Host == "music.163.com" && r.URL.Path == "/api/v1/album/22" {
 		p.lookups.Add(1)
-		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"code":200,"album":{"id":22,"name":"Album","picUrl":"https://p1.music.126.net/new.png"}}`))}, nil
+		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"code":200,"album":{"id":22,"name":"Album","size":1,"picUrl":"https://p1.music.126.net/new.png"},"songs":[{"id":1,"name":"One","dt":1000,"cd":"1","no":1}]}`))}, nil
 	}
 	if p.lookups.Load() > 0 && r.URL.Path != "/new.png" {
 		return nil, errors.New("stale cover URL")
@@ -140,5 +144,28 @@ func TestAlbumArtworkPersistsUntilExplicitRefresh(t *testing.T) {
 				t.Fatalf("unexpected upstream metadata requests: %d", sourceCalls.Load())
 			}
 		})
+	}
+}
+
+func TestMergedAlbumArtworkUsesThePluginThatOwnsTheImage(t *testing.T) {
+	const ref = "https://p1.music.126.net/original.png"
+	repo := &artworkAlbums{ref: ref, fields: []works.ScrapedField{
+		{Field: "albumDetails", PluginID: "musicfs.scraper.musicbrainz", Item: scraper.Item{ID: "unrelated-release", ImageURL: ref}},
+		{Field: "albumTracks", PluginID: "musicfs.scraper.netease", Item: scraper.Item{ID: "22", ImageURL: ref}},
+	}}
+	cdn := &artworkCDN{bytes: coverImage(t, 1)}
+	service, err := onlinescrape.New(online.Catalog(&http.Client{Transport: cdn}, ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cache := onlinescrape.NewAlbumArtwork(t.TempDir(), service, repo, nil)
+	for _, refresh := range []bool{false, true, true, false} {
+		data, _, err := cache.Load(t.Context(), "alice", "album", refresh)
+		if err != nil || !bytes.Equal(data, cdn.bytes) {
+			t.Fatalf("load merged cover (refresh=%v): %v", refresh, err)
+		}
+	}
+	if cdn.lookups.Load() != 2 || cdn.calls.Load() != 3 {
+		t.Fatalf("unexpected release queries or downloads: %d, %d", cdn.lookups.Load(), cdn.calls.Load())
 	}
 }

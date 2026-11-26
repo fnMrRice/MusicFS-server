@@ -117,4 +117,11 @@ func TestMusicAlbumCoverPriorityAndVisibleSourceFallback(t *testing.T) {
 		t.Fatal(err)
 	}
 	expect("")
+	// 优先字段为媒体对象时仍需检查访问权限，再决定是否回退到平台的专辑图。
+	const remoteDetails = "https://example.com/album-details.png"
+	selectImage("albumDetails", remoteDetails)
+	selectImage("artwork", outsidePath)
+	expect(outsidePath)
+	selectImage("artwork", hiddenPath)
+	expect(remoteDetails)
 }

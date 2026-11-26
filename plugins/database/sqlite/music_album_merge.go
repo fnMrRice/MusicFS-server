@@ -74,6 +74,17 @@ func (s *Store) MergeMusicAlbumMetadata(ctx context.Context, owner, id string, r
 		if current.Item.Title == "" {
 			current.Item.Title = album.Name
 		}
+		// 切换发行版时，未勾选的封面继续使用原插件和发行版更新。
+		if current.Item.ImageURL != "" && !slices.Contains(selected, "cover") &&
+			(current.PluginID != details.PluginID || current.Item.ID != details.Item.ID) {
+			_, err = tx.ExecContext(ctx, `INSERT INTO music_album_scraped_fields(album_id,field,document)
+ SELECT album_id,'artwork',json_remove(json_set(document,'$.field','artwork'),'$.candidateToken','$.item.tracks')
+ FROM music_album_scraped_fields WHERE album_id=? AND field='albumDetails'
+ ON CONFLICT(album_id,field) DO NOTHING`, albumID)
+			if err != nil {
+				return 0, err
+			}
+		}
 		current.PluginID, current.Item.ID, current.Item.SourceURL = details.PluginID, details.Item.ID, details.Item.SourceURL
 		current.CandidateToken = ""
 		for _, field := range selected {

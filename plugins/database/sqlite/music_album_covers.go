@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/fnMrRice/MusicFS-server/sdk/online"
@@ -14,7 +15,7 @@ import (
 
 var albumMediaPath = regexp.MustCompile(`^/api/v1/media/[A-Za-z0-9_-]+$`)
 
-// 专辑封面按已选平台资料、专辑原封面、普通曲目和可见来源回退；一次查询覆盖整页。
+// 专辑封面按已选平台资料、专辑原封面、普通曲目和可见来源回退；按页批量读取。
 func populateMusicAlbumCovers(ctx context.Context, query trackCoverQuery, owner string, albums ...*music.Album) error {
 	byID := map[string][]*music.Album{}
 	ids := []string{}
@@ -34,6 +35,19 @@ func populateMusicAlbumCovers(ctx context.Context, query trackCoverQuery, owner 
 	raw, err := json.Marshal(ids)
 	if err != nil {
 		return err
+	}
+	if err = resolveScrapedAlbumCovers(ctx, query, owner, string(raw), byID); err != nil {
+		return err
+	}
+	ids = slices.DeleteFunc(ids, func(id string) bool { return byID[id][0].CoverPath != nil })
+	if len(ids) == 0 {
+		return nil
+	}
+	if len(ids) != len(byID) {
+		raw, err = json.Marshal(ids)
+		if err != nil {
+			return err
+		}
 	}
 	// 本页专辑共享候选。排除播放时自动写回的网易云图片，保留可刷新的来源以及用户手选图片的优先级。
 	rows, err := query.QueryContext(ctx, musicVisible+`, target_albums AS MATERIALIZED (
@@ -102,6 +116,37 @@ func populateMusicAlbumCovers(ctx context.Context, query trackCoverQuery, owner 
 		for _, album := range byID[id] {
 			value := path
 			album.CoverPath = &value
+		}
+	}
+	return rows.Err()
+}
+
+// 已选的插件封面只依赖专辑归属。读取缓存图片时，省去逐张展开专辑成员和曲目可见性视图。
+func resolveScrapedAlbumCovers(ctx context.Context, query trackCoverQuery, owner, ids string, byID map[string][]*music.Album) error {
+	rows, err := query.QueryContext(ctx, `SELECT f.album_id,json_extract(f.document,'$.item.imageUrl')
+ FROM json_each(?) ids CROSS JOIN music_albums a ON a.id=ids.value AND a.owner=?
+ CROSS JOIN music_album_scraped_fields f ON f.album_id=a.id AND f.field IN ('artwork','albumDetails')
+ WHERE json_type(f.document,'$.item.imageUrl')='text'
+ ORDER BY CASE f.field WHEN 'artwork' THEN 0 ELSE 1 END`, ids, owner)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	seen := make(map[string]bool)
+	for rows.Next() {
+		var id, ref string
+		if err = rows.Scan(&id, &ref); err != nil {
+			return err
+		}
+		if seen[id] || !usableAlbumCoverPath(ref) {
+			continue
+		}
+		seen[id] = true
+		// 本地媒体对象必须保留在完整查询中验证用户归属、来源可见性和可用状态。
+		if strings.HasPrefix(ref, "https://") {
+			for _, album := range byID[id] {
+				album.CoverPath = &ref
+			}
 		}
 	}
 	return rows.Err()
